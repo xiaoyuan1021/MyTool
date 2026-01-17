@@ -1,0 +1,25 @@
+# Qt Creator
+*.pro.user
+*.pro.user.*
+.qtc_clangd/
+.qtcreator/
+
+# Build directories
+build/
+build-*/
+
+# CMake / qmake
+CMakeLists.txt.user
+.qmake.stash
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Temporary files
+*.log
+*.tmp
