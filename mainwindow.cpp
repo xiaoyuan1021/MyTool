@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "logger.h"
 #include <QFile>
 #include <QTimer>
 
@@ -12,6 +13,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     setupUI();
     setupConnections();
+
+    Logger::instance()->setTextEdit(ui->textEdit_log);
 }
 
 MainWindow::~MainWindow()
@@ -139,6 +142,7 @@ void MainWindow::on_btn_openImg_clicked()
 
     if (fileName.isEmpty())
     {
+        Logger::instance()->warning("用户取消了文件选择");  // ← 警告
         QMessageBox::warning(this, "打开文件", "文件为空");
         return;
     }
@@ -146,6 +150,7 @@ void MainWindow::on_btn_openImg_clicked()
     cv::Mat img = cv::imread(fileName.toStdString());
     if (img.empty())
     {
+        Logger::instance()->error("无法读取图像文件");  // ← 警告
         QMessageBox::warning(this, "加载失败", "无法读取图像");
         return;
     }
@@ -157,6 +162,8 @@ void MainWindow::on_btn_openImg_clicked()
     // ✅ 显示
     //processAndDisplay();
     showImage(img);
+
+    Logger::instance()->info("图像加载成功! ");
 
     ui->statusbar->showMessage("图片加载成功", 2000);
 }
@@ -277,6 +284,7 @@ void MainWindow::on_btn_resetROI_clicked()
 
     showImage(m_roiManager.getFullImage());
     ui->statusbar->showMessage("ROI已重置，处理使用完整图像", 2000);
+    Logger::instance()->info("ROI已重置");
 }
 
 void MainWindow::onRoiSelected(const QRectF &roiImgRectF)
@@ -331,6 +339,8 @@ void MainWindow::on_btn_addOption_clicked()
     QListWidgetItem *item = new QListWidgetItem(step.name);
     ui->algorithmListWidget->addItem(item);
 
+    Logger::instance()->info(QString("添加算法 %1").arg(step.name));
+
     processAndDisplay();
 }
 
@@ -345,7 +355,8 @@ void MainWindow::on_btn_removeOption_clicked()
     // 从UI列表移除
     delete ui->algorithmListWidget->takeItem(row);
 
-    ui->statusbar->showMessage("已移除算法");
+    //ui->statusbar->showMessage("已移除算法");
+    Logger::instance()->info("移除算法");
     processAndDisplay();
 }
 
@@ -580,5 +591,12 @@ void MainWindow::on_btn_runTest_clicked()
                                  .arg(minRegions)
                                  .arg(maxRegions));
     }
+}
+
+
+void MainWindow::on_btn_clearLog_clicked()
+{
+    Logger::instance()->clear();
+    Logger::instance()->info("日志已清空");
 }
 

@@ -94,7 +94,7 @@ QPointF ImageView::viewPosToImagePos(const QPoint &viewPos) const
 // =================== 鼠标按下 ===================
 void ImageView::mousePressEvent(QMouseEvent *event)
 {
-    qDebug() << "[MousePress]" << event->button();
+    //qDebug() << "[MousePress]" << event->button();
 
     if(event->button()==Qt::RightButton && m_roiReady)
     {
@@ -237,8 +237,10 @@ bool RoiManager::applyRoi(const QRectF &roiRectF)
     m_isRoiActive = true;
     m_lastRoi = roi;
 
-    qDebug() << QString("[RoiManager] ROI已应用: x=%1 y=%2 w=%3 h=%4")
-                    .arg(x).arg(y).arg(w).arg(h);
+    // qDebug() << QString("[RoiManager] ROI已应用: x=%1 y=%2 w=%3 h=%4")
+    //                 .arg(x).arg(y).arg(w).arg(h);
+    Logger::instance()->info(QString("[RoiManager] ROI已应用: x=%1 y=%2 w=%3 h=%4")
+                                 .arg(x).arg(y).arg(w).arg(h));
 
     return true;
 }

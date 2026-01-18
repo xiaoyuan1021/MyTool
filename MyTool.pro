@@ -37,6 +37,7 @@ SOURCES += \
     image_processor.cpp \
     image_utils.cpp \
     image_view.cpp \
+    logger.cpp \
     main.cpp \
     mainwindow.cpp \
     pipeline.cpp \
@@ -47,6 +48,7 @@ HEADERS += \
     image_processor.h \
     image_utils.h \
     image_view.h \
+    logger.h \
     mainwindow.h \
     pipeline.h \
     pipeline_manager.h \

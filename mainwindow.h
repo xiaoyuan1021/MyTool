@@ -85,6 +85,8 @@ private slots:
 
     void on_btn_runTest_clicked();
 
+    void on_btn_clearLog_clicked();
+
 private:
     // ========== 初始化 ==========
     void setupUI();

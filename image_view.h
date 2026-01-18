@@ -14,6 +14,7 @@
 #include <QMouseEvent>
 
 #include <opencv2/opencv.hpp>
+#include "logger.h"
 
 class ImageView : public QGraphicsView
 {

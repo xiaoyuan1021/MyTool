@@ -50,7 +50,7 @@
      </rect>
     </property>
     <property name="currentIndex">
-     <number>1</number>
+     <number>6</number>
     </property>
     <property name="tabBarAutoHide">
      <bool>true</bool>
@@ -1071,6 +1071,32 @@
      </rect>
     </property>
    </widget>
+   <widget class="QTextEdit" name="textEdit_log">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>460</y>
+      <width>531</width>
+      <height>171</height>
+     </rect>
+    </property>
+    <property name="readOnly">
+     <bool>true</bool>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="btn_clearLog">
+    <property name="geometry">
+     <rect>
+      <x>420</x>
+      <y>470</y>
+      <width>93</width>
+      <height>28</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>清空日志</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
@@ -1081,18 +1107,6 @@
      <height>25</height>
     </rect>
    </property>
-   <widget class="QMenu" name="menu">
-    <property name="title">
-     <string>主页</string>
-    </property>
-   </widget>
-   <widget class="QMenu" name="menu_2">
-    <property name="title">
-     <string>日志</string>
-    </property>
-   </widget>
-   <addaction name="menu"/>
-   <addaction name="menu_2"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
