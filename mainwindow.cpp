@@ -600,3 +600,15 @@ void MainWindow::on_btn_clearLog_clicked()
     Logger::instance()->info("日志已清空");
 }
 
+
+void MainWindow::on_btn_drawRegion_clicked()
+{
+
+}
+
+
+void MainWindow::on_btn_clearRegion_clicked()
+{
+
+}
+
