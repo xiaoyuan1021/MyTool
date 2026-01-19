@@ -76,8 +76,17 @@ void MainWindow::setupConnections()
     connect(m_view, &ImageView::polygonPointAdded, this,
             [this](const QPointF& point) {
                 Logger::instance()->info(
-                    QString("添加顶点: (%.1f, %.1f)").arg(point.x()).arg(point.y())
+                    QString("添加顶点: (%1, %2)").arg(point.x(),0,'f',1).arg(point.y(),0,'f',1)
                     );
+            });
+    connect(m_view, &ImageView::polygonFinished, this,
+            [this](const QVector<QPointF>& points) {
+                Logger::instance()->info(
+                    QString("多边形绘制完成，共 %1 个顶点").arg(points.size())
+                    );
+
+                // ✅ 调用计算函数
+                calculateRegionFeatures(points);
             });
     // ========== PipelineManager信号 ==========
     connect(m_pipelineManager, &PipelineManager::pipelineFinished,
@@ -628,6 +637,7 @@ void MainWindow::on_btn_drawRegion_clicked()
 }
 
 
+
 void MainWindow::on_btn_clearRegion_clicked()
 {
     m_drawnpoints.clear();
@@ -650,46 +660,122 @@ void MainWindow::calculateRegionFeatures(const QVector<QPointF>& points)
         return;
     }
 
-    try {
-        // ========== 1. 把 QVector<QPointF> 转成 Halcon 的 HTuple ==========
-        HalconCpp::HTuple rows, cols;
+    const PipelineContext& ctx = m_pipelineManager->getLastContext();
 
+    if (ctx.processed.empty() && ctx.mask.empty()) {
+        Logger::instance()->warning("请先执行算法处理，然后再绘制区域");
+        return;
+    }
+
+    try {
+        // ========== 1. 创建 Qt 多边形 ==========
+        QPolygonF polygon;
         for (const QPointF& pt : points) {
-            rows.Append(pt.y());  // 行坐标（Y）
-            cols.Append(pt.x());  // 列坐标（X）
+            polygon.append(pt);
         }
 
-        // ========== 2. 创建多边形区域 ==========
-        HalconCpp::HRegion region;
-        region.GenRegionPolygon(rows, cols);  // ✅ 正确：没有返回值
+        // ========== 2. 获取处理后的图像 ==========
+        cv::Mat processedImg = ctx.processed.empty() ? ctx.mask : ctx.processed;
 
-        // ========== 3. 计算面积（通过 AreaCenter 获取）==========
-        HalconCpp::HTuple area, centerRow, centerCol;
-        area = region.AreaCenter(&centerRow, &centerCol);  // ✅ 修正：返回值是面积
+        if (processedImg.empty())
+        {
+            Logger::instance()->error("无法获取处理后的图像");
+            return;
+        }
 
-        double areaValue = area[0].D();
-        double centerX = centerCol[0].D();
-        double centerY = centerRow[0].D();
+        // ========== 3. 转成 HRegion 并做连通域分析 ==========
+        HalconCpp::HRegion allRegions = ImageUtils::MatToHRegion(processedImg);
+        HalconCpp::HRegion connectedRegions = allRegions.Connection();
 
-        // ========== 4. 计算圆度 ==========
-        HalconCpp::HTuple circularity;
-        circularity = region.Circularity();  // ✅ 修正：返回 HTuple
-        double circularityValue = circularity[0].D();
+        // ========== 4. 统计总连通域数量 ==========
+        HalconCpp::HTuple totalNum;
+        HalconCpp::CountObj(connectedRegions, &totalNum);
+        int totalCount = totalNum[0].I();
 
-        // ========== 5. 计算外接矩形（宽度、高度）==========
-        HalconCpp::HTuple row1, col1, row2, col2;
-        region.SmallestRectangle1(&row1, &col1, &row2, &col2);  // ✅ 正确：传指针
+        if (totalCount == 0) {
+            Logger::instance()->warning("图像中没有找到任何目标");
+            return;
+        }
 
-        double width = col2[0].D() - col1[0].D();
-        double height = row2[0].D() - row1[0].D();
+        // ========== 5. 找出中心点在 ROI 内的连通域 ==========
+        QVector<int> selectedIndices;
 
-        // ========== 6. 输出到日志 ==========
-        Logger::instance()->info("========== 区域特征 ==========");
-        Logger::instance()->info(QString("面积: %.2f 像素").arg(areaValue));
-        Logger::instance()->info(QString("圆度: %.3f (越接近1越圆)").arg(circularityValue));
-        Logger::instance()->info(QString("中心: (%.1f, %.1f)").arg(centerX).arg(centerY));
-        Logger::instance()->info(QString("尺寸: %.1f × %.1f").arg(width).arg(height));
-        Logger::instance()->info("==============================");
+        for (int i = 1; i <= totalCount; ++i) {
+            HalconCpp::HRegion singleRegion;
+            HalconCpp::SelectObj(connectedRegions, &singleRegion, i);
+
+            HalconCpp::HTuple area, centerRow, centerCol;
+            area = singleRegion.AreaCenter(&centerRow, &centerCol);
+
+            double centerX = centerCol[0].D();
+            double centerY = centerRow[0].D();
+
+            if (polygon.containsPoint(QPointF(centerX, centerY), Qt::OddEvenFill)) {
+                selectedIndices.append(i);
+            }
+        }
+
+        if (selectedIndices.isEmpty()) {
+            Logger::instance()->warning("ROI区域内没有找到目标");
+            return;
+        }
+
+        // ========== 6. 输出选中的连通域特征 ==========
+        Logger::instance()->info("========== ROI 区域特征分析 ==========");
+        Logger::instance()->info(QString("找到 %1 个连通域").arg(selectedIndices.size()));
+        Logger::instance()->info("-----------------------------------");
+
+        for (int idx : selectedIndices) {
+            HalconCpp::HRegion singleRegion;
+            HalconCpp::SelectObj(connectedRegions, &singleRegion, idx);
+
+            HalconCpp::HTuple area, centerRow, centerCol;
+            area = singleRegion.AreaCenter(&centerRow, &centerCol);
+
+            HalconCpp::HTuple circularity;
+            circularity = singleRegion.Circularity();
+
+            HalconCpp::HTuple row1, col1, row2, col2;
+            singleRegion.SmallestRectangle1(&row1, &col1, &row2, &col2);
+            double width = col2[0].D() - col1[0].D();
+            double height = row2[0].D() - row1[0].D();
+
+            Logger::instance()->info(
+                QString::asprintf("区域 %d: 面积=%.1f, 圆度=%.3f, 中心=(%.1f,%.1f), 尺寸=%.1f×%.1f",
+                                  idx,
+                                  area[0].D(),
+                                  circularity[0].D(),
+                                  centerCol[0].D(),
+                                  centerRow[0].D(),
+                                  width,
+                                  height)
+                );
+        }
+
+        Logger::instance()->info("======================================");
+
+        // ========== 7. 如果只有一个区域，给出建议 ==========
+        if (selectedIndices.size() == 1) {
+            HalconCpp::HRegion singleRegion;
+            HalconCpp::SelectObj(connectedRegions, &singleRegion, selectedIndices[0]);
+
+            HalconCpp::HTuple area, centerRow, centerCol;
+            area = singleRegion.AreaCenter(&centerRow, &centerCol);
+
+            HalconCpp::HTuple circularity;
+            circularity = singleRegion.Circularity();
+
+            Logger::instance()->info("💡 建议筛选范围：");
+            Logger::instance()->info(
+                QString::asprintf("  面积: %.0f - %.0f",
+                                  area[0].D() * 0.8,
+                                  area[0].D() * 1.2)
+                );
+            Logger::instance()->info(
+                QString::asprintf("  圆度: %.2f - 1.00",
+                                  circularity[0].D() * 0.9)
+                );
+        }
 
     }
     catch (const HalconCpp::HException& ex) {

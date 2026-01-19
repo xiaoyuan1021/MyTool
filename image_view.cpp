@@ -364,5 +364,5 @@ void ImageView::updatePolygonDisplay()
 
     // 创建图形项（作为 pixmapItem 的子项）
     m_polygonPathItem = new QGraphicsPathItem(path, m_pixmapItem);
-    m_polygonPathItem->setPen(QPen(Qt::green, 2, Qt::SolidLine));
+    m_polygonPathItem->setPen(QPen(Qt::red, 2, Qt::SolidLine));
 }
