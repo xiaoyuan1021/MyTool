@@ -50,7 +50,7 @@
      </rect>
     </property>
     <property name="currentIndex">
-     <number>6</number>
+     <number>4</number>
     </property>
     <property name="tabBarAutoHide">
      <bool>true</bool>
@@ -876,6 +876,32 @@
        <string>添加</string>
       </property>
      </widget>
+     <widget class="QPushButton" name="btn_drawRegion">
+      <property name="geometry">
+       <rect>
+        <x>260</x>
+        <y>20</y>
+        <width>81</width>
+        <height>28</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>绘制区域</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="btn_clearRegion">
+      <property name="geometry">
+       <rect>
+        <x>260</x>
+        <y>60</y>
+        <width>81</width>
+        <height>28</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>清除区域</string>
+      </property>
+     </widget>
     </widget>
     <widget class="QWidget" name="tab_8">
      <attribute name="title">
@@ -1077,7 +1103,7 @@
       <x>10</x>
       <y>460</y>
       <width>531</width>
-      <height>171</height>
+      <height>181</height>
      </rect>
     </property>
     <property name="readOnly">
@@ -1087,7 +1113,7 @@
    <widget class="QPushButton" name="btn_clearLog">
     <property name="geometry">
      <rect>
-      <x>420</x>
+      <x>440</x>
       <y>470</y>
       <width>93</width>
       <height>28</height>

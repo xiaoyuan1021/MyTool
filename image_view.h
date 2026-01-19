@@ -26,9 +26,15 @@ public:
     void clearRoi();
     void finishRoiMode();
 
+    void setPolygonMode(bool enable);
+    void clearPolygon();
+
 signals:
     void pixelInfoChanged(int x,int y, const QColor& rgb,int gray);
     void roiSelected(const QRectF &roiRect);   // 发出的是图像坐标系中的 ROI
+
+    void polygonPointAdded(const QPointF& point);
+    void polygonFinished(const QVector<QPointF>& points);
 
 protected:
     void wheelEvent(QWheelEvent * event) override;
@@ -54,6 +60,11 @@ private:
     QRectF m_roiRectImg;
     // ROI 已绘制完成，等待右键确认裁剪
     bool   m_roiReady = false;
+
+    bool m_polygonMode;
+    QVector <QPointF> m_polygonPoints;
+    QGraphicsPathItem * m_polygonPathItem;
+    void updatePolygonDisplay();
 
 };
 

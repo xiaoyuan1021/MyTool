@@ -87,6 +87,10 @@ private slots:
 
     void on_btn_clearLog_clicked();
 
+    void on_btn_drawRegion_clicked();
+
+    void on_btn_clearRegion_clicked();
+
 private:
     // ========== 初始化 ==========
     void setupUI();
@@ -106,6 +110,13 @@ private:
     // ✅ 核心模块（简化为两个）
     PipelineManager* m_pipelineManager;  // Pipeline管理器
     RoiManager m_roiManager;              // ROI管理器
+    // ✅ 新增：存储绘制的多边形点
+    QVector <QPointF> m_drawnpoints;
+    // ✅ 新增：绘制模式标志
+    bool m_isDrawingRegion;
+    // ✅ 新增：显示多边形的图形项
+    QGraphicsPolygonItem * m_polygonItem;
+    void calculateRegionFeatures(const QVector<QPointF>& points);
 };
 
 #endif // MAINWINDOW_H

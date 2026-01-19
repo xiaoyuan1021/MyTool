@@ -5,7 +5,9 @@
 ImageView::ImageView(QWidget *parent)
     : QGraphicsView(parent),
     m_scene(new QGraphicsScene(this)),
-    m_pixmapItem(new QGraphicsPixmapItem())
+    m_pixmapItem(new QGraphicsPixmapItem()),
+    m_polygonMode(false),
+    m_polygonPathItem(nullptr)
 {
     setScene(m_scene);
     m_scene->addItem(m_pixmapItem);
@@ -91,10 +93,46 @@ QPointF ImageView::viewPosToImagePos(const QPoint &viewPos) const
     return QPointF(x, y);
 }
 
+
+
 // =================== 鼠标按下 ===================
 void ImageView::mousePressEvent(QMouseEvent *event)
 {
     //qDebug() << "[MousePress]" << event->button();
+
+    // ✅ 新增：多边形绘制模式
+    if (m_polygonMode)
+    {
+        if (event->button() == Qt::LeftButton && !m_image.isNull())
+        {
+            // 获取图像坐标
+            QPointF imgPos = viewPosToImagePos(event->pos());
+
+            // 添加到顶点列表
+            m_polygonPoints.append(imgPos);
+
+            // 更新显示
+            updatePolygonDisplay();
+
+            // 发送信号（通知 MainWindow）
+            emit polygonPointAdded(imgPos);
+
+            event->accept();
+            return;
+        }
+        else if (event->button() == Qt::RightButton)
+        {
+            // 右键完成绘制
+            if (m_polygonPoints.size() >= 3)  // 至少3个点才能成多边形
+            {
+                emit polygonFinished(m_polygonPoints);
+                m_polygonMode = false;
+            }
+
+            event->accept();
+            return;
+        }
+    }
 
     if(event->button()==Qt::RightButton && m_roiReady)
     {
@@ -271,4 +309,60 @@ void RoiManager::clear()
     m_fullImage.release();
     m_currentImage.release();
     m_isRoiActive = false;
+}
+
+
+void ImageView::setPolygonMode(bool enable)
+{
+    m_polygonMode = enable;
+
+    if (enable) {
+        // 清空之前的点
+        m_polygonPoints.clear();
+
+        // 删除旧的路径
+        if (m_polygonPathItem) {
+            delete m_polygonPathItem;
+            m_polygonPathItem = nullptr;
+        }
+    }
+}
+
+void ImageView::clearPolygon()
+{
+    m_polygonPoints.clear();
+
+    if (m_polygonPathItem) {
+        delete m_polygonPathItem;
+        m_polygonPathItem = nullptr;
+    }
+
+    m_polygonMode = false;
+}
+
+void ImageView::updatePolygonDisplay()
+{
+    if (m_polygonPoints.isEmpty()) return;
+
+    // 删除旧的路径
+    if (m_polygonPathItem) {
+        delete m_polygonPathItem;
+    }
+
+    // 创建新的路径
+    QPainterPath path;
+    path.moveTo(m_polygonPoints.first());
+
+    for (int i = 1; i < m_polygonPoints.size(); ++i) {
+        path.lineTo(m_polygonPoints[i]);
+    }
+
+    // 如果有3个以上的点，连接到起点形成闭合
+    if (m_polygonPoints.size() >= 3) {
+        path.lineTo(m_polygonPoints.first());
+    }
+
+    // 创建图形项（作为 pixmapItem 的子项）
+    m_polygonPathItem = new QGraphicsPathItem(path, m_pixmapItem);
+    m_polygonPathItem->setPen(QPen(Qt::green, 2, Qt::SolidLine));
 }

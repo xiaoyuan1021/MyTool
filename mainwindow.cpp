@@ -8,6 +8,8 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
     , m_pipelineManager(new PipelineManager(this))
+    , m_isDrawingRegion(false)
+    , m_polygonItem(nullptr)
 {
     ui->setupUi(this);
 
@@ -70,6 +72,13 @@ void MainWindow::setupConnections()
     connect(m_view, &ImageView::roiSelected,
             this, &MainWindow::onRoiSelected);
 
+    // ✅ 新增：多边形信号连接
+    connect(m_view, &ImageView::polygonPointAdded, this,
+            [this](const QPointF& point) {
+                Logger::instance()->info(
+                    QString("添加顶点: (%.1f, %.1f)").arg(point.x()).arg(point.y())
+                    );
+            });
     // ========== PipelineManager信号 ==========
     connect(m_pipelineManager, &PipelineManager::pipelineFinished,
             [this](const QString& message) {
@@ -130,6 +139,8 @@ void MainWindow::showImage(const cv::Mat &img)
     QImage qimg = ImageUtils::Mat2Qimage(img);
     m_view->setImage(qimg);
 }
+
+
 
 // ========== 文件操作 ==========
 
@@ -603,12 +614,87 @@ void MainWindow::on_btn_clearLog_clicked()
 
 void MainWindow::on_btn_drawRegion_clicked()
 {
+    if(m_roiManager.getCurrentImage().empty())
+    {
+        Logger::instance()->warning("请先打开图像");
+        return;
+    }
+    m_isDrawingRegion=true;
+    m_drawnpoints.clear();
+    m_view->setPolygonMode(true);
 
+    Logger::instance()->info("请在图像上点击左键添加顶点，右键完成绘制");
+    ui->statusbar->showMessage("请在图像上点击左键添加顶点，右键完成绘制");
 }
 
 
 void MainWindow::on_btn_clearRegion_clicked()
 {
+    m_drawnpoints.clear();
+    m_isDrawingRegion=false;
 
+    m_view->clearPolygon();
+    if(m_polygonItem)
+    {
+        delete m_polygonItem;
+        m_polygonItem=nullptr;
+    }
+    Logger::instance()->info("已清除绘制区域");
+    ui->statusbar->showMessage("已清除绘制区域");
 }
 
+void MainWindow::calculateRegionFeatures(const QVector<QPointF>& points)
+{
+    if (points.size() < 3) {
+        Logger::instance()->warning("顶点数量不足，至少需要3个点");
+        return;
+    }
+
+    try {
+        // ========== 1. 把 QVector<QPointF> 转成 Halcon 的 HTuple ==========
+        HalconCpp::HTuple rows, cols;
+
+        for (const QPointF& pt : points) {
+            rows.Append(pt.y());  // 行坐标（Y）
+            cols.Append(pt.x());  // 列坐标（X）
+        }
+
+        // ========== 2. 创建多边形区域 ==========
+        HalconCpp::HRegion region;
+        region.GenRegionPolygon(rows, cols);  // ✅ 正确：没有返回值
+
+        // ========== 3. 计算面积（通过 AreaCenter 获取）==========
+        HalconCpp::HTuple area, centerRow, centerCol;
+        area = region.AreaCenter(&centerRow, &centerCol);  // ✅ 修正：返回值是面积
+
+        double areaValue = area[0].D();
+        double centerX = centerCol[0].D();
+        double centerY = centerRow[0].D();
+
+        // ========== 4. 计算圆度 ==========
+        HalconCpp::HTuple circularity;
+        circularity = region.Circularity();  // ✅ 修正：返回 HTuple
+        double circularityValue = circularity[0].D();
+
+        // ========== 5. 计算外接矩形（宽度、高度）==========
+        HalconCpp::HTuple row1, col1, row2, col2;
+        region.SmallestRectangle1(&row1, &col1, &row2, &col2);  // ✅ 正确：传指针
+
+        double width = col2[0].D() - col1[0].D();
+        double height = row2[0].D() - row1[0].D();
+
+        // ========== 6. 输出到日志 ==========
+        Logger::instance()->info("========== 区域特征 ==========");
+        Logger::instance()->info(QString("面积: %.2f 像素").arg(areaValue));
+        Logger::instance()->info(QString("圆度: %.3f (越接近1越圆)").arg(circularityValue));
+        Logger::instance()->info(QString("中心: (%.1f, %.1f)").arg(centerX).arg(centerY));
+        Logger::instance()->info(QString("尺寸: %.1f × %.1f").arg(width).arg(height));
+        Logger::instance()->info("==============================");
+
+    }
+    catch (const HalconCpp::HException& ex) {
+        Logger::instance()->error(
+            QString("Halcon计算错误: %1").arg(ex.ErrorMessage().Text())
+            );
+    }
+}
