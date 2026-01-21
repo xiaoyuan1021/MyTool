@@ -70,17 +70,32 @@
       </property>
       <item>
        <property name="text">
-        <string>RGB Mode</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
         <string>Gray Mode</string>
        </property>
       </item>
       <item>
        <property name="text">
+        <string>RGB Mode</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
         <string>HSV Mode</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>B</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>G</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>R</string>
        </property>
       </item>
      </widget>

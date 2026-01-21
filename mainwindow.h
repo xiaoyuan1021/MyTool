@@ -91,6 +91,14 @@ private slots:
 
     void on_btn_clearRegion_clicked();
 
+    void on_btn_drawTemplate_clicked();
+
+    void on_btn_clearTemplate_clicked();
+
+    void on_btn_creatTemplate_clicked();
+
+    void on_btn_findTemplate_clicked();
+
 private:
     // ========== 初始化 ==========
     void setupUI();

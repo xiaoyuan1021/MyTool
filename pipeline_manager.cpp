@@ -67,6 +67,8 @@ void PipelineManager::setFeatureRange(ShapeFeature feature, double minValue, dou
     addFilterCondition(cond);
 }
 
+
+
 // ========== 算法队列管理 ==========
 
 void PipelineManager::addAlgorithmStep(const AlgorithmStep& step)
@@ -149,4 +151,14 @@ void PipelineManager::rebuildPipeline()
     // 目前的设计中，算法队列是引用传递，所以不需要重建
     // 但保留这个接口以备将来扩展
     qDebug() << "[PipelineManager] Pipeline重建（当前为引用传递，无需重建）";
+}
+
+void PipelineManager::setChannelMode(PipelineConfig::Channel channel)
+{
+    m_config.channel=channel;
+}
+
+PipelineConfig::Channel PipelineManager::getChannelMode() const
+{
+    return m_config.channel;
 }

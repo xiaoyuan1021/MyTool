@@ -75,6 +75,9 @@ public:
     void enableShapeFilter(bool enable);
     void setFeatureRange(ShapeFeature feature, double minValue, double maxValue);
 
+    void setChannelMode(PipelineConfig::Channel channel);
+    PipelineConfig::Channel getChannelMode() const;
+
 signals:
     // Pipeline执行完成
     void pipelineFinished(const QString& message);

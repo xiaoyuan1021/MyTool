@@ -16,32 +16,41 @@ public:
     void run(PipelineContext &ctx) override
     {
         if (ctx.srcBgr.empty() || !cfg_) return;
-
-        if(cfg_->channel==PipelineConfig::Channel::Gray)
+        switch (cfg_->channel)
         {
+        case PipelineConfig::Channel::Gray:
             cv::cvtColor(ctx.srcBgr,ctx.channelImg,cv::COLOR_BGR2GRAY);
-        }
-        else if(cfg_->channel==PipelineConfig::Channel::RGB)
+            break;
+        case PipelineConfig::Channel::RGB:
+            ctx.channelImg=ctx.srcBgr.clone();
+            break;
+        case PipelineConfig::Channel::HSV:
+            cv::cvtColor(ctx.srcBgr,ctx.channelImg,cv::COLOR_BGR2HSV);
+            break;
+        case PipelineConfig::Channel::B:
         {
-            ctx.channelImg=ctx.srcBgr;
+            std::vector<cv::Mat> channels;
+            cv::split(ctx.srcBgr,channels);
+            ctx.channelImg=channels[0];
+            break;
         }
-        else if(cfg_->channel==PipelineConfig::Channel::B)
+        case PipelineConfig::Channel::G:
         {
-            std::vector<cv::Mat> chs;
-            cv::split(ctx.srcBgr,chs);
-            ctx.channelImg=chs[0];
+            std::vector<cv::Mat> channels;
+            cv::split(ctx.srcBgr,channels);
+            ctx.channelImg=channels[1];
+            break;
         }
-        else if(cfg_->channel==PipelineConfig::Channel::G)
+        case PipelineConfig::Channel::R:
         {
-            std::vector<cv::Mat> chs;
-            cv::split(ctx.srcBgr,chs);
-            ctx.channelImg=chs[1];
+            std::vector<cv::Mat> channels;
+            cv::split(ctx.srcBgr,channels);
+            ctx.channelImg=channels[2];
+            break;
         }
-        else
-        {
-            std::vector<cv::Mat> chs;
-            cv::split(ctx.srcBgr,chs);
-            ctx.channelImg=chs[2];
+        default:
+            cv::cvtColor(ctx.srcBgr,ctx.channelImg,cv::COLOR_BGR2GRAY);
+            break;
         }
     }
 private:

@@ -564,16 +564,47 @@ void MainWindow::on_btn_select_clicked()
     processAndDisplay();
 }
 
-// ========== 其他 ==========
+// ========== 颜色通道 ==========
 
 void MainWindow::on_comboBox_channels_currentIndexChanged(int index)
 {
-    // 这个功能暂时未实现
-    Q_UNUSED(index);
+    if(m_roiManager.getCurrentImage().empty()) return;
+    switch (index)
+    {
+    case 0:
+        m_pipelineManager->setChannelMode(PipelineConfig::Channel::Gray);
+        Logger::instance()->info("切换到灰度模式");
+        break;
+    case 1:
+        m_pipelineManager->setChannelMode(PipelineConfig::Channel::RGB);
+        Logger::instance()->info("切换到RGB模式");
+        break;
+    case 2:
+        m_pipelineManager->setChannelMode(PipelineConfig::Channel::HSV);
+        Logger::instance()->info("切换到HSV模式");
+        break;
+    case 3:
+        m_pipelineManager->setChannelMode(PipelineConfig::Channel::B);
+        Logger::instance()->info("切换到B通道");
+        break;
+    case 4:
+        m_pipelineManager->setChannelMode(PipelineConfig::Channel::G);
+        Logger::instance()->info("切换到G通道");
+        break;
+    case 5:
+        m_pipelineManager->setChannelMode(PipelineConfig::Channel::R);
+        Logger::instance()->info("切换到R通道");
+        break;
+    default:
+        Logger::instance()->warning("未知的通道类型");
+        return;
+    }
+    processAndDisplay();
+    ui->statusbar->showMessage(QString("已切换到 %1")
+                                   .arg(ui->comboBox_channels->currentText()));
 }
 
 //判定
-
 
 void MainWindow::on_btn_runTest_clicked()
 {
@@ -614,7 +645,6 @@ void MainWindow::on_btn_runTest_clicked()
                                  .arg(maxRegions));
     }
 }
-
 
 void MainWindow::on_btn_clearLog_clicked()
 {
@@ -689,3 +719,29 @@ void MainWindow::calculateRegionFeatures(const QVector<QPointF>& points)
     }
     Logger::instance()->info("======================================");
 }
+
+
+
+void MainWindow::on_btn_drawTemplate_clicked()
+{
+
+}
+
+
+void MainWindow::on_btn_clearTemplate_clicked()
+{
+
+}
+
+
+void MainWindow::on_btn_creatTemplate_clicked()
+{
+
+}
+
+
+void MainWindow::on_btn_findTemplate_clicked()
+{
+
+}
+
