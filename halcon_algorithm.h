@@ -15,12 +15,15 @@
 #include <QPushButton>
 #include <QStackedWidget>
 #include <QGroupBox>
+#include <QVector>
+#include <QPointF>
+#include "opencv2/opencv.hpp"
+#include "pipeline.h"
 
 using namespace HalconCpp;
 
 // ⭐ 前向声明，替代 #include "imageprocessor.h"
 struct AlgorithmStep;
-
 
 class HalconAlgorithm
 {
@@ -47,6 +50,12 @@ public:
     HRegion shapeTrans(const HRegion& region,const HString& type);
 
     HRegion selectShapeArea(const HRegion& region,double minArea,double maxArea);
+
+    QVector<RegionFeature> analyzeRegionsInPolygon(
+        const QVector<QPointF>& polygon,
+        const cv::Mat& processedImage
+        );
+
 };
 
 

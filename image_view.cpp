@@ -24,7 +24,7 @@ void ImageView::setImage(const QImage &img)
     m_pixmapItem->setPixmap(QPixmap::fromImage(m_image));
     m_pixmapItem->setPos(0, 0);
 
-    // ⭐ 场景矩形 = 图像大小，避免多余空白导致坐标偏移
+    //如何修改成自动铺满画布
     m_scene->setSceneRect(0, 0, m_image.width(), m_image.height());
 
     // 居中对齐
@@ -358,9 +358,9 @@ void ImageView::updatePolygonDisplay()
     }
 
     // 如果有3个以上的点，连接到起点形成闭合
-    if (m_polygonPoints.size() >= 3) {
-        path.lineTo(m_polygonPoints.first());
-    }
+    // if (m_polygonPoints.size() >= 3) {
+    //     path.lineTo(m_polygonPoints.first());
+    // }
 
     // 创建图形项（作为 pixmapItem 的子项）
     m_polygonPathItem = new QGraphicsPathItem(path, m_pixmapItem);

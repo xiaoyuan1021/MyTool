@@ -8,9 +8,23 @@
 
 struct RegionFeature
 {
-    double area;
-    double circularity=0.0;
-    cv::Rect bbox;//有啥用
+    int index = 0;          // ✅ 新增：区域索引
+    double area = 0.0;      // 面积
+    double circularity = 0.0;  // 圆度
+    double centerX = 0.0;   // ✅ 新增：中心X坐标
+    double centerY = 0.0;   // ✅ 新增：中心Y坐标
+    double width = 0.0;     // ✅ 新增：宽度
+    double height = 0.0;    // ✅ 新增：高度
+    cv::Rect bbox;          // 外接矩形（保留原有的）
+
+    // ✅ 新增：转字符串方法
+    QString toString() const
+    {
+        return QString::asprintf(
+            "区域 %d: 面积=%.1f, 圆度=%.3f, 中心=(%.1f,%.1f), 尺寸=%.1f×%.1f",
+            index, area, circularity, centerX, centerY, width, height
+            );
+    }
 };
 
 

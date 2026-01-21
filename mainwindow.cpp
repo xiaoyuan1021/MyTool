@@ -74,7 +74,7 @@ void MainWindow::setupConnections()
 
     // ✅ 新增：多边形信号连接
     connect(m_view, &ImageView::polygonPointAdded, this,
-            [this](const QPointF& point) {
+            [](const QPointF& point) {
                 Logger::instance()->info(
                     QString("添加顶点: (%1, %2)").arg(point.x(),0,'f',1).arg(point.y(),0,'f',1)
                     );
@@ -95,7 +95,7 @@ void MainWindow::setupConnections()
             });
 
     connect(m_pipelineManager, &PipelineManager::algorithmQueueChanged,
-            [this](int count) {
+            [](int count) {
                 qDebug() << "算法队列数量:" << count;
             });
 
@@ -329,7 +329,7 @@ void MainWindow::onRoiSelected(const QRectF &roiImgRectF)
 
 void MainWindow::on_comboBox_selectAlgorithm_currentIndexChanged(int index)
 {
-
+    Q_UNUSED(index);
 }
 
 void MainWindow::on_btn_addOption_clicked()
@@ -559,6 +559,8 @@ void MainWindow::on_btn_addFilter_clicked()
 void MainWindow::on_btn_select_clicked()
 {
     //重新执行Pipeline
+    m_view->clearPolygon();
+    m_drawnpoints.clear();
     processAndDisplay();
 }
 
@@ -636,8 +638,6 @@ void MainWindow::on_btn_drawRegion_clicked()
     ui->statusbar->showMessage("请在图像上点击左键添加顶点，右键完成绘制");
 }
 
-
-
 void MainWindow::on_btn_clearRegion_clicked()
 {
     m_drawnpoints.clear();
@@ -667,120 +667,25 @@ void MainWindow::calculateRegionFeatures(const QVector<QPointF>& points)
         return;
     }
 
-    try {
-        // ========== 1. 创建 Qt 多边形 ==========
-        QPolygonF polygon;
-        for (const QPointF& pt : points) {
-            polygon.append(pt);
-        }
+    // ========== 1. 获取处理后的图像 ==========
+    cv::Mat processedImg = ctx.processed.empty() ? ctx.mask : ctx.processed;
 
-        // ========== 2. 获取处理后的图像 ==========
-        cv::Mat processedImg = ctx.processed.empty() ? ctx.mask : ctx.processed;
+    // ========== 2. 调用 HalconAlgorithm 进行区域分析 ==========
+    HalconAlgorithm analyzer;
+    QVector<RegionFeature> features = analyzer.analyzeRegionsInPolygon(points, processedImg);
 
-        if (processedImg.empty())
-        {
-            Logger::instance()->error("无法获取处理后的图像");
-            return;
-        }
-
-        // ========== 3. 转成 HRegion 并做连通域分析 ==========
-        HalconCpp::HRegion allRegions = ImageUtils::MatToHRegion(processedImg);
-        HalconCpp::HRegion connectedRegions = allRegions.Connection();
-
-        // ========== 4. 统计总连通域数量 ==========
-        HalconCpp::HTuple totalNum;
-        HalconCpp::CountObj(connectedRegions, &totalNum);
-        int totalCount = totalNum[0].I();
-
-        if (totalCount == 0) {
-            Logger::instance()->warning("图像中没有找到任何目标");
-            return;
-        }
-
-        // ========== 5. 找出中心点在 ROI 内的连通域 ==========
-        QVector<int> selectedIndices;
-
-        for (int i = 1; i <= totalCount; ++i) {
-            HalconCpp::HRegion singleRegion;
-            HalconCpp::SelectObj(connectedRegions, &singleRegion, i);
-
-            HalconCpp::HTuple area, centerRow, centerCol;
-            area = singleRegion.AreaCenter(&centerRow, &centerCol);
-
-            double centerX = centerCol[0].D();
-            double centerY = centerRow[0].D();
-
-            if (polygon.containsPoint(QPointF(centerX, centerY), Qt::OddEvenFill)) {
-                selectedIndices.append(i);
-            }
-        }
-
-        if (selectedIndices.isEmpty()) {
-            Logger::instance()->warning("ROI区域内没有找到目标");
-            return;
-        }
-
-        // ========== 6. 输出选中的连通域特征 ==========
-        Logger::instance()->info("========== ROI 区域特征分析 ==========");
-        Logger::instance()->info(QString("找到 %1 个连通域").arg(selectedIndices.size()));
-        Logger::instance()->info("-----------------------------------");
-
-        for (int idx : selectedIndices) {
-            HalconCpp::HRegion singleRegion;
-            HalconCpp::SelectObj(connectedRegions, &singleRegion, idx);
-
-            HalconCpp::HTuple area, centerRow, centerCol;
-            area = singleRegion.AreaCenter(&centerRow, &centerCol);
-
-            HalconCpp::HTuple circularity;
-            circularity = singleRegion.Circularity();
-
-            HalconCpp::HTuple row1, col1, row2, col2;
-            singleRegion.SmallestRectangle1(&row1, &col1, &row2, &col2);
-            double width = col2[0].D() - col1[0].D();
-            double height = row2[0].D() - row1[0].D();
-
-            Logger::instance()->info(
-                QString::asprintf("区域 %d: 面积=%.1f, 圆度=%.3f, 中心=(%.1f,%.1f), 尺寸=%.1f×%.1f",
-                                  idx,
-                                  area[0].D(),
-                                  circularity[0].D(),
-                                  centerCol[0].D(),
-                                  centerRow[0].D(),
-                                  width,
-                                  height)
-                );
-        }
-
-        Logger::instance()->info("======================================");
-
-        // ========== 7. 如果只有一个区域，给出建议 ==========
-        if (selectedIndices.size() == 1) {
-            HalconCpp::HRegion singleRegion;
-            HalconCpp::SelectObj(connectedRegions, &singleRegion, selectedIndices[0]);
-
-            HalconCpp::HTuple area, centerRow, centerCol;
-            area = singleRegion.AreaCenter(&centerRow, &centerCol);
-
-            HalconCpp::HTuple circularity;
-            circularity = singleRegion.Circularity();
-
-            Logger::instance()->info("💡 建议筛选范围：");
-            Logger::instance()->info(
-                QString::asprintf("  面积: %.0f - %.0f",
-                                  area[0].D() * 0.8,
-                                  area[0].D() * 1.2)
-                );
-            Logger::instance()->info(
-                QString::asprintf("  圆度: %.2f - 1.00",
-                                  circularity[0].D() * 0.9)
-                );
-        }
-
+    // ========== 3. 如果没找到目标，直接返回 ==========
+    if (features.isEmpty()) {
+        return;  // analyzeRegionsInPolygon 内部已经输出了警告日志
     }
-    catch (const HalconCpp::HException& ex) {
-        Logger::instance()->error(
-            QString("Halcon计算错误: %1").arg(ex.ErrorMessage().Text())
-            );
+
+    // ========== 4. 输出结果到日志 ==========
+    Logger::instance()->info("========== ROI 区域特征分析 ==========");
+    Logger::instance()->info(QString("找到 %1 个连通域").arg(features.size()));
+    Logger::instance()->info("-----------------------------------");
+
+    for (const auto& feature : features) {
+        Logger::instance()->info(feature.toString());
     }
+    Logger::instance()->info("======================================");
 }
