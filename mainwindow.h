@@ -6,6 +6,7 @@
 #include <QMessageBox>
 #include <QSlider>
 #include <QSpinBox>
+#include <QListWidgetItem>
 
 #include <opencv2/opencv.hpp>
 
@@ -99,6 +100,8 @@ private slots:
 
     void on_btn_findTemplate_clicked();
 
+    void onAlgorithmSelectionChanged(QListWidgetItem* current,QListWidgetItem* previous);
+
 private:
     // ========== 初始化 ==========
     void setupUI();
@@ -109,6 +112,9 @@ private:
     // ========== 核心处理 ==========
     void processAndDisplay();  // ✅ 统一的处理入口
     void showImage(const cv::Mat& img);
+
+    void saveCurrentEdit();
+    void loadAlgorithmParameters(int index);
 
 private:
     // UI
@@ -125,6 +131,7 @@ private:
     // ✅ 新增：显示多边形的图形项
     QGraphicsPolygonItem * m_polygonItem;
     void calculateRegionFeatures(const QVector<QPointF>& points);
+    int m_editingAlgorithmIndex=-1;
 };
 
 #endif // MAINWINDOW_H

@@ -162,3 +162,12 @@ PipelineConfig::Channel PipelineManager::getChannelMode() const
 {
     return m_config.channel;
 }
+
+void PipelineManager::updateAlgorithmStep(int index, const AlgorithmStep &step)
+{
+    if (index >= 0 && index < m_algorithmQueue.size())
+    {
+        m_algorithmQueue[index] = step;
+        emit algorithmQueueChanged(m_algorithmQueue.size());
+    }
+}

@@ -77,6 +77,7 @@ public:
 
     void setChannelMode(PipelineConfig::Channel channel);
     PipelineConfig::Channel getChannelMode() const;
+    void updateAlgorithmStep(int index, const AlgorithmStep& step);
 
 signals:
     // Pipeline执行完成

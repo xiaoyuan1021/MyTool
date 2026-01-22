@@ -50,7 +50,7 @@
      </rect>
     </property>
     <property name="currentIndex">
-     <number>0</number>
+     <number>3</number>
     </property>
     <property name="tabBarAutoHide">
      <bool>true</bool>
@@ -490,9 +490,9 @@
       <property name="geometry">
        <rect>
         <x>30</x>
-        <y>80</y>
-        <width>111</width>
-        <height>141</height>
+        <y>100</y>
+        <width>121</width>
+        <height>151</height>
        </rect>
       </property>
      </widget>
@@ -569,10 +569,10 @@
      <widget class="QStackedWidget" name="stackedWidget_Algorithm">
       <property name="geometry">
        <rect>
-        <x>160</x>
-        <y>100</y>
-        <width>191</width>
-        <height>121</height>
+        <x>280</x>
+        <y>140</y>
+        <width>181</width>
+        <height>111</height>
        </rect>
       </property>
       <property name="currentIndex">
