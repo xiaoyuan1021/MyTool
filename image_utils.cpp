@@ -62,8 +62,6 @@ QRect ImageUtils::mapLabelToImage(const QRect &rect, const Mat &img, QLabel *lab
     return QRect(x,y,w,h);
 }
 
-
-
 HObject ImageUtils::MatToHImage(const cv::Mat& cv_img)
 {
     HalconCpp::HObject H_img;
@@ -175,7 +173,6 @@ Mat ImageUtils::HObjectToMat(const HalconCpp::HObject& region, int width, int he
 }
 
 
-// ============ imageutils.cpp 中修改后的 MatToHRegion ============
 HalconCpp::HRegion ImageUtils::MatToHRegion(const cv::Mat &binary)
 {
     using namespace HalconCpp;
@@ -214,8 +211,6 @@ HalconCpp::HRegion ImageUtils::MatToHRegion(const cv::Mat &binary)
     // Threshold 选择 [1, 255] 范围（取反后的非零值区域 = 原mask中的0值区域）
     return hImg.Threshold(1.0, 255.0);
 }
-
-// ========== image_utils.cpp 中的安全版本 ==========
 
 Mat ImageUtils::HRegionToMat(const HRegion &region, int width, int height)
 {

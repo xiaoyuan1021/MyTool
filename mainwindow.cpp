@@ -72,21 +72,32 @@ void MainWindow::setupConnections()
     connect(m_view, &ImageView::roiSelected,
             this, &MainWindow::onRoiSelected);
 
-    // ✅ 新增：多边形信号连接
-    connect(m_view, &ImageView::polygonPointAdded, this,
-            [](const QPointF& point) {
+    connect(m_view, &ImageView::polygonDrawingPointAdded, this,
+            [](const QString& type, const QPointF& point) {
                 Logger::instance()->info(
-                    QString("添加顶点: (%1, %2)").arg(point.x(),0,'f',1).arg(point.y(),0,'f',1)
+                    QString("[%1] 添加顶点: (%2, %3)")
+                        .arg(type)
+                        .arg(point.x(), 0, 'f', 1)
+                        .arg(point.y(), 0, 'f', 1)
                     );
             });
-    connect(m_view, &ImageView::polygonFinished, this,
-            [this](const QVector<QPointF>& points) {
+
+    connect(m_view, &ImageView::polygonDrawingFinished, this,
+            [this](const QString& type, const QVector<QPointF>& points) {
                 Logger::instance()->info(
-                    QString("多边形绘制完成，共 %1 个顶点").arg(points.size())
+                    QString("[%1] 多边形绘制完成，共 %2 个顶点")
+                        .arg(type)
+                        .arg(points.size())
                     );
 
-                // ✅ 调用计算函数
-                calculateRegionFeatures(points);
+                if (type == "region") {
+                    // 区域计算
+                    calculateRegionFeatures(points);
+                }
+                else if (type == "template") {
+                    // 模板创建
+                    createTemplateFromPolygon(points);
+                }
             });
     // ========== PipelineManager信号 ==========
     connect(m_pipelineManager, &PipelineManager::pipelineFinished,
@@ -670,26 +681,16 @@ void MainWindow::on_btn_drawRegion_clicked()
         Logger::instance()->warning("请先打开图像");
         return;
     }
-    m_isDrawingRegion=true;
-    m_drawnpoints.clear();
-    m_view->setPolygonMode(true);
 
-    Logger::instance()->info("请在图像上点击左键添加顶点，右键完成绘制");
+    m_view->startPolygonDrawing("region");
+
+
     ui->statusbar->showMessage("请在图像上点击左键添加顶点，右键完成绘制");
 }
 
 void MainWindow::on_btn_clearRegion_clicked()
 {
-    m_drawnpoints.clear();
-    m_isDrawingRegion=false;
-
-    m_view->clearPolygon();
-    if(m_polygonItem)
-    {
-        delete m_polygonItem;
-        m_polygonItem=nullptr;
-    }
-    Logger::instance()->info("已清除绘制区域");
+    m_view->clearPolygonDrawing();
     ui->statusbar->showMessage("已清除绘制区域");
 }
 
@@ -730,25 +731,43 @@ void MainWindow::calculateRegionFeatures(const QVector<QPointF>& points)
     Logger::instance()->info("======================================");
 }
 
+
+
 //补正 模板匹配
 
 void MainWindow::on_btn_drawTemplate_clicked()
 {
+    if(m_roiManager.getCurrentImage().empty())
+    {
+        Logger::instance()->info("请先打开图像");
+        return;
+    }
+    m_view->startPolygonDrawing("template");
+    ui->statusbar->showMessage("请在图像上绘制模板区域");
 
 }
-
 
 void MainWindow::on_btn_clearTemplate_clicked()
 {
-
+    m_view->clearPolygonDrawing();
+    Logger::instance()->info("已清除模板区域");
 }
 
+void MainWindow::createTemplateFromPolygon(const QVector<QPointF> &points)
+{
+    if (points.size() < 3) {
+        Logger::instance()->warning("模板顶点数量不足");
+        return;
+    }
+
+    Logger::instance()->info("========== 创建模板 ==========");
+    Logger::instance()->info(QString("模板顶点数: %1").arg(points.size()));
+}
 
 void MainWindow::on_btn_creatTemplate_clicked()
 {
 
 }
-
 
 void MainWindow::on_btn_findTemplate_clicked()
 {
@@ -885,5 +904,3 @@ void MainWindow::loadAlgorithmParameters(int index)
     //     QString("已加载算法 #%1: %2 的参数").arg(index + 1).arg(step.name)
     //     );
 }
-
-

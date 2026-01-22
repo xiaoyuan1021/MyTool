@@ -93,14 +93,9 @@ QPointF ImageView::viewPosToImagePos(const QPoint &viewPos) const
     return QPointF(x, y);
 }
 
-
-
 // =================== 鼠标按下 ===================
 void ImageView::mousePressEvent(QMouseEvent *event)
 {
-    //qDebug() << "[MousePress]" << event->button();
-
-    // ✅ 新增：多边形绘制模式
     if (m_polygonMode)
     {
         if (event->button() == Qt::LeftButton && !m_image.isNull())
@@ -112,10 +107,10 @@ void ImageView::mousePressEvent(QMouseEvent *event)
             m_polygonPoints.append(imgPos);
 
             // 更新显示
-            updatePolygonDisplay();
+            updatePolygonPath(m_polygonPoints, m_polygonPathItem);
 
-            // 发送信号（通知 MainWindow）
-            emit polygonPointAdded(imgPos);
+            // 发送信号（带类型标识）
+            emit polygonDrawingPointAdded(m_currentDrawingType, imgPos);
 
             event->accept();
             return;
@@ -125,7 +120,7 @@ void ImageView::mousePressEvent(QMouseEvent *event)
             // 右键完成绘制
             if (m_polygonPoints.size() >= 3)  // 至少3个点才能成多边形
             {
-                emit polygonFinished(m_polygonPoints);
+                emit polygonDrawingFinished(m_currentDrawingType, m_polygonPoints);
                 m_polygonMode = false;
             }
 
@@ -314,55 +309,76 @@ void RoiManager::clear()
 
 void ImageView::setPolygonMode(bool enable)
 {
-    m_polygonMode = enable;
-
     if (enable) {
-        // 清空之前的点
-        m_polygonPoints.clear();
-
-        // 删除旧的路径
-        if (m_polygonPathItem) {
-            delete m_polygonPathItem;
-            m_polygonPathItem = nullptr;
-        }
+        startPolygonDrawing("region");  // ✅ 使用新函数
+    } else {
+        finishPolygonDrawing();
     }
 }
 
 void ImageView::clearPolygon()
 {
-    m_polygonPoints.clear();
-
-    if (m_polygonPathItem) {
-        delete m_polygonPathItem;
-        m_polygonPathItem = nullptr;
-    }
-
-    m_polygonMode = false;
+    clearPolygonDrawing();
 }
 
 void ImageView::updatePolygonDisplay()
 {
-    if (m_polygonPoints.isEmpty()) return;
+    updatePolygonPath(m_polygonPoints,m_polygonPathItem);
+}
 
-    // 删除旧的路径
-    if (m_polygonPathItem) {
+void ImageView::startPolygonDrawing(const QString &drawingType)
+{
+    m_currentDrawingType= drawingType;
+    m_polygonMode=true;
+    m_polygonPoints.clear();
+
+    if(m_polygonPathItem)
+    {
         delete m_polygonPathItem;
+        m_polygonPathItem= nullptr;
     }
+    Logger::instance()->info(QString("开始绘制%1 请点击左键添加顶点，右键完成")
+                                 .arg(drawingType == "template" ? "模板" : "区域"));
+}
 
-    // 创建新的路径
+void ImageView::finishPolygonDrawing()
+{
+    m_polygonMode=false;
+    m_currentDrawingType.clear();
+}
+
+void ImageView::clearPolygonDrawing()
+{
+    m_polygonPoints.clear();
+    m_polygonMode=false;
+    m_currentDrawingType.clear();
+    if(m_polygonPathItem)
+    {
+        delete m_polygonPathItem;
+        m_polygonPathItem=nullptr;
+    }
+}
+
+QVector<QPointF> ImageView::getPolygonpoints() const
+{
+    return m_polygonPoints;
+}
+
+void ImageView::updatePolygonPath(const QVector<QPointF> &points, QGraphicsPathItem *&pathItem)
+{
+    if(points.isEmpty()) return;
+    if(pathItem)
+    {
+        delete pathItem;
+        pathItem=nullptr;
+    }
     QPainterPath path;
-    path.moveTo(m_polygonPoints.first());
-
-    for (int i = 1; i < m_polygonPoints.size(); ++i) {
-        path.lineTo(m_polygonPoints[i]);
+    path.moveTo(points.first());
+    for(int i = 1;i < points.size(); ++i)
+    {
+        path.lineTo(points[i]);
     }
-
-    // 如果有3个以上的点，连接到起点形成闭合
-    // if (m_polygonPoints.size() >= 3) {
-    //     path.lineTo(m_polygonPoints.first());
-    // }
-
-    // 创建图形项（作为 pixmapItem 的子项）
-    m_polygonPathItem = new QGraphicsPathItem(path, m_pixmapItem);
-    m_polygonPathItem->setPen(QPen(Qt::red, 2, Qt::SolidLine));
+    QColor penColor =(m_currentDrawingType =="template") ? Qt::blue :Qt::red;
+    pathItem = new QGraphicsPathItem(path, m_pixmapItem);
+    pathItem->setPen(QPen(penColor, 2, Qt::SolidLine));
 }

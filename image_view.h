@@ -29,12 +29,21 @@ public:
     void setPolygonMode(bool enable);
     void clearPolygon();
 
+    void startPolygonDrawing(const QString& drawingType);
+    void finishPolygonDrawing();
+    void clearPolygonDrawing();
+
+    QVector<QPointF> getPolygonpoints() const;
+
 signals:
     void pixelInfoChanged(int x,int y, const QColor& rgb,int gray);
     void roiSelected(const QRectF &roiRect);   // 发出的是图像坐标系中的 ROI
 
     void polygonPointAdded(const QPointF& point);
     void polygonFinished(const QVector<QPointF>& points);
+
+    void polygonDrawingPointAdded(const QString& type,const QPointF& point);
+    void polygonDrawingFinished(const QString& type,QVector<QPointF> points);
 
 protected:
     void wheelEvent(QWheelEvent * event) override;
@@ -65,6 +74,11 @@ private:
     QVector <QPointF> m_polygonPoints;
     QGraphicsPathItem * m_polygonPathItem;
     void updatePolygonDisplay();
+
+    QString m_currentDrawingType;
+    void updatePolygonPath(const QVector<QPointF>& points, QGraphicsPathItem*& pathItem);
+
+
 
 };
 

@@ -131,6 +131,7 @@ private:
     // ✅ 新增：显示多边形的图形项
     QGraphicsPolygonItem * m_polygonItem;
     void calculateRegionFeatures(const QVector<QPointF>& points);
+    void createTemplateFromPolygon(const QVector<QPointF>& points);
     int m_editingAlgorithmIndex=-1;
 };
 
