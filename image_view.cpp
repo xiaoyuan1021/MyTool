@@ -359,7 +359,7 @@ void ImageView::clearPolygonDrawing()
     }
 }
 
-QVector<QPointF> ImageView::getPolygonpoints() const
+QVector<QPointF> ImageView::getPolygonPoints() const
 {
     return m_polygonPoints;
 }

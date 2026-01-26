@@ -312,3 +312,45 @@ Mat ImageUtils::HRegionToMat(const HRegion &region, int width, int height)
     }
 }
 
+
+HImage ImageUtils::Mat2HImage(const cv::Mat& mat)
+{
+    if (mat.empty()) {
+        throw std::runtime_error("Mat2HImage: 输入图像为空");
+    }
+
+    cv::Mat grayMat;
+
+    // 1️⃣ 转换为灰度图
+    if (mat.channels() == 3) {
+        cv::cvtColor(mat, grayMat, cv::COLOR_BGR2GRAY);
+    } else if (mat.channels() == 1) {
+        grayMat = mat.clone();  // ✅ 确保拷贝一份
+    } else {
+        throw std::runtime_error("Mat2HImage: 不支持的通道数");
+    }
+
+    // 2️⃣ 确保数据连续
+    if (!grayMat.isContinuous()) {
+        grayMat = grayMat.clone();
+    }
+
+    // 3️⃣ 使用 GenImageInterleaved 创建图像（Halcon 会拷贝数据）
+    HImage hImage;
+
+    try {
+        // ✅ 方法1：逐像素设置（安全但较慢）
+        hImage.GenImage1("byte", grayMat.cols, grayMat.rows, (void*)grayMat.data);
+
+        // Halcon 的 GenImage1 会立即读取数据，所以需要保证在这之前数据有效
+        // 为了安全，我们创建一个临时拷贝
+
+    } catch (const HException& ex) {
+        throw std::runtime_error(
+            QString("Mat2HImage 失败: %1").arg(ex.ErrorMessage().Text()).toStdString()
+            );
+    }
+
+    return hImage;
+}
+

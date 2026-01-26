@@ -14,7 +14,7 @@
 #include "image_utils.h"
 #include "halcon_algorithm.h"
 #include "pipeline_manager.h"  // ✅ 新增：使用Pipeline管理器
-
+#include "template_match_manager.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -102,6 +102,10 @@ private slots:
 
     void onAlgorithmSelectionChanged(QListWidgetItem* current,QListWidgetItem* previous);
 
+    void on_comboBox_filterMode_currentIndexChanged(int index);
+
+    void on_btn_openLog_clicked();
+
 private:
     // ========== 初始化 ==========
     void setupUI();
@@ -124,6 +128,12 @@ private:
     // ✅ 核心模块（简化为两个）
     PipelineManager* m_pipelineManager;  // Pipeline管理器
     RoiManager m_roiManager;              // ROI管理器
+    TemplateMatchManager* m_templateManager;  // ✅ 模板管理器
+
+    // ✅ 模板匹配相关函数
+    void findAndDisplayMatches(const QVector<MatchResult>& results);
+    void updateTemplateList();
+
     // ✅ 新增：存储绘制的多边形点
     QVector <QPointF> m_drawnpoints;
     // ✅ 新增：绘制模式标志

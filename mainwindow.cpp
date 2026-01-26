@@ -3,11 +3,13 @@
 #include "logger.h"
 #include <QFile>
 #include <QTimer>
+#include <QInputDialog>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
     , m_pipelineManager(new PipelineManager(this))
+    , m_templateManager(new TemplateMatchManager(this))
     , m_isDrawingRegion(false)
     , m_polygonItem(nullptr)
 {
@@ -17,6 +19,8 @@ MainWindow::MainWindow(QWidget *parent)
     setupConnections();
 
     Logger::instance()->setTextEdit(ui->textEdit_log);
+    Logger::instance()->setLogFile("test.log");
+    Logger::instance()->enableFileLog(true);
 }
 
 MainWindow::~MainWindow()
@@ -43,8 +47,17 @@ void MainWindow::setupUI()
     setupSliderSpinBoxPair(ui->Slider_contrast, ui->spinBox_contrast, 0, 300, 100);
     setupSliderSpinBoxPair(ui->Slider_gamma, ui->spinBox_gamma, 10, 300, 100);
     setupSliderSpinBoxPair(ui->Slider_sharpen, ui->spinBox_sharpen, 0, 500, 100);
+
     setupSliderSpinBoxPair(ui->Slider_grayLow, ui->spinBox_grayLow, 0, 255, 0);
     setupSliderSpinBoxPair(ui->Slider_grayHigh, ui->spinBox_grayHigh, 0, 255, 0);
+
+    setupSliderSpinBoxPair(ui->Slider_rgb_R,ui->spinBox_rgb_R,0,100,0);
+    setupSliderSpinBoxPair(ui->Slider_rgb_G,ui->spinBox_rgb_G,0,100,0);
+    setupSliderSpinBoxPair(ui->Slider_rgb_B,ui->spinBox_rgb_B,0,100,0);
+
+    setupSliderSpinBoxPair(ui->Slider_hsv_H,ui->spinBox_hsv_H,0,100,0);
+    setupSliderSpinBoxPair(ui->Slider_hsv_S,ui->spinBox_hsv_S,0,100,0);
+    setupSliderSpinBoxPair(ui->Slider_hsv_V,ui->spinBox_hsv_V,0,100,0);
 
     // 加载样式表
     QFile file(":/style.qss");
@@ -115,6 +128,17 @@ void MainWindow::setupConnections()
 
     connect(ui->algorithmListWidget,&QListWidget::currentItemChanged,
             this,&MainWindow::onAlgorithmSelectionChanged);
+    // ✅ 模板管理器信号
+    connect(m_templateManager, &TemplateMatchManager::templateCreated,
+            this, [this](const QString& name) {
+                Logger::instance()->info(QString("模板已创建: %1").arg(name));
+                updateTemplateList();
+            });
+
+    connect(m_templateManager, &TemplateMatchManager::matchCompleted,
+            this, [](int count) {
+                Logger::instance()->info(QString("匹配完成，找到 %1 个目标").arg(count));
+            });
 }
 
 void MainWindow::setupSliderSpinBoxPair(QSlider *slider, QSpinBox *spinbox,
@@ -766,12 +790,81 @@ void MainWindow::createTemplateFromPolygon(const QVector<QPointF> &points)
 
 void MainWindow::on_btn_creatTemplate_clicked()
 {
+    QVector<QPointF> points = m_view->getPolygonPoints();
 
+    if (points.size() < 3) {
+        QMessageBox::warning(this, "提示", "请先绘制模板区域！");
+        return;
+    }
+
+    // 弹出对话框输入模板名称
+    bool ok;
+    QString name = QInputDialog::getText(
+        this, "创建模板", "请输入模板名称:",
+        QLineEdit::Normal, "Template_1", &ok
+        );
+
+    if (!ok || name.isEmpty()) {
+        return;
+    }
+
+    // 使用默认参数创建模板
+    TemplateData params = m_templateManager->getDefaultParams();
+
+    bool success = m_templateManager->createTemplate(
+        name,
+        m_roiManager.getCurrentImage(),
+        points,
+        params
+        );
+
+    if (success) {
+        QMessageBox::information(this, "成功", "模板创建成功！");
+        m_view->clearPolygonDrawing();
+    } else {
+        QMessageBox::warning(this, "失败", "模板创建失败，请查看日志");
+    }
 }
 
 void MainWindow::on_btn_findTemplate_clicked()
 {
+    if (m_templateManager->getTemplateCount() == 0) {
+        QMessageBox::warning(this, "提示", "请先创建模板！");
+        return;
+    }
 
+    if (m_roiManager.getCurrentImage().empty()) {
+        QMessageBox::warning(this, "提示", "请先打开图像！");
+        return;
+    }
+
+    // 使用第一个模板进行匹配
+    QVector<MatchResult> results = m_templateManager->findTemplate(
+        m_roiManager.getCurrentImage(),
+        0,      // templateIndex
+        0.6,    // minScore
+        3,     // maxMatches
+        0.6     // greediness
+        );
+
+    // 显示结果
+
+    findAndDisplayMatches(results);
+
+    Logger::instance()->info("========== 匹配结果 ==========");
+    for (int i = 0; i < results.size(); ++i) {
+        Logger::instance()->info(
+            QString("[%1] %2").arg(i + 1).arg(results[i].toString())
+            );
+    }
+    Logger::instance()->info("==============================");
+
+    if (results.isEmpty()) {
+        QMessageBox::information(this, "结果", "未找到匹配目标");
+    } else {
+        QMessageBox::information(this, "结果",
+                                 QString("找到 %1 个匹配目标").arg(results.size()));
+    }
 }
 
 void MainWindow::onAlgorithmSelectionChanged(QListWidgetItem *current, QListWidgetItem *previous)
@@ -904,3 +997,128 @@ void MainWindow::loadAlgorithmParameters(int index)
     //     QString("已加载算法 #%1: %2 的参数").arg(index + 1).arg(step.name)
     //     );
 }
+
+void MainWindow::findAndDisplayMatches(const QVector<MatchResult> &results)
+{
+    if (results.isEmpty()) {
+        Logger::instance()->warning("没有匹配结果可显示");
+        return;
+    }
+
+    // 1️⃣ 获取当前图像和模板信息
+    cv::Mat displayImg = m_roiManager.getCurrentImage().clone();
+    if (displayImg.channels() == 1) {
+        cv::cvtColor(displayImg, displayImg, cv::COLOR_GRAY2BGR);
+    }
+
+    // 获取模板的多边形顶点（创建时保存的）
+    TemplateData templateData = m_templateManager->getTemplate(0);
+    QVector<QPointF> templatePolygon = templateData.polygonPoints;
+
+    if (templatePolygon.isEmpty()) {
+        Logger::instance()->warning("模板没有保存多边形信息");
+        return;
+    }
+
+    // 2️⃣ 计算模板中心（创建时的中心）
+    QPointF templateCenter(0, 0);
+    for (const QPointF& pt : templatePolygon) {
+        templateCenter += pt;
+    }
+    templateCenter /= templatePolygon.size();
+
+    // 3️⃣ 为每个匹配结果绘制旋转后的轮廓
+    for (int i = 0; i < results.size(); ++i)
+    {
+        const MatchResult& match = results[i];
+
+        // 变换后的多边形顶点
+        std::vector<cv::Point> transformedPolygon;
+
+        // 旋转角度（弧度）
+        double angleRad = match.angle * CV_PI / 180.0;
+        double cosA = cos(angleRad);
+        double sinA = sin(angleRad);
+
+        // 对每个顶点进行旋转和平移变换
+        for (const QPointF& pt : templatePolygon)
+        {
+            // 相对于模板中心的坐标
+            double dx = pt.x() - templateCenter.x();
+            double dy = pt.y() - templateCenter.y();
+
+            // 旋转
+            double rotatedX = dx * cosA - dy * sinA;
+            double rotatedY = dx * sinA + dy * cosA;
+
+            // 平移到匹配位置（注意：column=X, row=Y）
+            double finalX = rotatedX + match.column;
+            double finalY = rotatedY + match.row;
+
+            transformedPolygon.push_back(cv::Point(finalX, finalY));
+        }
+
+        // 绘制多边形轮廓（不同颜色区分）
+        cv::Scalar color;
+        if (i == 0) {
+            color = cv::Scalar(0, 255, 0);  // 第一个用绿色
+        } else {
+            color = cv::Scalar(255, 0, 255); // 其他用紫色
+        }
+
+        cv::polylines(displayImg, transformedPolygon,
+                      true,    // 闭合
+                      color,
+                      2);      // 线宽
+
+        // 画中心点
+        cv::Point center(match.column, match.row);
+        cv::circle(displayImg, center, 5, color, -1);
+
+        // 标注信息
+        QString label = QString("#%1 S:%2 A:%3")
+                            .arg(i+1)
+                            .arg(match.score)
+                            .arg(match.angle);
+
+        cv::putText(displayImg, label.toStdString(),
+                    cv::Point(match.column + 15, match.row - 15),
+                    cv::FONT_HERSHEY_SIMPLEX, 0.5,
+                    color, 2);
+    }
+
+    // 4️⃣ 显示
+    showImage(displayImg);
+    Logger::instance()->info(QString("已显示 %1 个匹配轮廓").arg(results.size()));
+}
+
+void MainWindow::updateTemplateList()
+{
+
+}
+
+void MainWindow::on_comboBox_filterMode_currentIndexChanged(int index)
+{
+
+    switch (index)
+    {
+    case 0:
+        ui->stackedWidget_filter->setCurrentIndex(0);
+        break;
+    case 1:
+        ui->stackedWidget_filter->setCurrentIndex(1);
+        break;
+    case 2:
+        ui->stackedWidget_filter->setCurrentIndex(2);
+        break;
+    default:
+        ui->stackedWidget_filter->setCurrentIndex(0);
+        break;
+    }
+}
+
+void MainWindow::on_btn_openLog_clicked()
+{
+    Logger::instance()->openLogFolder(true);
+}
+

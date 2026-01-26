@@ -41,7 +41,8 @@ SOURCES += \
     main.cpp \
     mainwindow.cpp \
     pipeline.cpp \
-    pipeline_manager.cpp
+    pipeline_manager.cpp \
+    template_match_manager.cpp
 
 HEADERS += \
     halcon_algorithm.h \
@@ -53,7 +54,8 @@ HEADERS += \
     pipeline.h \
     pipeline_manager.h \
     pipeline_steps.h \
-    shape_filter_types.h
+    shape_filter_types.h \
+    template_match_manager.h
 
 FORMS += \
     mainwindow.ui

@@ -23,6 +23,7 @@ public:
     static QRect mapLabelToImage(const QRect& rect,const Mat& img,QLabel* label);
     static HRegion MatToHRegion(const cv::Mat& binary);
     static Mat HRegionToMat(const HRegion& region, int width, int height);
+    static HImage Mat2HImage(const cv::Mat& mat);
 };
 
 #endif // IMAGE_UTILS_H

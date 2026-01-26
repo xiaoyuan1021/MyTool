@@ -33,7 +33,7 @@ public:
     void finishPolygonDrawing();
     void clearPolygonDrawing();
 
-    QVector<QPointF> getPolygonpoints() const;
+    QVector<QPointF> getPolygonPoints() const;
 
 signals:
     void pixelInfoChanged(int x,int y, const QColor& rgb,int gray);
