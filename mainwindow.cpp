@@ -42,6 +42,7 @@ void MainWindow::setupUI()
 
     ui->lineEdit_nowRegions->setReadOnly(true);
     ui->doubleSpinBox_minScore->setValue(0.5);
+    ui->doubleSpinBox_minScore->setSingleStep(0.1);
     ui->spinBox_matchNumber->setValue(3);
 
     // 设置滑块-数字框对
@@ -53,13 +54,21 @@ void MainWindow::setupUI()
     setupSliderSpinBoxPair(ui->Slider_grayLow, ui->spinBox_grayLow, 0, 255, 0);
     setupSliderSpinBoxPair(ui->Slider_grayHigh, ui->spinBox_grayHigh, 0, 255, 0);
 
-    setupSliderSpinBoxPair(ui->Slider_rgb_R,ui->spinBox_rgb_R,0,100,0);
-    setupSliderSpinBoxPair(ui->Slider_rgb_G,ui->spinBox_rgb_G,0,100,0);
-    setupSliderSpinBoxPair(ui->Slider_rgb_B,ui->spinBox_rgb_B,0,100,0);
+    setupSliderSpinBoxPair(ui->Slider_rgb_R_Low,ui->spinBox_rgb_R_Low,0,255,0);
+    setupSliderSpinBoxPair(ui->Slider_rgb_G_Low,ui->spinBox_rgb_G_Low,0,255,0);
+    setupSliderSpinBoxPair(ui->Slider_rgb_B_Low,ui->spinBox_rgb_B_Low,0,255,0);
 
-    setupSliderSpinBoxPair(ui->Slider_hsv_H,ui->spinBox_hsv_H,0,100,0);
-    setupSliderSpinBoxPair(ui->Slider_hsv_S,ui->spinBox_hsv_S,0,100,0);
-    setupSliderSpinBoxPair(ui->Slider_hsv_V,ui->spinBox_hsv_V,0,100,0);
+    setupSliderSpinBoxPair(ui->Slider_rgb_R_High,ui->spinBox_rgb_R_High,0,255,0);
+    setupSliderSpinBoxPair(ui->Slider_rgb_G_High,ui->spinBox_rgb_G_High,0,255,0);
+    setupSliderSpinBoxPair(ui->Slider_rgb_B_High,ui->spinBox_rgb_B_High,0,255,0);
+
+    setupSliderSpinBoxPair(ui->Slider_hsv_H_Low,ui->spinBox_hsv_H_Low,0,179,0);
+    setupSliderSpinBoxPair(ui->Slider_hsv_S_Low,ui->spinBox_hsv_S_Low,0,255,0);
+    setupSliderSpinBoxPair(ui->Slider_hsv_V_Low,ui->spinBox_hsv_V_Low,0,255,0);
+
+    setupSliderSpinBoxPair(ui->Slider_hsv_H_High,ui->spinBox_hsv_H_High,0,179,0);
+    setupSliderSpinBoxPair(ui->Slider_hsv_S_High,ui->spinBox_hsv_S_High,0,255,0);
+    setupSliderSpinBoxPair(ui->Slider_hsv_V_High,ui->spinBox_hsv_V_High,0,255,0);
 
     // 加载样式表
     QFile file(":/style.qss");
@@ -161,11 +170,8 @@ void MainWindow::setupSliderSpinBoxPair(QSlider *slider, QSpinBox *spinbox,
 void MainWindow::processAndDisplay()
 {
     cv::Mat currentImg = m_roiManager.getCurrentImage();
-    if (currentImg.empty())
-    {
-        //qDebug() << "[MainWindow] 当前图像为空";
-        return;
-    }
+    if (currentImg.empty()) return;
+
 
     // ✅ 1. 同步UI参数到Pipeline
     m_pipelineManager->syncFromUI(
@@ -173,14 +179,80 @@ void MainWindow::processAndDisplay()
         ui->Slider_sharpen, ui->Slider_grayLow, ui->Slider_grayHigh
         );
 
+    int filterMode=ui->comboBox_filterMode->currentIndex();
+    cv::Mat filtered;
+    switch (filterMode)
+{
+    case 0:
+        m_pipelineManager->setGrayFilterEnabled(true);
+        break;
+    case 1:
+    {
+        m_pipelineManager->setGrayFilterEnabled(false);
+
+        // 📖 获取UI参数（假设你有Low/High滑块）
+        int rLow = ui->Slider_rgb_R_Low->value();
+        int rHigh = ui->Slider_rgb_R_High->value();
+        int gLow = ui->Slider_rgb_G_Low->value();
+        int gHigh = ui->Slider_rgb_G_High->value();
+        int bLow = ui->Slider_rgb_B_Low->value();
+        int bHigh = ui->Slider_rgb_B_High->value();
+
+        // 📖 调用我们刚写的函数
+        imageprocessor processor;
+        filtered = processor.filterRGB(currentImg,
+                                       rLow, rHigh,
+                                       gLow, gHigh,
+                                       bLow, bHigh);
+
+        // 📖 临时显示（绕过Pipeline）
+        if (!filtered.empty()) {
+            // 可以选择用绿白显示（更直观）
+            cv::Mat display = maskToGreenWhite(filtered);
+            showImage(display);
+            return;
+        }
+        break;
+    }
+    case 2:
+    {
+        m_pipelineManager->setGrayFilterEnabled(false);
+
+        int hLow = ui->Slider_hsv_H_Low->value();
+        int hHigh = ui->Slider_hsv_H_High->value();
+        int sLow = ui->Slider_hsv_S_Low->value();
+        int sHigh = ui->Slider_hsv_S_High->value();
+        int vLow = ui->Slider_hsv_V_Low->value();
+        int vHigh = ui->Slider_hsv_V_High->value();
+
+        imageprocessor processor;
+        filtered = processor.filterHSV(currentImg,
+                                       hLow, hHigh,
+                                       sLow, sHigh,
+                                       vLow, vHigh);
+
+        if (!filtered.empty()) {
+            cv::Mat display = maskToGreenWhite(filtered);
+            showImage(display);
+            return;
+        }
+        break;
+    }
+}
+    if(filterMode==0)
+{
     // ✅ 2. 执行Pipeline
     PipelineContext result = m_pipelineManager->execute(currentImg);
 
     // ✅ 3. 显示结果
     cv::Mat displayImg = result.getFinalDisplay();
     showImage(displayImg);
+
     int count=result.currentRegions;
     ui->lineEdit_nowRegions->setText(QString::number(count));
+}
+
+
 }
 
 void MainWindow::showImage(const cv::Mat &img)
@@ -188,10 +260,6 @@ void MainWindow::showImage(const cv::Mat &img)
     QImage qimg = ImageUtils::Mat2Qimage(img);
     m_view->setImage(qimg);
 }
-
-
-
-
 
 // ========== 文件操作 ==========
 
@@ -1047,6 +1115,11 @@ void MainWindow::updateTemplateList()
 
 }
 
+void MainWindow::on_btn_openLog_clicked()
+{
+    Logger::instance()->openLogFolder(true);
+}
+
 void MainWindow::on_comboBox_filterMode_currentIndexChanged(int index)
 {
     switch (index)
@@ -1064,10 +1137,77 @@ void MainWindow::on_comboBox_filterMode_currentIndexChanged(int index)
         ui->stackedWidget_filter->setCurrentIndex(0);
         break;
     }
+    processAndDisplay();
 }
 
-void MainWindow::on_btn_openLog_clicked()
+
+void MainWindow::on_Slider_rgb_R_Low_valueChanged(int value)
 {
-    Logger::instance()->openLogFolder(true);
+    processAndDisplay();
 }
 
+
+void MainWindow::on_Slider_rgb_R_High_valueChanged(int value)
+{
+    processAndDisplay();
+}
+
+
+void MainWindow::on_Slider_rgb_G_Low_valueChanged(int value)
+{
+    processAndDisplay();
+}
+
+
+void MainWindow::on_Slider_rgb_G_High_valueChanged(int value)
+{
+    processAndDisplay();
+}
+
+
+void MainWindow::on_Slider_rgb_B_Low_valueChanged(int value)
+{
+    processAndDisplay();
+}
+
+
+void MainWindow::on_Slider_rgb_B_High_valueChanged(int value)
+{
+    processAndDisplay();
+}
+
+
+void MainWindow::on_Slider_hsv_H_Low_valueChanged(int value)
+{
+    processAndDisplay();
+}
+
+
+void MainWindow::on_Slider_hsv_H_High_valueChanged(int value)
+{
+    processAndDisplay();
+}
+
+
+void MainWindow::on_Slider_hsv_S_Low_valueChanged(int value)
+{
+    processAndDisplay();
+}
+
+
+void MainWindow::on_Slider_hsv_S_High_valueChanged(int value)
+{
+    processAndDisplay();
+}
+
+
+void MainWindow::on_Slider_hsv_V_Low_valueChanged(int value)
+{
+    processAndDisplay();
+}
+
+
+void MainWindow::on_Slider_hsv_V_High_valueChanged(int value)
+{
+    processAndDisplay();
+}

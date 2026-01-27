@@ -101,10 +101,82 @@ Mat imageprocessor::adjustParameter(const Mat &src, int brightness, double contr
     return dst;
 }
 
-// Mat imageprocessor::extractFeatures(const Mat &src)
-// {
 
-// }
+
+Mat imageprocessor::filterRGB(const Mat &src, int rLow, int rHigh, int gLow, int gHigh, int bLow, int bHigh)
+{
+    if(src.empty())
+    {
+        qDebug()<<"[filterRGB] 输入图像为空";
+        return cv::Mat();
+    }
+    cv::Mat bgr;
+    if (src.channels() == 1) {
+        // 灰度图 → BGR（三个通道都是相同值）
+        cv::cvtColor(src, bgr, cv::COLOR_GRAY2BGR);
+    } else if (src.channels() == 3) {
+        bgr = src;
+    } else {
+        qDebug() << "[filterRGB] 不支持的通道数:" << src.channels();
+        return cv::Mat();
+    }
+
+    rLow=std::clamp(rLow,0,255);
+    rHigh=std::clamp(rHigh,rLow,255);
+    gLow=std::clamp(gLow,0,255);
+    gHigh=std::clamp(gHigh,gLow,255);
+    bLow=std::clamp(bLow,0,255);
+    bHigh=std::clamp(bHigh,bLow,255);
+
+    cv::Mat mask;
+    cv::Scalar lower(bLow,gLow,rLow);
+    cv::Scalar upper(bHigh,gHigh,rHigh);
+
+    cv::inRange(bgr,lower,upper,mask);
+
+    return mask;
+}
+
+Mat imageprocessor::filterHSV(const Mat &src, int hLow, int hHigh, int sLow, int sHigh, int vLow, int vHigh)
+{
+    if(src.empty())
+    {
+        qDebug()<<"[filterRGB] 输入图像为空";
+        return cv::Mat();
+    }
+
+    cv::Mat hsv;
+    if(src.channels()==3)
+    {
+        cv::cvtColor(src,hsv, cv::COLOR_BGR2HSV);
+    }
+    else if(src.channels()==1)
+    {
+        cv::Mat bgr;
+        cv::cvtColor(src,bgr,cv::COLOR_GRAY2BGR);
+        cv::cvtColor(bgr,hsv,cv::COLOR_BGR2HSV);
+    }
+    else
+    {
+        qDebug() << "[filterHSV] 不支持的通道数:" << src.channels();
+        return cv::Mat();
+    }
+
+    hLow = std::clamp(hLow, 0, 179);
+    hHigh = std::clamp(hHigh, hLow, 179);
+    sLow = std::clamp(sLow, 0, 255);
+    sHigh = std::clamp(sHigh, sLow, 255);
+    vLow = std::clamp(vLow, 0, 255);
+    vHigh = std::clamp(vHigh, vLow, 255);
+
+    cv::Mat mask;
+    cv::Scalar lower(hLow,sLow,vLow);
+    cv::Scalar upper(hHigh,sHigh,vHigh);
+
+    cv::inRange(hsv,lower,upper,mask);
+    return mask;
+}
+
 
 
 

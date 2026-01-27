@@ -106,6 +106,30 @@ private slots:
 
     void on_btn_openLog_clicked();
 
+    void on_Slider_rgb_R_Low_valueChanged(int value);
+
+    void on_Slider_rgb_R_High_valueChanged(int value);
+
+    void on_Slider_rgb_G_Low_valueChanged(int value);
+
+    void on_Slider_rgb_G_High_valueChanged(int value);
+
+    void on_Slider_rgb_B_Low_valueChanged(int value);
+
+    void on_Slider_rgb_B_High_valueChanged(int value);
+
+    void on_Slider_hsv_H_Low_valueChanged(int value);
+
+    void on_Slider_hsv_H_High_valueChanged(int value);
+
+    void on_Slider_hsv_S_Low_valueChanged(int value);
+
+    void on_Slider_hsv_S_High_valueChanged(int value);
+
+    void on_Slider_hsv_V_Low_valueChanged(int value);
+
+    void on_Slider_hsv_V_High_valueChanged(int value);
+
 private:
     // ========== 初始化 ==========
     void setupUI();

@@ -58,7 +58,14 @@ public:
 
     Mat adjustParameter(const Mat &src, int brightness, double contrast,double gamma,double sharpen);
 
-    //Mat extractFeatures(const Mat& src);
+    cv::Mat filterRGB(const cv::Mat& src,
+                      int rLow, int rHigh,
+                      int gLow, int gHigh,
+                      int bLow, int bHigh);
+    cv::Mat filterHSV(const cv::Mat& src,
+                      int hLow, int hHigh,
+                      int sLow, int sHigh,
+                      int vLow, int vHigh);
 
 };
 
