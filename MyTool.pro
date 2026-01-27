@@ -42,6 +42,7 @@ SOURCES += \
     mainwindow.cpp \
     pipeline.cpp \
     pipeline_manager.cpp \
+    system_monitor.cpp \
     template_match_manager.cpp
 
 HEADERS += \
@@ -55,6 +56,7 @@ HEADERS += \
     pipeline_manager.h \
     pipeline_steps.h \
     shape_filter_types.h \
+    system_monitor.h \
     template_match_manager.h
 
 FORMS += \

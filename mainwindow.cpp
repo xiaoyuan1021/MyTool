@@ -10,6 +10,7 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
     , m_pipelineManager(new PipelineManager(this))
     , m_templateManager(new TemplateMatchManager(this))
+    , m_systemMonitor(new SystemMonitor(this))
     , m_isDrawingRegion(false)
     , m_polygonItem(nullptr)
 {
@@ -17,6 +18,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     setupUI();
     setupConnections();
+
+    setupSystemMonitor();
 
     Logger::instance()->setTextEdit(ui->textEdit_log);
     Logger::instance()->setLogFile("test.log");
@@ -26,6 +29,42 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow()
 {
     delete ui;
+}
+
+void MainWindow::setupSystemMonitor()
+{
+    // 1️⃣ 绑定显示控件（假设你的 label 名称是 label_cpu 和 label_memory）
+    m_systemMonitor->setLabels(ui->label_cpu, ui->label_memory);
+
+    // 2️⃣ 设置更新间隔（1秒更新一次）
+    m_systemMonitor->setUpdateInterval(1000);
+
+    // 3️⃣ 启动监控
+    m_systemMonitor->startMonitoring();
+
+    // 4️⃣ （可选）连接信号槽，用于日志记录或其他处理
+    connect(m_systemMonitor, &SystemMonitor::cpuUsageUpdated,
+            this, [this](double usage) {
+                // 当 CPU 占用率超过 80% 时记录日志
+                if (usage > 80.0) {
+                    Logger::instance()->warning(
+                        QString("CPU 占用率过高: %1%").arg(usage, 0, 'f', 1)
+                        );
+                }
+            });
+
+    connect(m_systemMonitor, &SystemMonitor::memoryUsageUpdated,
+            this, [this](double usedMB, double totalMB, double percent) {
+                // 当内存使用率超过 90% 时记录日志
+                if (percent > 90.0) {
+                    Logger::instance()->warning(
+                        QString("内存使用率过高: %1% (%2/%3 MB)")
+                            .arg(percent, 0, 'f', 1)
+                            .arg(usedMB, 0, 'f', 0)
+                            .arg(totalMB, 0, 'f', 0)
+                        );
+                }
+            });
 }
 
 // ========== 初始化 ==========
@@ -1114,6 +1153,8 @@ void MainWindow::updateTemplateList()
 {
 
 }
+
+
 
 void MainWindow::on_btn_openLog_clicked()
 {

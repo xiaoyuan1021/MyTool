@@ -15,6 +15,7 @@
 #include "halcon_algorithm.h"
 #include "pipeline_manager.h"  // ✅ 新增：使用Pipeline管理器
 #include "template_match_manager.h"
+#include "system_monitor.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -153,10 +154,13 @@ private:
     PipelineManager* m_pipelineManager;  // Pipeline管理器
     RoiManager m_roiManager;              // ROI管理器
     TemplateMatchManager* m_templateManager;  // ✅ 模板管理器
+    SystemMonitor * m_systemMonitor;
 
     // ✅ 模板匹配相关函数
     void findAndDisplayMatches(const QVector<MatchResult>& results);
     void updateTemplateList();
+
+    void setupSystemMonitor();
 
     // ✅ 新增：存储绘制的多边形点
     QVector <QPointF> m_drawnpoints;
