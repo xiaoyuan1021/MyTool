@@ -41,6 +41,8 @@ void MainWindow::setupUI()
     ui->spinBox_height->setValue(5);
 
     ui->lineEdit_nowRegions->setReadOnly(true);
+    ui->doubleSpinBox_minScore->setValue(0.5);
+    ui->spinBox_matchNumber->setValue(3);
 
     // 设置滑块-数字框对
     setupSliderSpinBoxPair(ui->Slider_brightness, ui->spinBox_brightness, -100, 100, 0);
@@ -1000,96 +1002,44 @@ void MainWindow::loadAlgorithmParameters(int index)
 
 void MainWindow::findAndDisplayMatches(const QVector<MatchResult> &results)
 {
-    if (results.isEmpty()) {
-        Logger::instance()->warning("没有匹配结果可显示");
+
+    // 1️⃣ 获取当前图像
+    cv::Mat currentImage = m_roiManager.getCurrentImage();
+    if (currentImage.empty()) {
+        Logger::instance()->warning("当前没有图像");
         return;
     }
 
-    // 1️⃣ 获取当前图像和模板信息
-    cv::Mat displayImg = m_roiManager.getCurrentImage().clone();
-    if (displayImg.channels() == 1) {
-        cv::cvtColor(displayImg, displayImg, cv::COLOR_GRAY2BGR);
-    }
+    // 2️⃣ 获取匹配参数
+    int templateIndex = 0;
+    double minScore = ui->doubleSpinBox_minScore->value();
+    int maxMatches = ui->spinBox_matchNumber->value();
 
-    // 获取模板的多边形顶点（创建时保存的）
-    TemplateData templateData = m_templateManager->getTemplate(0);
-    QVector<QPointF> templatePolygon = templateData.polygonPoints;
+    // 3️⃣ 执行匹配
+    QVector<MatchResult> matches = m_templateManager->findTemplate(
+        currentImage,
+        templateIndex,
+        minScore,
+        maxMatches
+        );
 
-    if (templatePolygon.isEmpty()) {
-        Logger::instance()->warning("模板没有保存多边形信息");
-        return;
-    }
+    // 4️⃣ ✅ 核心改进: 使用Manager的方法绘制结果
+    cv::Mat resultImage = m_templateManager->drawMatches(
+        currentImage,
+        templateIndex,
+        matches
+        );
 
-    // 2️⃣ 计算模板中心（创建时的中心）
-    QPointF templateCenter(0, 0);
-    for (const QPointF& pt : templatePolygon) {
-        templateCenter += pt;
-    }
-    templateCenter /= templatePolygon.size();
+    // 5️⃣ 显示结果
+    QImage qimg = ImageUtils::Mat2Qimage(resultImage);
+    m_view->setImage(qimg);
 
-    // 3️⃣ 为每个匹配结果绘制旋转后的轮廓
-    for (int i = 0; i < results.size(); ++i)
-    {
-        const MatchResult& match = results[i];
+    // 6️⃣ 更新UI状态
+    QString statusMsg = matches.isEmpty()
+                            ? "未找到匹配"
+                            : QString("找到 %1 个匹配").arg(matches.size());
 
-        // 变换后的多边形顶点
-        std::vector<cv::Point> transformedPolygon;
-
-        // 旋转角度（弧度）
-        double angleRad = match.angle * CV_PI / 180.0;
-        double cosA = cos(angleRad);
-        double sinA = sin(angleRad);
-
-        // 对每个顶点进行旋转和平移变换
-        for (const QPointF& pt : templatePolygon)
-        {
-            // 相对于模板中心的坐标
-            double dx = pt.x() - templateCenter.x();
-            double dy = pt.y() - templateCenter.y();
-
-            // 旋转
-            double rotatedX = dx * cosA - dy * sinA;
-            double rotatedY = dx * sinA + dy * cosA;
-
-            // 平移到匹配位置（注意：column=X, row=Y）
-            double finalX = rotatedX + match.column;
-            double finalY = rotatedY + match.row;
-
-            transformedPolygon.push_back(cv::Point(finalX, finalY));
-        }
-
-        // 绘制多边形轮廓（不同颜色区分）
-        cv::Scalar color;
-        if (i == 0) {
-            color = cv::Scalar(0, 255, 0);  // 第一个用绿色
-        } else {
-            color = cv::Scalar(255, 0, 255); // 其他用紫色
-        }
-
-        cv::polylines(displayImg, transformedPolygon,
-                      true,    // 闭合
-                      color,
-                      2);      // 线宽
-
-        // 画中心点
-        cv::Point center(match.column, match.row);
-        cv::circle(displayImg, center, 5, color, -1);
-
-        // 标注信息
-        QString label = QString("#%1 S:%2 A:%3")
-                            .arg(i+1)
-                            .arg(match.score)
-                            .arg(match.angle);
-
-        cv::putText(displayImg, label.toStdString(),
-                    cv::Point(match.column + 15, match.row - 15),
-                    cv::FONT_HERSHEY_SIMPLEX, 0.5,
-                    color, 2);
-    }
-
-    // 4️⃣ 显示
-    showImage(displayImg);
-    Logger::instance()->info(QString("已显示 %1 个匹配轮廓").arg(results.size()));
+    ui->statusbar->showMessage(statusMsg, 3000);
 }
 
 void MainWindow::updateTemplateList()
@@ -1099,7 +1049,6 @@ void MainWindow::updateTemplateList()
 
 void MainWindow::on_comboBox_filterMode_currentIndexChanged(int index)
 {
-
     switch (index)
     {
     case 0:

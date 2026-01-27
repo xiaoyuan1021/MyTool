@@ -29,6 +29,10 @@ struct TemplateData
     int contrast;
     int minContrast;
 
+    HRegion templateContour;
+    HTuple templateRows;
+    HTuple templateCols;
+
     TemplateData()
         : numLevels(0)
         , angleStart(-10.0)
@@ -76,6 +80,8 @@ public:
                                       double minScore = 0.5,
                                       int maxMatches = 1,
                                       double greediness = 0.5);
+    cv::Mat drawMatches(const cv::Mat& searchImage, int templateIndex,
+                        const QVector<MatchResult>& matches )const;
 
     // ========== 模板管理 ==========
     int getTemplateCount() const { return m_templates.size(); }
@@ -101,6 +107,9 @@ private:
     // 辅助函数
     HImage createTemplateRegion(const cv::Mat& image,
                                 const QVector<QPointF>& polygon);
+    void extractTemplateContour(TemplateData & templateData, const QVector<QPointF>& polygon);
+    void drawSingleMatch(cv::Mat& image, const TemplateData& templateData,
+                         const MatchResult& match, const cv::Scalar& color) const;
 };
 
 #endif // TEMPLATE_MATCH_MANAGER_H

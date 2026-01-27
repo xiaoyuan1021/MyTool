@@ -19,6 +19,7 @@ ImageView::ImageView(QWidget *parent)
 
 void ImageView::setImage(const QImage &img)
 {
+    if(img.isNull()) return;
     m_image = img;
 
     m_pixmapItem->setPixmap(QPixmap::fromImage(m_image));

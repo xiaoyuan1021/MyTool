@@ -161,6 +161,58 @@ QVector<MatchResult> TemplateMatchManager::findTemplate(
     return results;
 }
 
+Mat TemplateMatchManager::drawMatches(const Mat &searchImage, int templateIndex, const QVector<MatchResult> &matches) const
+{
+    // 1️⃣ 参数检查
+    if (searchImage.empty() || matches.isEmpty()) {
+        return searchImage.clone();
+    }
+
+    if (templateIndex < 0 || templateIndex >= m_templates.size()) {
+        Logger::instance()->error("绘制失败:模板索引无效");
+        return searchImage.clone();
+    }
+
+    // 2️⃣ 创建输出图像
+    cv::Mat result = searchImage.clone();
+    if (result.channels() == 1) {
+        cv::cvtColor(result, result, cv::COLOR_GRAY2BGR);
+    }
+
+    // 3️⃣ 获取模板数据
+    const TemplateData& templateData = m_templates[templateIndex];
+
+    // 4️⃣ 为每个匹配绘制轮廓
+    for (int i = 0; i < matches.size(); ++i)
+    {
+        // 根据匹配质量选择颜色
+        cv::Scalar color;
+        if (matches[i].score >= 0.8) {
+            color = cv::Scalar(0, 255, 0);      // 绿色 - 高质量
+        } else if (matches[i].score >= 0.6) {
+            color = cv::Scalar(0, 255, 255);    // 黄色 - 中等质量
+        } else {
+            color = cv::Scalar(0, 165, 255);    // 橙色 - 低质量
+        }
+
+        // 绘制单个匹配
+        drawSingleMatch(result, templateData, matches[i], color);
+
+        // 绘制中心点
+        cv::Point center(matches[i].column, matches[i].row);
+        cv::circle(result, center, 5, color, -1);
+        cv::circle(result, center, 8, color, 2);
+
+        // 绘制文字信息
+        QString info = QString("Score: %1").arg(matches[i].score, 0, 'f', 2);
+        cv::putText(result, info.toStdString(),
+                    cv::Point(matches[i].column + 15, matches[i].row - 15),
+                    cv::FONT_HERSHEY_SIMPLEX, 0.5, color, 2);
+    }
+
+    return result;
+}
+
 // ========== 模板管理 ==========
 QStringList TemplateMatchManager::getTemplateNames() const
 {
@@ -219,7 +271,8 @@ HImage TemplateMatchManager::createTemplateRegion(
 
     // 2️⃣ 创建多边形 Region
     HTuple rows, cols;
-    for (const QPointF& pt : polygon) {
+    for (const QPointF& pt : polygon)
+    {
         rows.Append(pt.y());
         cols.Append(pt.x());
     }
@@ -231,4 +284,126 @@ HImage TemplateMatchManager::createTemplateRegion(
     HImage templateImage = hImage.ReduceDomain(polygonRegion);
 
     return templateImage;
+}
+
+void TemplateMatchManager::extractTemplateContour(TemplateData &templateData, const QVector<QPointF> &polygon)
+{
+    try {
+        // 1️⃣ 创建多边形轮廓
+        HTuple rows, cols;
+        for (const QPointF& pt : polygon)
+        {
+            rows.Append(pt.y());
+            cols.Append(pt.x());
+        }
+
+        // 2️⃣ 生成轮廓Region
+        templateData.templateContour.GenRegionPolygon(rows, cols);
+
+        // 3️⃣ 获取轮廓边界点(用于精细绘制)
+        HRegion boundary = templateData.templateContour.Boundary("inner");
+        boundary.GetRegionPoints(&templateData.templateRows, &templateData.templateCols);
+
+        // 如果边界点太少,使用原始多边形点
+        if (templateData.templateRows.Length() < 4) {
+            templateData.templateRows = rows;
+            templateData.templateCols = cols;
+        }
+
+    } catch (const HException& ex) {
+        Logger::instance()->warning(
+            QString("提取模板轮廓失败: %1").arg(ex.ErrorMessage().Text())
+            );
+        // 使用原始多边形作为后备
+        HTuple rows, cols;
+        for (const QPointF& pt : polygon) {
+            rows.Append(pt.y());
+            cols.Append(pt.x());
+        }
+        templateData.templateRows = rows;
+        templateData.templateCols = cols;
+    }
+}
+
+void TemplateMatchManager::drawSingleMatch(Mat &image, const TemplateData &templateData, const MatchResult &match, const Scalar &color) const
+{
+    try {
+        // 📖 Halcon仿射变换原理讲解:
+        //
+        // 1. 获取模板的参考中心点
+        //    CreateShapeModel 会自动计算模板的中心点作为参考点
+        //    我们需要通过 GetShapeModelOrigin 获取这个参考点
+
+        // 2. 构建仿射变换矩阵
+        //    变换包括三个步骤:
+        //    a) 平移到原点: 将模板中心移到(0,0)
+        //    b) 旋转: 按照匹配角度旋转
+        //    c) 平移到匹配位置: 移到 (match.column, match.row)
+
+        // 1️⃣ 获取模板中心点
+        double modelRow, modelCol;
+        templateData.model.GetShapeModelOrigin(&modelRow, &modelCol);
+
+        // 2️⃣ 构建仿射变换矩阵
+        // Halcon的仿射变换使用 HomMat2d (2D齐次变换矩阵)
+        HTuple homMat2D;
+
+        // 创建单位矩阵
+        HomMat2dIdentity(&homMat2D);
+
+        // 平移到原点(反向平移模板中心)
+        HomMat2dTranslate(homMat2D, -modelRow, -modelCol, &homMat2D);
+
+        // 旋转(角度已经是弧度)
+        double angleRad = match.angle * 0.0174533;  // 度转弧度
+        HomMat2dRotate(homMat2D, angleRad, 0, 0, &homMat2D);
+
+        // 平移到匹配位置
+        HomMat2dTranslate(homMat2D, match.row, match.column, &homMat2D);
+
+        // 3️⃣ 对轮廓点应用仿射变换
+        HTuple transformedRows, transformedCols;
+        AffineTransPoint2d(homMat2D,
+                           templateData.templateRows,
+                           templateData.templateCols,
+                           &transformedRows,
+                           &transformedCols);
+
+        // 4️⃣ 转换为OpenCV点并绘制
+        std::vector<cv::Point> contourPoints;
+        for (int i = 0; i < transformedRows.Length(); ++i)
+        {
+            contourPoints.push_back(
+                cv::Point(transformedCols[i].D(), transformedRows[i].D())
+                );
+        }
+
+        // 绘制填充多边形(半透明)
+        if (contourPoints.size() >= 3)
+        {
+            cv::Mat overlay = image.clone();
+            cv::fillPoly(overlay, contourPoints, color);
+            cv::addWeighted(overlay, 0.3, image, 0.7, 0, image);
+
+            // 绘制轮廓线
+            cv::polylines(image, contourPoints, true, color, 2);
+        }
+
+    } catch (const HException& ex) {
+        Logger::instance()->warning(
+            QString("绘制匹配轮廓失败: %1").arg(ex.ErrorMessage().Text())
+            );
+
+        // 降级方案:绘制简单矩形
+        double modelRow, modelCol;
+        templateData.model.GetShapeModelOrigin(&modelRow, &modelCol);
+
+        cv::Rect rect(
+            match.column - 50,
+            match.row - 50,
+            100,
+            100
+            );
+        cv::rectangle(image, rect, color, 2);
+    }
 }

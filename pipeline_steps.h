@@ -239,7 +239,8 @@ public:
                                  .arg((int)numBefore[0].I());
             }
         }
-        catch (const HalconCpp::HException& ex) {
+        catch (const HalconCpp::HException& ex)
+        {
             qDebug() << "[ShapeFilter] Halcon错误:" << ex.ErrorMessage().Text();
             ctx.reason = "形状筛选失败";
         }

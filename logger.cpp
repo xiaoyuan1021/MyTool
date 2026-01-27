@@ -78,7 +78,7 @@ bool Logger::openLogFolder(bool selectFile)
 
 void Logger::info(const QString &message)
 {
-    QString time =QDateTime::currentDateTime().toString("hh:mm:ss");
+    QString time =QDateTime::currentDateTime().toString("MM-dd hh:mm:ss");
     if(m_textEdit)
     {
         QString log=QString("<span style='color:black'>%1 [info] %2</span>").arg(time,message);
@@ -91,7 +91,7 @@ void Logger::info(const QString &message)
 
 void Logger::warning(const QString &message)
 {
-    QString time =QDateTime::currentDateTime().toString("hh:mm:ss");
+    QString time =QDateTime::currentDateTime().toString("MM-dd hh:mm:ss");
     if(m_textEdit)
     {
         QString log=QString("<span style='color:orange'>%1 [warning] %2</span>").arg(time,message);
@@ -104,7 +104,7 @@ void Logger::warning(const QString &message)
 
 void Logger::error(const QString &message)
 {
-    QString time =QDateTime::currentDateTime().toString("hh:mm:ss");
+    QString time =QDateTime::currentDateTime().toString("MM-dd hh:mm:ss");
     if(m_textEdit)
     {
         QString log=QString("<span style='color:red'>%1 [error] %2</span>").arg(time,message);
