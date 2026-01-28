@@ -79,6 +79,24 @@ public:
     PipelineConfig::Channel getChannelMode() const;
     void updateAlgorithmStep(int index, const AlgorithmStep& step);
 
+    void setDisplayMode(DisplayConfig::Mode mode);
+
+    void setOverlayAlpha(float alpha);
+
+    // ========== 颜色过滤控制 ==========
+
+    // 设置颜色过滤开关
+    void setColorFilterEnabled(bool enabled);
+
+    // 设置颜色过滤模式
+    void setColorFilterMode(PipelineConfig::ColorFilterMode mode);
+
+    // 设置 RGB 过滤范围
+    void setRGBRange(int rLow, int rHigh, int gLow, int gHigh, int bLow, int bHigh);
+
+    // 设置 HSV 过滤范围
+    void setHSVRange(int hLow, int hHigh, int sLow, int sHigh, int vLow, int vHigh);
+
 signals:
     // Pipeline执行完成
     void pipelineFinished(const QString& message);
@@ -108,4 +126,7 @@ private:
 
     // 最后执行结果
     PipelineContext m_lastContext;
+
+    DisplayConfig::Mode m_displayMode = DisplayConfig::Mode::MaskGreenWhite;
+    float m_overlayAlpha = 0.3f;
 };

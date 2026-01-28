@@ -151,12 +151,13 @@ void SystemMonitor::initPlatformResources()
     // 第一次采集（需要两次采集才能计算百分比）
     PdhCollectQueryData((PDH_HQUERY)m_cpuQuery);
 
-    qDebug() << "[SystemMonitor] Windows PDH 初始化成功";
+    //qDebug() << "[SystemMonitor] Windows PDH 初始化成功";
 }
 
 void SystemMonitor::cleanupPlatformResources()
 {
-    if (m_cpuQuery) {
+    if (m_cpuQuery)
+    {
         PdhCloseQuery((PDH_HQUERY)m_cpuQuery);
         m_cpuQuery = nullptr;
         m_cpuCounter = nullptr;

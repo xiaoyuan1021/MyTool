@@ -317,3 +317,61 @@ private:
 private:
     const PipelineConfig* m_cfg = nullptr;
 };
+
+// pipeline_steps.h
+
+// ✅ 新增：颜色过滤步骤
+class StepColorFilter : public IPipelineStep
+{
+public:
+    StepColorFilter(const PipelineConfig* cfg, imageprocessor* proc)
+        : m_cfg(cfg), m_processor(proc) {}
+
+    void run(PipelineContext& ctx) override
+    {
+        if (!m_cfg->enableColorFilter) {
+            return;  // 未启用，直接返回
+        }
+
+        cv::Mat input = ctx.enhanced.empty() ? ctx.srcBgr : ctx.enhanced;
+
+        cv::Mat filterMask;
+        switch (m_cfg->colorFilterMode)
+        {
+        case PipelineConfig::ColorFilterMode::RGB:
+            filterMask = m_processor->filterRGB(
+                input,
+                m_cfg->rLow, m_cfg->rHigh,
+                m_cfg->gLow, m_cfg->gHigh,
+                m_cfg->bLow, m_cfg->bHigh
+                );
+            break;
+
+        case PipelineConfig::ColorFilterMode::HSV:
+            filterMask = m_processor->filterHSV(
+                input,
+                m_cfg->hLow, m_cfg->hHigh,
+                m_cfg->sLow, m_cfg->sHigh,
+                m_cfg->vLow, m_cfg->vHigh
+                );
+            break;
+
+        default:
+            return;
+        }
+
+        // 与现有 mask 合并（如果有的话）
+        if (!ctx.mask.empty()) {
+            cv::bitwise_and(ctx.mask, filterMask, ctx.mask);
+        } else {
+            ctx.mask = filterMask;
+        }
+
+        ctx.reason = QString("颜色过滤: %1 模式")
+                         .arg(m_cfg->colorFilterMode == PipelineConfig::ColorFilterMode::RGB ? "RGB" : "HSV");
+    }
+
+private:
+    const PipelineConfig* m_cfg;
+    imageprocessor* m_processor;
+};

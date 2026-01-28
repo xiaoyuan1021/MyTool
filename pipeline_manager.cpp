@@ -67,8 +67,6 @@ void PipelineManager::setFeatureRange(ShapeFeature feature, double minValue, dou
     addFilterCondition(cond);
 }
 
-
-
 // ========== 算法队列管理 ==========
 
 void PipelineManager::addAlgorithmStep(const AlgorithmStep& step)
@@ -116,6 +114,9 @@ PipelineContext PipelineManager::execute(const cv::Mat& inputImage)
     m_lastContext = PipelineContext();
     m_lastContext.srcBgr = inputImage.clone();
 
+    m_lastContext.displayConfig.mode = m_displayMode;
+    m_lastContext.displayConfig.overlayAlpha = m_overlayAlpha;;
+
     // 执行Pipeline
     m_pipeline.run(m_lastContext);
 
@@ -139,6 +140,7 @@ void PipelineManager::initPipeline()
     m_pipeline.add(std::make_unique<StepColorChannel>(&m_config));
     m_pipeline.add(std::make_unique<StepEnhance>(&m_config, m_processor.get()));
     m_pipeline.add(std::make_unique<StepGrayFilter>(&m_config));
+    m_pipeline.add(std::make_unique<StepColorFilter>(&m_config, m_processor.get()));
     m_pipeline.add(std::make_unique<StepAlgorithmQueue>(m_processor.get(), &m_algorithmQueue));
     m_pipeline.add(std::make_unique<StepShapeFilter>(&m_config));
 
@@ -170,4 +172,44 @@ void PipelineManager::updateAlgorithmStep(int index, const AlgorithmStep &step)
         m_algorithmQueue[index] = step;
         emit algorithmQueueChanged(m_algorithmQueue.size());
     }
+}
+
+void PipelineManager::setDisplayMode(DisplayConfig::Mode mode)
+{
+    m_displayMode = mode;
+}
+
+void PipelineManager::setOverlayAlpha(float alpha)
+{
+
+}
+
+void PipelineManager::setColorFilterEnabled(bool enabled)
+{
+    m_config.enableColorFilter = enabled;
+}
+
+void PipelineManager::setColorFilterMode(PipelineConfig::ColorFilterMode mode)
+{
+    m_config.colorFilterMode = mode;
+}
+
+void PipelineManager::setRGBRange(int rLow, int rHigh, int gLow, int gHigh, int bLow, int bHigh)
+{
+    m_config.rLow = rLow;
+    m_config.rHigh = rHigh;
+    m_config.gLow = gLow;
+    m_config.gHigh = gHigh;
+    m_config.bLow = bLow;
+    m_config.bHigh = bHigh;
+}
+
+void PipelineManager::setHSVRange(int hLow, int hHigh, int sLow, int sHigh, int vLow, int vHigh)
+{
+    m_config.hLow = hLow;
+    m_config.hHigh = hHigh;
+    m_config.sLow = sLow;
+    m_config.sHigh = sHigh;
+    m_config.vLow = vLow;
+    m_config.vHigh = vHigh;
 }

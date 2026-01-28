@@ -33,20 +33,21 @@ MainWindow::~MainWindow()
 
 void MainWindow::setupSystemMonitor()
 {
-    // 1️⃣ 绑定显示控件（假设你的 label 名称是 label_cpu 和 label_memory）
+    //绑定显示控件
     m_systemMonitor->setLabels(ui->label_cpu, ui->label_memory);
 
-    // 2️⃣ 设置更新间隔（1秒更新一次）
+    //设置更新间隔（1秒更新一次）
     m_systemMonitor->setUpdateInterval(1000);
 
-    // 3️⃣ 启动监控
+    //启动监控
     m_systemMonitor->startMonitoring();
 
-    // 4️⃣ （可选）连接信号槽，用于日志记录或其他处理
+    //连接信号槽，用于日志记录或其他处理
     connect(m_systemMonitor, &SystemMonitor::cpuUsageUpdated,
             this, [this](double usage) {
                 // 当 CPU 占用率超过 80% 时记录日志
-                if (usage > 80.0) {
+                if (usage > 80.0)
+                {
                     Logger::instance()->warning(
                         QString("CPU 占用率过高: %1%").arg(usage, 0, 'f', 1)
                         );
@@ -56,7 +57,8 @@ void MainWindow::setupSystemMonitor()
     connect(m_systemMonitor, &SystemMonitor::memoryUsageUpdated,
             this, [this](double usedMB, double totalMB, double percent) {
                 // 当内存使用率超过 90% 时记录日志
-                if (percent > 90.0) {
+                if (percent > 90.0)
+                {
                     Logger::instance()->warning(
                         QString("内存使用率过高: %1% (%2/%3 MB)")
                             .arg(percent, 0, 'f', 1)
@@ -208,89 +210,72 @@ void MainWindow::setupSliderSpinBoxPair(QSlider *slider, QSpinBox *spinbox,
 
 void MainWindow::processAndDisplay()
 {
-    cv::Mat currentImg = m_roiManager.getCurrentImage();
-    if (currentImg.empty()) return;
-
-
-    // ✅ 1. 同步UI参数到Pipeline
+    // ========== 1. 同步基础参数 ==========
     m_pipelineManager->syncFromUI(
         ui->Slider_brightness, ui->Slider_contrast, ui->Slider_gamma,
         ui->Slider_sharpen, ui->Slider_grayLow, ui->Slider_grayHigh
         );
 
-    int filterMode=ui->comboBox_filterMode->currentIndex();
-    cv::Mat filtered;
-    switch (filterMode)
-{
-    case 0:
-        m_pipelineManager->setGrayFilterEnabled(true);
-        break;
-    case 1:
+    // ========== 2. 配置颜色过滤 ==========
+    int filterModeIndex = ui->comboBox_filterMode->currentIndex();
+
+    switch (filterModeIndex)
     {
-        m_pipelineManager->setGrayFilterEnabled(false);
+    case 0:  // None - 不启用颜色过滤
+        m_pipelineManager->setColorFilterEnabled(false);
+        break;
 
-        // 📖 获取UI参数（假设你有Low/High滑块）
-        int rLow = ui->Slider_rgb_R_Low->value();
-        int rHigh = ui->Slider_rgb_R_High->value();
-        int gLow = ui->Slider_rgb_G_Low->value();
-        int gHigh = ui->Slider_rgb_G_High->value();
-        int bLow = ui->Slider_rgb_B_Low->value();
-        int bHigh = ui->Slider_rgb_B_High->value();
+    case 1:  // RGB 模式
+        m_pipelineManager->setColorFilterEnabled(true);
+        m_pipelineManager->setColorFilterMode(PipelineConfig::ColorFilterMode::RGB);
+        m_pipelineManager->setRGBRange(
+            ui->Slider_rgb_R_Low->value(),
+            ui->Slider_rgb_R_High->value(),
+            ui->Slider_rgb_G_Low->value(),
+            ui->Slider_rgb_G_High->value(),
+            ui->Slider_rgb_B_Low->value(),
+            ui->Slider_rgb_B_High->value()
+            );
+        break;
 
-        // 📖 调用我们刚写的函数
-        imageprocessor processor;
-        filtered = processor.filterRGB(currentImg,
-                                       rLow, rHigh,
-                                       gLow, gHigh,
-                                       bLow, bHigh);
+    case 2:  // HSV 模式
+        m_pipelineManager->setColorFilterEnabled(true);
+        m_pipelineManager->setColorFilterMode(PipelineConfig::ColorFilterMode::HSV);
+        m_pipelineManager->setHSVRange(
+            ui->Slider_hsv_H_Low->value(),
+            ui->Slider_hsv_H_High->value(),
+            ui->Slider_hsv_S_Low->value(),
+            ui->Slider_hsv_S_High->value(),
+            ui->Slider_hsv_V_Low->value(),
+            ui->Slider_hsv_V_High->value()
+            );
+        break;
 
-        // 📖 临时显示（绕过Pipeline）
-        if (!filtered.empty()) {
-            // 可以选择用绿白显示（更直观）
-            cv::Mat display = maskToGreenWhite(filtered);
-            showImage(display);
-            return;
-        }
+    default:
+        m_pipelineManager->setColorFilterEnabled(false);
         break;
     }
-    case 2:
-    {
-        m_pipelineManager->setGrayFilterEnabled(false);
 
-        int hLow = ui->Slider_hsv_H_Low->value();
-        int hHigh = ui->Slider_hsv_H_High->value();
-        int sLow = ui->Slider_hsv_S_Low->value();
-        int sHigh = ui->Slider_hsv_S_High->value();
-        int vLow = ui->Slider_hsv_V_Low->value();
-        int vHigh = ui->Slider_hsv_V_High->value();
-
-        imageprocessor processor;
-        filtered = processor.filterHSV(currentImg,
-                                       hLow, hHigh,
-                                       sLow, sHigh,
-                                       vLow, vHigh);
-
-        if (!filtered.empty()) {
-            cv::Mat display = maskToGreenWhite(filtered);
-            showImage(display);
-            return;
-        }
-        break;
+    // ========== 3. 设置显示模式 ==========
+    // 如果启用了颜色过滤或算法处理，显示绿白模式
+    // 否则显示原图
+    if (filterModeIndex > 0 || !m_pipelineManager->getAlgorithmQueue().isEmpty()) {
+        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite);
+    } else {
+        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Enhanced);
     }
-}
-    if(filterMode==0)
-{
-    // ✅ 2. 执行Pipeline
-    PipelineContext result = m_pipelineManager->execute(currentImg);
 
-    // ✅ 3. 显示结果
-    cv::Mat displayImg = result.getFinalDisplay();
-    showImage(displayImg);
+    // ========== 4. 执行 Pipeline ==========
+    cv::Mat currentImage = m_roiManager.getCurrentImage();
+    PipelineContext result = m_pipelineManager->execute(currentImage);
 
-    int count=result.currentRegions;
+    // ========== 5. 显示结果 ==========
+    cv::Mat displayImage = result.getFinalDisplay();
+    showImage(displayImage);
+
+    // ========== 6. 更新统计信息 ==========
+    int count = result.currentRegions;
     ui->lineEdit_nowRegions->setText(QString::number(count));
-}
-
 
 }
 

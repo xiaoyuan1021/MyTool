@@ -27,11 +27,41 @@ struct RegionFeature
     }
 };
 
+struct DisplayConfig
+{
+    enum class Mode
+    {
+        Original,           // 显示原图
+        Enhanced,          // 显示增强后的图
+        MaskGreenWhite,    // Mask 显示为绿白
+        MaskOverlay,       // Mask 叠加在原图上
+        Processed          // 显示算法处理结果
+    };
 
+    Mode mode=Mode::Original;
+    float overlayAlpha =0.3f;
+
+    bool shouldShowGreenWhite() const
+    {
+        return mode == Mode::MaskGreenWhite;
+    }
+
+    bool shouldOverlay() const
+    {
+        return mode == Mode::MaskOverlay;
+    }
+};
 
 struct PipelineConfig
 {
+
+
     enum class Channel {Gray,RGB,BGR,HSV,B,G,R} channel=Channel::RGB;
+
+    enum class ColorFilterMode { None, RGB, HSV };
+
+    bool enableColorFilter = false;
+    ColorFilterMode colorFilterMode = ColorFilterMode::None;
 
     int brightness = 0;
     double contrast = 1.0;
@@ -43,6 +73,17 @@ struct PipelineConfig
     int grayHigh = 255;
     bool enableGrayFilter = true;
     bool enableAreaFilter =false;
+
+
+    // RGB 过滤范围
+    int rLow = 0, rHigh = 255;
+    int gLow = 0, gHigh = 255;
+    int bLow = 0, bHigh = 255;
+
+    // HSV 过滤范围
+    int hLow = 0, hHigh = 179;
+    int sLow = 0, sHigh = 255;
+    int vLow = 0, vHigh = 255;
 
     // ✅ 形状筛选配置（替换原来的 minArea/maxArea）
     ShapeFilterConfig shapeFilter;
@@ -77,10 +118,15 @@ struct PipelineConfig
         enableGrayFilter=false;
     }
 
+
 };
 
 struct PipelineContext
 {
+    DisplayConfig displayConfig;
+
+
+
     // 输入
     cv::Mat srcBgr;      // 原图(3通道)
     // 中间结果
@@ -96,7 +142,12 @@ struct PipelineContext
 
     bool pass = true;
     QString reason;
-    cv::Mat getFinalDisplay();
+
+    cv::Mat getFinalDisplay() const;
+
+private:
+    cv::Mat convertToGreenWhite(const cv::Mat& mask) const;
+    cv::Mat overlayMaskOnImage(const cv::Mat& bgr,const cv::Mat& mask) const;
 };
 
 class IPipelineStep
