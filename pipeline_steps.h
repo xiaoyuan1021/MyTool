@@ -89,6 +89,12 @@ public:
 
     void run(PipelineContext& ctx) override
     {
+
+        if (cfg_->currentFilterMode != PipelineConfig::FilterMode::Gray) {
+            return;  // 不是灰度过滤模式，直接返回
+        }
+
+
         if (!cfg_ || !cfg_->enableGrayFilter) {
             ctx.mask.release();
             return;
@@ -329,6 +335,11 @@ public:
 
     void run(PipelineContext& ctx) override
     {
+        if (m_cfg->currentFilterMode != PipelineConfig::FilterMode::RGB &&
+            m_cfg->currentFilterMode != PipelineConfig::FilterMode::HSV) {
+            return;  // 不是颜色过滤模式，直接返回
+        }
+
         if (!m_cfg->enableColorFilter) {
             return;  // 未启用，直接返回
         }
@@ -361,11 +372,13 @@ public:
         }
 
         // 与现有 mask 合并（如果有的话）
-        if (!ctx.mask.empty()) {
-            cv::bitwise_and(ctx.mask, filterMask, ctx.mask);
-        } else {
-            ctx.mask = filterMask;
-        }
+        // if (!ctx.mask.empty()) {
+        //     cv::bitwise_and(ctx.mask, filterMask, ctx.mask);
+        // } else {
+        //     ctx.mask = filterMask;
+        // }
+
+        ctx.mask = filterMask;  // 不要 bitwise_and
 
         ctx.reason = QString("颜色过滤: %1 模式")
                          .arg(m_cfg->colorFilterMode == PipelineConfig::ColorFilterMode::RGB ? "RGB" : "HSV");

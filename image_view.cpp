@@ -40,6 +40,12 @@ void ImageView::setImage(const QImage &img)
     // 重置缩放
     resetTransform();
     m_scaleFactor = 1.0;
+
+    if (this->width() > 0 && this->height() > 0) {
+        fitInView(m_pixmapItem, Qt::KeepAspectRatio);
+        QTransform t = transform();
+        m_scaleFactor = t.m11();
+    }
 }
 
 void ImageView::setRoiMode(bool enable)

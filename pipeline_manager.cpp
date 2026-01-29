@@ -213,3 +213,13 @@ void PipelineManager::setHSVRange(int hLow, int hHigh, int sLow, int sHigh, int 
     m_config.vLow = vLow;
     m_config.vHigh = vHigh;
 }
+
+void PipelineManager::setCurrentFilterMode(PipelineConfig::FilterMode mode)
+{
+    m_config.currentFilterMode = mode;
+}
+
+PipelineConfig::FilterMode PipelineManager::getCurrentFilterMode() const
+{
+    return m_config.currentFilterMode;
+}

@@ -13,13 +13,22 @@ MainWindow::MainWindow(QWidget *parent)
     , m_systemMonitor(new SystemMonitor(this))
     , m_isDrawingRegion(false)
     , m_polygonItem(nullptr)
+    , m_processDebounceTimer(nullptr)
 {
     ui->setupUi(this);
+
+    m_processDebounceTimer =new QTimer(this);
+    m_processDebounceTimer ->setSingleShot(true);
+    m_processDebounceTimer ->setInterval(150);
+
+    connect(m_processDebounceTimer, &QTimer::timeout,this,&MainWindow::processAndDisplay);
 
     setupUI();
     setupConnections();
 
     setupSystemMonitor();
+
+
 
     Logger::instance()->setTextEdit(ui->textEdit_log);
     Logger::instance()->setLogFile("test.log");
@@ -191,6 +200,7 @@ void MainWindow::setupConnections()
             this, [](int count) {
                 Logger::instance()->info(QString("匹配完成，找到 %1 个目标").arg(count));
             });
+
 }
 
 void MainWindow::setupSliderSpinBoxPair(QSlider *slider, QSpinBox *spinbox,
@@ -219,13 +229,23 @@ void MainWindow::processAndDisplay()
     // ========== 2. 配置颜色过滤 ==========
     int filterModeIndex = ui->comboBox_filterMode->currentIndex();
 
+    PipelineConfig::FilterMode targetMode;
+
     switch (filterModeIndex)
     {
     case 0:  // None - 不启用颜色过滤
+        targetMode = PipelineConfig::FilterMode::None;
+        m_pipelineManager->setGrayFilterEnabled(false);
+        m_pipelineManager->setColorFilterEnabled(false);
+        break;
+    case 1:  // None - 不启用颜色过滤
+        targetMode = PipelineConfig::FilterMode::Gray;
+        m_pipelineManager->setGrayFilterEnabled(true);
         m_pipelineManager->setColorFilterEnabled(false);
         break;
 
-    case 1:  // RGB 模式
+    case 2:  // RGB 模式
+        targetMode = PipelineConfig::FilterMode::RGB;
         m_pipelineManager->setColorFilterEnabled(true);
         m_pipelineManager->setColorFilterMode(PipelineConfig::ColorFilterMode::RGB);
         m_pipelineManager->setRGBRange(
@@ -238,7 +258,8 @@ void MainWindow::processAndDisplay()
             );
         break;
 
-    case 2:  // HSV 模式
+    case 3:  // HSV 模式
+        targetMode = PipelineConfig::FilterMode::HSV;
         m_pipelineManager->setColorFilterEnabled(true);
         m_pipelineManager->setColorFilterMode(PipelineConfig::ColorFilterMode::HSV);
         m_pipelineManager->setHSVRange(
@@ -252,17 +273,26 @@ void MainWindow::processAndDisplay()
         break;
 
     default:
+        targetMode = PipelineConfig::FilterMode::None;
         m_pipelineManager->setColorFilterEnabled(false);
         break;
     }
 
+    m_pipelineManager->setCurrentFilterMode(targetMode);
+
     // ========== 3. 设置显示模式 ==========
-    // 如果启用了颜色过滤或算法处理，显示绿白模式
-    // 否则显示原图
-    if (filterModeIndex > 0 || !m_pipelineManager->getAlgorithmQueue().isEmpty()) {
-        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite);
-    } else {
+    // 根据当前模式决定显示什么
+    if (targetMode == PipelineConfig::FilterMode::None) {
+        // 无过滤模式 → 显示增强后的图像
         m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Enhanced);
+    } else {
+        // 有过滤模式（Gray/RGB/HSV）→ 显示绿白 mask
+        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite);
+    }
+
+    // 如果有算法队列，覆盖显示模式
+    if (!m_pipelineManager->getAlgorithmQueue().isEmpty()) {
+        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite);
     }
 
     // ========== 4. 执行 Pipeline ==========
@@ -373,37 +403,37 @@ void MainWindow::on_btn_saveImg_clicked()
 void MainWindow::on_Slider_brightness_valueChanged(int)
 {
     m_pipelineManager->setGrayFilterEnabled(false);
-    processAndDisplay();
+    m_processDebounceTimer->start();
 }
 
 void MainWindow::on_Slider_contrast_valueChanged(int)
 {
     m_pipelineManager->setGrayFilterEnabled(false);
-    processAndDisplay();
+    m_processDebounceTimer->start();
 }
 
 void MainWindow::on_Slider_gamma_valueChanged(int)
 {
     m_pipelineManager->setGrayFilterEnabled(false);
-    processAndDisplay();
+    m_processDebounceTimer->start();
 }
 
 void MainWindow::on_Slider_sharpen_valueChanged(int)
 {
     m_pipelineManager->setGrayFilterEnabled(false);
-    processAndDisplay();
+    m_processDebounceTimer->start();
 }
 
 void MainWindow::on_Slider_grayLow_valueChanged(int)
 {
     m_pipelineManager->setGrayFilterEnabled(true);
-    processAndDisplay();
+    m_processDebounceTimer->start();
 }
 
 void MainWindow::on_Slider_grayHigh_valueChanged(int)
 {
     m_pipelineManager->setGrayFilterEnabled(true);
-    processAndDisplay();
+    m_processDebounceTimer->start();
 }
 
 void MainWindow::on_btn_resetBC_clicked()
@@ -415,7 +445,7 @@ void MainWindow::on_btn_resetBC_clicked()
 
     m_pipelineManager->resetEnhancement();
     m_pipelineManager->setGrayFilterEnabled(false);
-
+    Logger::instance()->info("参数已重置");
     processAndDisplay();
 }
 
@@ -620,7 +650,9 @@ void MainWindow::on_comboBox_condition_currentIndexChanged(int index)
     FilterMode mode = (index == 0) ? FilterMode::And : FilterMode::Or;
     m_pipelineManager->setFilterMode(mode);
 
-    qDebug() << "筛选模式已切换:" << getFilterModeName(mode);
+    //qDebug() << "筛选模式已切换:" << getFilterModeName(mode);
+    Logger::instance()->info(QString("筛选模式已切换:%1").
+                             arg(getFilterModeName(mode)));
 }
 
 
@@ -691,6 +723,8 @@ void MainWindow::on_btn_addFilter_clicked()
         QString("已应用筛选: %1").arg(condition.toString()),
         2000
         );
+    Logger::instance()->info(QString("已应用筛选: %1").
+                            arg(condition.toString()));
 
 }
 
@@ -701,6 +735,7 @@ void MainWindow::on_btn_select_clicked()
     m_view->clearPolygon();
     m_drawnpoints.clear();
     processAndDisplay();
+    Logger::instance()->info("区域已提取");
 }
 
 // ========== 颜色通道 ==========
@@ -1150,14 +1185,17 @@ void MainWindow::on_comboBox_filterMode_currentIndexChanged(int index)
 {
     switch (index)
     {
-    case 0:
+    case 0://NONE
         ui->stackedWidget_filter->setCurrentIndex(0);
         break;
-    case 1:
+    case 1: //gray
         ui->stackedWidget_filter->setCurrentIndex(1);
         break;
-    case 2:
+    case 2: //rgb
         ui->stackedWidget_filter->setCurrentIndex(2);
+        break;
+    case 3: //hsv
+        ui->stackedWidget_filter->setCurrentIndex(3);
         break;
     default:
         ui->stackedWidget_filter->setCurrentIndex(0);
@@ -1169,71 +1207,71 @@ void MainWindow::on_comboBox_filterMode_currentIndexChanged(int index)
 
 void MainWindow::on_Slider_rgb_R_Low_valueChanged(int value)
 {
-    processAndDisplay();
+    m_processDebounceTimer->start();
 }
 
 
 void MainWindow::on_Slider_rgb_R_High_valueChanged(int value)
 {
-    processAndDisplay();
+    m_processDebounceTimer->start();
 }
 
 
 void MainWindow::on_Slider_rgb_G_Low_valueChanged(int value)
 {
-    processAndDisplay();
+    m_processDebounceTimer->start();
 }
 
 
 void MainWindow::on_Slider_rgb_G_High_valueChanged(int value)
 {
-    processAndDisplay();
+    m_processDebounceTimer->start();
 }
 
 
 void MainWindow::on_Slider_rgb_B_Low_valueChanged(int value)
 {
-    processAndDisplay();
+    m_processDebounceTimer->start();
 }
 
 
 void MainWindow::on_Slider_rgb_B_High_valueChanged(int value)
 {
-    processAndDisplay();
+    m_processDebounceTimer->start();
 }
 
 
 void MainWindow::on_Slider_hsv_H_Low_valueChanged(int value)
 {
-    processAndDisplay();
+    m_processDebounceTimer->start();
 }
 
 
 void MainWindow::on_Slider_hsv_H_High_valueChanged(int value)
 {
-    processAndDisplay();
+    m_processDebounceTimer->start();
 }
 
 
 void MainWindow::on_Slider_hsv_S_Low_valueChanged(int value)
 {
-    processAndDisplay();
+    m_processDebounceTimer->start();
 }
 
 
 void MainWindow::on_Slider_hsv_S_High_valueChanged(int value)
 {
-    processAndDisplay();
+    m_processDebounceTimer->start();
 }
 
 
 void MainWindow::on_Slider_hsv_V_Low_valueChanged(int value)
 {
-    processAndDisplay();
+    m_processDebounceTimer->start();
 }
 
 
 void MainWindow::on_Slider_hsv_V_High_valueChanged(int value)
 {
-    processAndDisplay();
+    m_processDebounceTimer->start();
 }

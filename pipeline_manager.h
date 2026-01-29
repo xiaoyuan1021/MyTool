@@ -97,6 +97,10 @@ public:
     // 设置 HSV 过滤范围
     void setHSVRange(int hLow, int hHigh, int sLow, int sHigh, int vLow, int vHigh);
 
+    void setCurrentFilterMode(PipelineConfig::FilterMode mode);
+
+    PipelineConfig::FilterMode getCurrentFilterMode() const;
+
 signals:
     // Pipeline执行完成
     void pipelineFinished(const QString& message);

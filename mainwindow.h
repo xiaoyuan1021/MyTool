@@ -7,6 +7,7 @@
 #include <QSlider>
 #include <QSpinBox>
 #include <QListWidgetItem>
+#include <QTimer>
 
 #include <opencv2/opencv.hpp>
 
@@ -155,6 +156,9 @@ private:
     RoiManager m_roiManager;              // ROI管理器
     TemplateMatchManager* m_templateManager;  // ✅ 模板管理器
     SystemMonitor * m_systemMonitor;
+
+    // ✅ 新增：防抖定时器
+    QTimer* m_processDebounceTimer;
 
     // ✅ 模板匹配相关函数
     void findAndDisplayMatches(const QVector<MatchResult>& results);

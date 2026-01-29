@@ -24,7 +24,7 @@
      </rect>
     </property>
     <property name="currentIndex">
-     <number>6</number>
+     <number>3</number>
     </property>
     <property name="tabBarAutoHide">
      <bool>true</bool>
@@ -406,6 +406,11 @@
       </property>
       <item>
        <property name="text">
+        <string>None</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
         <string>Gray Mode</string>
        </property>
       </item>
@@ -432,6 +437,21 @@
       <property name="currentIndex">
        <number>0</number>
       </property>
+      <widget class="QWidget" name="page_4">
+       <widget class="QLabel" name="label_26">
+        <property name="geometry">
+         <rect>
+          <x>70</x>
+          <y>60</y>
+          <width>131</width>
+          <height>20</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>请选择</string>
+        </property>
+       </widget>
+      </widget>
       <widget class="QWidget" name="page_5">
        <widget class="QWidget" name="verticalLayoutWidget">
         <property name="geometry">

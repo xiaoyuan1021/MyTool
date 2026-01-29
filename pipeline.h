@@ -8,16 +8,16 @@
 
 struct RegionFeature
 {
-    int index = 0;          // ✅ 新增：区域索引
+    int index = 0;           // 区域索引
     double area = 0.0;      // 面积
     double circularity = 0.0;  // 圆度
-    double centerX = 0.0;   // ✅ 新增：中心X坐标
-    double centerY = 0.0;   // ✅ 新增：中心Y坐标
-    double width = 0.0;     // ✅ 新增：宽度
-    double height = 0.0;    // ✅ 新增：高度
+    double centerX = 0.0;    //中心X坐标
+    double centerY = 0.0;   // 中心Y坐标
+    double width = 0.0;     // 宽度
+    double height = 0.0;    // 高度
     cv::Rect bbox;          // 外接矩形（保留原有的）
 
-    // ✅ 新增：转字符串方法
+    // 转字符串方法
     QString toString() const
     {
         return QString::asprintf(
@@ -54,11 +54,19 @@ struct DisplayConfig
 
 struct PipelineConfig
 {
-
-
     enum class Channel {Gray,RGB,BGR,HSV,B,G,R} channel=Channel::RGB;
 
     enum class ColorFilterMode { None, RGB, HSV };
+
+    // ========== 过滤模式枚举 ==========
+    enum class FilterMode {
+        None,      // 无过滤，只显示增强后的图像
+        Gray,      // 灰度过滤模式
+        RGB,       // RGB 颜色过滤模式
+        HSV        // HSV 颜色过滤模式
+    };
+
+    FilterMode currentFilterMode = FilterMode::None;  // ✅ 新增：当前过滤模式
 
     bool enableColorFilter = false;
     ColorFilterMode colorFilterMode = ColorFilterMode::None;
@@ -117,16 +125,11 @@ struct PipelineConfig
         sharpen=1.0;
         enableGrayFilter=false;
     }
-
-
 };
 
 struct PipelineContext
 {
     DisplayConfig displayConfig;
-
-
-
     // 输入
     cv::Mat srcBgr;      // 原图(3通道)
     // 中间结果
@@ -165,8 +168,6 @@ public:
     void add(std::unique_ptr<IPipelineStep> step)
     {
         steps_.push_back(std::move(step));//为啥要move
-
-
     }
     void run(PipelineContext& ctx)
     {
@@ -175,7 +176,3 @@ public:
 private:
     std::vector<std::unique_ptr<IPipelineStep>> steps_;
 };
-
-cv::Mat overlayGreenMask(const cv::Mat& bgr,const cv::Mat& mask,float alpha=0.9f);
-cv::Mat maskToGreenWhite(const cv::Mat& mask);
-
