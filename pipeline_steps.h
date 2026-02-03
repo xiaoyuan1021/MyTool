@@ -22,7 +22,7 @@ public:
             cv::cvtColor(ctx.srcBgr,ctx.channelImg,cv::COLOR_BGR2GRAY);
             break;
         case PipelineConfig::Channel::RGB:
-            ctx.channelImg=ctx.srcBgr.clone();
+            ctx.channelImg=ctx.srcBgr;
             break;
         case PipelineConfig::Channel::HSV:
             cv::cvtColor(ctx.srcBgr,ctx.channelImg,cv::COLOR_BGR2HSV);

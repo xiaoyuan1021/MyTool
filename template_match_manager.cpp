@@ -56,8 +56,8 @@ bool TemplateMatchManager::createTemplate(const QString& name,
             params.angleStep * 0.0174533,
             params.optimization.toStdString().c_str(),
             params.metric.toStdString().c_str(),
-            params.contrast,
-            params.minContrast
+            "auto",
+            "auto"
             );
 
         // 3️⃣ 保存模板图像（用于显示）

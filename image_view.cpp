@@ -20,13 +20,12 @@ ImageView::ImageView(QWidget *parent)
 void ImageView::setImage(const QImage &img)
 {
     if(img.isNull()) return;
-    m_image = img;
 
-    m_pixmapItem->setPixmap(QPixmap::fromImage(m_image));
+    m_pixmapItem->setPixmap(QPixmap::fromImage(img));
     m_pixmapItem->setPos(0, 0);
 
     //如何修改成自动铺满画布
-    m_scene->setSceneRect(0, 0, m_image.width(), m_image.height());
+    m_scene->setSceneRect(0, 0, img.width(), img.height());
 
     // 居中对齐
     setAlignment(Qt::AlignCenter);
@@ -93,9 +92,10 @@ QPointF ImageView::viewPosToImagePos(const QPoint &viewPos) const
     // 场景 → 图像（pixmapItem 本地坐标）
     QPointF imgPos = m_pixmapItem->mapFromScene(scenePos);
 
+    QSize imageSize = getImageSize();
     // 限制在图像范围内
-    double x = std::clamp(imgPos.x(), 0.0, (double)m_image.width());
-    double y = std::clamp(imgPos.y(), 0.0, (double)m_image.height());
+    double x = std::clamp(imgPos.x(), 0.0, (double)imageSize.width());
+    double y = std::clamp(imgPos.y(), 0.0, (double)imageSize.height());
 
     return QPointF(x, y);
 }
@@ -105,7 +105,7 @@ void ImageView::mousePressEvent(QMouseEvent *event)
 {
     if (m_polygonMode)
     {
-        if (event->button() == Qt::LeftButton && !m_image.isNull())
+        if (event->button() == Qt::LeftButton)
         {
             // 获取图像坐标
             QPointF imgPos = viewPosToImagePos(event->pos());
@@ -146,7 +146,7 @@ void ImageView::mousePressEvent(QMouseEvent *event)
         qDebug()<<"ROI已裁剪";
 
     }
-    if (m_roiMode && event->button() == Qt::LeftButton && !m_image.isNull())
+    if (m_roiMode && event->button() == Qt::LeftButton)
     {
         m_isDrawingRoi = true;
 
@@ -175,7 +175,7 @@ void ImageView::mousePressEvent(QMouseEvent *event)
 // =================== 鼠标移动 ===================
 void ImageView::mouseMoveEvent(QMouseEvent *event)
 {
-    if (m_image.isNull()) {
+    if (getImageSize().isEmpty()) {
         QGraphicsView::mouseMoveEvent(event);
         return;
     }
@@ -197,9 +197,12 @@ void ImageView::mouseMoveEvent(QMouseEvent *event)
         int x = static_cast<int>(imgPos.x());
         int y = static_cast<int>(imgPos.y());
 
-        if (x >= 0 && y >= 0 && x < m_image.width() && y < m_image.height())
+        QSize imageSize = getImageSize();
+
+        if (x >= 0 && y >= 0 && x < imageSize.width() && y < imageSize.height())
         {
-            QColor color = m_image.pixelColor(x, y);
+            QImage currentImg = m_pixmapItem->pixmap().toImage();
+            QColor color = currentImg.pixelColor(x, y);
             int gray = qGray(color.rgb());
             emit pixelInfoChanged(x, y, color, gray);
         }
@@ -236,17 +239,24 @@ void ImageView::mouseReleaseEvent(QMouseEvent *event)
 
 void RoiManager::setFullImage(const cv::Mat &img)
 {
-    m_fullImage = img.clone();
-    m_currentImage = m_fullImage.clone();
+    m_fullImage = img;
     m_isRoiActive = false;
+    m_roiImage.release();
+
+    // 📊 内存占用日志
+    size_t bytes = img.total() * img.elemSize();
+    qDebug() << QString("[RoiManager] 图像已加载: %1x%2, 内存: %3 MB")
+                    .arg(img.cols)
+                    .arg(img.rows)
+                    .arg(bytes / (1024.0 * 1024.0), 0, 'f', 2);
 }
 
-cv::Mat RoiManager::getCurrentImage() const
+const cv::Mat& RoiManager::getCurrentImage() const
 {
-    return m_currentImage;
+    return m_isRoiActive ? m_roiImage : m_fullImage;
 }
 
-cv::Mat RoiManager::getFullImage() const
+const cv::Mat& RoiManager::getFullImage() const
 {
     return m_fullImage;
 }
@@ -273,7 +283,7 @@ bool RoiManager::applyRoi(const QRectF &roiRectF)
 
     // 裁剪ROI
     cv::Rect roi(x, y, w, h);
-    m_currentImage = m_fullImage(roi).clone();
+    m_roiImage = m_fullImage(roi).clone();
     m_isRoiActive = true;
     m_lastRoi = roi;
 
@@ -287,12 +297,11 @@ bool RoiManager::applyRoi(const QRectF &roiRectF)
 
 void RoiManager::resetRoi()
 {
-    if (!m_fullImage.empty())
+    if(m_isRoiActive)
     {
-        m_currentImage = m_fullImage.clone();
+        m_roiImage.release();
         m_isRoiActive = false;
-
-        qDebug() << "[RoiManager] ROI已重置";
+        Logger::instance()->info("[RoiManager] ROI已重置");
     }
 }
 
@@ -309,7 +318,7 @@ cv::Rect RoiManager::getLastRoi() const
 void RoiManager::clear()
 {
     m_fullImage.release();
-    m_currentImage.release();
+    m_roiImage.release();
     m_isRoiActive = false;
 }
 

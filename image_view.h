@@ -57,7 +57,12 @@ private:
 
     QGraphicsScene *m_scene;
     QGraphicsPixmapItem *m_pixmapItem;
-    QImage m_image;
+    //QImage m_image;
+    QSize getImageSize() const
+    {
+        QPixmap pixmap = m_pixmapItem->pixmap();
+        return pixmap.isNull() ? QSize(0,0) : pixmap.size();
+    }
     double m_scaleFactor = 1.0;
 
     bool m_isDrawingRoi = false;
@@ -88,8 +93,9 @@ public:
     RoiManager()=default;
 
     void setFullImage(const cv::Mat & img);
-    cv::Mat getCurrentImage() const;
-    cv::Mat getFullImage() const;
+
+    const cv::Mat& getCurrentImage() const;
+    const cv::Mat& getFullImage() const;
     bool applyRoi(const QRectF& roiRectF);
     void resetRoi();
     bool isRoiActive() const;
@@ -98,7 +104,7 @@ public:
 
 private:
     cv::Mat m_fullImage;
-    cv::Mat m_currentImage;
+    cv::Mat m_roiImage;
     bool m_isRoiActive=false;
     cv::Rect m_lastRoi;
 };

@@ -11,9 +11,9 @@ MainWindow::MainWindow(QWidget *parent)
     , m_pipelineManager(new PipelineManager(this))
     , m_templateManager(new TemplateMatchManager(this))
     , m_systemMonitor(new SystemMonitor(this))
+    , m_processDebounceTimer(nullptr)
     , m_isDrawingRegion(false)
     , m_polygonItem(nullptr)
-    , m_processDebounceTimer(nullptr)
 {
     ui->setupUi(this);
 
@@ -27,8 +27,6 @@ MainWindow::MainWindow(QWidget *parent)
     setupConnections();
 
     setupSystemMonitor();
-
-
 
     Logger::instance()->setTextEdit(ui->textEdit_log);
     Logger::instance()->setLogFile("test.log");
@@ -297,7 +295,7 @@ void MainWindow::processAndDisplay()
 
     // ========== 4. 执行 Pipeline ==========
     cv::Mat currentImage = m_roiManager.getCurrentImage();
-    PipelineContext result = m_pipelineManager->execute(currentImage);
+    const PipelineContext& result = m_pipelineManager->execute(currentImage);
 
     // ========== 5. 显示结果 ==========
     cv::Mat displayImage = result.getFinalDisplay();

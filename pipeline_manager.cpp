@@ -102,17 +102,26 @@ void PipelineManager::clearAlgorithmQueue()
 
 // ========== Pipeline执行 ==========
 
-PipelineContext PipelineManager::execute(const cv::Mat& inputImage)
+const PipelineContext& PipelineManager::execute(const cv::Mat& inputImage)
 {
     if (inputImage.empty())
     {
-        qDebug() << "[PipelineManager] 输入图像为空";
-        return PipelineContext();
+        static const PipelineContext emptyContext;
+        return emptyContext;
     }
 
-    // 重置上下文
-    m_lastContext = PipelineContext();
-    m_lastContext.srcBgr = inputImage.clone();
+    // ✅ 显式释放所有Mat
+    m_lastContext.srcBgr.release();
+    m_lastContext.channelImg.release();
+    m_lastContext.enhanced.release();
+    m_lastContext.mask.release();
+    m_lastContext.processed.release();
+    m_lastContext.regions.clear();
+    m_lastContext.currentRegions = 0;
+    m_lastContext.pass = true;
+    m_lastContext.reason.clear();
+
+    m_lastContext.srcBgr = inputImage;
 
     m_lastContext.displayConfig.mode = m_displayMode;
     m_lastContext.displayConfig.overlayAlpha = m_overlayAlpha;;

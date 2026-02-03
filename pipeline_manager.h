@@ -64,7 +64,7 @@ public:
     // 执行Pipeline处理
     // 输入：BGR图像
     // 输出：处理结果上下文
-    PipelineContext execute(const cv::Mat& inputImage);
+    const PipelineContext& execute(const cv::Mat& inputImage);
 
     // 获取最后一次执行的上下文
     const PipelineContext& getLastContext() const { return m_lastContext; }
