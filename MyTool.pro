@@ -4,13 +4,13 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++17
 
-# You can make your code fail to compile if it uses deprecated APIs.
-# In order to do so, uncomment the following line.
-#DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
+# DEFINES += PROJECT_DIR=\\\"$$PWD\\\"
 
-INCLUDEPATH += C:/vcpkg/installed/x64-windows/include/opencv4
+# ===== OpenCV 配置 (使用本地 3rdparty) =====
+OPENCV_DIR = $$PWD/3rdparty/opencv
+INCLUDEPATH += $$OPENCV_DIR/include/opencv4
 
-LIBS += -LC:/vcpkg/installed/x64-windows/debug/lib \
+LIBS += -L$$OPENCV_DIR/lib \
         -lopencv_core4d \
         -lopencv_imgcodecs4d \
         -lopencv_highgui4d \
@@ -19,48 +19,52 @@ LIBS += -LC:/vcpkg/installed/x64-windows/debug/lib \
         -lopencv_dnn4d \
         -lopencv_photo4d
 
-# ===== HALCON 配置 =====
-# HALCON 根目录
-HALCON_DIR = F:/Halcon
+# ===== HALCON 配置 (使用本地 3rdparty) =====
+HALCON_DIR = $$PWD/3rdparty/halcon
+INCLUDEPATH += $$HALCON_DIR/include \
+               $$HALCON_DIR/include/halconcpp
 
-# HALCON 头文件路径
-INCLUDEPATH += $$HALCON_DIR/include
-INCLUDEPATH += $$HALCON_DIR/include/halconcpp
-
-# HALCON 库文件路径及链接库
-LIBS += -L$$HALCON_DIR/lib/x64-win64 \
+LIBS += -L$$HALCON_DIR/lib \
         -lhalconcppxl \
         -lhalconxl
 
+INCLUDEPATH += $$PWD/include
+# ===== 源文件 =====
 SOURCES += \
-    halcon_algorithm.cpp \
-    image_processor.cpp \
-    image_utils.cpp \
-    image_view.cpp \
-    logger.cpp \
-    main.cpp \
-    mainwindow.cpp \
-    pipeline.cpp \
-    pipeline_manager.cpp \
-    system_monitor.cpp \
-    template_match_manager.cpp
+    src/halcon_algorithm.cpp \
+    src/image_processor.cpp \
+    src/image_utils.cpp \
+    src/image_view.cpp \
+    src/logger.cpp \
+    src/main.cpp \
+    src/mainwindow.cpp \
+    src/pipeline.cpp \
+    src/pipeline_manager.cpp \
+    src/system_monitor.cpp \
+    src/template_match_manager.cpp
 
+# ===== 头文件 =====
 HEADERS += \
-    halcon_algorithm.h \
-    image_processor.h \
-    image_utils.h \
-    image_view.h \
-    logger.h \
-    mainwindow.h \
-    pipeline.h \
-    pipeline_manager.h \
-    pipeline_steps.h \
-    shape_filter_types.h \
-    system_monitor.h \
-    template_match_manager.h
+    include/halcon_algorithm.h \
+    include/image_processor.h \
+    include/image_utils.h \
+    include/image_view.h \
+    include/logger.h \
+    include/mainwindow.h \
+    include/pipeline.h \
+    include/pipeline_manager.h \
+    include/pipeline_steps.h \
+    include/shape_filter_types.h \
+    include/system_monitor.h \
+    include/template_match_manager.h
 
+# ===== UI 文件 =====
 FORMS += \
-    mainwindow.ui
+    ui/mainwindow.ui
+
+# ===== 资源文件 =====
+RESOURCES += \
+    resources/res.qrc
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

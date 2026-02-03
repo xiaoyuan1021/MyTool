@@ -227,7 +227,7 @@ void ImageView::mouseReleaseEvent(QMouseEvent *event)
             //finishRoiMode();
             if(m_roiReady)
             {
-                qDebug()<<"[ROI] ready. Right click to crop:" << m_roiRectImg;
+                //qDebug()<<"[ROI] ready. Right click to crop:" << m_roiRectImg;
             }
         }
         event->accept();
@@ -245,10 +245,10 @@ void RoiManager::setFullImage(const cv::Mat &img)
 
     // 📊 内存占用日志
     size_t bytes = img.total() * img.elemSize();
-    qDebug() << QString("[RoiManager] 图像已加载: %1x%2, 内存: %3 MB")
-                    .arg(img.cols)
-                    .arg(img.rows)
-                    .arg(bytes / (1024.0 * 1024.0), 0, 'f', 2);
+    // qDebug() << QString("[RoiManager] 图像已加载: %1x%2, 内存: %3 MB")
+    //                 .arg(img.cols)
+    //                 .arg(img.rows)
+    //                 .arg(bytes / (1024.0 * 1024.0), 0, 'f', 2);
 }
 
 const cv::Mat& RoiManager::getCurrentImage() const

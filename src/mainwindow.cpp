@@ -27,7 +27,6 @@ MainWindow::MainWindow(QWidget *parent)
     setupConnections();
 
     setupSystemMonitor();
-
     Logger::instance()->setTextEdit(ui->textEdit_log);
     Logger::instance()->setLogFile("test.log");
     Logger::instance()->enableFileLog(true);
@@ -317,15 +316,17 @@ void MainWindow::showImage(const cv::Mat &img)
 
 void MainWindow::on_btn_openImg_clicked()
 {
+    //QString dir = QString(PROJECT_DIR) + "/images";
+    QString path = QCoreApplication::applicationDirPath() + "/images/";
     QString fileName = QFileDialog::getOpenFileName(
-        this, "选择图片", "F:/Visual Studio/opencv/lena.jpg",
+        this, "请选择图片", path,
         "Image(*.jpg *.png *.tif)"
         );
 
     if (fileName.isEmpty())
     {
         Logger::instance()->warning("用户取消了文件选择");  // ← 警告
-        QMessageBox::warning(this, "打开文件", "文件为空");
+        //QMessageBox::warning(this, "打开文件", "文件为空");
         return;
     }
 
@@ -341,13 +342,12 @@ void MainWindow::on_btn_openImg_clicked()
     m_roiManager.setFullImage(img);
     m_view->clearRoi();
 
+    m_pipelineManager->resetPipeline();
     // ✅ 显示
     //processAndDisplay();
     showImage(img);
 
     Logger::instance()->info("图像加载成功! ");
-
-    ui->statusbar->showMessage("图片加载成功", 2000);
 }
 
 void MainWindow::on_btn_saveImg_clicked()

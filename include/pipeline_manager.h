@@ -101,6 +101,8 @@ public:
 
     PipelineConfig::FilterMode getCurrentFilterMode() const;
 
+    void resetPipeline();
+
 signals:
     // Pipeline执行完成
     void pipelineFinished(const QString& message);
@@ -108,12 +110,16 @@ signals:
     // 算法队列变化
     void algorithmQueueChanged(int count);
 
+    // Pipeline重置完成
+    void pipelineReset();
+
 private:
     // 初始化Pipeline（创建所有步骤）
     void initPipeline();
 
     // 重建Pipeline（当步骤变化时）
     void rebuildPipeline();
+
 
 private:
     // 配置

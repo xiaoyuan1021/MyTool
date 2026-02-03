@@ -28,54 +28,87 @@ Mat imageprocessor::executeAlgorithmQueue(const Mat &src, const QVector<Algorith
 {
     if(src.empty()) return src;
 
-    // ✅ 优化：不预先clone，因为每次循环都会重新赋值
-    // 第一次循环时会创建新的Mat，之后每次都是替换
-    Mat workingImage;
-    HalconAlgorithm halconAlgo;
-
-    bool firstIteration = true;
-
-    for(const auto& step : queue)
+    bool hasValidStep =false;
+    for(const auto & step : queue)
     {
-        if(!step.enabled) continue;
-
-        if(step.type == "HalconAlgorithm")
+        if(step.enabled && step.type =="HalconAlgorithm")
         {
-            // 确定输入：第一次用src，后续用workingImage
-            const Mat& input = firstIteration ? src : workingImage;
-
-            // 转为灰度图
-            Mat gray;
-            if(input.channels() == 3)
-            {
-                cvtColor(input, gray, COLOR_BGR2GRAY);
-            }
-            else
-            {
-                gray = input;
-            }
-
-            try
-            {
-                // Mat -> HRegion
-                HRegion region = ImageUtils::MatToHRegion(gray);
-                HRegion resultRegion = halconAlgo.execute(region, step);
-
-                // HRegion -> Mat（这里会创建新的Mat）
-                workingImage = ImageUtils::HRegionToMat(resultRegion, gray.cols, gray.rows);
-
-                firstIteration = false;
-            }
-            catch (const HalconCpp::HException& ex)
-            {
-                qDebug() << "Halcon algorithm error:" << ex.ErrorMessage().Text();
-                return firstIteration ? src : workingImage;
-            }
+            hasValidStep =true;
+            break;
         }
     }
 
-    // 如果没有执行任何步骤，返回输入
-    return firstIteration ? src : workingImage;
+    if(!hasValidStep)
+    {
+        qDebug() << "[executeAlgorithmQueue] 没有启用的算法步骤";
+        return src;  // 没有要执行的步骤，直接返回原图
+    }
+
+    Mat gray;
+    if(src.channels() == 3) {
+        cvtColor(src, gray, COLOR_BGR2GRAY);
+    } else if(src.channels() == 1) {
+        gray = src;  // 已经是灰度图
+    } else {
+        qDebug() << "[executeAlgorithmQueue] 不支持的通道数:" << src.channels();
+        return src;
+    }
+
+    try {
+        // ✅ 优化3：在HRegion域操作，避免反复转换
+        HRegion currentRegion = ImageUtils::MatToHRegion(gray);
+
+        HalconAlgorithm halconAlgo;
+        int executedSteps = 0;
+
+        for(const auto& step : queue)
+        {
+            if(!step.enabled) {
+                qDebug() << QString("  跳过未启用步骤: %1").arg(step.name);
+                continue;
+            }
+
+            if(step.type != "HalconAlgorithm") {
+                qDebug() << QString("  跳过非Halcon步骤: %1").arg(step.name);
+                continue;
+            }
+
+            qDebug() << QString("  执行步骤 %1: %2")
+                            .arg(executedSteps + 1)
+                            .arg(step.name);
+
+            // ✅ 直接在HRegion上链式操作（不创建临时Mat）
+            currentRegion = halconAlgo.execute(currentRegion, step);
+            executedSteps++;
+        }
+
+        qDebug() << QString("[executeAlgorithmQueue] 完成，共执行 %1 个步骤")
+                        .arg(executedSteps);
+
+        // ✅ 优化4：最后统一转回Mat（只转一次）
+        Mat result = ImageUtils::HRegionToMat(currentRegion, gray.cols, gray.rows);
+
+        if(result.empty()) {
+            qDebug() << "[executeAlgorithmQueue] 警告：结果为空，返回输入灰度图";
+            return gray;
+        }
+
+        return result;
+
+    } catch (const HalconCpp::HException& ex) {
+        qDebug() << "[executeAlgorithmQueue] Halcon异常:" << ex.ErrorMessage().Text();
+        qDebug() << "  错误代码:" << ex.ErrorCode();
+        return gray;  // 出错时返回灰度图
+    } catch (const cv::Exception& ex) {
+        qDebug() << "[executeAlgorithmQueue] OpenCV异常:" << ex.what();
+        return gray;
+    } catch (...) {
+        qDebug() << "[executeAlgorithmQueue] 未知异常";
+        return gray;
+    }
+
+
+
 }
 
 Mat imageprocessor::adjustParameter(const Mat &src, int brightness, double contrast, double gamma,double sharpen)
