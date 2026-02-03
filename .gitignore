@@ -23,3 +23,7 @@ Thumbs.db
 # Temporary files
 *.log
 *.tmp
+
+# 第三方库
+3rdparty/opencv/
+3rdparty/halcon/
