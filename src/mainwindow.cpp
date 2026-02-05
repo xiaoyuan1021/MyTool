@@ -888,19 +888,22 @@ void MainWindow::calculateRegionFeatures(const QVector<QPointF>& points)
 
 void MainWindow::on_btn_drawTemplate_clicked()
 {
-    if(m_roiManager.getCurrentImage().empty())
+    if (m_roiManager.getCurrentImage().empty())
     {
-        Logger::instance()->info("请先打开图像");
+        Logger::instance()->warning("请先打开图像");
+        QMessageBox::warning(this, "提示", "请先打开图像！");
         return;
     }
-    m_view->startPolygonDrawing("template");
-    ui->statusbar->showMessage("请在图像上绘制模板区域");
 
+    m_view->startPolygonDrawing("template");
+    ui->statusbar->showMessage("请在图像上绘制模板区域（多边形）");
+    Logger::instance()->info("开始绘制模板区域");
 }
 
 void MainWindow::on_btn_clearTemplate_clicked()
 {
     m_view->clearPolygonDrawing();
+    ui->statusbar->showMessage("已清除模板区域");
     Logger::instance()->info("已清除模板区域");
 }
 
@@ -915,28 +918,113 @@ void MainWindow::createTemplateFromPolygon(const QVector<QPointF> &points)
     Logger::instance()->info(QString("模板顶点数: %1").arg(points.size()));
 }
 
+void MainWindow::displayTemplatePreview(const Mat &templateImage)
+{
+    // 方法1: 在主视图中显示
+    // m_view->setImage(templateImage);
+
+    // 方法2: 在单独的预览窗口显示
+    if (!templateImage.empty()) {
+        cv::Mat preview = templateImage.clone();
+        cv::putText(preview, "Template Preview",
+                    cv::Point(10, 30),
+                    cv::FONT_HERSHEY_SIMPLEX,
+                    1.0,
+                    cv::Scalar(0, 255, 0),
+                    2);
+
+        // 显示在某个QLabel或弹出窗口
+        // ... 根据你的UI设计实现
+    }
+}
+
+void MainWindow::displayMatchResults(const Mat &resultImage, const QVector<MatchResult> &results)
+{
+    if (!resultImage.empty()) {
+        showImage(resultImage);
+    }
+}
+
+void MainWindow::updateTemplateUIState(bool hasTemplate)
+{
+    // 更新按钮状态
+    ui->btn_findTemplate->setEnabled(hasTemplate);
+    ui->btn_clearAllTemplates->setEnabled(hasTemplate);
+
+    // 在状态栏显示
+    if (hasTemplate) {
+        ui->statusbar->showMessage(
+            QString("✓ 已创建模板 [%1]")
+                .arg(m_templateManager->getCurrentStrategyName()),
+            2000
+            );
+    }
+}
+
+void MainWindow::updateParameterUIForMatchType(MatchType type)
+{
+    // 你的UI很简单，不需要切换参数面板
+    // 只在状态栏显示当前类型
+    QString typeName = TemplateMatchManager::matchTypeToString(type);
+    ui->statusbar->showMessage(
+        QString("当前匹配算法: %1").arg(typeName), 2000
+        );
+}
+
 void MainWindow::on_btn_creatTemplate_clicked()
 {
-    QVector<QPointF> points = m_view->getPolygonPoints();
+    // 1️⃣ 检查是否有图像
+    if (m_roiManager.getCurrentImage().empty()) {
+        QMessageBox::warning(this, "提示", "请先打开图像！");
+        return;
+    }
 
+    // 2️⃣ 检查是否绘制了多边形
+    QVector<QPointF> points = m_view->getPolygonPoints();
     if (points.size() < 3) {
         QMessageBox::warning(this, "提示", "请先绘制模板区域！");
         return;
     }
 
-    // 弹出对话框输入模板名称
+    // 3️⃣ 输入模板名称
     bool ok;
     QString name = QInputDialog::getText(
-        this, "创建模板", "请输入模板名称:",
-        QLineEdit::Normal, "Template_1", &ok
+        this, "创建模板",
+        "请输入模板名称:",
+        QLineEdit::Normal,
+        "Template_1",
+        &ok
         );
 
     if (!ok || name.isEmpty()) {
         return;
     }
 
-    // 使用默认参数创建模板
-    TemplateData params = m_templateManager->getDefaultParams();
+    // 4️⃣ 准备参数
+    TemplateParams params = m_templateManager->getDefaultParams();
+    params.polygonPoints = points;
+
+    // 🔑 可以根据当前选择的匹配类型设置特定参数
+    MatchType currentType = m_templateManager->getCurrentMatchType();
+    switch (currentType) {
+    case MatchType::ShapeModel:
+        // Shape Model 参数已经在默认参数中设置
+        break;
+
+    case MatchType::NCCModel:
+        params.nccLevels = 0;  // 可以从UI获取
+        break;
+
+    case MatchType::OpenCVTM:
+        params.matchMethod = cv::TM_CCOEFF_NORMED;  // 可以从UI获取
+        break;
+    }
+
+    // 5️⃣ 创建模板
+    Logger::instance()->info("========== 开始创建模板 ==========");
+    Logger::instance()->info(QString("模板名称: %1").arg(name));
+    Logger::instance()->info(QString("匹配类型: %1").arg(m_templateManager->getCurrentStrategyName()));
+    Logger::instance()->info(QString("ROI顶点数: %1").arg(points.size()));
 
     bool success = m_templateManager->createTemplate(
         name,
@@ -945,52 +1033,99 @@ void MainWindow::on_btn_creatTemplate_clicked()
         params
         );
 
+    // 6️⃣ 处理结果
     if (success) {
-        QMessageBox::information(this, "成功", "模板创建成功！");
+        QMessageBox::information(this, "成功",
+                                 QString("模板创建成功！\n算法：%1").arg(m_templateManager->getCurrentStrategyName()));
+
         m_view->clearPolygonDrawing();
+        ui->statusbar->showMessage("模板创建成功", 3000);
+
+        // 显示模板预览
+        cv::Mat templateImage = m_templateManager->getTemplateImage();
+        if (!templateImage.empty()) {
+            displayTemplatePreview(templateImage);
+        }
+
+        // 更新UI状态
+        updateTemplateUIState(true);
+
     } else {
         QMessageBox::warning(this, "失败", "模板创建失败，请查看日志");
+        ui->statusbar->showMessage("模板创建失败", 3000);
     }
+
+    Logger::instance()->info("==================================");
 }
 
 void MainWindow::on_btn_findTemplate_clicked()
 {
-    if (m_templateManager->getTemplateCount() == 0) {
+    // 1️⃣ 检查是否创建了模板
+    if (!m_templateManager->hasTemplate()) {
         QMessageBox::warning(this, "提示", "请先创建模板！");
         return;
     }
 
+    // 2️⃣ 检查是否有搜索图像
     if (m_roiManager.getCurrentImage().empty()) {
-        QMessageBox::warning(this, "提示", "请先打开图像！");
+        QMessageBox::warning(this, "提示", "请先打开搜索图像！");
         return;
     }
 
-    // 使用第一个模板进行匹配
+    // 3️⃣ 从UI控件获取参数
+    double minScore = ui->doubleSpinBox_minScore->value();
+    int maxMatches = ui->spinBox_matchNumber->value();
+    double greediness = 0.75;
+
+    // 4️⃣ 执行匹配
+    Logger::instance()->info("========== 开始模板匹配 ==========");
+    Logger::instance()->info(QString("匹配类型: %1").arg(m_templateManager->getCurrentStrategyName()));
+    Logger::instance()->info(QString("最低分数: %1").arg(minScore));
+    Logger::instance()->info(QString("最大匹配数: %1").arg(maxMatches));
+
+    ui->statusbar->showMessage("正在搜索模板...");
+
     QVector<MatchResult> results = m_templateManager->findTemplate(
         m_roiManager.getCurrentImage(),
-        0,      // templateIndex
-        0.6,    // minScore
-        3,     // maxMatches
-        0.6     // greediness
+        minScore,
+        maxMatches,
+        greediness
         );
 
-    // 显示结果
-
-    findAndDisplayMatches(results);
-
-    Logger::instance()->info("========== 匹配结果 ==========");
-    for (int i = 0; i < results.size(); ++i) {
-        Logger::instance()->info(
-            QString("[%1] %2").arg(i + 1).arg(results[i].toString())
-            );
-    }
-    Logger::instance()->info("==============================");
-
+    // 5️⃣ 显示匹配结果
     if (results.isEmpty()) {
+        Logger::instance()->info("未找到匹配目标");
         QMessageBox::information(this, "结果", "未找到匹配目标");
+        ui->statusbar->showMessage("未找到匹配", 3000);
+
     } else {
-        QMessageBox::information(this, "结果",
-                                 QString("找到 %1 个匹配目标").arg(results.size()));
+        Logger::instance()->info("========== 匹配结果 ==========");
+        for (int i = 0; i < results.size(); ++i) {
+            Logger::instance()->info(
+                QString("[%1] %2").arg(i + 1).arg(results[i].toString())
+                );
+        }
+        Logger::instance()->info("==============================");
+
+        // 绘制匹配结果
+        cv::Mat resultImage = m_templateManager->drawMatches(
+            m_roiManager.getCurrentImage(),
+            results
+            );
+
+        // 显示结果图像
+        showImage(resultImage);
+
+        // 更新状态栏
+        QString msg = QString("找到 %1 个匹配目标").arg(results.size());
+        ui->statusbar->showMessage(msg, 5000);
+
+        // 显示结果对话框
+        QString resultText = QString("找到 %1 个匹配目标\n\n").arg(results.size());
+        for (int i = 0; i < results.size(); ++i) {
+            resultText += QString("#%1: %2\n").arg(i + 1).arg(results[i].toString());
+        }
+        QMessageBox::information(this, "匹配结果", resultText);
     }
 }
 
@@ -1129,50 +1264,48 @@ void MainWindow::findAndDisplayMatches(const QVector<MatchResult> &results)
 {
 
     // 1️⃣ 获取当前图像
-    cv::Mat currentImage = m_roiManager.getCurrentImage();
-    if (currentImage.empty()) {
-        Logger::instance()->warning("当前没有图像");
-        return;
-    }
+    // cv::Mat currentImage = m_roiManager.getCurrentImage();
+    // if (currentImage.empty()) {
+    //     Logger::instance()->warning("当前没有图像");
+    //     return;
+    // }
 
-    // 2️⃣ 获取匹配参数
-    int templateIndex = 0;
-    double minScore = ui->doubleSpinBox_minScore->value();
-    int maxMatches = ui->spinBox_matchNumber->value();
+    // // 2️⃣ 获取匹配参数
+    // int templateIndex = 0;
+    // double minScore = ui->doubleSpinBox_minScore->value();
+    // int maxMatches = ui->spinBox_matchNumber->value();
 
-    // 3️⃣ 执行匹配
-    QVector<MatchResult> matches = m_templateManager->findTemplate(
-        currentImage,
-        templateIndex,
-        minScore,
-        maxMatches
-        );
+    // // 3️⃣ 执行匹配
+    // QVector<MatchResult> matches = m_templateManager->findTemplate(
+    //     currentImage,
+    //     templateIndex,
+    //     minScore,
+    //     maxMatches
+    //     );
 
-    // 4️⃣ ✅ 核心改进: 使用Manager的方法绘制结果
-    cv::Mat resultImage = m_templateManager->drawMatches(
-        currentImage,
-        templateIndex,
-        matches
-        );
+    // // 4️⃣ ✅ 核心改进: 使用Manager的方法绘制结果
+    // cv::Mat resultImage = m_templateManager->drawMatches(
+    //     currentImage,
+    //     templateIndex,
+    //     matches
+    //     );
 
-    // 5️⃣ 显示结果
-    QImage qimg = ImageUtils::Mat2Qimage(resultImage);
-    m_view->setImage(qimg);
+    // // 5️⃣ 显示结果
+    // QImage qimg = ImageUtils::Mat2Qimage(resultImage);
+    // m_view->setImage(qimg);
 
-    // 6️⃣ 更新UI状态
-    QString statusMsg = matches.isEmpty()
-                            ? "未找到匹配"
-                            : QString("找到 %1 个匹配").arg(matches.size());
+    // // 6️⃣ 更新UI状态
+    // QString statusMsg = matches.isEmpty()
+    //                         ? "未找到匹配"
+    //                         : QString("找到 %1 个匹配").arg(matches.size());
 
-    ui->statusbar->showMessage(statusMsg, 3000);
+    // ui->statusbar->showMessage(statusMsg, 3000);
 }
 
 void MainWindow::updateTemplateList()
 {
 
 }
-
-
 
 void MainWindow::on_btn_openLog_clicked()
 {
@@ -1273,3 +1406,55 @@ void MainWindow::on_Slider_hsv_V_High_valueChanged(int value)
 {
     m_processDebounceTimer->start();
 }
+
+void MainWindow::on_comboBox_matchType_currentIndexChanged(int index)
+{
+    QString typeName = ui->comboBox_matchType->currentText();
+    MatchType type;
+
+    // 根据UI中的实际文本进行映射
+    if (typeName == "ShapeModel") {
+        type = MatchType::ShapeModel;
+    } else if (typeName == "NCC Model") {
+        type = MatchType::NCCModel;
+    } else if (typeName == "Opencv Model") {
+        type = MatchType::OpenCVTM;
+    } else {
+        type = MatchType::ShapeModel;
+    }
+
+    m_templateManager->setMatchType(type);
+
+    Logger::instance()->info(
+        QString("切换匹配类型: %1")
+            .arg(typeName)
+        );
+
+    ui->statusbar->showMessage(
+        QString("当前算法: %1").arg(m_templateManager->getCurrentStrategyName()), 3000
+        );
+}
+
+void MainWindow::on_btn_clearAllTemplates_clicked()
+{
+    QMessageBox::StandardButton reply = QMessageBox::question(
+        this, "确认", "确定要清空所有模板吗？",
+        QMessageBox::Yes | QMessageBox::No
+        );
+
+    if (reply == QMessageBox::Yes)
+    {
+        m_templateManager->clearTemplate();
+
+        if (!m_roiManager.getFullImage().empty())
+        {
+            showImage(m_roiManager.getFullImage());
+        }
+
+        Logger::instance()->info("已清空所有模板");
+        ui->statusbar->showMessage("已清空所有模板", 3000);
+
+        updateTemplateUIState(false);
+    }
+}
+

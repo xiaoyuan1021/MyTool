@@ -132,6 +132,12 @@ private slots:
 
     void on_Slider_hsv_V_High_valueChanged(int value);
 
+
+
+    void on_btn_clearAllTemplates_clicked();
+
+    void on_comboBox_matchType_currentIndexChanged(int index);
+
 private:
     // ========== 初始化 ==========
     void setupUI();
@@ -175,6 +181,13 @@ private:
     void calculateRegionFeatures(const QVector<QPointF>& points);
     void createTemplateFromPolygon(const QVector<QPointF>& points);
     int m_editingAlgorithmIndex=-1;
+
+    void displayTemplatePreview(const cv::Mat& templateImage);
+    void displayMatchResults(const cv::Mat& resultImage,
+                             const QVector<MatchResult>& results);
+    void updateTemplateUIState(bool hasTemplate);
+    void updateParameterUIForMatchType(MatchType type);
+
 };
 
 #endif // MAINWINDOW_H

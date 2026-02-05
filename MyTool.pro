@@ -31,6 +31,7 @@ LIBS += -L$$HALCON_DIR/lib \
 INCLUDEPATH += $$PWD/include
 # ===== 源文件 =====
 SOURCES += \
+    src/match_strategy.cpp \
     src/halcon_algorithm.cpp \
     src/image_processor.cpp \
     src/image_utils.cpp \
@@ -56,7 +57,8 @@ HEADERS += \
     include/pipeline_steps.h \
     include/shape_filter_types.h \
     include/system_monitor.h \
-    include/template_match_manager.h
+    include/template_match_manager.h \
+    include/match_strategy.h
 
 # ===== UI 文件 =====
 FORMS += \

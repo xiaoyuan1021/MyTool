@@ -4,6 +4,7 @@
 
 TemplateMatchManager::TemplateMatchManager(QObject* parent)
     : QObject(parent)
+    , m_currentType(MatchType::ShapeModel)
 {
     // 设置默认参数
     m_defaultParams.numLevels = 0;        // auto
@@ -12,398 +13,203 @@ TemplateMatchManager::TemplateMatchManager(QObject* parent)
     m_defaultParams.angleStep = 1.0;      // 步长1度
     m_defaultParams.optimization = "auto";
     m_defaultParams.metric = "use_polarity";
-    // m_defaultParams.contrast = 150;
-    // m_defaultParams.minContrast = 70;
+    m_defaultParams.nccLevels = 0;
+    m_defaultParams.matchMethod = cv::TM_CCOEFF_NORMED;
+
+    // 初始化所有策略
+    initializeStrategies();
 }
 
 TemplateMatchManager::~TemplateMatchManager()
 {
-    clearAllTemplates();
+    clearTemplate();
 }
 
-// ========== 创建模板 ==========
+// ========== 初始化策略 ==========
+void TemplateMatchManager::initializeStrategies()
+{
+    // 创建所有策略实例（只创建一次）
+    m_strategies[MatchType::ShapeModel] = std::make_shared<ShapeMatchStrategy>();
+    m_strategies[MatchType::NCCModel] = std::make_shared<NCCMatchStrategy>();
+    m_strategies[MatchType::OpenCVTM] = std::make_shared<OpenCVMatchStrategy>();
+
+    // 设置默认策略
+    m_currentStrategy = m_strategies[MatchType::ShapeModel];
+
+    Logger::instance()->info("✅ 模板匹配管理器初始化完成，支持3种匹配算法");
+}
+
+// ========== 策略选择 ==========
+void TemplateMatchManager::setMatchType(MatchType type)
+{
+    if (type == m_currentType) {
+        return;  // 无需切换
+    }
+
+    if (!m_strategies.contains(type)) {
+        Logger::instance()->error(
+            QString("切换策略失败：不支持的匹配类型 %1").arg(static_cast<int>(type))
+            );
+        return;
+    }
+
+    // 切换策略
+    m_currentType = type;
+    m_currentStrategy = m_strategies[type];
+
+    Logger::instance()->info(
+        QString("🔄 已切换到: %1").arg(m_currentStrategy->getStrategyName())
+        );
+
+    emit strategyChanged(type);
+}
+
+QString TemplateMatchManager::getCurrentStrategyName() const
+{
+    if (m_currentStrategy) {
+        return m_currentStrategy->getStrategyName();
+    }
+    return "未知策略";
+}
+
+// ========== 模板创建 ==========
 bool TemplateMatchManager::createTemplate(const QString& name,
                                           const cv::Mat& fullImage,
                                           const QVector<QPointF>& polygon,
-                                          const TemplateData& params)
+                                          const TemplateParams& params)
 {
-    if (fullImage.empty())
-    {
-        Logger::instance()->error("创建模板失败：图像为空");
+    if (!m_currentStrategy) {
+        Logger::instance()->error("创建模板失败：未选择匹配策略");
         return false;
     }
 
-    if (polygon.size() < 3)
-    {
-        Logger::instance()->error("创建模板失败：多边形顶点数不足");
-        return false;
+    // 使用当前策略创建模板
+    bool success = m_currentStrategy->createTemplate(fullImage, polygon, params);
+
+    if (success) {
+        emit templateCreated(name, m_currentType);
     }
 
-    try {
-        // 1️⃣ 创建模板区域
-        HImage templateRegion = createTemplateRegion(fullImage, polygon);
-
-        // 2️⃣ 创建 Shape Model
-        TemplateData newTemplate = params;
-        newTemplate.name = name;
-        newTemplate.polygonPoints = polygon;
-
-        newTemplate.model.CreateShapeModel(
-            templateRegion,
-            params.numLevels,
-            params.angleStart * 0.0174533,  // 转弧度
-            params.angleExtent * 0.0174533,
-            params.angleStep * 0.0174533,
-            params.optimization.toStdString().c_str(),
-            params.metric.toStdString().c_str(),
-            "auto",
-            "auto"
-            );
-
-        // 3️⃣ 保存模板图像（用于显示）
-        // 提取多边形区域的 OpenCV 图像
-        std::vector<cv::Point> cvPolygon;
-        for (const QPointF& pt : polygon)
-        {
-            cvPolygon.push_back(cv::Point(pt.x(), pt.y()));
-        }
-
-        cv::Rect boundingRect = cv::boundingRect(cvPolygon);
-        newTemplate.templateImage = fullImage(boundingRect).clone();
-
-        // 4️⃣ 添加到列表
-        m_templates.append(newTemplate);
-
-        Logger::instance()->info(
-            QString("✅ 模板创建成功: %1 (索引: %2)")
-                .arg(name).arg(m_templates.size() - 1)
-            );
-
-        emit templateCreated(name);
-        return true;
-
-    } catch (const HException& ex) {
-        Logger::instance()->error(
-            QString("创建模板失败: %1").arg(ex.ErrorMessage().Text())
-            );
-        return false;
-    }
+    return success;
 }
 
-// ========== 查找模板 ==========
-QVector<MatchResult> TemplateMatchManager::findTemplate(
-    const cv::Mat& searchImage,
-    int templateIndex,
-    double minScore,
-    int maxMatches,
-    double greediness)
+// ========== 模板匹配 ==========
+QVector<MatchResult> TemplateMatchManager::findTemplate(const cv::Mat& searchImage,
+                                                        double minScore,
+                                                        int maxMatches,
+                                                        double greediness)
 {
     QVector<MatchResult> results;
 
-    // 1️⃣ 参数检查
-    if (searchImage.empty()) {
-        Logger::instance()->error("匹配失败：搜索图像为空");
+    if (!m_currentStrategy) {
+        Logger::instance()->error("匹配失败：未选择匹配策略");
         return results;
     }
 
-    if (templateIndex < 0 || templateIndex >= m_templates.size()) {
-        Logger::instance()->error("匹配失败：模板索引无效");
+    if (!m_currentStrategy->hasTemplate()) {
+        Logger::instance()->error("匹配失败：当前策略未创建模板");
         return results;
     }
 
-    try {
-        // 2️⃣ 转换搜索图像
-        HImage searchHImage = ImageUtils::Mat2HImage(searchImage);
+    // 使用当前策略执行匹配
+    results = m_currentStrategy->findMatches(searchImage, minScore, maxMatches, greediness);
 
-        // 3️⃣ 查找模板
-        HTuple row, column, angle, score;
-
-        m_templates[templateIndex].model.FindShapeModel(
-            searchHImage,
-            0,                    // AngleStart (弧度)
-            6.28,                 // AngleExtent (2π)
-            minScore,             // MinScore
-            maxMatches,           // NumMatches
-            0.5,                  // MaxOverlap
-            "least_squares",      // SubPixel
-            0,                    // NumLevels (0=all)
-            greediness,           // Greediness
-            &row, &column, &angle, &score
-            );
-
-        // 4️⃣ 解析结果
-        int numFound = row.Length();
-        for (int i = 0; i < numFound; ++i) {
-            MatchResult match;
-            match.row = row[i].D();
-            match.column = column[i].D();
-            match.angle = angle[i].D() * 57.2958;  // 弧度转角度
-            match.score = score[i].D();
-
-            results.append(match);
-        }
-
-        Logger::instance()->info(
-            QString("✅ 找到 %1 个匹配 (模板: %2, 最低分数: %3)")
-                .arg(numFound)
-                .arg(m_templates[templateIndex].name)
-                .arg(minScore)
-            );
-
-        emit matchCompleted(numFound);
-
-    } catch (const HException& ex) {
-        Logger::instance()->error(
-            QString("模板匹配失败: %1").arg(ex.ErrorMessage().Text())
-            );
-    }
+    emit matchCompleted(results.size());
 
     return results;
 }
 
-Mat TemplateMatchManager::drawMatches(const Mat &searchImage, int templateIndex, const QVector<MatchResult> &matches) const
+cv::Mat TemplateMatchManager::drawMatches(const cv::Mat& searchImage,
+                                          const QVector<MatchResult>& matches) const
 {
-    // 1️⃣ 参数检查
-    if (searchImage.empty() || matches.isEmpty()) {
+    if (!m_currentStrategy) {
+        Logger::instance()->error("绘制失败：未选择匹配策略");
         return searchImage.clone();
     }
 
-    if (templateIndex < 0 || templateIndex >= m_templates.size()) {
-        Logger::instance()->error("绘制失败:模板索引无效");
-        return searchImage.clone();
-    }
-
-    // 2️⃣ 创建输出图像
-    cv::Mat result = searchImage.clone();
-    if (result.channels() == 1) {
-        cv::cvtColor(result, result, cv::COLOR_GRAY2BGR);
-    }
-
-    // 3️⃣ 获取模板数据
-    const TemplateData& templateData = m_templates[templateIndex];
-
-    // 4️⃣ 为每个匹配绘制轮廓
-    for (int i = 0; i < matches.size(); ++i)
-    {
-        // 根据匹配质量选择颜色
-        cv::Scalar color;
-        if (matches[i].score >= 0.8) {
-            color = cv::Scalar(0, 255, 0);      // 绿色 - 高质量
-        } else if (matches[i].score >= 0.6) {
-            color = cv::Scalar(0, 255, 255);    // 黄色 - 中等质量
-        } else {
-            color = cv::Scalar(0, 165, 255);    // 橙色 - 低质量
-        }
-
-        // 绘制单个匹配
-        drawSingleMatch(result, templateData, matches[i], color);
-
-        // 绘制中心点
-        cv::Point center(matches[i].column, matches[i].row);
-        cv::circle(result, center, 5, color, -1);
-        cv::circle(result, center, 8, color, 2);
-
-        // 绘制文字信息
-        QString info = QString("Score: %1").arg(matches[i].score, 0, 'f', 2);
-        cv::putText(result, info.toStdString(),
-                    cv::Point(matches[i].column + 15, matches[i].row - 15),
-                    cv::FONT_HERSHEY_SIMPLEX, 0.5, color, 2);
-    }
-
-    return result;
+    return m_currentStrategy->drawMatches(searchImage, matches);
 }
 
 // ========== 模板管理 ==========
-QStringList TemplateMatchManager::getTemplateNames() const
+bool TemplateMatchManager::hasTemplate() const
 {
-    QStringList names;
-    for (const auto& tmpl : m_templates) {
-        names.append(tmpl.name);
+    if (!m_currentStrategy) {
+        return false;
     }
-    return names;
+    return m_currentStrategy->hasTemplate();
 }
 
-TemplateData TemplateMatchManager::getTemplate(int index) const
+cv::Mat TemplateMatchManager::getTemplateImage() const
 {
-    if (index >= 0 && index < m_templates.size()) {
-        return m_templates[index];
+    if (!m_currentStrategy) {
+        return cv::Mat();
     }
-    return TemplateData();
+    return m_currentStrategy->getTemplateImage();
 }
 
-cv::Mat TemplateMatchManager::getTemplateImage(int index) const
+void TemplateMatchManager::clearTemplate()
 {
-    if (index >= 0 && index < m_templates.size()) {
-        return m_templates[index].templateImage;
+    // 清空所有策略的模板（重新创建策略实例）
+    for (auto& pair : m_strategies.toStdMap()) {
+        MatchType type = pair.first;
+        switch (type) {
+        case MatchType::ShapeModel:
+            m_strategies[type] = std::make_shared<ShapeMatchStrategy>();
+            break;
+        case MatchType::NCCModel:
+            m_strategies[type] = std::make_shared<NCCMatchStrategy>();
+            break;
+        case MatchType::OpenCVTM:
+            m_strategies[type] = std::make_shared<OpenCVMatchStrategy>();
+            break;
+        }
     }
-    return cv::Mat();
-}
 
-bool TemplateMatchManager::removeTemplate(int index)
-{
-    if (index >= 0 && index < m_templates.size()) {
-        m_templates.removeAt(index);
-        Logger::instance()->info(QString("已删除模板 #%1").arg(index));
-        emit templateRemoved(index);
-        return true;
-    }
-    return false;
-}
+    // 更新当前策略指针
+    m_currentStrategy = m_strategies[m_currentType];
 
-void TemplateMatchManager::clearAllTemplates()
-{
-    m_templates.clear();
     Logger::instance()->info("已清空所有模板");
+    emit templateCleared();
 }
 
-void TemplateMatchManager::setDefaultParams(const TemplateData& params)
+// ========== 参数设置 ==========
+void TemplateMatchManager::setDefaultParams(const TemplateParams& params)
 {
     m_defaultParams = params;
 }
 
-// ========== 私有辅助函数 ==========
-HImage TemplateMatchManager::createTemplateRegion(
-    const cv::Mat& image,
-    const QVector<QPointF>& polygon)
+// ========== 辅助方法 ==========
+QStringList TemplateMatchManager::getAvailableMatchTypes()
 {
-    // 1️⃣ 转换为 HImage
-    HImage hImage = ImageUtils::Mat2HImage(image);
-
-    // 2️⃣ 创建多边形 Region
-    HTuple rows, cols;
-    for (const QPointF& pt : polygon)
-    {
-        rows.Append(pt.y());
-        cols.Append(pt.x());
-    }
-
-    HRegion polygonRegion;
-    polygonRegion.GenRegionPolygon(rows, cols);
-
-    // 3️⃣ 裁剪图像
-    HImage templateImage = hImage.ReduceDomain(polygonRegion);
-
-    return templateImage;
+    return QStringList{
+        "Halcon Shape Model",
+        "Halcon NCC Model",
+        "OpenCV Template Matching"
+    };
 }
 
-void TemplateMatchManager::extractTemplateContour(TemplateData &templateData, const QVector<QPointF> &polygon)
+MatchType TemplateMatchManager::matchTypeFromString(const QString& typeName)
 {
-    try {
-        // 1️⃣ 创建多边形轮廓
-        HTuple rows, cols;
-        for (const QPointF& pt : polygon)
-        {
-            rows.Append(pt.y());
-            cols.Append(pt.x());
-        }
-
-        // 2️⃣ 生成轮廓Region
-        templateData.templateContour.GenRegionPolygon(rows, cols);
-
-        // 3️⃣ 获取轮廓边界点(用于精细绘制)
-        HRegion boundary = templateData.templateContour.Boundary("inner");
-        boundary.GetRegionPoints(&templateData.templateRows, &templateData.templateCols);
-
-        // 如果边界点太少,使用原始多边形点
-        if (templateData.templateRows.Length() < 4) {
-            templateData.templateRows = rows;
-            templateData.templateCols = cols;
-        }
-
-    } catch (const HException& ex) {
-        Logger::instance()->warning(
-            QString("提取模板轮廓失败: %1").arg(ex.ErrorMessage().Text())
-            );
-        // 使用原始多边形作为后备
-        HTuple rows, cols;
-        for (const QPointF& pt : polygon) {
-            rows.Append(pt.y());
-            cols.Append(pt.x());
-        }
-        templateData.templateRows = rows;
-        templateData.templateCols = cols;
+    if (typeName == "ShapeModel") {
+        return MatchType::ShapeModel;
+    } else if (typeName == "NCC Model") {
+        return MatchType::NCCModel;
+    } else if (typeName == "Opencv Model") {
+        return MatchType::OpenCVTM;
     }
+    return MatchType::ShapeModel;  // 默认
 }
 
-void TemplateMatchManager::drawSingleMatch(Mat &image, const TemplateData &templateData, const MatchResult &match, const Scalar &color) const
+QString TemplateMatchManager::matchTypeToString(MatchType type)
 {
-    try {
-        // 📖 Halcon仿射变换原理讲解:
-        //
-        // 1. 获取模板的参考中心点
-        //    CreateShapeModel 会自动计算模板的中心点作为参考点
-        //    我们需要通过 GetShapeModelOrigin 获取这个参考点
-
-        // 2. 构建仿射变换矩阵
-        //    变换包括三个步骤:
-        //    a) 平移到原点: 将模板中心移到(0,0)
-        //    b) 旋转: 按照匹配角度旋转
-        //    c) 平移到匹配位置: 移到 (match.column, match.row)
-
-        // 1️⃣ 获取模板中心点
-        double modelRow, modelCol;
-        templateData.model.GetShapeModelOrigin(&modelRow, &modelCol);
-
-        // 2️⃣ 构建仿射变换矩阵
-        // Halcon的仿射变换使用 HomMat2d (2D齐次变换矩阵)
-        HTuple homMat2D;
-
-        // 创建单位矩阵
-        HomMat2dIdentity(&homMat2D);
-
-        // 平移到原点(反向平移模板中心)
-        HomMat2dTranslate(homMat2D, -modelRow, -modelCol, &homMat2D);
-
-        // 旋转(角度已经是弧度)
-        double angleRad = match.angle * 0.0174533;  // 度转弧度
-        HomMat2dRotate(homMat2D, angleRad, 0, 0, &homMat2D);
-
-        // 平移到匹配位置
-        HomMat2dTranslate(homMat2D, match.row, match.column, &homMat2D);
-
-        // 3️⃣ 对轮廓点应用仿射变换
-        HTuple transformedRows, transformedCols;
-        AffineTransPoint2d(homMat2D,
-                           templateData.templateRows,
-                           templateData.templateCols,
-                           &transformedRows,
-                           &transformedCols);
-
-        // 4️⃣ 转换为OpenCV点并绘制
-        std::vector<cv::Point> contourPoints;
-        for (int i = 0; i < transformedRows.Length(); ++i)
-        {
-            contourPoints.push_back(
-                cv::Point(transformedCols[i].D(), transformedRows[i].D())
-                );
-        }
-
-        // 绘制填充多边形(半透明)
-        if (contourPoints.size() >= 3)
-        {
-            cv::Mat overlay = image.clone();
-            cv::fillPoly(overlay, contourPoints, color);
-            cv::addWeighted(overlay, 0.3, image, 0.7, 0, image);
-
-            // 绘制轮廓线
-            cv::polylines(image, contourPoints, true, color, 2);
-        }
-
-    } catch (const HException& ex) {
-        Logger::instance()->warning(
-            QString("绘制匹配轮廓失败: %1").arg(ex.ErrorMessage().Text())
-            );
-
-        // 降级方案:绘制简单矩形
-        double modelRow, modelCol;
-        templateData.model.GetShapeModelOrigin(&modelRow, &modelCol);
-
-        cv::Rect rect(
-            match.column - 50,
-            match.row - 50,
-            100,
-            100
-            );
-        cv::rectangle(image, rect, color, 2);
+    switch (type) {
+    case MatchType::ShapeModel:
+        return "Halcon Shape Model";
+    case MatchType::NCCModel:
+        return "Halcon NCC Model";
+    case MatchType::OpenCVTM:
+        return "OpenCV Template Matching";
+    default:
+        return "Unknown";
     }
 }
