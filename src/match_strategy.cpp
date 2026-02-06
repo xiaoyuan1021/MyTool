@@ -586,7 +586,8 @@ QVector<MatchResult> OpenCVMatchStrategy::findMatches(const cv::Mat& searchImage
         int foundCount = 0;
         cv::Mat mask = cv::Mat::ones(normalizedResult.size(), CV_8U) * 255;
 
-        for (int i = 0; i < maxMatches && foundCount < maxMatches; ++i) {
+        for (int i = 0; i < maxMatches && foundCount < maxMatches; ++i)
+        {
             double minVal, maxVal;
             cv::Point minLoc, maxLoc;
             cv::minMaxLoc(normalizedResult, &minVal, &maxVal, &minLoc, &maxLoc, mask);
@@ -646,11 +647,16 @@ cv::Mat OpenCVMatchStrategy::drawMatches(const cv::Mat& searchImage,
     for (int i = 0; i < matches.size(); ++i) {
         // 根据匹配质量选择颜色
         cv::Scalar color;
-        if (matches[i].score >= 0.8) {
+        if (matches[i].score >= 0.8)
+        {
             color = cv::Scalar(0, 255, 0);      // 绿色
-        } else if (matches[i].score >= 0.6) {
+        }
+        else if (matches[i].score >= 0.6)
+        {
             color = cv::Scalar(0, 255, 255);    // 黄色
-        } else {
+        }
+        else
+        {
             color = cv::Scalar(0, 165, 255);    // 橙色
         }
 
@@ -691,7 +697,7 @@ cv::Mat OpenCVMatchStrategy::extractTemplateROI(const cv::Mat& image,
     cv::Rect boundingRect = cv::boundingRect(cvPolygon);
 
     // 3️⃣ 确保矩形在图像范围内
-    boundingRect &= cv::Rect(0, 0, image.cols, image.rows);
+    boundingRect &= cv::Rect(0, 0, image.cols, image.rows);//运算符重载
 
     if (boundingRect.width <= 0 || boundingRect.height <= 0) {
         return cv::Mat();

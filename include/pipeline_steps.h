@@ -378,7 +378,8 @@ public:
         //     ctx.mask = filterMask;
         // }
 
-        ctx.mask = filterMask;  // 不要 bitwise_and
+
+        cv::bitwise_not(filterMask,ctx.mask);//影响性能吗
 
         ctx.reason = QString("颜色过滤: %1 模式")
                          .arg(m_cfg->colorFilterMode == PipelineConfig::ColorFilterMode::RGB ? "RGB" : "HSV");

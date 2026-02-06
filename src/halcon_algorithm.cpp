@@ -265,11 +265,11 @@ QVector<RegionFeature> HalconAlgorithm::analyzeRegionsInPolygon(
         }
 
     }
-    catch (const HException& ex) {
+    catch (const HException& ex)
+    {
         Logger::instance()->error(
             QString("Halcon计算错误: %1").arg(ex.ErrorMessage().Text())
             );
     }
-
     return results;
 }

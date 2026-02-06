@@ -154,7 +154,8 @@ void ImageView::mousePressEvent(QMouseEvent *event)
         m_roiStartPosImg = viewPosToImagePos(event->pos());
 
         // 删旧 ROI
-        if (m_roiRectItem) {
+        if (m_roiRectItem)
+        {
             delete m_roiRectItem;
             m_roiRectItem = nullptr;
         }
@@ -162,7 +163,13 @@ void ImageView::mousePressEvent(QMouseEvent *event)
         // ⭐ ROI 作为 pixmapItem 的子项，坐标直接就是图像坐标
         m_roiRectItem = new QGraphicsRectItem(QRectF(m_roiStartPosImg, QSizeF(0, 0)), m_pixmapItem);
         //设置ROI颜色和线宽
-        m_roiRectItem->setPen(QPen(Qt::green, 4, Qt::DashLine));
+
+        // ✅ 根据图像分辨率自适应线宽
+        QSize imgSize = getImageSize();
+        double imageScale = std::max(imgSize.width(), imgSize.height()) / 5000.0;  // 以1000像素为基准
+        double adaptiveWidth = std::max(2.0, imageScale * 3.0);  // 最小2，按比例增长
+
+        m_roiRectItem->setPen(QPen(Qt::green, adaptiveWidth, Qt::SolidLine));
 
         setDragMode(QGraphicsView::NoDrag);
         event->accept();
