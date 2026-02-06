@@ -32,6 +32,7 @@ struct DisplayConfig
     enum class Mode
     {
         Original,           // 显示原图
+        Channel,            //通道图
         Enhanced,          // 显示增强后的图
         MaskGreenWhite,    // Mask 显示为绿白
         MaskOverlay,       // Mask 叠加在原图上

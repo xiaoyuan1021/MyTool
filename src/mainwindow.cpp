@@ -12,6 +12,7 @@ MainWindow::MainWindow(QWidget *parent)
     , m_templateManager(new TemplateMatchManager(this))
     , m_systemMonitor(new SystemMonitor(this))
     , m_processDebounceTimer(nullptr)
+    , m_currentTabIndex(0)
     , m_isDrawingRegion(false)
     , m_polygonItem(nullptr)
 {
@@ -178,7 +179,7 @@ void MainWindow::setupConnections()
 
     connect(m_pipelineManager, &PipelineManager::algorithmQueueChanged,
             [](int count) {
-                Logger::instance()->info(QString("算法队列数量:").arg(count));
+                //Logger::instance()->info(QString("算法队列数量:").arg(count));
             });
 
     connect(ui->comboBox_selectAlgorithm,QOverload<int>::of(&QComboBox::currentIndexChanged),
@@ -277,19 +278,34 @@ void MainWindow::processAndDisplay()
 
     m_pipelineManager->setCurrentFilterMode(targetMode);
 
-    // ========== 3. 设置显示模式 ==========
-    // 根据当前模式决定显示什么
-    if (targetMode == PipelineConfig::FilterMode::None) {
-        // 无过滤模式 → 显示增强后的图像
+    // ========== 3. 根据当前Tab设置显示模式 ==========
+    // ✅ 方案A：完全由Tab控制显示内容
+    switch (m_currentTabIndex)
+    {
+    case 0:  // "图像" Tab
+        m_pipelineManager->setDisplayMode(m_channelFlag ? DisplayConfig::Mode::Enhanced : DisplayConfig::Mode::Original);
+        break;
+    case 1:  // "增强" Tab
         m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Enhanced);
-    } else {
-        // 有过滤模式（Gray/RGB/HSV）→ 显示绿白 mask
+        break;
+    case 2:  // "补正" Tab
+        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original);
+        break;
+    case 3:  // "过滤" Tab
         m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite);
-    }
-
-    // 如果有算法队列，覆盖显示模式
-    if (!m_pipelineManager->getAlgorithmQueue().isEmpty()) {
+        break;
+    case 4:  // "处理" Tab
+        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Processed);
+        break;
+    case 5:  // "提取" Tab
         m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite);
+        break;
+    case 6:  // "判定" Tab
+        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite);
+        break;
+    default:
+        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original);
+        break;
     }
 
     // ========== 4. 执行 Pipeline ==========
@@ -1425,14 +1441,14 @@ void MainWindow::on_comboBox_matchType_currentIndexChanged(int index)
 
     m_templateManager->setMatchType(type);
 
-    Logger::instance()->info(
-        QString("切换匹配类型: %1")
-            .arg(typeName)
-        );
+    // Logger::instance()->info(
+    //     QString("切换匹配类型: %1")
+    //         .arg(typeName)
+    //     );
 
-    ui->statusbar->showMessage(
-        QString("当前算法: %1").arg(m_templateManager->getCurrentStrategyName()), 3000
-        );
+    // ui->statusbar->showMessage(
+    //     QString("当前算法: %1").arg(m_templateManager->getCurrentStrategyName()), 3000
+    //     );
 }
 
 void MainWindow::on_btn_clearAllTemplates_clicked()
@@ -1458,3 +1474,17 @@ void MainWindow::on_btn_clearAllTemplates_clicked()
     }
 }
 
+
+void MainWindow::on_tabWidget_currentChanged(int index)
+{
+    if(m_roiManager.getFullImage().empty()) return;
+    m_currentTabIndex = index;
+
+    processAndDisplay();
+}
+
+void MainWindow::on_btn_applyChannel_clicked()
+{
+    m_channelFlag = true;
+    processAndDisplay();
+}

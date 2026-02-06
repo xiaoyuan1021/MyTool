@@ -138,6 +138,10 @@ private slots:
 
     void on_comboBox_matchType_currentIndexChanged(int index);
 
+    void on_tabWidget_currentChanged(int index);
+
+    void on_btn_applyChannel_clicked();
+
 private:
     // ========== 初始化 ==========
     void setupUI();
@@ -165,6 +169,10 @@ private:
 
     // ✅ 新增：防抖定时器
     QTimer* m_processDebounceTimer;
+
+    int m_currentTabIndex;  // 记录当前tab索引
+
+    bool m_channelFlag = false;
 
     // ✅ 模板匹配相关函数
     void findAndDisplayMatches(const QVector<MatchResult>& results);

@@ -134,8 +134,6 @@ Mat imageprocessor::adjustParameter(const Mat &src, int brightness, double contr
     return dst;
 }
 
-
-
 Mat imageprocessor::filterRGB(const Mat &src, int rLow, int rHigh, int gLow, int gHigh, int bLow, int bHigh)
 {
     if(src.empty())
@@ -209,7 +207,3 @@ Mat imageprocessor::filterHSV(const Mat &src, int hLow, int hHigh, int sLow, int
     cv::inRange(hsv,lower,upper,mask);
     return mask;
 }
-
-
-
-

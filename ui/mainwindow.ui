@@ -24,7 +24,7 @@
      </rect>
     </property>
     <property name="currentIndex">
-     <number>5</number>
+     <number>0</number>
     </property>
     <property name="tabBarAutoHide">
      <bool>true</bool>
@@ -33,12 +33,25 @@
      <attribute name="title">
       <string>图像</string>
      </attribute>
+     <widget class="QPushButton" name="btn_applyChannel">
+      <property name="geometry">
+       <rect>
+        <x>280</x>
+        <y>30</y>
+        <width>101</width>
+        <height>31</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>应用</string>
+      </property>
+     </widget>
      <widget class="QWidget" name="">
       <property name="geometry">
        <rect>
         <x>30</x>
         <y>30</y>
-        <width>221</width>
+        <width>231</width>
         <height>31</height>
        </rect>
       </property>
@@ -1024,58 +1037,6 @@
      <attribute name="title">
       <string>处理</string>
      </attribute>
-     <widget class="QPushButton" name="btn_addOption">
-      <property name="geometry">
-       <rect>
-        <x>180</x>
-        <y>10</y>
-        <width>51</width>
-        <height>30</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>添加</string>
-      </property>
-     </widget>
-     <widget class="QPushButton" name="btn_removeOption">
-      <property name="geometry">
-       <rect>
-        <x>250</x>
-        <y>10</y>
-        <width>50</width>
-        <height>30</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>移除</string>
-      </property>
-     </widget>
-     <widget class="QPushButton" name="btn_optionUp">
-      <property name="geometry">
-       <rect>
-        <x>180</x>
-        <y>50</y>
-        <width>50</width>
-        <height>30</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>上移</string>
-      </property>
-     </widget>
-     <widget class="QPushButton" name="btn_optionDown">
-      <property name="geometry">
-       <rect>
-        <x>250</x>
-        <y>50</y>
-        <width>50</width>
-        <height>30</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>下移</string>
-      </property>
-     </widget>
      <widget class="QListWidget" name="algorithmListWidget">
       <property name="geometry">
        <rect>
@@ -1159,9 +1120,9 @@
      <widget class="QStackedWidget" name="stackedWidget_Algorithm">
       <property name="geometry">
        <rect>
-        <x>170</x>
+        <x>180</x>
         <y>110</y>
-        <width>181</width>
+        <width>191</width>
         <height>101</height>
        </rect>
       </property>
@@ -1314,6 +1275,46 @@
       <property name="text">
        <string>算法队列：</string>
       </property>
+     </widget>
+     <widget class="QWidget" name="">
+      <property name="geometry">
+       <rect>
+        <x>180</x>
+        <y>10</y>
+        <width>191</width>
+        <height>81</height>
+       </rect>
+      </property>
+      <layout class="QGridLayout" name="gridLayout">
+       <item row="0" column="0">
+        <widget class="QPushButton" name="btn_addOption">
+         <property name="text">
+          <string>添加</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QPushButton" name="btn_removeOption">
+         <property name="text">
+          <string>移除</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QPushButton" name="btn_optionUp">
+         <property name="text">
+          <string>上移</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QPushButton" name="btn_optionDown">
+         <property name="text">
+          <string>下移</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
      </widget>
     </widget>
     <widget class="QWidget" name="tab_7">

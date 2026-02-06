@@ -58,6 +58,4 @@ public:
 
 };
 
-
-
 #endif // HALCON_ALGORITHM_H

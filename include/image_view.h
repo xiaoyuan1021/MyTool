@@ -83,8 +83,6 @@ private:
     QString m_currentDrawingType;
     void updatePolygonPath(const QVector<QPointF>& points, QGraphicsPathItem*& pathItem);
 
-
-
 };
 
 class RoiManager

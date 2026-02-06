@@ -58,7 +58,7 @@ void TemplateMatchManager::setMatchType(MatchType type)
     m_currentStrategy = m_strategies[type];
 
     Logger::instance()->info(
-        QString("🔄 已切换到: %1").arg(m_currentStrategy->getStrategyName())
+        QString("已切换到: %1").arg(m_currentStrategy->getStrategyName())
         );
 
     emit strategyChanged(type);
