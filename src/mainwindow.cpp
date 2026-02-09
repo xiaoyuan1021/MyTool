@@ -417,36 +417,42 @@ void MainWindow::on_btn_saveImg_clicked()
 void MainWindow::on_Slider_brightness_valueChanged(int)
 {
     m_pipelineManager->setGrayFilterEnabled(false);
+    m_needsReprocess = true;
     m_processDebounceTimer->start();
 }
 
 void MainWindow::on_Slider_contrast_valueChanged(int)
 {
     m_pipelineManager->setGrayFilterEnabled(false);
+    m_needsReprocess = true;
     m_processDebounceTimer->start();
 }
 
 void MainWindow::on_Slider_gamma_valueChanged(int)
 {
     m_pipelineManager->setGrayFilterEnabled(false);
+    m_needsReprocess = true;
     m_processDebounceTimer->start();
 }
 
 void MainWindow::on_Slider_sharpen_valueChanged(int)
 {
     m_pipelineManager->setGrayFilterEnabled(false);
+    m_needsReprocess = true;
     m_processDebounceTimer->start();
 }
 
 void MainWindow::on_Slider_grayLow_valueChanged(int)
 {
     m_pipelineManager->setGrayFilterEnabled(true);
+    m_needsReprocess = true;
     m_processDebounceTimer->start();
 }
 
 void MainWindow::on_Slider_grayHigh_valueChanged(int)
 {
     m_pipelineManager->setGrayFilterEnabled(true);
+    m_needsReprocess = true;
     m_processDebounceTimer->start();
 }
 
@@ -470,6 +476,7 @@ void MainWindow::on_btn_drawRoi_clicked()
     if (m_roiManager.getFullImage().empty()) return;
 
     m_view->setRoiMode(true);
+    m_view->setDragMode(QGraphicsView::NoDrag);
     ui->statusbar->showMessage("请按下左键绘制ROI");
 }
 
@@ -787,6 +794,7 @@ void MainWindow::on_comboBox_channels_currentIndexChanged(int index)
         Logger::instance()->warning("未知的通道类型");
         return;
     }
+    m_needsReprocess = true;
     processAndDisplay();
     ui->statusbar->showMessage(QString("已切换到 %1")
                                    .arg(ui->comboBox_channels->currentText()));
@@ -1479,6 +1487,7 @@ void MainWindow::on_tabWidget_currentChanged(int index)
 {
     if(m_roiManager.getFullImage().empty()) return;
     m_currentTabIndex = index;
+
 
     processAndDisplay();
 }

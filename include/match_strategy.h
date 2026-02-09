@@ -4,6 +4,9 @@
 #include <QString>
 #include <QVector>
 #include <QPointF>
+#include <QPainter>
+#include <QColor>
+#include <QPolygonF>
 #include "opencv2/opencv.hpp"
 #include "HalconCpp.h"
 
@@ -94,9 +97,9 @@ private:
     HImage createTemplateRegion(const cv::Mat& image,
                                 const QVector<QPointF>& polygon);
     void extractTemplateContour(const QVector<QPointF>& polygon);
-    void drawSingleMatch(cv::Mat& image,
+    void drawSingleMatch(QPainter& painter,
                          const MatchResult& match,
-                         const cv::Scalar& color) const;
+                         const QColor& color) const;
 };
 
 // ========== Halcon NCC Model 策略 ==========

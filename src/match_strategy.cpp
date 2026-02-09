@@ -124,48 +124,64 @@ Mat ShapeMatchStrategy::drawMatches(const Mat &searchImage, const QVector<MatchR
         cv::cvtColor(result, result, cv::COLOR_GRAY2BGR);
     }
 
+    QImage qImg = ImageUtils::Mat2Qimage(result);
+
+    QPainter painter(&qImg);
+    painter.setRenderHint(QPainter::Antialiasing, true);
+
     // 为每个匹配绘制轮廓
     for (int i = 0; i < matches.size(); ++i)
     {
         // 根据匹配质量选择颜色
-        cv::Scalar color;
+        QColor color;
         if (matches[i].score >= 0.8)
         {
-            color = cv::Scalar(0, 255, 0);      // 绿色 - 高质量
+            color = QColor(0, 255, 0);      // 绿色 - 高质量
         }
         else if (matches[i].score >= 0.6)
         {
-            color = cv::Scalar(0, 255, 255);    // 黄色 - 中等质量
+            color = QColor(255, 255, 0);    // 黄色 - 中等质量
         }
         else
         {
-            color = cv::Scalar(0, 165, 255);    // 橙色 - 低质量
+            color = QColor(255, 165, 0);    // 橙色 - 低质量
         }
 
-        drawSingleMatch(result, matches[i], color);
+        drawSingleMatch(painter, matches[i], color);
 
-        // 绘制中心点
-        cv::Point center(matches[i].column, matches[i].row);
-        cv::circle(result, center, 5, color, -1);
-        cv::circle(result, center, 8, color, 2);
+        //绘制中心点
+        QPointF center(matches[i].column, matches[i].row);
+
+        //实心圆
+        painter.setBrush(color);
+        painter.setPen(Qt::NoPen);
+        painter.drawEllipse(center,5, 5);
+
+        // 空心圆
+        painter.setBrush(Qt::NoBrush);
+        painter.setPen(QPen(color, 2));
+        painter.drawEllipse(center, 8, 8);
 
         // 绘制文字信息
         QString info = QString("#%1 Score:%2")
                            .arg(i + 1)
                            .arg(matches[i].score, 0, 'f', 2);
-        cv::putText(result, info.toStdString(),
-                    cv::Point(matches[i].column + 15, matches[i].row - 15),
-                    cv::FONT_HERSHEY_SIMPLEX, 0.5, color, 2);
+        painter.setPen(color);
+        QFont font("Arial", 10, QFont::Bold);
+        painter.setFont(font);
+        painter.drawText(QPointF(matches[i].column + 15, matches[i].row - 15), info);
     }
-    return result;
+    painter.end();
+    cv::Mat results = ImageUtils::Qimage2Mat(qImg, true);
+    return results;
 }
 
 HImage ShapeMatchStrategy::createTemplateRegion(const Mat &image, const QVector<QPointF> &polygon)
 {
-    // 1️⃣ 转换为 HImage
+
     HImage hImage = ImageUtils::Mat2HImage(image);
 
-    // 2️⃣ 创建多边形 Region
+
     HTuple rows, cols;
     for (const QPointF& pt : polygon) {
         rows.Append(pt.y());
@@ -217,7 +233,7 @@ void ShapeMatchStrategy::extractTemplateContour(const QVector<QPointF> &polygon)
     }
 }
 
-void ShapeMatchStrategy::drawSingleMatch(Mat &image, const MatchResult &match, const Scalar &color) const
+void ShapeMatchStrategy::drawSingleMatch(QPainter &painter, const MatchResult &match, const QColor &color) const
 {
     try {
         // 📖 仿射变换原理：
@@ -239,31 +255,34 @@ void ShapeMatchStrategy::drawSingleMatch(Mat &image, const MatchResult &match, c
                            &transformedRows,
                            &transformedCols);
 
-        // 转换为OpenCV点并绘制
-        std::vector<cv::Point> contourPoints;
-        for (int i = 0; i < transformedRows.Length(); ++i) {
-            contourPoints.push_back(
-                cv::Point(transformedCols[i].D(), transformedRows[i].D())
-                );
+        QPolygonF polygon;
+
+        for (int i = 0; i < transformedRows.Length(); ++i)
+        {
+            polygon<<QPointF(transformedCols[i].D(), transformedRows[i].D());
         }
 
         // 绘制填充多边形（半透明）
-        if (contourPoints.size() >= 3) {
-            cv::Mat overlay = image.clone();
-            cv::fillPoly(overlay, contourPoints, color);
-            cv::addWeighted(overlay, 0.3, image, 0.7, 0, image);
+        if (polygon.size() >= 3)
+        {
+            QColor fillColor = color;
+            fillColor.setAlpha(76);  // 30% 不透明度 (255 * 0.3 ≈ 76)
+            painter.setBrush(fillColor);
+            painter.setPen(Qt::NoPen);
+            painter.drawPolygon(polygon);
 
             // 绘制轮廓线
-            cv::polylines(image, contourPoints, true, color, 2);
+            painter.setBrush(Qt::NoBrush);
+            painter.setPen(QPen(color, 2));
+            painter.drawPolygon(polygon);
         }
 
-    } catch (const HException& ex) {
+    }
+    catch (const HException& ex)
+    {
         Logger::instance()->warning(
             QString("[Shape] 绘制匹配轮廓失败: %1").arg(ex.ErrorMessage().Text())
             );
-        // 降级方案：绘制简单矩形
-        cv::Rect rect(match.column - 50, match.row - 50, 100, 100);
-        cv::rectangle(image, rect, color, 2);
     }
 }
 
@@ -399,21 +418,27 @@ cv::Mat NCCMatchStrategy::drawMatches(const cv::Mat& searchImage,
         return searchImage.clone();
     }
 
-    cv::Mat result = searchImage.clone();
-    if (result.channels() == 1) {
-        cv::cvtColor(result, result, cv::COLOR_GRAY2BGR);
+    // ✅ 1. Mat -> QImage
+    cv::Mat displayImage = searchImage.clone();
+    if (displayImage.channels() == 1) {
+        cv::cvtColor(displayImage, displayImage, cv::COLOR_GRAY2BGR);
     }
+    QImage qImage = ImageUtils::Mat2Qimage(displayImage);
+
+    // ✅ 2. 使用 QPainter 绘制
+    QPainter painter(&qImage);
+    painter.setRenderHint(QPainter::Antialiasing, true);
 
     // NCC不支持轮廓绘制，使用矩形框
     for (int i = 0; i < matches.size(); ++i) {
         // 根据匹配质量选择颜色
-        cv::Scalar color;
+        QColor color;
         if (matches[i].score >= 0.8) {
-            color = cv::Scalar(0, 255, 0);      // 绿色
+            color = QColor(0, 255, 0);      // 绿色
         } else if (matches[i].score >= 0.6) {
-            color = cv::Scalar(0, 255, 255);    // 黄色
+            color = QColor(255, 255, 0);    // 黄色
         } else {
-            color = cv::Scalar(0, 165, 255);    // 橙色
+            color = QColor(255, 165, 0);    // 橙色
         }
 
         // 计算旋转矩形的四个顶点
@@ -424,39 +449,52 @@ cv::Mat NCCMatchStrategy::drawMatches(const cv::Mat& searchImage,
         double sinA = sin(angleRad);
 
         // 四个角点（未旋转）
-        cv::Point2f corners[4] = {
-            cv::Point2f(-halfWidth, -halfHeight),
-            cv::Point2f(halfWidth, -halfHeight),
-            cv::Point2f(halfWidth, halfHeight),
-            cv::Point2f(-halfWidth, halfHeight)
+        QPointF corners[4] = {
+            QPointF(-halfWidth, -halfHeight),
+            QPointF(halfWidth, -halfHeight),
+            QPointF(halfWidth, halfHeight),
+            QPointF(-halfWidth, halfHeight)
         };
 
-        // 旋转并平移
-        std::vector<cv::Point> rotatedCorners;
+        // ✅ 旋转并平移
+        QPolygonF rotatedRect;
         for (int j = 0; j < 4; ++j) {
-            double x = corners[j].x * cosA - corners[j].y * sinA + matches[i].column;
-            double y = corners[j].x * sinA + corners[j].y * cosA + matches[i].row;
-            rotatedCorners.push_back(cv::Point(x, y));
+            double x = corners[j].x() * cosA - corners[j].y() * sinA + matches[i].column;
+            double y = corners[j].x() * sinA + corners[j].y() * cosA + matches[i].row;
+            rotatedRect << QPointF(x, y);
         }
 
-        // 绘制旋转矩形
-        cv::polylines(result, rotatedCorners, true, color, 2);
+        // ✅ 绘制旋转矩形
+        painter.setBrush(Qt::NoBrush);
+        painter.setPen(QPen(color, 2));
+        painter.drawPolygon(rotatedRect);
 
-        // 绘制中心点
-        cv::Point center(matches[i].column, matches[i].row);
-        cv::circle(result, center, 5, color, -1);
-        cv::circle(result, center, 8, color, 2);
+        // ✅ 绘制中心点
+        QPointF center(matches[i].column, matches[i].row);
+        painter.setBrush(color);
+        painter.setPen(Qt::NoPen);
+        painter.drawEllipse(center, 5, 5);
 
-        // 绘制文字信息
+        painter.setBrush(Qt::NoBrush);
+        painter.setPen(QPen(color, 2));
+        painter.drawEllipse(center, 8, 8);
+
+        // ✅ 绘制文字信息
         QString info = QString("#%1 Score:%2 Angle:%3°")
                            .arg(i + 1)
                            .arg(matches[i].score, 0, 'f', 2)
                            .arg(matches[i].angle, 0, 'f', 1);
-        cv::putText(result, info.toStdString(),
-                    cv::Point(matches[i].column + 15, matches[i].row - 15),
-                    cv::FONT_HERSHEY_SIMPLEX, 0.5, color, 2);
+
+        painter.setPen(color);
+        QFont font("Arial", 10, QFont::Bold);
+        painter.setFont(font);
+        painter.drawText(QPointF(matches[i].column + 15, matches[i].row - 15), info);
     }
 
+    painter.end();
+
+    // ✅ 3. QImage -> Mat
+    cv::Mat result = ImageUtils::Qimage2Mat(qImage, true);
     return result;
 }
 
@@ -611,7 +649,7 @@ QVector<MatchResult> OpenCVMatchStrategy::findMatches(const cv::Mat& searchImage
             foundCount++;
 
             // 屏蔽已找到的区域（避免重复检测）
-            int maskRadius = std::max(templateGray.cols, templateGray.rows) / 2;
+            int maskRadius = (std::max)(templateGray.cols, templateGray.rows) / 2;
             cv::circle(mask, matchLoc, maskRadius, cv::Scalar(0), -1);
         }
 

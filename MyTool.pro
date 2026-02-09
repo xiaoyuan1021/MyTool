@@ -3,6 +3,7 @@ QMAKE_PROJECT_DEPTH = 0
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++17
+CONFIG += compile_commands
 
 # DEFINES += PROJECT_DIR=\\\"$$PWD\\\"
 

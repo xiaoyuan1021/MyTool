@@ -132,8 +132,6 @@ private slots:
 
     void on_Slider_hsv_V_High_valueChanged(int value);
 
-
-
     void on_btn_clearAllTemplates_clicked();
 
     void on_comboBox_matchType_currentIndexChanged(int index);
@@ -171,6 +169,8 @@ private:
     QTimer* m_processDebounceTimer;
 
     int m_currentTabIndex;  // 记录当前tab索引
+
+    bool m_needsReprocess = false;
 
     bool m_channelFlag = false;
 

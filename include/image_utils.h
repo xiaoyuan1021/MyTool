@@ -16,6 +16,9 @@ public:
     ImageUtils()=delete;
     static QImage Mat2Qimage(const cv::Mat &mat);
 
+    static Mat Qimage2Mat(const QImage &image, bool clone = true);
+
+
     static HObject MatToHImage(const cv::Mat& cv_img);
     static Mat HImageToMat(HalconCpp::HObject &H_img);
     static Mat HObjectToMat(const HalconCpp::HObject& hObj, int width, int height);

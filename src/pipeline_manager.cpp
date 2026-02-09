@@ -235,35 +235,35 @@ PipelineConfig::FilterMode PipelineManager::getCurrentFilterMode() const
 
 void PipelineManager::resetPipeline()
 {
-    qDebug() << "[PipelineManager] ===== 开始完全重置Pipeline =====";
+    //qDebug() << "[PipelineManager] ===== 开始完全重置Pipeline =====";
 
     // 1️⃣ 清空上次执行的上下文
     //clearLastContext();
 
     // 2️⃣ 重置配置到默认值
     //m_config = getDefaultConfig();
-    qDebug() << "[PipelineManager]   - 配置已重置";
+    //qDebug() << "[PipelineManager]   - 配置已重置";
 
     // 3️⃣ 清空算法队列
     m_algorithmQueue.clear();
-    qDebug() << "[PipelineManager]   - 算法队列已清空";
+    //qDebug() << "[PipelineManager]   - 算法队列已清空";
 
     // 4️⃣ 清空形状筛选
     m_config.shapeFilter.clear();
-    qDebug() << "[PipelineManager]   - 形状筛选已清空";
+    //qDebug() << "[PipelineManager]   - 形状筛选已清空";
 
     // 5️⃣ 重置显示模式
     m_displayMode = DisplayConfig::Mode::MaskGreenWhite;
     m_overlayAlpha = 0.3f;
-    qDebug() << "[PipelineManager]   - 显示模式已重置";
+    //qDebug() << "[PipelineManager]   - 显示模式已重置";
 
     // 6️⃣ 重新初始化Pipeline
     initPipeline();
-    qDebug() << "[PipelineManager]   - Pipeline已重新初始化";
+    //qDebug() << "[PipelineManager]   - Pipeline已重新初始化";
 
     // 7️⃣ 发出信号
     emit pipelineReset();
     emit algorithmQueueChanged(0);
 
-    qDebug() << "[PipelineManager] ===== Pipeline重置完成 =====";
+    //qDebug() << "[PipelineManager] ===== Pipeline重置完成 =====";
 }

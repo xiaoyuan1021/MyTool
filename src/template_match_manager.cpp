@@ -141,7 +141,8 @@ bool TemplateMatchManager::hasTemplate() const
 
 cv::Mat TemplateMatchManager::getTemplateImage() const
 {
-    if (!m_currentStrategy) {
+    if (!m_currentStrategy)
+    {
         return cv::Mat();
     }
     return m_currentStrategy->getTemplateImage();
@@ -150,7 +151,8 @@ cv::Mat TemplateMatchManager::getTemplateImage() const
 void TemplateMatchManager::clearTemplate()
 {
     // 清空所有策略的模板（重新创建策略实例）
-    for (auto& pair : m_strategies.toStdMap()) {
+    for (auto& pair : m_strategies.toStdMap())
+    {
         MatchType type = pair.first;
         switch (type) {
         case MatchType::ShapeModel:
