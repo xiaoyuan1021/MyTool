@@ -4,7 +4,6 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++17
 
-
 # DEFINES += PROJECT_DIR=\\\"$$PWD\\\"
 
 # ===== OpenCV 配置 (使用本地 3rdparty) =====
