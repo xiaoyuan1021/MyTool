@@ -35,7 +35,8 @@ void ImageView::setImage(const QImage &img)
         delete m_roiRectItem;
         m_roiRectItem = nullptr;
     }
-
+    m_roiReady = false;  
+    m_roiHandle = None;  
     // 重置缩放
     resetTransform();
     m_scaleFactor = 1.0;
@@ -61,6 +62,8 @@ void ImageView::clearRoi()
         m_roiRectItem=nullptr;
     }
     m_isDrawingRoi=false;
+    m_roiReady=false;
+    m_roiHandle=None;
 }
 
 void ImageView::finishRoiMode()
@@ -103,6 +106,26 @@ QPointF ImageView::viewPosToImagePos(const QPoint &viewPos) const
 // =================== 鼠标按下 ===================
 void ImageView::mousePressEvent(QMouseEvent *event)
 {
+    // 检测是否点击了ROI把手（仅在ROI已准备好且不在绘制状态时）
+    if (m_roiReady && !m_isDrawingRoi && event->button() == Qt::LeftButton) {
+        QPointF imgPos = viewPosToImagePos(event->pos());
+        RoiHandle handle = getRoiHandleAtPos(imgPos);
+        
+        if (handle != None) {
+            m_roiHandle = handle;
+            m_dragStartPos = imgPos;
+            m_dragStartRect = m_roiRectItem->rect();
+            
+            // 如果是移动整个ROI，设置抓手光标
+            if (handle == Move) {
+                setCursor(Qt::ClosedHandCursor);
+            }
+            
+            event->accept();
+            return;
+        }
+    }
+
     if (m_polygonMode)
     {
         if (event->button() == Qt::LeftButton)
@@ -182,6 +205,82 @@ void ImageView::mousePressEvent(QMouseEvent *event)
 // =================== 鼠标移动 ===================
 void ImageView::mouseMoveEvent(QMouseEvent *event)
 {
+    // ROI拖拽或调整大小中
+    if (m_roiHandle != None && m_roiRectItem) {
+        QPointF curImgPos = viewPosToImagePos(event->pos());
+        QPointF delta = curImgPos - m_dragStartPos;
+        QRectF newRect = m_dragStartRect;
+        
+        // 根据把手类型更新矩形
+        switch (m_roiHandle) {
+            case Move: {
+                // 移动整个ROI
+                newRect.translate(delta);
+                // 限制在图像范围内
+                QSize imgSize = getImageSize();
+                if (newRect.left() < 0) {
+                    newRect.moveLeft(0);
+                }
+                if (newRect.top() < 0) {
+                    newRect.moveTop(0);
+                }
+                if (newRect.right() > imgSize.width()) {
+                    newRect.moveRight(imgSize.width());
+                }
+                if (newRect.bottom() > imgSize.height()) {
+                    newRect.moveBottom(imgSize.height());
+                }
+                break;
+            }
+            case TopLeft:
+                newRect.setTopLeft(m_dragStartRect.topLeft() + delta);
+                break;
+            case TopRight:
+                newRect.setTopRight(m_dragStartRect.topRight() + delta);
+                break;
+            case BottomLeft:
+                newRect.setBottomLeft(m_dragStartRect.bottomLeft() + delta);
+                break;
+            case BottomRight:
+                newRect.setBottomRight(m_dragStartRect.bottomRight() + delta);
+                break;
+            case Top:
+                newRect.setTop(m_dragStartRect.top() + delta.y());
+                break;
+            case Bottom:
+                newRect.setBottom(m_dragStartRect.bottom() + delta.y());
+                break;
+            case Left:
+                newRect.setLeft(m_dragStartRect.left() + delta.x());
+                break;
+            case Right:
+                newRect.setRight(m_dragStartRect.right() + delta.x());
+                break;
+            default:
+                break;
+        }
+        
+        // 确保矩形不会反转（宽度和高度至少为2像素）
+        if (newRect.width() < 2) {
+            newRect.setWidth(2);
+        }
+        if (newRect.height() < 2) {
+            newRect.setHeight(2);
+        }
+        
+        m_roiRectItem->setRect(newRect.normalized());
+        m_roiRectImg = newRect.normalized();
+        event->accept();
+        return;
+    }
+
+    // 当没有拖拽时，检测鼠标位置以更新光标
+    if (m_roiReady && !m_isDrawingRoi) {
+        QPointF imgPos = viewPosToImagePos(event->pos());
+        RoiHandle handle = getRoiHandleAtPos(imgPos);
+        setCursorForHandle(handle);
+    }
+
     if (getImageSize().isEmpty()) {
         QGraphicsView::mouseMoveEvent(event);
         return;
@@ -221,6 +320,31 @@ void ImageView::mouseMoveEvent(QMouseEvent *event)
 // =================== 鼠标释放 ===================
 void ImageView::mouseReleaseEvent(QMouseEvent *event)
 {
+    // 结束ROI拖拽或调整
+    if (m_roiHandle != None) {
+        m_roiHandle = None;
+        
+        // 更新ROI矩形数据
+        if (m_roiRectItem) {
+            m_roiRectImg = m_roiRectItem->rect();
+            
+            // 检查ROI是否仍然有效
+            m_roiReady = (m_roiRectImg.width() > 2 && m_roiRectImg.height() > 2);
+        }
+        
+        // 恢复光标
+        if (m_roiReady && m_roiRectItem) {
+            QPointF imgPos = viewPosToImagePos(event->pos());
+            RoiHandle handle = getRoiHandleAtPos(imgPos);
+            setCursorForHandle(handle);
+        } else {
+            setCursor(Qt::ArrowCursor);
+        }
+        
+        event->accept();
+        return;
+    }
+
     if (event->button() == Qt::LeftButton && m_isDrawingRoi)
     {
         m_isDrawingRoi = false;
@@ -242,6 +366,100 @@ void ImageView::mouseReleaseEvent(QMouseEvent *event)
     }
 
     QGraphicsView::mouseReleaseEvent(event);
+}
+
+// 检测鼠标在ROI框上的位置
+RoiHandle ImageView::getRoiHandleAtPos(const QPointF &imgPos) const
+{
+    if (!m_roiRectItem || !m_roiReady) {
+        return None;
+    }
+
+    // 获取当前ROI矩形（图像坐标）
+    QRectF rect = m_roiRectItem->rect();
+    
+    // 计算把手检测范围（考虑缩放比例）
+    double handleScale = 1.0 / m_scaleFactor;
+    double handleSize = m_handleSize * handleScale;
+
+    // 扩展检测范围，便于用户点击
+    double tolerance = handleSize * 2.0;
+
+    // 判断是否在四个角
+    if (imgPos.x() >= rect.left() - tolerance && imgPos.x() <= rect.left() + tolerance &&
+        imgPos.y() >= rect.top() - tolerance && imgPos.y() <= rect.top() + tolerance) {
+        return TopLeft;
+    }
+    if (imgPos.x() >= rect.right() - tolerance && imgPos.x() <= rect.right() + tolerance &&
+        imgPos.y() >= rect.top() - tolerance && imgPos.y() <= rect.top() + tolerance) {
+        return TopRight;
+    }
+    if (imgPos.x() >= rect.left() - tolerance && imgPos.x() <= rect.left() + tolerance &&
+        imgPos.y() >= rect.bottom() - tolerance && imgPos.y() <= rect.bottom() + tolerance) {
+        return BottomLeft;
+    }
+    if (imgPos.x() >= rect.right() - tolerance && imgPos.x() <= rect.right() + tolerance &&
+        imgPos.y() >= rect.bottom() - tolerance && imgPos.y() <= rect.bottom() + tolerance) {
+        return BottomRight;
+    }
+
+    // 判断是否在四条边（但不包括角）
+    if (imgPos.x() >= rect.left() && imgPos.x() <= rect.right()) {
+        if (imgPos.y() >= rect.top() - tolerance && imgPos.y() <= rect.top() + tolerance) {
+            return Top;
+        }
+        if (imgPos.y() >= rect.bottom() - tolerance && imgPos.y() <= rect.bottom() + tolerance) {
+            return Bottom;
+        }
+    }
+    
+    if (imgPos.y() >= rect.top() && imgPos.y() <= rect.bottom()) {
+        if (imgPos.x() >= rect.left() - tolerance && imgPos.x() <= rect.left() + tolerance) {
+            return Left;
+        }
+        if (imgPos.x() >= rect.right() - tolerance && imgPos.x() <= rect.right() + tolerance) {
+            return Right;
+        }
+    }
+
+    // 判断是否在ROI内部（可以拖拽整个ROI）
+    if (rect.contains(imgPos)) {
+        return Move;
+    }
+
+    return None;
+}
+
+void ImageView::setCursorForHandle(RoiHandle handle)
+{
+   Qt::CursorShape cursor;
+    
+    switch (handle) {
+        case TopLeft:
+        case BottomRight:
+            cursor = Qt::SizeFDiagCursor;
+            break;
+        case TopRight:
+        case BottomLeft:
+            cursor = Qt::SizeBDiagCursor;
+            break;
+        case Top:
+        case Bottom:
+            cursor = Qt::SizeVerCursor;
+            break;
+        case Left:
+        case Right:
+            cursor = Qt::SizeHorCursor;
+            break;
+        case Move:
+            cursor = Qt::OpenHandCursor;
+            break;
+        default:
+            cursor = Qt::ArrowCursor;
+            break;
+    }
+    
+    setCursor(cursor); 
 }
 
 void RoiManager::setFullImage(const cv::Mat &img)

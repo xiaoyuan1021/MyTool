@@ -27,3 +27,5 @@ Thumbs.db
 # 第三方库
 3rdparty/opencv/
 3rdparty/halcon/
+
+images/
