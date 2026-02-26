@@ -8,6 +8,8 @@
 #include <QSpinBox>
 #include <QListWidgetItem>
 #include <QTimer>
+#include <QStack>
+#include <QSignalBlocker>
 
 #include <opencv2/opencv.hpp>
 
@@ -33,6 +35,23 @@ QT_END_NAMESPACE
  * 3. ROI管理
  * 4. 协调各模块工作
  */
+
+struct EnhancementState
+{
+    int brightness = 0;
+    int contrast = 100;
+    int gamma = 100;
+    int sharpen = 100;
+
+    bool operator==(const EnhancementState& other) const
+    {
+        return brightness == other.brightness &&
+               contrast == other.contrast &&
+               gamma == other.gamma &&
+               sharpen == other.sharpen;
+    }   
+};
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -140,6 +159,10 @@ private slots:
 
     void on_btn_applyChannel_clicked();
 
+    void on_btn_undoBC_clicked();
+
+    void on_btn_saveBC_clicked();
+
 private:
     // ========== 初始化 ==========
     void setupUI();
@@ -195,6 +218,13 @@ private:
                              const QVector<MatchResult>& results);
     void updateTemplateUIState(bool hasTemplate);
     void updateParameterUIForMatchType(MatchType type);
+
+    EnhancementState captureEnhancementState() const;
+    void applyEnhancementState(const EnhancementState& state);
+    void updateEnhancementUndoState();
+
+    QStack<EnhancementState> m_enhancementHistory;
+
 
 };
 

@@ -27,6 +27,10 @@ MainWindow::MainWindow(QWidget *parent)
     setupUI();
     setupConnections();
 
+    m_enhancementHistory.push(captureEnhancementState());
+    updateEnhancementUndoState();
+
+
     setupSystemMonitor();
     Logger::instance()->setTextEdit(ui->textEdit_log);
     Logger::instance()->setLogFile("test.log");
@@ -462,6 +466,10 @@ void MainWindow::on_btn_resetBC_clicked()
     ui->Slider_contrast->setValue(100);
     ui->Slider_gamma->setValue(100);
     ui->Slider_sharpen->setValue(100);
+
+    m_enhancementHistory.clear();
+    m_enhancementHistory.push(captureEnhancementState());
+    updateEnhancementUndoState();
 
     m_pipelineManager->resetEnhancement();
     m_pipelineManager->setGrayFilterEnabled(false);
@@ -995,6 +1003,38 @@ void MainWindow::updateParameterUIForMatchType(MatchType type)
         );
 }
 
+EnhancementState MainWindow::captureEnhancementState() const
+{
+    EnhancementState state;
+    state.brightness = ui->Slider_brightness->value();
+    state.contrast   = ui->Slider_contrast->value();
+    state.gamma      = ui->Slider_gamma->value();
+    state.sharpen    = ui->Slider_sharpen->value();
+    return state;
+}
+
+void MainWindow::applyEnhancementState(const EnhancementState &state)
+{
+    const QSignalBlocker b1(ui->Slider_brightness);
+    const QSignalBlocker b2(ui->Slider_contrast);
+    const QSignalBlocker b3(ui->Slider_gamma);
+    const QSignalBlocker b4(ui->Slider_sharpen);
+
+    ui->Slider_brightness->setValue(state.brightness);
+    ui->Slider_contrast->setValue(state.contrast);
+    ui->Slider_gamma->setValue(state.gamma);
+    ui->Slider_sharpen->setValue(state.sharpen);
+
+    processAndDisplay();
+}
+
+void MainWindow::updateEnhancementUndoState()
+{
+    bool hasSnapshot = !m_enhancementHistory.isEmpty();
+    bool canStepBack = m_enhancementHistory.size() > 1;
+    ui->btn_undoBC->setEnabled(hasSnapshot && canStepBack);
+}
+
 void MainWindow::on_btn_creatTemplate_clicked()
 {
     // 1️⃣ 检查是否有图像
@@ -1494,6 +1534,48 @@ void MainWindow::on_tabWidget_currentChanged(int index)
 
 void MainWindow::on_btn_applyChannel_clicked()
 {
-    m_channelFlag = true;
+    m_channelFlag = ! m_channelFlag;
+    if(m_channelFlag)
+    {
+        ui->btn_applyChannel->setText("通道切换: ON");
+        ui->statusbar->showMessage("已应用通道效果");
+    }
+    else
+    {
+        ui->btn_applyChannel->setText("通道切换: OFF");
+        ui->statusbar->showMessage("已取消通道效果");
+    }   
     processAndDisplay();
+}
+
+void MainWindow::on_btn_undoBC_clicked()
+{
+    if (m_enhancementHistory.isEmpty())
+        return;
+
+    EnhancementState current = captureEnhancementState();
+    const EnhancementState& latest = m_enhancementHistory.top();
+
+    // 先撤销未保存的改动
+    if (!(current == latest)) {
+        applyEnhancementState(latest);
+        return;
+    }
+
+    // 继续回溯到更早快照
+    if (m_enhancementHistory.size() > 1) {
+        m_enhancementHistory.pop();
+        applyEnhancementState(m_enhancementHistory.top());
+    }
+    updateEnhancementUndoState();
+}
+
+void MainWindow::on_btn_saveBC_clicked()
+{
+    EnhancementState current = captureEnhancementState();
+    if (m_enhancementHistory.isEmpty() || !(current == m_enhancementHistory.top())) {
+        m_enhancementHistory.push(current);
+        Logger::instance()->info("增强参数已保存为快照");
+    }
+    updateEnhancementUndoState();
 }
