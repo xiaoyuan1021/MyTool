@@ -19,6 +19,7 @@
 #include "pipeline_manager.h"  // ✅ 新增：使用Pipeline管理器
 #include "template_match_manager.h"
 #include "system_monitor.h"
+#include "controllers/image_tab_controller.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -157,7 +158,7 @@ private slots:
 
     void on_tabWidget_currentChanged(int index);
 
-    void on_btn_applyChannel_clicked();
+    //void on_btn_applyChannel_clicked();
 
     void on_btn_undoBC_clicked();
 
@@ -195,7 +196,7 @@ private:
 
     bool m_needsReprocess = false;
 
-    bool m_channelFlag = false;
+    //bool m_channelFlag = false;
 
     // ✅ 模板匹配相关函数
     void findAndDisplayMatches(const QVector<MatchResult>& results);
@@ -225,6 +226,7 @@ private:
 
     QStack<EnhancementState> m_enhancementHistory;
 
+    std::unique_ptr<ImageTabController> m_imageTabController;
 
 };
 

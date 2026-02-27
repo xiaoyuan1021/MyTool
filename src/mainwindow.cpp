@@ -35,6 +35,22 @@ MainWindow::MainWindow(QWidget *parent)
     Logger::instance()->setTextEdit(ui->textEdit_log);
     Logger::instance()->setLogFile("test.log");
     Logger::instance()->enableFileLog(true);
+
+    m_imageTabController = std::make_unique<ImageTabController>(
+    ui, m_pipelineManager, this);
+    connect(m_imageTabController.get(), &ImageTabController::channelChanged,
+            this, [this](PipelineConfig::Channel channel) {
+                // 保留原先的显示模式逻辑
+                DisplayConfig::Mode mode =
+                    (channel == PipelineConfig::Channel::RGB)
+                        ? DisplayConfig::Mode::Original
+                        : DisplayConfig::Mode::Enhanced;
+                m_pipelineManager->setDisplayMode(mode);
+                processAndDisplay();
+            });
+    m_imageTabController->initialize();
+
+
 }
 
 MainWindow::~MainWindow()
@@ -284,33 +300,33 @@ void MainWindow::processAndDisplay()
 
     // ========== 3. 根据当前Tab设置显示模式 ==========
     // ✅ 方案A：完全由Tab控制显示内容
-    switch (m_currentTabIndex)
-    {
-    case 0:  // "图像" Tab
-        m_pipelineManager->setDisplayMode(m_channelFlag ? DisplayConfig::Mode::Enhanced : DisplayConfig::Mode::Original);
-        break;
-    case 1:  // "增强" Tab
-        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Enhanced);
-        break;
-    case 2:  // "补正" Tab
-        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original);
-        break;
-    case 3:  // "过滤" Tab
-        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite);
-        break;
-    case 4:  // "处理" Tab
-        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Processed);
-        break;
-    case 5:  // "提取" Tab
-        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite);
-        break;
-    case 6:  // "判定" Tab
-        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite);
-        break;
-    default:
-        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original);
-        break;
-    }
+    // switch (m_currentTabIndex)
+    // {
+    // case 0:  // "图像" Tab
+    //     m_pipelineManager->setDisplayMode(m_channelFlag ? DisplayConfig::Mode::Enhanced : DisplayConfig::Mode::Original);
+    //     break;
+    // case 1:  // "增强" Tab
+    //     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Enhanced);
+    //     break;
+    // case 2:  // "补正" Tab
+    //     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original);
+    //     break;
+    // case 3:  // "过滤" Tab
+    //     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite);
+    //     break;
+    // case 4:  // "处理" Tab
+    //     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Processed);
+    //     break;
+    // case 5:  // "提取" Tab
+    //     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite);
+    //     break;
+    // case 6:  // "判定" Tab
+    //     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite);
+    //     break;
+    // default:
+    //     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original);
+    //     break;
+    // }
 
     // ========== 4. 执行 Pipeline ==========
     cv::Mat currentImage = m_roiManager.getCurrentImage();
@@ -1529,22 +1545,6 @@ void MainWindow::on_tabWidget_currentChanged(int index)
     m_currentTabIndex = index;
 
 
-    processAndDisplay();
-}
-
-void MainWindow::on_btn_applyChannel_clicked()
-{
-    m_channelFlag = ! m_channelFlag;
-    if(m_channelFlag)
-    {
-        ui->btn_applyChannel->setText("通道切换: ON");
-        ui->statusbar->showMessage("已应用通道效果");
-    }
-    else
-    {
-        ui->btn_applyChannel->setText("通道切换: OFF");
-        ui->statusbar->showMessage("已取消通道效果");
-    }   
     processAndDisplay();
 }
 

@@ -29,6 +29,7 @@ LIBS += -L$$HALCON_DIR/lib \
         -lhalconxl
 
 INCLUDEPATH += $$PWD/include
+INCLUDEPATH += $$PWD/controllers
 # ===== 源文件 =====
 SOURCES += \
     src/match_strategy.cpp \
@@ -42,7 +43,8 @@ SOURCES += \
     src/pipeline.cpp \
     src/pipeline_manager.cpp \
     src/system_monitor.cpp \
-    src/template_match_manager.cpp
+    src/template_match_manager.cpp \
+    controllers/image_tab_controller.cpp
 
 # ===== 头文件 =====
 HEADERS += \
@@ -58,7 +60,9 @@ HEADERS += \
     include/shape_filter_types.h \
     include/system_monitor.h \
     include/template_match_manager.h \
-    include/match_strategy.h
+    include/match_strategy.h \
+    controllers/image_tab_controller.h
+
 
 # ===== UI 文件 =====
 FORMS += \
