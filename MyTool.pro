@@ -44,7 +44,8 @@ SOURCES += \
     src/pipeline_manager.cpp \
     src/system_monitor.cpp \
     src/template_match_manager.cpp \
-    controllers/image_tab_controller.cpp
+    controllers/image_tab_controller.cpp \
+    controllers/enhancement_tab_controller.cpp
 
 # ===== 头文件 =====
 HEADERS += \
@@ -61,7 +62,8 @@ HEADERS += \
     include/system_monitor.h \
     include/template_match_manager.h \
     include/match_strategy.h \
-    controllers/image_tab_controller.h
+    controllers/image_tab_controller.h \
+    controllers/enhancement_tab_controller.h
 
 
 # ===== UI 文件 =====

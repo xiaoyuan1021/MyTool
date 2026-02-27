@@ -27,8 +27,8 @@ MainWindow::MainWindow(QWidget *parent)
     setupUI();
     setupConnections();
 
-    m_enhancementHistory.push(captureEnhancementState());
-    updateEnhancementUndoState();
+    // m_enhancementHistory.push(captureEnhancementState());
+    // updateEnhancementUndoState();
 
 
     setupSystemMonitor();
@@ -49,6 +49,11 @@ MainWindow::MainWindow(QWidget *parent)
                 processAndDisplay();
             });
     m_imageTabController->initialize();
+
+    m_enhancementController = std::make_unique<EnhancementTabController>(
+    ui, m_pipelineManager, m_processDebounceTimer,
+    [this]() { processAndDisplay(); }, this);
+m_enhancementController->initialize();
 
 
 }
@@ -198,9 +203,10 @@ void MainWindow::setupConnections()
             });
 
     connect(m_pipelineManager, &PipelineManager::algorithmQueueChanged,
-            [](int count) {
+            []() {
                 //Logger::instance()->info(QString("算法队列数量:").arg(count));
             });
+
 
     connect(ui->comboBox_selectAlgorithm,QOverload<int>::of(&QComboBox::currentIndexChanged),
             this,&MainWindow::onAlgorithmTypeChanged);
@@ -211,7 +217,6 @@ void MainWindow::setupConnections()
     connect(m_templateManager, &TemplateMatchManager::templateCreated,
             this, [this](const QString& name) {
                 Logger::instance()->info(QString("模板已创建: %1").arg(name));
-                updateTemplateList();
             });
 
     connect(m_templateManager, &TemplateMatchManager::matchCompleted,
@@ -298,35 +303,35 @@ void MainWindow::processAndDisplay()
 
     m_pipelineManager->setCurrentFilterMode(targetMode);
 
-    // ========== 3. 根据当前Tab设置显示模式 ==========
-    // ✅ 方案A：完全由Tab控制显示内容
-    // switch (m_currentTabIndex)
-    // {
-    // case 0:  // "图像" Tab
-    //     m_pipelineManager->setDisplayMode(m_channelFlag ? DisplayConfig::Mode::Enhanced : DisplayConfig::Mode::Original);
-    //     break;
-    // case 1:  // "增强" Tab
-    //     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Enhanced);
-    //     break;
-    // case 2:  // "补正" Tab
-    //     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original);
-    //     break;
-    // case 3:  // "过滤" Tab
-    //     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite);
-    //     break;
-    // case 4:  // "处理" Tab
-    //     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Processed);
-    //     break;
-    // case 5:  // "提取" Tab
-    //     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite);
-    //     break;
-    // case 6:  // "判定" Tab
-    //     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite);
-    //     break;
-    // default:
-    //     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original);
-    //     break;
-    // }
+    //========== 3. 根据当前Tab设置显示模式 ==========
+    //✅ 方案A：完全由Tab控制显示内容
+    switch (m_currentTabIndex)
+    {
+    case 0:  // "图像" Tab
+        //m_pipelineManager->setDisplayMode(m_channelFlag ? DisplayConfig::Mode::Enhanced : DisplayConfig::Mode::Original);
+        break;
+    case 1:  // "增强" Tab
+        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Enhanced);
+        break;
+    case 2:  // "补正" Tab
+        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original);
+        break;
+    case 3:  // "过滤" Tab
+        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite);
+        break;
+    case 4:  // "处理" Tab
+        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Processed);
+        break;
+    case 5:  // "提取" Tab
+        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite);
+        break;
+    case 6:  // "判定" Tab
+        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite);
+        break;
+    default:
+        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original);
+        break;
+    }
 
     // ========== 4. 执行 Pipeline ==========
     cv::Mat currentImage = m_roiManager.getCurrentImage();
@@ -432,36 +437,6 @@ void MainWindow::on_btn_saveImg_clicked()
     ui->statusbar->showMessage("图片保存成功", 2000);
 }
 
-// ========== 参数调整 ==========
-
-void MainWindow::on_Slider_brightness_valueChanged(int)
-{
-    m_pipelineManager->setGrayFilterEnabled(false);
-    m_needsReprocess = true;
-    m_processDebounceTimer->start();
-}
-
-void MainWindow::on_Slider_contrast_valueChanged(int)
-{
-    m_pipelineManager->setGrayFilterEnabled(false);
-    m_needsReprocess = true;
-    m_processDebounceTimer->start();
-}
-
-void MainWindow::on_Slider_gamma_valueChanged(int)
-{
-    m_pipelineManager->setGrayFilterEnabled(false);
-    m_needsReprocess = true;
-    m_processDebounceTimer->start();
-}
-
-void MainWindow::on_Slider_sharpen_valueChanged(int)
-{
-    m_pipelineManager->setGrayFilterEnabled(false);
-    m_needsReprocess = true;
-    m_processDebounceTimer->start();
-}
-
 void MainWindow::on_Slider_grayLow_valueChanged(int)
 {
     m_pipelineManager->setGrayFilterEnabled(true);
@@ -476,22 +451,7 @@ void MainWindow::on_Slider_grayHigh_valueChanged(int)
     m_processDebounceTimer->start();
 }
 
-void MainWindow::on_btn_resetBC_clicked()
-{
-    ui->Slider_brightness->setValue(0);
-    ui->Slider_contrast->setValue(100);
-    ui->Slider_gamma->setValue(100);
-    ui->Slider_sharpen->setValue(100);
 
-    m_enhancementHistory.clear();
-    m_enhancementHistory.push(captureEnhancementState());
-    updateEnhancementUndoState();
-
-    m_pipelineManager->resetEnhancement();
-    m_pipelineManager->setGrayFilterEnabled(false);
-    Logger::instance()->info("参数已重置");
-    processAndDisplay();
-}
 
 // ========== ROI操作 ==========
 
@@ -535,11 +495,6 @@ void MainWindow::onRoiSelected(const QRectF &roiImgRectF)
 }
 
 // ========== 算法队列操作 ==========
-
-void MainWindow::on_comboBox_selectAlgorithm_currentIndexChanged(int index)
-{
-    Q_UNUSED(index);
-}
 
 void MainWindow::on_btn_addOption_clicked()
 {
@@ -988,6 +943,7 @@ void MainWindow::displayTemplatePreview(const Mat &templateImage)
 
 void MainWindow::displayMatchResults(const Mat &resultImage, const QVector<MatchResult> &results)
 {
+    Q_UNUSED(results);
     if (!resultImage.empty()) {
         showImage(resultImage);
     }
@@ -1019,37 +975,7 @@ void MainWindow::updateParameterUIForMatchType(MatchType type)
         );
 }
 
-EnhancementState MainWindow::captureEnhancementState() const
-{
-    EnhancementState state;
-    state.brightness = ui->Slider_brightness->value();
-    state.contrast   = ui->Slider_contrast->value();
-    state.gamma      = ui->Slider_gamma->value();
-    state.sharpen    = ui->Slider_sharpen->value();
-    return state;
-}
 
-void MainWindow::applyEnhancementState(const EnhancementState &state)
-{
-    const QSignalBlocker b1(ui->Slider_brightness);
-    const QSignalBlocker b2(ui->Slider_contrast);
-    const QSignalBlocker b3(ui->Slider_gamma);
-    const QSignalBlocker b4(ui->Slider_sharpen);
-
-    ui->Slider_brightness->setValue(state.brightness);
-    ui->Slider_contrast->setValue(state.contrast);
-    ui->Slider_gamma->setValue(state.gamma);
-    ui->Slider_sharpen->setValue(state.sharpen);
-
-    processAndDisplay();
-}
-
-void MainWindow::updateEnhancementUndoState()
-{
-    bool hasSnapshot = !m_enhancementHistory.isEmpty();
-    bool canStepBack = m_enhancementHistory.size() > 1;
-    ui->btn_undoBC->setEnabled(hasSnapshot && canStepBack);
-}
 
 void MainWindow::on_btn_creatTemplate_clicked()
 {
@@ -1340,53 +1266,6 @@ void MainWindow::loadAlgorithmParameters(int index)
     //     );
 }
 
-void MainWindow::findAndDisplayMatches(const QVector<MatchResult> &results)
-{
-
-    // 1️⃣ 获取当前图像
-    // cv::Mat currentImage = m_roiManager.getCurrentImage();
-    // if (currentImage.empty()) {
-    //     Logger::instance()->warning("当前没有图像");
-    //     return;
-    // }
-
-    // // 2️⃣ 获取匹配参数
-    // int templateIndex = 0;
-    // double minScore = ui->doubleSpinBox_minScore->value();
-    // int maxMatches = ui->spinBox_matchNumber->value();
-
-    // // 3️⃣ 执行匹配
-    // QVector<MatchResult> matches = m_templateManager->findTemplate(
-    //     currentImage,
-    //     templateIndex,
-    //     minScore,
-    //     maxMatches
-    //     );
-
-    // // 4️⃣ ✅ 核心改进: 使用Manager的方法绘制结果
-    // cv::Mat resultImage = m_templateManager->drawMatches(
-    //     currentImage,
-    //     templateIndex,
-    //     matches
-    //     );
-
-    // // 5️⃣ 显示结果
-    // QImage qimg = ImageUtils::Mat2Qimage(resultImage);
-    // m_view->setImage(qimg);
-
-    // // 6️⃣ 更新UI状态
-    // QString statusMsg = matches.isEmpty()
-    //                         ? "未找到匹配"
-    //                         : QString("找到 %1 个匹配").arg(matches.size());
-
-    // ui->statusbar->showMessage(statusMsg, 3000);
-}
-
-void MainWindow::updateTemplateList()
-{
-
-}
-
 void MainWindow::on_btn_openLog_clicked()
 {
     Logger::instance()->openLogFolder(true);
@@ -1415,80 +1294,81 @@ void MainWindow::on_comboBox_filterMode_currentIndexChanged(int index)
     processAndDisplay();
 }
 
-
 void MainWindow::on_Slider_rgb_R_Low_valueChanged(int value)
 {
+    Q_UNUSED(value);
     m_processDebounceTimer->start();
 }
-
 
 void MainWindow::on_Slider_rgb_R_High_valueChanged(int value)
 {
+    Q_UNUSED(value);
     m_processDebounceTimer->start();
 }
-
 
 void MainWindow::on_Slider_rgb_G_Low_valueChanged(int value)
 {
+    Q_UNUSED(value);
     m_processDebounceTimer->start();
 }
-
 
 void MainWindow::on_Slider_rgb_G_High_valueChanged(int value)
 {
+    Q_UNUSED(value);
     m_processDebounceTimer->start();
 }
-
 
 void MainWindow::on_Slider_rgb_B_Low_valueChanged(int value)
 {
+    Q_UNUSED(value);    
     m_processDebounceTimer->start();
 }
-
 
 void MainWindow::on_Slider_rgb_B_High_valueChanged(int value)
 {
+    Q_UNUSED(value);
     m_processDebounceTimer->start();
 }
-
 
 void MainWindow::on_Slider_hsv_H_Low_valueChanged(int value)
 {
+    Q_UNUSED(value);
     m_processDebounceTimer->start();
 }
-
 
 void MainWindow::on_Slider_hsv_H_High_valueChanged(int value)
 {
+    Q_UNUSED(value);
     m_processDebounceTimer->start();
 }
-
 
 void MainWindow::on_Slider_hsv_S_Low_valueChanged(int value)
 {
+    Q_UNUSED(value);
     m_processDebounceTimer->start();
 }
-
 
 void MainWindow::on_Slider_hsv_S_High_valueChanged(int value)
 {
+    Q_UNUSED(value);
     m_processDebounceTimer->start();
 }
-
 
 void MainWindow::on_Slider_hsv_V_Low_valueChanged(int value)
 {
+    Q_UNUSED(value);
     m_processDebounceTimer->start();
 }
 
-
 void MainWindow::on_Slider_hsv_V_High_valueChanged(int value)
 {
+    Q_UNUSED(value);
     m_processDebounceTimer->start();
 }
 
 void MainWindow::on_comboBox_matchType_currentIndexChanged(int index)
 {
+    Q_UNUSED(index);
     QString typeName = ui->comboBox_matchType->currentText();
     MatchType type;
 
@@ -1508,10 +1388,6 @@ void MainWindow::on_comboBox_matchType_currentIndexChanged(int index)
     // Logger::instance()->info(
     //     QString("切换匹配类型: %1")
     //         .arg(typeName)
-    //     );
-
-    // ui->statusbar->showMessage(
-    //     QString("当前算法: %1").arg(m_templateManager->getCurrentStrategyName()), 3000
     //     );
 }
 
@@ -1538,44 +1414,9 @@ void MainWindow::on_btn_clearAllTemplates_clicked()
     }
 }
 
-
 void MainWindow::on_tabWidget_currentChanged(int index)
 {
     if(m_roiManager.getFullImage().empty()) return;
     m_currentTabIndex = index;
-
-
     processAndDisplay();
-}
-
-void MainWindow::on_btn_undoBC_clicked()
-{
-    if (m_enhancementHistory.isEmpty())
-        return;
-
-    EnhancementState current = captureEnhancementState();
-    const EnhancementState& latest = m_enhancementHistory.top();
-
-    // 先撤销未保存的改动
-    if (!(current == latest)) {
-        applyEnhancementState(latest);
-        return;
-    }
-
-    // 继续回溯到更早快照
-    if (m_enhancementHistory.size() > 1) {
-        m_enhancementHistory.pop();
-        applyEnhancementState(m_enhancementHistory.top());
-    }
-    updateEnhancementUndoState();
-}
-
-void MainWindow::on_btn_saveBC_clicked()
-{
-    EnhancementState current = captureEnhancementState();
-    if (m_enhancementHistory.isEmpty() || !(current == m_enhancementHistory.top())) {
-        m_enhancementHistory.push(current);
-        Logger::instance()->info("增强参数已保存为快照");
-    }
-    updateEnhancementUndoState();
 }

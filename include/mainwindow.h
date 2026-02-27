@@ -20,6 +20,7 @@
 #include "template_match_manager.h"
 #include "system_monitor.h"
 #include "controllers/image_tab_controller.h"
+#include "controllers/enhancement_tab_controller.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -37,22 +38,6 @@ QT_END_NAMESPACE
  * 4. 协调各模块工作
  */
 
-struct EnhancementState
-{
-    int brightness = 0;
-    int contrast = 100;
-    int gamma = 100;
-    int sharpen = 100;
-
-    bool operator==(const EnhancementState& other) const
-    {
-        return brightness == other.brightness &&
-               contrast == other.contrast &&
-               gamma == other.gamma &&
-               sharpen == other.sharpen;
-    }   
-};
-
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -65,20 +50,14 @@ private slots:
     // ========== 文件操作 ==========
     void on_btn_openImg_clicked();
     void on_btn_saveImg_clicked();
-
-    // ========== 参数调整 ==========
-    void on_Slider_brightness_valueChanged(int value);
-    void on_Slider_contrast_valueChanged(int value);
-    void on_Slider_gamma_valueChanged(int value);
-    void on_Slider_sharpen_valueChanged(int value);
-    void on_Slider_grayLow_valueChanged(int value);
-    void on_Slider_grayHigh_valueChanged(int value);
-    void on_btn_resetBC_clicked();
-
+    
     // ========== ROI操作 ==========
     void on_btn_drawRoi_clicked();
     void on_btn_resetROI_clicked();
     void onRoiSelected(const QRectF &roiRect);
+
+    void on_Slider_grayLow_valueChanged(int value);
+    void on_Slider_grayHigh_valueChanged(int value);
 
     // ========== 算法队列操作 ==========
     void on_btn_addOption_clicked();
@@ -101,8 +80,6 @@ private slots:
     void on_btn_optionUp_clicked();
 
     void on_btn_optionDown_clicked();
-
-    void on_comboBox_selectAlgorithm_currentIndexChanged(int index);
 
     void onAlgorithmTypeChanged(int index);
 
@@ -158,12 +135,6 @@ private slots:
 
     void on_tabWidget_currentChanged(int index);
 
-    //void on_btn_applyChannel_clicked();
-
-    void on_btn_undoBC_clicked();
-
-    void on_btn_saveBC_clicked();
-
 private:
     // ========== 初始化 ==========
     void setupUI();
@@ -196,12 +167,6 @@ private:
 
     bool m_needsReprocess = false;
 
-    //bool m_channelFlag = false;
-
-    // ✅ 模板匹配相关函数
-    void findAndDisplayMatches(const QVector<MatchResult>& results);
-    void updateTemplateList();
-
     void setupSystemMonitor();
 
     // ✅ 新增：存储绘制的多边形点
@@ -220,13 +185,8 @@ private:
     void updateTemplateUIState(bool hasTemplate);
     void updateParameterUIForMatchType(MatchType type);
 
-    EnhancementState captureEnhancementState() const;
-    void applyEnhancementState(const EnhancementState& state);
-    void updateEnhancementUndoState();
-
-    QStack<EnhancementState> m_enhancementHistory;
-
     std::unique_ptr<ImageTabController> m_imageTabController;
+    std::unique_ptr<EnhancementTabController> m_enhancementController;
 
 };
 
