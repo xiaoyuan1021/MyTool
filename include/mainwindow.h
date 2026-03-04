@@ -56,9 +56,6 @@ private slots:
     void on_btn_resetROI_clicked();
     void onRoiSelected(const QRectF &roiRect);
 
-    void on_Slider_grayLow_valueChanged(int value);
-    void on_Slider_grayHigh_valueChanged(int value);
-
     // ========== 算法队列操作 ==========
     void on_btn_addOption_clicked();
     void on_btn_removeOption_clicked();
@@ -105,29 +102,7 @@ private slots:
 
     void on_btn_openLog_clicked();
 
-    void on_Slider_rgb_R_Low_valueChanged(int value);
-
-    void on_Slider_rgb_R_High_valueChanged(int value);
-
-    void on_Slider_rgb_G_Low_valueChanged(int value);
-
-    void on_Slider_rgb_G_High_valueChanged(int value);
-
-    void on_Slider_rgb_B_Low_valueChanged(int value);
-
-    void on_Slider_rgb_B_High_valueChanged(int value);
-
-    void on_Slider_hsv_H_Low_valueChanged(int value);
-
-    void on_Slider_hsv_H_High_valueChanged(int value);
-
-    void on_Slider_hsv_S_Low_valueChanged(int value);
-
-    void on_Slider_hsv_S_High_valueChanged(int value);
-
-    void on_Slider_hsv_V_Low_valueChanged(int value);
-
-    void on_Slider_hsv_V_High_valueChanged(int value);
+    void filterColorChannelsChanged();
 
     void on_btn_clearAllTemplates_clicked();
 

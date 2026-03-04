@@ -224,6 +224,41 @@ void MainWindow::setupConnections()
                 Logger::instance()->info(QString("匹配完成，找到 %1 个目标").arg(count));
             });
 
+    // ========== 颜色通道滑块连接 ==========
+    // 灰度滑块
+    connect(ui->Slider_grayLow, &QSlider::valueChanged,
+            this, &MainWindow::filterColorChannelsChanged);
+    connect(ui->Slider_grayHigh, &QSlider::valueChanged,
+            this, &MainWindow::filterColorChannelsChanged);
+
+    // RGB 滑块
+    connect(ui->Slider_rgb_R_Low, &QSlider::valueChanged,
+            this, &MainWindow::filterColorChannelsChanged);
+    connect(ui->Slider_rgb_R_High, &QSlider::valueChanged,
+            this, &MainWindow::filterColorChannelsChanged);
+    connect(ui->Slider_rgb_G_Low, &QSlider::valueChanged,
+            this, &MainWindow::filterColorChannelsChanged);
+    connect(ui->Slider_rgb_G_High, &QSlider::valueChanged,
+            this, &MainWindow::filterColorChannelsChanged);
+    connect(ui->Slider_rgb_B_Low, &QSlider::valueChanged,
+            this, &MainWindow::filterColorChannelsChanged);
+    connect(ui->Slider_rgb_B_High, &QSlider::valueChanged,
+            this, &MainWindow::filterColorChannelsChanged);
+
+    // HSV 滑块
+    connect(ui->Slider_hsv_H_Low, &QSlider::valueChanged,
+            this, &MainWindow::filterColorChannelsChanged);
+    connect(ui->Slider_hsv_H_High, &QSlider::valueChanged,
+            this, &MainWindow::filterColorChannelsChanged);
+    connect(ui->Slider_hsv_S_Low, &QSlider::valueChanged,
+            this, &MainWindow::filterColorChannelsChanged);
+    connect(ui->Slider_hsv_S_High, &QSlider::valueChanged,
+            this, &MainWindow::filterColorChannelsChanged);
+    connect(ui->Slider_hsv_V_Low, &QSlider::valueChanged,
+            this, &MainWindow::filterColorChannelsChanged);
+    connect(ui->Slider_hsv_V_High, &QSlider::valueChanged,
+            this, &MainWindow::filterColorChannelsChanged);
+
 }
 
 void MainWindow::setupSliderSpinBoxPair(QSlider *slider, QSpinBox *spinbox,
@@ -436,21 +471,6 @@ void MainWindow::on_btn_saveImg_clicked()
     cv::imwrite(saveName.toStdString(), toSave);
     ui->statusbar->showMessage("图片保存成功", 2000);
 }
-
-void MainWindow::on_Slider_grayLow_valueChanged(int)
-{
-    m_pipelineManager->setGrayFilterEnabled(true);
-    m_needsReprocess = true;
-    m_processDebounceTimer->start();
-}
-
-void MainWindow::on_Slider_grayHigh_valueChanged(int)
-{
-    m_pipelineManager->setGrayFilterEnabled(true);
-    m_needsReprocess = true;
-    m_processDebounceTimer->start();
-}
-
 
 
 // ========== ROI操作 ==========
@@ -1271,6 +1291,12 @@ void MainWindow::on_btn_openLog_clicked()
     Logger::instance()->openLogFolder(true);
 }
 
+void MainWindow::filterColorChannelsChanged()
+{
+    // 无论哪个颜色滑块改变，都启动防抖定时器
+    m_processDebounceTimer->start();
+}
+
 void MainWindow::on_comboBox_filterMode_currentIndexChanged(int index)
 {
     switch (index)
@@ -1292,78 +1318,6 @@ void MainWindow::on_comboBox_filterMode_currentIndexChanged(int index)
         break;
     }
     processAndDisplay();
-}
-
-void MainWindow::on_Slider_rgb_R_Low_valueChanged(int value)
-{
-    Q_UNUSED(value);
-    m_processDebounceTimer->start();
-}
-
-void MainWindow::on_Slider_rgb_R_High_valueChanged(int value)
-{
-    Q_UNUSED(value);
-    m_processDebounceTimer->start();
-}
-
-void MainWindow::on_Slider_rgb_G_Low_valueChanged(int value)
-{
-    Q_UNUSED(value);
-    m_processDebounceTimer->start();
-}
-
-void MainWindow::on_Slider_rgb_G_High_valueChanged(int value)
-{
-    Q_UNUSED(value);
-    m_processDebounceTimer->start();
-}
-
-void MainWindow::on_Slider_rgb_B_Low_valueChanged(int value)
-{
-    Q_UNUSED(value);    
-    m_processDebounceTimer->start();
-}
-
-void MainWindow::on_Slider_rgb_B_High_valueChanged(int value)
-{
-    Q_UNUSED(value);
-    m_processDebounceTimer->start();
-}
-
-void MainWindow::on_Slider_hsv_H_Low_valueChanged(int value)
-{
-    Q_UNUSED(value);
-    m_processDebounceTimer->start();
-}
-
-void MainWindow::on_Slider_hsv_H_High_valueChanged(int value)
-{
-    Q_UNUSED(value);
-    m_processDebounceTimer->start();
-}
-
-void MainWindow::on_Slider_hsv_S_Low_valueChanged(int value)
-{
-    Q_UNUSED(value);
-    m_processDebounceTimer->start();
-}
-
-void MainWindow::on_Slider_hsv_S_High_valueChanged(int value)
-{
-    Q_UNUSED(value);
-    m_processDebounceTimer->start();
-}
-
-void MainWindow::on_Slider_hsv_V_Low_valueChanged(int value)
-{
-    Q_UNUSED(value);
-    m_processDebounceTimer->start();
-}
-
-void MainWindow::on_Slider_hsv_V_High_valueChanged(int value)
-{
-    Q_UNUSED(value);
-    m_processDebounceTimer->start();
 }
 
 void MainWindow::on_comboBox_matchType_currentIndexChanged(int index)
