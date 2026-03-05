@@ -19,6 +19,8 @@
 #include "pipeline_manager.h"  // ✅ 新增：使用Pipeline管理器
 #include "template_match_manager.h"
 #include "system_monitor.h"
+#include "file_manager.h"
+#include "template_ui_controller.h"
 #include "controllers/image_tab_controller.h"
 #include "controllers/enhancement_tab_controller.h"
 
@@ -88,14 +90,6 @@ private slots:
 
     void on_btn_clearRegion_clicked();
 
-    void on_btn_drawTemplate_clicked();
-
-    void on_btn_clearTemplate_clicked();
-
-    void on_btn_creatTemplate_clicked();
-
-    void on_btn_findTemplate_clicked();
-
     void onAlgorithmSelectionChanged(QListWidgetItem* current,QListWidgetItem* previous);
 
     void on_comboBox_filterMode_currentIndexChanged(int index);
@@ -104,11 +98,8 @@ private slots:
 
     void filterColorChannelsChanged();
 
-    void on_btn_clearAllTemplates_clicked();
-
-    void on_comboBox_matchType_currentIndexChanged(int index);
-
     void on_tabWidget_currentChanged(int index);
+
 
 private:
     // ========== 初始化 ==========
@@ -134,6 +125,7 @@ private:
     RoiManager m_roiManager;              // ROI管理器
     TemplateMatchManager* m_templateManager;  // ✅ 模板管理器
     SystemMonitor * m_systemMonitor;
+    FileManager* m_fileManager;           // ✅ 文件管理器
 
     // ✅ 新增：防抖定时器
     QTimer* m_processDebounceTimer;
@@ -151,17 +143,11 @@ private:
     // ✅ 新增：显示多边形的图形项
     QGraphicsPolygonItem * m_polygonItem;
     void calculateRegionFeatures(const QVector<QPointF>& points);
-    void createTemplateFromPolygon(const QVector<QPointF>& points);
     int m_editingAlgorithmIndex=-1;
-
-    void displayTemplatePreview(const cv::Mat& templateImage);
-    void displayMatchResults(const cv::Mat& resultImage,
-                             const QVector<MatchResult>& results);
-    void updateTemplateUIState(bool hasTemplate);
-    void updateParameterUIForMatchType(MatchType type);
 
     std::unique_ptr<ImageTabController> m_imageTabController;
     std::unique_ptr<EnhancementTabController> m_enhancementController;
+    std::unique_ptr<TemplateUIController> m_templateUIController;
 
 };
 
