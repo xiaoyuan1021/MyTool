@@ -23,6 +23,7 @@
 #include "controllers/image_tab_controller.h"
 #include "controllers/enhancement_tab_controller.h"
 #include "controllers/filter_tab_controller.h"
+#include "controllers/algorithm_tab_controller.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -58,9 +59,7 @@ private slots:
     void on_btn_resetROI_clicked();
     void onRoiSelected(const QRectF &roiRect);
 
-    // ========== 算法队列操作 ==========
-    void on_btn_addOption_clicked();
-    void on_btn_removeOption_clicked();
+    // ========== 算法队列操作现在由AlgorithmTabController处理 ==========
 
     // ========== 区域筛选 ==========
     void on_btn_select_clicked();
@@ -76,11 +75,7 @@ private slots:
 
     void on_btn_addFilter_clicked();
 
-    void on_btn_optionUp_clicked();
-
-    void on_btn_optionDown_clicked();
-
-    void onAlgorithmTypeChanged(int index);
+    // ========== 算法相关操作现在由AlgorithmTabController处理 ==========
 
     void on_btn_runTest_clicked();
 
@@ -90,9 +85,9 @@ private slots:
 
     void on_btn_clearRegion_clicked();
 
-    void onAlgorithmSelectionChanged(QListWidgetItem* current,QListWidgetItem* previous);
+    // ========== 算法选择现在由AlgorithmTabController处理 ==========
 
-    void on_comboBox_filterMode_currentIndexChanged(int index);
+    // ========== 过滤模式现在由FilterTabController处理 ==========
 
     void on_btn_openLog_clicked();
 
@@ -111,8 +106,7 @@ private:
     void showImage(const cv::Mat& img);
     void setDisplayModeForCurrentTab();
 
-    void saveCurrentEdit();
-    void loadAlgorithmParameters(int index);
+    // ========== 算法参数处理现在由AlgorithmTabController处理 ==========
 
 private:
     // UI
@@ -141,12 +135,14 @@ private:
     // ✅ 新增：显示多边形的图形项
     QGraphicsPolygonItem * m_polygonItem;
     void calculateRegionFeatures(const QVector<QPointF>& points);
-    int m_editingAlgorithmIndex=-1;
+
+    // ========== 算法编辑索引现在由AlgorithmTabController管理 ==========
 
     std::unique_ptr<ImageTabController> m_imageTabController;
     std::unique_ptr<EnhancementTabController> m_enhancementController;
     std::unique_ptr<TemplateController> m_templateController;
     std::unique_ptr<FilterTabController> m_filterController;
+    std::unique_ptr<AlgorithmTabController> m_algorithmController;
 
 };
 

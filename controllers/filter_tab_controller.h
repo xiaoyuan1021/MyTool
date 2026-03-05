@@ -30,4 +30,5 @@ private:
 private slots:
     void handleFilterModeChanged(int index);
     void filterColorChannelsChanged();
+    void onFilterModeUIChanged(int index);
 };

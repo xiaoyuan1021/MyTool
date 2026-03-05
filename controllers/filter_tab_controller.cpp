@@ -20,7 +20,7 @@ void FilterTabController::initialize()
 
     // 连接过滤模式变化
     connect(m_ui->comboBox_filterMode, QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this, &FilterTabController::handleFilterModeChanged);
+            this, &FilterTabController::onFilterModeUIChanged);
 }
 
 void FilterTabController::setupConnections()
@@ -130,4 +130,17 @@ void FilterTabController::syncHSVParameters()
         m_ui->Slider_hsv_V_Low->value(),
         m_ui->Slider_hsv_V_High->value()
     );
+}
+
+void FilterTabController::onFilterModeUIChanged(int index)
+{
+    switch (index) {
+    case 0: m_ui->stackedWidget_filter->setCurrentIndex(0); break;
+    case 1: m_ui->stackedWidget_filter->setCurrentIndex(1); break;
+    case 2: m_ui->stackedWidget_filter->setCurrentIndex(2); break;
+    case 3: m_ui->stackedWidget_filter->setCurrentIndex(3); break;
+    default: m_ui->stackedWidget_filter->setCurrentIndex(0); break;
+    }
+    configureColorFilter(index);
+    emit filterConfigChanged();
 }

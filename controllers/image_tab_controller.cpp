@@ -20,11 +20,12 @@ PipelineConfig::Channel ImageTabController::channelFromIndex(int index) const
 {
     switch (index)
     {
-    case 0: return PipelineConfig::Channel::RGB;
-    case 1: return PipelineConfig::Channel::Gray;
-    case 2: return PipelineConfig::Channel::B;
-    case 3: return PipelineConfig::Channel::G;
-    case 4: return PipelineConfig::Channel::R;
+    case 0: return PipelineConfig::Channel::Gray;
+    case 1: return PipelineConfig::Channel::RGB;
+    case 2: return PipelineConfig::Channel::HSV;
+    case 3: return PipelineConfig::Channel::B;
+    case 4: return PipelineConfig::Channel::G;
+    case 5: return PipelineConfig::Channel::R;
     default: return PipelineConfig::Channel::RGB;
     }
 }

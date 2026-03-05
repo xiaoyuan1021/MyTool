@@ -27,10 +27,6 @@ MainWindow::MainWindow(QWidget *parent)
     setupUI();
     setupConnections();
 
-    // m_enhancementHistory.push(captureEnhancementState());
-    // updateEnhancementUndoState();
-
-
     setupSystemMonitor();
     Logger::instance()->setTextEdit(ui->textEdit_log);
     Logger::instance()->setLogFile("test.log");
@@ -67,6 +63,11 @@ m_enhancementController->initialize();
             this, &MainWindow::processAndDisplay);
     m_filterController->initialize();
 
+    m_algorithmController = std::make_unique<AlgorithmTabController>(
+        ui, m_pipelineManager, this);
+    connect(m_algorithmController.get(), &AlgorithmTabController::algorithmChanged,
+            this, &MainWindow::processAndDisplay);
+    m_algorithmController->initialize();
 
 }
 
@@ -241,11 +242,7 @@ void MainWindow::setupConnections()
             });
 
 
-    connect(ui->comboBox_selectAlgorithm,QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this,&MainWindow::onAlgorithmTypeChanged);
-
-    connect(ui->algorithmListWidget,&QListWidget::currentItemChanged,
-            this,&MainWindow::onAlgorithmSelectionChanged);
+    // ========== 算法相关连接现在由AlgorithmTabController处理 ==========
     // ✅ 新的模板控制器信号
     connect(m_templateController.get(), &TemplateController::templateCreated,
             this, [this](const QString& name) {
@@ -425,129 +422,9 @@ void MainWindow::onRoiSelected(const QRectF &roiImgRectF)
         );
 }
 
-// ========== 算法队列操作 ==========
+// ========== 算法队列操作现在由AlgorithmTabController处理 ==========
 
-void MainWindow::on_btn_addOption_clicked()
-{
-    saveCurrentEdit();
-
-    AlgorithmStep step;
-    int index = ui->comboBox_selectAlgorithm->currentIndex();
-    step.name = ui->comboBox_selectAlgorithm->currentText();
-    step.type = "HalconAlgorithm";
-    step.enabled = true;
-    step.description = "Halcon图像处理算法";
-    step.params["HalconAlgoType"] = index;
-
-    switch(index)
-    {
-    case 0: case 2: case 4: case 6:
-        step.params["radius"] = ui->doubleSpinBox_radius->value();
-        break;
-    case 1: case 3: case 5: case 7:
-        step.params["width"] =  ui->spinBox_width->value();
-        step.params["height"] = ui->spinBox_height->value();
-        break;
-    case 11:
-        step.params["shapeType"] = ui->comboBox_shapeType->currentData().toString();
-        break;
-    }
-    m_pipelineManager->addAlgorithmStep(step);
-    QListWidgetItem *item = new QListWidgetItem(step.name);
-    ui->algorithmListWidget->addItem(item);
-
-    Logger::instance()->info(QString("添加算法 %1").arg(step.name));
-
-    processAndDisplay();
-}
-
-void MainWindow::on_btn_removeOption_clicked()
-{
-    saveCurrentEdit();
-    int row = ui->algorithmListWidget->currentRow();
-    if (row < 0) return;
-
-    // ✅ 从Pipeline管理器移除
-    m_pipelineManager->removeAlgorithmStep(row);
-
-    // 从UI列表移除
-    delete ui->algorithmListWidget->takeItem(row);
-
-    //ui->statusbar->showMessage("已移除算法");
-    Logger::instance()->info("移除算法");
-    processAndDisplay();
-}
-
-void MainWindow::on_btn_optionUp_clicked()
-{
-    saveCurrentEdit();
-    int currentRow = ui->algorithmListWidget->currentRow();
-
-    // 边界检查
-    if (currentRow <= 0) {
-        return;
-    }
-
-    // 1️⃣ 交换 Pipeline 中的算法队列数据
-    m_pipelineManager->swapAlgorithmStep(currentRow, currentRow - 1);
-
-    // 2️⃣ 交换 UI 列表项
-    QListWidgetItem *item = ui->algorithmListWidget->takeItem(currentRow);  // 取出当前项
-    ui->algorithmListWidget->insertItem(currentRow - 1, item);              // 插入到上一行
-
-    // 3️⃣ 保持选中状态
-    ui->algorithmListWidget->setCurrentRow(currentRow - 1);
-
-    // 4️⃣ 重新处理图像（因为算法顺序变了）
-    processAndDisplay();
-
-    ui->statusbar->showMessage("算法步骤已上移", 1000);
-}
-
-void MainWindow::on_btn_optionDown_clicked()
-{
-    saveCurrentEdit();
-    int currentRow = ui->algorithmListWidget->currentRow();
-
-    // 边界检查
-    if (currentRow < 0 || currentRow >= ui->algorithmListWidget->count() - 1) {
-        return;
-    }
-
-    // 1️⃣ 交换 Pipeline 中的算法队列数据
-    m_pipelineManager->swapAlgorithmStep(currentRow, currentRow + 1);
-
-    // 2️⃣ 交换 UI 列表项
-    QListWidgetItem *item = ui->algorithmListWidget->takeItem(currentRow);  // 取出当前项
-    ui->algorithmListWidget->insertItem(currentRow + 1, item);              // 插入到下一行
-
-    // 3️⃣ 保持选中状态
-    ui->algorithmListWidget->setCurrentRow(currentRow + 1);
-
-    // 4️⃣ 重新处理图像
-    processAndDisplay();
-
-    ui->statusbar->showMessage("算法步骤已下移", 1000);
-}
-
-void MainWindow::onAlgorithmTypeChanged(int index)
-{
-    switch (index)
-    {
-    case 0: case 2: case 4: case 6:
-        ui->stackedWidget_Algorithm->setCurrentIndex(0);
-        break;
-    case 1: case 3: case 5: case 7:
-        ui->stackedWidget_Algorithm->setCurrentIndex(1);
-        break;
-    case 8: case 9: case 10:
-        ui->stackedWidget_Algorithm->setCurrentIndex(2);
-        break;
-    case 11:
-        ui->stackedWidget_Algorithm->setCurrentIndex(3);
-        break;
-    }
-}
+// ========== 算法移动操作现在由AlgorithmTabController处理 ==========
 
 // ========== 区域筛选 ==========
 
@@ -751,14 +628,14 @@ void MainWindow::on_btn_runTest_clicked()
                                  .arg(maxRegions));
     }
 }
-
+//清空当前日志
 void MainWindow::on_btn_clearLog_clicked()
 {
     Logger::instance()->clear();
     Logger::instance()->info("日志已清空");
 }
 
-
+//区域绘制
 void MainWindow::on_btn_drawRegion_clicked()
 {
     if(m_roiManager.getCurrentImage().empty())
@@ -816,168 +693,11 @@ void MainWindow::calculateRegionFeatures(const QVector<QPointF>& points)
     Logger::instance()->info("======================================");
 }
 
-
-
-
-
-// ========== 算法选择变化处理 ==========
-void MainWindow::onAlgorithmSelectionChanged(QListWidgetItem* current, QListWidgetItem* previous)
-{
-    Q_UNUSED(previous);  // 不需要用到
-
-    // 1️⃣ 如果之前在编辑，先保存
-    if (m_editingAlgorithmIndex >= 0)
-    {
-        saveCurrentEdit();
-    }
-
-    // 2️⃣ 加载新选中项的参数
-    if (current)
-    {
-        int newIndex = ui->algorithmListWidget->row(current);
-        loadAlgorithmParameters(newIndex);
-        m_editingAlgorithmIndex = newIndex;
-
-        ui->statusbar->showMessage(
-            QString("正在编辑: %1 (修改参数后点击其他项自动保存)")
-                .arg(current->text()),
-            3000
-            );
-    }
-    else
-    {
-        // 没有选中项，重置编辑状态
-        m_editingAlgorithmIndex = -1;
-    }
-}
-
-void MainWindow::saveCurrentEdit()
-{
-    // 如果没有在编辑，直接返回
-    if (m_editingAlgorithmIndex < 0)
-    {
-        return;
-    }
-
-    // 1️⃣ 获取当前编辑的算法
-    const QVector<AlgorithmStep>& queue = m_pipelineManager->getAlgorithmQueue();
-    if (m_editingAlgorithmIndex >= queue.size())
-    {
-        m_editingAlgorithmIndex = -1;
-        return;
-    }
-
-    AlgorithmStep step = queue[m_editingAlgorithmIndex];  // 复制一份
-
-    // 2️⃣ 从UI读取修改后的参数
-    int algoType = step.params["HalconAlgoType"].toInt();
-
-    switch(algoType)
-    {
-    case 0: case 2: case 4: case 6:  // 圆形算法
-        step.params["radius"] = ui->doubleSpinBox_radius->value();
-        break;
-
-    case 1: case 3: case 5: case 7:  // 矩形算法
-        step.params["width"] = ui->spinBox_width->value();
-        step.params["height"] = ui->spinBox_height->value();
-        break;
-
-    case 11:  // 形状变换
-        step.params["shapeType"] = ui->comboBox_shapeType->currentData().toString();
-        break;
-    }
-
-    // 3️⃣ 更新到PipelineManager
-    m_pipelineManager->updateAlgorithmStep(m_editingAlgorithmIndex, step);
-
-    // 4️⃣ 重新处理图像
-    processAndDisplay();
-
-    // 5️⃣ 提示用户
-    Logger::instance()->info(
-        QString("已保存算法 #%1: %2 的参数修改")
-            .arg(m_editingAlgorithmIndex + 1).arg(step.name)
-        );
-}
-
-void MainWindow::loadAlgorithmParameters(int index)
-{
-    // 1️⃣ 获取算法步骤
-    const QVector<AlgorithmStep>& queue = m_pipelineManager->getAlgorithmQueue();
-    if (index < 0 || index >= queue.size()) {
-        return;
-    }
-
-    const AlgorithmStep& step = queue[index];
-    int algoType = step.params["HalconAlgoType"].toInt();
-
-    // 2️⃣ 切换到对应页面并填充参数
-    switch(algoType)
-    {
-    case 0: case 2: case 4: case 6:  // 圆形算法
-        ui->stackedWidget_Algorithm->setCurrentIndex(0);
-        ui->doubleSpinBox_radius->setValue(
-            step.params.value("radius", 3.5).toDouble()
-            );
-        break;
-
-    case 1: case 3: case 5: case 7:  // 矩形算法
-        ui->stackedWidget_Algorithm->setCurrentIndex(1);
-        ui->spinBox_width->setValue(
-            step.params.value("width", 5).toInt()
-            );
-        ui->spinBox_height->setValue(
-            step.params.value("height", 5).toInt()
-            );
-        break;
-
-    case 8: case 9: case 10:  // 无参数算法
-        ui->stackedWidget_Algorithm->setCurrentIndex(2);
-        break;
-
-    case 11:  // 形状变换
-        ui->stackedWidget_Algorithm->setCurrentIndex(3);
-        QString shapeType = step.params.value("shapeType", "convex").toString();
-        int comboIndex = ui->comboBox_shapeType->findData(shapeType);
-        if (comboIndex >= 0) {
-            ui->comboBox_shapeType->setCurrentIndex(comboIndex);
-        }
-        break;
-    }
-
-    // 3️⃣ 提示用户
-    // Logger::instance()->info(
-    //     QString("已加载算法 #%1: %2 的参数").arg(index + 1).arg(step.name)
-    //     );
-}
+// ========== 算法选择和参数处理现在由AlgorithmTabController处理 ==========
 
 void MainWindow::on_btn_openLog_clicked()
 {
     Logger::instance()->openLogFolder(true);
-}
-
-void MainWindow::on_comboBox_filterMode_currentIndexChanged(int index)
-{
-    switch (index)
-    {
-    case 0://NONE
-        ui->stackedWidget_filter->setCurrentIndex(0);
-        break;
-    case 1: //gray
-        ui->stackedWidget_filter->setCurrentIndex(1);
-        break;
-    case 2: //rgb
-        ui->stackedWidget_filter->setCurrentIndex(2);
-        break;
-    case 3: //hsv
-        ui->stackedWidget_filter->setCurrentIndex(3);
-        break;
-    default:
-        ui->stackedWidget_filter->setCurrentIndex(0);
-        break;
-    }
-    processAndDisplay();
 }
 
 void MainWindow::on_tabWidget_currentChanged(int index)
