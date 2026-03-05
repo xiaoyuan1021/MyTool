@@ -185,7 +185,8 @@ void TemplateController::clearAllTemplates()
         m_parent, "确认", "确定要清空所有模板吗？",
         QMessageBox::Yes | QMessageBox::No);
 
-    if (reply == QMessageBox::Yes) {
+    if (reply == QMessageBox::Yes) 
+    {
         clearTemplate();
         Logger::instance()->info("已清空所有模板");
         m_ui->statusbar->showMessage("已清空所有模板", 3000);
@@ -208,7 +209,8 @@ void TemplateController::updateUIState(bool hasTemplate)
     m_ui->btn_findTemplate->setEnabled(hasTemplate);
     m_ui->btn_clearAllTemplates->setEnabled(hasTemplate);
 
-    if (hasTemplate) {
+    if (hasTemplate) 
+    {
         m_ui->statusbar->showMessage(QString("✓ 已创建模板 [%1]").arg(getCurrentStrategyName()), 2000);
     }
 }

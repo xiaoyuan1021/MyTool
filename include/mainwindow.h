@@ -22,6 +22,7 @@
 #include "file_manager.h"
 #include "controllers/image_tab_controller.h"
 #include "controllers/enhancement_tab_controller.h"
+#include "controllers/filter_tab_controller.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -95,8 +96,6 @@ private slots:
 
     void on_btn_openLog_clicked();
 
-    void filterColorChannelsChanged();
-
     void on_tabWidget_currentChanged(int index);
 
 
@@ -110,6 +109,7 @@ private:
     // ========== 核心处理 ==========
     void processAndDisplay();  // ✅ 统一的处理入口
     void showImage(const cv::Mat& img);
+    void setDisplayModeForCurrentTab();
 
     void saveCurrentEdit();
     void loadAlgorithmParameters(int index);
@@ -146,6 +146,7 @@ private:
     std::unique_ptr<ImageTabController> m_imageTabController;
     std::unique_ptr<EnhancementTabController> m_enhancementController;
     std::unique_ptr<TemplateController> m_templateController;
+    std::unique_ptr<FilterTabController> m_filterController;
 
 };
 

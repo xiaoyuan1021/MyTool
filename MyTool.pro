@@ -46,7 +46,8 @@ SOURCES += \
     src/file_manager.cpp \
     src/template_controller.cpp \
     controllers/image_tab_controller.cpp \
-    controllers/enhancement_tab_controller.cpp
+    controllers/enhancement_tab_controller.cpp \
+    controllers/filter_tab_controller.cpp
 
 # ===== 头文件 =====
 HEADERS += \
@@ -65,7 +66,8 @@ HEADERS += \
     include/file_manager.h \ 
     include/template_controller.h \
     controllers/image_tab_controller.h \
-    controllers/enhancement_tab_controller.h
+    controllers/enhancement_tab_controller.h \
+    controllers/filter_tab_controller.h
 
 
 # ===== UI 文件 =====
@@ -83,5 +85,3 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 
 DISTFILES +=
 
-RESOURCES += \
-    res.qrc

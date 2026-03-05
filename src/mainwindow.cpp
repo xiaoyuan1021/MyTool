@@ -61,6 +61,12 @@ m_enhancementController->initialize();
             this, &MainWindow::showImage);
     m_templateController->initialize();
 
+    m_filterController = std::make_unique<FilterTabController>(
+        ui, m_pipelineManager, this);
+    connect(m_filterController.get(), &FilterTabController::filterConfigChanged,
+            this, &MainWindow::processAndDisplay);
+    m_filterController->initialize();
+
 
 }
 
@@ -251,40 +257,7 @@ void MainWindow::setupConnections()
                 Logger::instance()->info(QString("匹配完成，找到 %1 个目标").arg(count));
             });
 
-    // ========== 颜色通道滑块连接 ==========
-    // 灰度滑块
-    connect(ui->Slider_grayLow, &QSlider::valueChanged,
-            this, &MainWindow::filterColorChannelsChanged);
-    connect(ui->Slider_grayHigh, &QSlider::valueChanged,
-            this, &MainWindow::filterColorChannelsChanged);
-
-    // RGB 滑块
-    connect(ui->Slider_rgb_R_Low, &QSlider::valueChanged,
-            this, &MainWindow::filterColorChannelsChanged);
-    connect(ui->Slider_rgb_R_High, &QSlider::valueChanged,
-            this, &MainWindow::filterColorChannelsChanged);
-    connect(ui->Slider_rgb_G_Low, &QSlider::valueChanged,
-            this, &MainWindow::filterColorChannelsChanged);
-    connect(ui->Slider_rgb_G_High, &QSlider::valueChanged,
-            this, &MainWindow::filterColorChannelsChanged);
-    connect(ui->Slider_rgb_B_Low, &QSlider::valueChanged,
-            this, &MainWindow::filterColorChannelsChanged);
-    connect(ui->Slider_rgb_B_High, &QSlider::valueChanged,
-            this, &MainWindow::filterColorChannelsChanged);
-
-    // HSV 滑块
-    connect(ui->Slider_hsv_H_Low, &QSlider::valueChanged,
-            this, &MainWindow::filterColorChannelsChanged);
-    connect(ui->Slider_hsv_H_High, &QSlider::valueChanged,
-            this, &MainWindow::filterColorChannelsChanged);
-    connect(ui->Slider_hsv_S_Low, &QSlider::valueChanged,
-            this, &MainWindow::filterColorChannelsChanged);
-    connect(ui->Slider_hsv_S_High, &QSlider::valueChanged,
-            this, &MainWindow::filterColorChannelsChanged);
-    connect(ui->Slider_hsv_V_Low, &QSlider::valueChanged,
-            this, &MainWindow::filterColorChannelsChanged);
-    connect(ui->Slider_hsv_V_High, &QSlider::valueChanged,
-            this, &MainWindow::filterColorChannelsChanged);
+    // ========== 颜色通道滑块连接现在由FilterTabController处理 ==========
 
 }
 
@@ -311,89 +284,11 @@ void MainWindow::processAndDisplay()
         ui->Slider_sharpen, ui->Slider_grayLow, ui->Slider_grayHigh
         );
 
-    // ========== 2. 配置颜色过滤 ==========
-    int filterModeIndex = ui->comboBox_filterMode->currentIndex();
+    // ========== 2. 配置颜色过滤 (委托给FilterController) ==========
+    m_filterController->configureColorFilter(ui->comboBox_filterMode->currentIndex());
 
-    PipelineConfig::FilterMode targetMode;
-
-    switch (filterModeIndex)
-    {
-    case 0:  // None - 不启用颜色过滤
-        targetMode = PipelineConfig::FilterMode::None;
-        m_pipelineManager->setGrayFilterEnabled(false);
-        m_pipelineManager->setColorFilterEnabled(false);
-        break;
-    case 1:  // None - 不启用颜色过滤
-        targetMode = PipelineConfig::FilterMode::Gray;
-        m_pipelineManager->setGrayFilterEnabled(true);
-        m_pipelineManager->setColorFilterEnabled(false);
-        break;
-
-    case 2:  // RGB 模式
-        targetMode = PipelineConfig::FilterMode::RGB;
-        m_pipelineManager->setColorFilterEnabled(true);
-        m_pipelineManager->setColorFilterMode(PipelineConfig::ColorFilterMode::RGB);
-        m_pipelineManager->setRGBRange(
-            ui->Slider_rgb_R_Low->value(),
-            ui->Slider_rgb_R_High->value(),
-            ui->Slider_rgb_G_Low->value(),
-            ui->Slider_rgb_G_High->value(),
-            ui->Slider_rgb_B_Low->value(),
-            ui->Slider_rgb_B_High->value()
-            );
-        break;
-
-    case 3:  // HSV 模式
-        targetMode = PipelineConfig::FilterMode::HSV;
-        m_pipelineManager->setColorFilterEnabled(true);
-        m_pipelineManager->setColorFilterMode(PipelineConfig::ColorFilterMode::HSV);
-        m_pipelineManager->setHSVRange(
-            ui->Slider_hsv_H_Low->value(),
-            ui->Slider_hsv_H_High->value(),
-            ui->Slider_hsv_S_Low->value(),
-            ui->Slider_hsv_S_High->value(),
-            ui->Slider_hsv_V_Low->value(),
-            ui->Slider_hsv_V_High->value()
-            );
-        break;
-
-    default:
-        targetMode = PipelineConfig::FilterMode::None;
-        m_pipelineManager->setColorFilterEnabled(false);
-        break;
-    }
-
-    m_pipelineManager->setCurrentFilterMode(targetMode);
-
-    //========== 3. 根据当前Tab设置显示模式 ==========
-    //✅ 方案A：完全由Tab控制显示内容
-    switch (m_currentTabIndex)
-    {
-    case 0:  // "图像" Tab
-        //m_pipelineManager->setDisplayMode(m_channelFlag ? DisplayConfig::Mode::Enhanced : DisplayConfig::Mode::Original);
-        break;
-    case 1:  // "增强" Tab
-        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Enhanced);
-        break;
-    case 2:  // "补正" Tab
-        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original);
-        break;
-    case 3:  // "过滤" Tab
-        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite);
-        break;
-    case 4:  // "处理" Tab
-        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Processed);
-        break;
-    case 5:  // "提取" Tab
-        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite);
-        break;
-    case 6:  // "判定" Tab
-        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite);
-        break;
-    default:
-        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original);
-        break;
-    }
+    // ========== 3. 根据当前Tab设置显示模式 ==========
+    setDisplayModeForCurrentTab();
 
     // ========== 4. 执行 Pipeline ==========
     cv::Mat currentImage = m_roiManager.getCurrentImage();
@@ -406,7 +301,17 @@ void MainWindow::processAndDisplay()
     // ========== 6. 更新统计信息 ==========
     int count = result.currentRegions;
     ui->lineEdit_nowRegions->setText(QString::number(count));
+}
 
+void MainWindow::setDisplayModeForCurrentTab()
+{
+    switch (m_currentTabIndex) {
+    case 1: m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Enhanced); break;
+    case 2: m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original); break;
+    case 3: case 5: case 6: m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite); break;
+    case 4: m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Processed); break;
+    default: m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original); break;
+    }
 }
 
 void MainWindow::showImage(const cv::Mat &img)
@@ -1050,12 +955,6 @@ void MainWindow::loadAlgorithmParameters(int index)
 void MainWindow::on_btn_openLog_clicked()
 {
     Logger::instance()->openLogFolder(true);
-}
-
-void MainWindow::filterColorChannelsChanged()
-{
-    // 无论哪个颜色滑块改变，都启动防抖定时器
-    m_processDebounceTimer->start();
 }
 
 void MainWindow::on_comboBox_filterMode_currentIndexChanged(int index)
