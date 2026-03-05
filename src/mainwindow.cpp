@@ -9,7 +9,6 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
     , m_pipelineManager(new PipelineManager(this))
-    , m_templateManager(new TemplateMatchManager(this))
     , m_systemMonitor(new SystemMonitor(this))
     , m_fileManager(new FileManager(this))
     , m_processDebounceTimer(nullptr)
@@ -56,11 +55,11 @@ MainWindow::MainWindow(QWidget *parent)
     [this]() { processAndDisplay(); }, this);
 m_enhancementController->initialize();
 
-    m_templateUIController = std::make_unique<TemplateUIController>(
-        ui, m_templateManager, m_view, &m_roiManager, this);
-    connect(m_templateUIController.get(), &TemplateUIController::imageToShow,
+    m_templateController = std::make_unique<TemplateController>(
+        ui, m_view, &m_roiManager, this);
+    connect(m_templateController.get(), &TemplateController::imageToShow,
             this, &MainWindow::showImage);
-    m_templateUIController->initialize();
+    m_templateController->initialize();
 
 
 }
@@ -241,13 +240,13 @@ void MainWindow::setupConnections()
 
     connect(ui->algorithmListWidget,&QListWidget::currentItemChanged,
             this,&MainWindow::onAlgorithmSelectionChanged);
-    // ✅ 模板管理器信号
-    connect(m_templateManager, &TemplateMatchManager::templateCreated,
+    // ✅ 新的模板控制器信号
+    connect(m_templateController.get(), &TemplateController::templateCreated,
             this, [this](const QString& name) {
                 Logger::instance()->info(QString("模板已创建: %1").arg(name));
             });
 
-    connect(m_templateManager, &TemplateMatchManager::matchCompleted,
+    connect(m_templateController.get(), &TemplateController::matchCompleted,
             this, [](int count) {
                 Logger::instance()->info(QString("匹配完成，找到 %1 个目标").arg(count));
             });

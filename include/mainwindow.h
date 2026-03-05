@@ -17,10 +17,9 @@
 #include "image_utils.h"
 #include "halcon_algorithm.h"
 #include "pipeline_manager.h"  // ✅ 新增：使用Pipeline管理器
-#include "template_match_manager.h"
+#include "template_controller.h"
 #include "system_monitor.h"
 #include "file_manager.h"
-#include "template_ui_controller.h"
 #include "controllers/image_tab_controller.h"
 #include "controllers/enhancement_tab_controller.h"
 
@@ -123,7 +122,6 @@ private:
     // ✅ 核心模块（简化为两个）
     PipelineManager* m_pipelineManager;  // Pipeline管理器
     RoiManager m_roiManager;              // ROI管理器
-    TemplateMatchManager* m_templateManager;  // ✅ 模板管理器
     SystemMonitor * m_systemMonitor;
     FileManager* m_fileManager;           // ✅ 文件管理器
 
@@ -147,7 +145,7 @@ private:
 
     std::unique_ptr<ImageTabController> m_imageTabController;
     std::unique_ptr<EnhancementTabController> m_enhancementController;
-    std::unique_ptr<TemplateUIController> m_templateUIController;
+    std::unique_ptr<TemplateController> m_templateController;
 
 };
 

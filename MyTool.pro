@@ -43,9 +43,8 @@ SOURCES += \
     src/pipeline.cpp \
     src/pipeline_manager.cpp \
     src/system_monitor.cpp \
-    src/template_match_manager.cpp \
     src/file_manager.cpp \
-    src/template_ui_controller.cpp \
+    src/template_controller.cpp \
     controllers/image_tab_controller.cpp \
     controllers/enhancement_tab_controller.cpp
 
@@ -62,10 +61,9 @@ HEADERS += \
     include/pipeline_steps.h \
     include/shape_filter_types.h \
     include/system_monitor.h \
-    include/template_match_manager.h \
     include/match_strategy.h \
-    include/file_manager.h \
-    include/template_ui_controller.h \
+    include/file_manager.h \ 
+    include/template_controller.h \
     controllers/image_tab_controller.h \
     controllers/enhancement_tab_controller.h
 
