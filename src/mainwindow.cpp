@@ -288,7 +288,6 @@ void MainWindow::showImage(const cv::Mat &img)
 }
 
 // ========== 文件操作 ==========
-
 void MainWindow::on_btn_openImg_clicked()
 {
     QString path = QCoreApplication::applicationDirPath() + "/images/";
@@ -301,53 +300,21 @@ void MainWindow::on_btn_openImg_clicked()
     }
 
     // 第二步：读取图像文件（通过信号返回结果）
+    // 连接一次性信号，在图像加载后触发处理
+    QMetaObject::Connection conn = connect(m_fileManager, &FileManager::imageLoaded,
+            this, [this](const cv::Mat&) {
+                processAndDisplay();
+            });
+
     m_fileManager->readImageFile(fileName);
+
+    // 断开连接以避免重复触发
+    disconnect(conn);
 }
 
 void MainWindow::on_btn_saveImg_clicked()
 {
-    const PipelineContext& ctx = m_pipelineManager->getLastContext();
-
-    if (ctx.srcBgr.empty())
-    {
-        QMessageBox::warning(this, "保存失败", "请先打开图片");
-        return;
-    }
-
-    QString saveName = QFileDialog::getSaveFileName(
-        this, "保存图片", ".", "*.jpg *.png *.tif"
-        );
-
-    if (saveName.isEmpty()) return;
-
-    cv::Mat toSave;
-
-    // 如果有mask，询问用户保存什么
-    if (!ctx.mask.empty() && cv::countNonZero(ctx.mask) > 0)
-    {
-        QMessageBox::StandardButton reply = QMessageBox::question(
-            this, "保存选项",
-            "保存原图还是处理后的mask?\n"
-            "Yes = 保存mask (黑白图)\n"
-            "No = 保存增强后的图像",
-            QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel
-            );
-
-        if (reply == QMessageBox::Yes) {
-            toSave = ctx.mask;
-        } else if (reply == QMessageBox::No) {
-            toSave = ctx.enhanced.empty() ? ctx.srcBgr : ctx.enhanced;
-        } else {
-            return;
-        }
-    }
-    else
-    {
-        toSave = ctx.enhanced.empty() ? ctx.srcBgr : ctx.enhanced;
-    }
-
-    // 使用 FileManager 保存文件
-    m_fileManager->saveImageFile(saveName, toSave);
+    m_fileManager->saveImageFileWithDialog(m_pipelineManager);
 }
 
 // ========== ROI操作 ==========
@@ -389,12 +356,6 @@ void MainWindow::onRoiSelected(const QRectF &roiImgRectF)
         2000
         );
 }
-
-// ========== 区域筛选现在由ExtractTabController处理 ==========
-
-// ========== 过滤和提取现在由ExtractTabController处理 ==========
-
-// ========== 区域绘制和特征计算现在由ExtractTabController处理 ==========
 
 //判定
 

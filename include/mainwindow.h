@@ -54,7 +54,7 @@ private slots:
     // ========== 文件操作 ==========
     void on_btn_openImg_clicked();
     void on_btn_saveImg_clicked();
-    
+
     // ========== ROI操作 ==========
     void on_btn_drawRoi_clicked();
     void on_btn_resetROI_clicked();

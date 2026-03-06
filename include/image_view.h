@@ -15,6 +15,7 @@
 
 #include <opencv2/opencv.hpp>
 #include "logger.h"
+#include "roi_manager.h"
 
 // ROI 交互状态
 enum RoiHandle
@@ -105,28 +106,6 @@ private:
 
     QString m_currentDrawingType;
     void updatePolygonPath(const QVector<QPointF> &points, QGraphicsPathItem *&pathItem);
-};
-
-class RoiManager
-{
-public:
-    RoiManager() = default;
-
-    void setFullImage(const cv::Mat &img);
-
-    const cv::Mat &getCurrentImage() const;
-    const cv::Mat &getFullImage() const;
-    bool applyRoi(const QRectF &roiRectF);
-    void resetRoi();
-    bool isRoiActive() const;
-    cv::Rect getLastRoi() const;
-    void clear();
-
-private:
-    cv::Mat m_fullImage;
-    cv::Mat m_roiImage;
-    bool m_isRoiActive = false;
-    cv::Rect m_lastRoi;
 };
 
 #endif // IMAGE_VIEW_H
