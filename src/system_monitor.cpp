@@ -88,6 +88,27 @@ void SystemMonitor::stopMonitoring()
     }
 }
 
+void SystemMonitor::setupWithLogging(QLabel* cpuLabel, QLabel* memoryLabel, int intervalMs)
+{
+    setLabels(cpuLabel, memoryLabel);
+    setUpdateInterval(intervalMs);
+    startMonitoring();
+
+    // 连接日志记录信号
+    connect(this, &SystemMonitor::cpuUsageUpdated, [](double usage) {
+        if (usage > 80.0) {
+            Logger::instance()->warning(QString("CPU 占用率过高: %1%").arg(usage, 0, 'f', 1));
+        }
+    });
+
+    connect(this, &SystemMonitor::memoryUsageUpdated, [](double usedMB, double totalMB, double percent) {
+        if (percent > 90.0) {
+            Logger::instance()->warning(QString("内存使用率过高: %1% (%2/%3 MB)")
+                .arg(percent, 0, 'f', 1).arg(usedMB, 0, 'f', 0).arg(totalMB, 0, 'f', 0));
+        }
+    });
+}
+
 // ========== 定时更新槽函数 ==========
 
 void SystemMonitor::updateSystemInfo()

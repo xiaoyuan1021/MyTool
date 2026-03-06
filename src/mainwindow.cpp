@@ -79,40 +79,7 @@ MainWindow::~MainWindow()
 
 void MainWindow::setupSystemMonitor()
 {
-    //绑定显示控件
-    m_systemMonitor->setLabels(ui->label_cpu, ui->label_memory);
-
-    //设置更新间隔（2秒更新一次）
-    m_systemMonitor->setUpdateInterval(2000);
-
-    //启动监控
-    m_systemMonitor->startMonitoring();
-
-    //连接信号槽，用于日志记录或其他处理
-    connect(m_systemMonitor, &SystemMonitor::cpuUsageUpdated,
-            this, [this](double usage) {
-                // 当 CPU 占用率超过 80% 时记录日志
-                if (usage > 80.0)
-                {
-                    Logger::instance()->warning(
-                        QString("CPU 占用率过高: %1%").arg(usage, 0, 'f', 1)
-                        );
-                }
-            });
-
-    connect(m_systemMonitor, &SystemMonitor::memoryUsageUpdated,
-            this, [this](double usedMB, double totalMB, double percent) {
-                // 当内存使用率超过 90% 时记录日志
-                if (percent > 90.0)
-                {
-                    Logger::instance()->warning(
-                        QString("内存使用率过高: %1% (%2/%3 MB)")
-                            .arg(percent, 0, 'f', 1)
-                            .arg(usedMB, 0, 'f', 0)
-                            .arg(totalMB, 0, 'f', 0)
-                        );
-                }
-            });
+    m_systemMonitor->setupWithLogging(ui->label_cpu, ui->label_memory, 1000);
 }
 
 // ========== 初始化 ==========

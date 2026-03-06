@@ -50,6 +50,14 @@ public:
      */
     void stopMonitoring();
 
+    /**
+     * @brief 设置并启动监控（包含日志记录）
+     * @param cpuLabel CPU显示标签
+     * @param memoryLabel 内存显示标签
+     * @param intervalMs 更新间隔
+     */
+    void setupWithLogging(QLabel* cpuLabel, QLabel* memoryLabel, int intervalMs = 1000);
+
     // ========== 数据获取接口 ==========
 
     /**
