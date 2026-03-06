@@ -36,16 +36,9 @@ void ImageTabController::handleApplyChannel()
 
     int comboIndex = m_ui->comboBox_channels->currentIndex();
     PipelineConfig::Channel channel = channelFromIndex(comboIndex);
+
+    // 设置通道模式到Pipeline
     m_pipeline->setChannelMode(channel);
 
-    m_channelFlag = !m_channelFlag;
-    m_ui->btn_applyChannel->setText(
-        m_channelFlag ? "通道切换: ON" : "通道切换: OFF");
-
-    QString tip = m_channelFlag
-        ? "已应用通道效果"
-        : "已取消通道效果";
-    if (m_ui->statusbar) m_ui->statusbar->showMessage(tip, 2000);
-
-    emit channelChanged(channel);   // 交给 MainWindow 触发刷新
+    emit channelChanged(channel);
 }

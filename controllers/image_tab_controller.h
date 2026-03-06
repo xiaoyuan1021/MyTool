@@ -24,5 +24,4 @@ private:
 
     Ui::MainWindow* m_ui;
     PipelineManager* m_pipeline;
-    bool m_channelFlag = false;
 };

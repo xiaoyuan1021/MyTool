@@ -36,12 +36,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui, m_pipelineManager, this);
     connect(m_imageTabController.get(), &ImageTabController::channelChanged,
             this, [this](PipelineConfig::Channel channel) {
-                // 保留原先的显示模式逻辑
-                DisplayConfig::Mode mode =
-                    (channel == PipelineConfig::Channel::RGB)
-                        ? DisplayConfig::Mode::Original
-                        : DisplayConfig::Mode::Enhanced;
-                m_pipelineManager->setDisplayMode(mode);
+                Q_UNUSED(channel);
                 processAndDisplay();
             });
     m_imageTabController->initialize();
@@ -49,7 +44,7 @@ MainWindow::MainWindow(QWidget *parent)
     m_enhancementController = std::make_unique<EnhancementTabController>(
     ui, m_pipelineManager, m_processDebounceTimer,
     [this]() { processAndDisplay(); }, this);
-m_enhancementController->initialize();
+    m_enhancementController->initialize();
 
     m_templateController = std::make_unique<TemplateController>(
         ui, m_view, &m_roiManager, this);
@@ -69,6 +64,12 @@ m_enhancementController->initialize();
             this, &MainWindow::processAndDisplay);
     m_algorithmController->initialize();
 
+    m_extractController = std::make_unique<ExtractTabController>(
+        ui, m_pipelineManager, m_view, &m_roiManager, this);
+    connect(m_extractController.get(), &ExtractTabController::extractionChanged,
+            this, &MainWindow::processAndDisplay);
+    m_extractController->initialize();
+
 }
 
 MainWindow::~MainWindow()
@@ -81,8 +82,8 @@ void MainWindow::setupSystemMonitor()
     //绑定显示控件
     m_systemMonitor->setLabels(ui->label_cpu, ui->label_memory);
 
-    //设置更新间隔（1秒更新一次）
-    m_systemMonitor->setUpdateInterval(1000);
+    //设置更新间隔（2秒更新一次）
+    m_systemMonitor->setUpdateInterval(2000);
 
     //启动监控
     m_systemMonitor->startMonitoring();
@@ -225,8 +226,8 @@ void MainWindow::setupConnections()
                     );
 
                 if (type == "region") {
-                    // 区域计算
-                    calculateRegionFeatures(points);
+                    // 区域计算现在由ExtractTabController处理
+                    m_extractController->calculateRegionFeatures(points);
                 }
                 // 模板创建现在由 TemplateUIController 处理
             });
@@ -302,7 +303,9 @@ void MainWindow::processAndDisplay()
 
 void MainWindow::setDisplayModeForCurrentTab()
 {
-    switch (m_currentTabIndex) {
+    switch (m_currentTabIndex) 
+    {
+    case 0: m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Enhanced); break;  
     case 1: m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Enhanced); break;
     case 2: m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original); break;
     case 3: case 5: case 6: m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite); break;
@@ -380,9 +383,7 @@ void MainWindow::on_btn_saveImg_clicked()
     m_fileManager->saveImageFile(saveName, toSave);
 }
 
-
 // ========== ROI操作 ==========
-
 void MainWindow::on_btn_drawRoi_clicked()
 {
     if (m_roiManager.getFullImage().empty()) return;
@@ -422,170 +423,11 @@ void MainWindow::onRoiSelected(const QRectF &roiImgRectF)
         );
 }
 
-// ========== 算法队列操作现在由AlgorithmTabController处理 ==========
+// ========== 区域筛选现在由ExtractTabController处理 ==========
 
-// ========== 算法移动操作现在由AlgorithmTabController处理 ==========
+// ========== 过滤和提取现在由ExtractTabController处理 ==========
 
-// ========== 区域筛选 ==========
-
-void MainWindow::on_comboBox_select_currentIndexChanged(int index)
-{
-    switch(index)
-    {
-    case 0:  // 面积
-        ui->lineEdit_minArea->setPlaceholderText("例如: 50");
-        ui->lineEdit_maxArea->setPlaceholderText("例如: 1000");
-        break;
-    case 1:  // 圆度
-        ui->lineEdit_minArea->setPlaceholderText("例如: 0.8");
-        ui->lineEdit_maxArea->setPlaceholderText("例如: 1.0");
-        break;
-    case 2:  // 宽度
-        ui->lineEdit_minArea->setPlaceholderText("例如: 10");
-        ui->lineEdit_maxArea->setPlaceholderText("例如: 100");
-        break;
-    case 3:  // 高度
-        ui->lineEdit_minArea->setPlaceholderText("例如: 10");
-        ui->lineEdit_maxArea->setPlaceholderText("例如: 100");
-        break;
-    }
-}
-
-void MainWindow::on_comboBox_condition_currentIndexChanged(int index)
-{
-    // 0 = 满足所有条件 (AND)
-    // 1 = 满足任意条件 (OR)
-    FilterMode mode = (index == 0) ? FilterMode::And : FilterMode::Or;
-    m_pipelineManager->setFilterMode(mode);
-
-    //qDebug() << "筛选模式已切换:" << getFilterModeName(mode);
-    Logger::instance()->info(QString("筛选模式已切换:%1").
-                             arg(getFilterModeName(mode)));
-}
-
-
-void MainWindow::on_btn_clearFilter_clicked()
-{
-    // 清除所有筛选条件
-    m_pipelineManager->clearShapeFilter();
-
-    // 清空输入框
-    ui->lineEdit_minArea->clear();
-    ui->lineEdit_maxArea->clear();
-
-    // 重新执行Pipeline
-    processAndDisplay();
-
-    ui->statusbar->showMessage("已清除所有筛选条件", 2000);
-}
-
-
-void MainWindow::on_btn_addFilter_clicked()
-{
-    const PipelineContext& ctx = m_pipelineManager->getLastContext();
-
-    if (ctx.processed.empty())
-    {
-        QMessageBox::warning(this, "提示", "请先执行算法处理!");
-        return;
-    }
-
-    // 1️⃣ 获取用户输入
-    bool ok1, ok2;
-    double minValue = ui->lineEdit_minArea->text().toDouble(&ok1);
-    double maxValue = ui->lineEdit_maxArea->text().toDouble(&ok2);
-
-    if (!ok1 || !ok2 || minValue < 0 || maxValue < minValue)
-    {
-        QMessageBox::warning(this, "输入错误", "请输入有效的范围!");
-        return;
-    }
-
-    // 2️⃣ 获取选择的特征类型
-    int featureIndex = ui->comboBox_select->currentIndex();
-    ShapeFeature feature;
-
-    switch(featureIndex)
-    {
-    case 0:  feature = ShapeFeature::Area; break;
-    case 1:  feature = ShapeFeature::Circularity; break;
-    case 2:  feature = ShapeFeature::Width; break;
-    case 3:  feature = ShapeFeature::Height; break;
-    case 4:  feature = ShapeFeature::Compactness; break;
-    case 5:  feature = ShapeFeature::Convexity; break;
-    default: feature = ShapeFeature::Area;
-    }
-
-    // 3️⃣ 添加筛选条件
-    FilterCondition condition(feature, minValue, maxValue);
-
-    // ✅ 方式1：清除旧条件，只保留当前条件（单特征筛选）
-    // m_pipelineManager->clearShapeFilter();
-    // m_pipelineManager->addFilterCondition(condition);
-
-    // ✅ 方式2：累加条件（多特征组合筛选）
-    // 如果你想支持用户多次点击"筛选"来添加多个条件：
-    m_pipelineManager->addFilterCondition(condition);
-
-    ui->statusbar->showMessage(
-        QString("已应用筛选: %1").arg(condition.toString()),
-        2000
-        );
-    Logger::instance()->info(QString("已应用筛选: %1").
-                            arg(condition.toString()));
-
-}
-
-//提取按钮
-void MainWindow::on_btn_select_clicked()
-{
-    //重新执行Pipeline
-    m_view->clearPolygon();
-    m_drawnpoints.clear();
-    processAndDisplay();
-    Logger::instance()->info("区域已提取");
-}
-
-// ========== 颜色通道 ==========
-
-void MainWindow::on_comboBox_channels_currentIndexChanged(int index)
-{
-    if(m_roiManager.getCurrentImage().empty()) return;
-    switch (index)
-    {
-    case 0:
-        m_pipelineManager->setChannelMode(PipelineConfig::Channel::Gray);
-        Logger::instance()->info("切换到灰度模式");
-        break;
-    case 1:
-        m_pipelineManager->setChannelMode(PipelineConfig::Channel::RGB);
-        Logger::instance()->info("切换到RGB模式");
-        break;
-    case 2:
-        m_pipelineManager->setChannelMode(PipelineConfig::Channel::HSV);
-        Logger::instance()->info("切换到HSV模式");
-        break;
-    case 3:
-        m_pipelineManager->setChannelMode(PipelineConfig::Channel::B);
-        Logger::instance()->info("切换到B通道");
-        break;
-    case 4:
-        m_pipelineManager->setChannelMode(PipelineConfig::Channel::G);
-        Logger::instance()->info("切换到G通道");
-        break;
-    case 5:
-        m_pipelineManager->setChannelMode(PipelineConfig::Channel::R);
-        Logger::instance()->info("切换到R通道");
-        break;
-    default:
-        Logger::instance()->warning("未知的通道类型");
-        return;
-    }
-    m_needsReprocess = true;
-    processAndDisplay();
-    ui->statusbar->showMessage(QString("已切换到 %1")
-                                   .arg(ui->comboBox_channels->currentText()));
-}
+// ========== 区域绘制和特征计算现在由ExtractTabController处理 ==========
 
 //判定
 
@@ -634,66 +476,6 @@ void MainWindow::on_btn_clearLog_clicked()
     Logger::instance()->clear();
     Logger::instance()->info("日志已清空");
 }
-
-//区域绘制
-void MainWindow::on_btn_drawRegion_clicked()
-{
-    if(m_roiManager.getCurrentImage().empty())
-    {
-        Logger::instance()->warning("请先打开图像");
-        return;
-    }
-
-    m_view->startPolygonDrawing("region");
-
-
-    ui->statusbar->showMessage("请在图像上点击左键添加顶点，右键完成绘制");
-}
-
-void MainWindow::on_btn_clearRegion_clicked()
-{
-    m_view->clearPolygonDrawing();
-    ui->statusbar->showMessage("已清除绘制区域");
-}
-
-void MainWindow::calculateRegionFeatures(const QVector<QPointF>& points)
-{
-    if (points.size() < 3) {
-        Logger::instance()->warning("顶点数量不足，至少需要3个点");
-        return;
-    }
-
-    const PipelineContext& ctx = m_pipelineManager->getLastContext();
-
-    if (ctx.processed.empty() && ctx.mask.empty()) {
-        Logger::instance()->warning("请先执行算法处理，然后再绘制区域");
-        return;
-    }
-
-    // ========== 1. 获取处理后的图像 ==========
-    cv::Mat processedImg = ctx.processed.empty() ? ctx.mask : ctx.processed;
-
-    // ========== 2. 调用 HalconAlgorithm 进行区域分析 ==========
-    HalconAlgorithm analyzer;
-    QVector<RegionFeature> features = analyzer.analyzeRegionsInPolygon(points, processedImg);
-
-    // ========== 3. 如果没找到目标，直接返回 ==========
-    if (features.isEmpty()) {
-        return;  // analyzeRegionsInPolygon 内部已经输出了警告日志
-    }
-
-    // ========== 4. 输出结果到日志 ==========
-    Logger::instance()->info("========== ROI 区域特征分析 ==========");
-    Logger::instance()->info(QString("找到 %1 个连通域").arg(features.size()));
-    Logger::instance()->info("-----------------------------------");
-
-    for (const auto& feature : features) {
-        Logger::instance()->info(feature.toString());
-    }
-    Logger::instance()->info("======================================");
-}
-
-// ========== 算法选择和参数处理现在由AlgorithmTabController处理 ==========
 
 void MainWindow::on_btn_openLog_clicked()
 {

@@ -24,6 +24,7 @@
 #include "controllers/enhancement_tab_controller.h"
 #include "controllers/filter_tab_controller.h"
 #include "controllers/algorithm_tab_controller.h"
+#include "controllers/extract_tab_controller.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -61,19 +62,7 @@ private slots:
 
     // ========== 算法队列操作现在由AlgorithmTabController处理 ==========
 
-    // ========== 区域筛选 ==========
-    void on_btn_select_clicked();
-
-    // ========== 其他 ==========
-    void on_comboBox_channels_currentIndexChanged(int index);
-
-    void on_comboBox_select_currentIndexChanged(int index);
-
-    void on_comboBox_condition_currentIndexChanged(int index);
-
-    void on_btn_clearFilter_clicked();
-
-    void on_btn_addFilter_clicked();
+    // ========== 提取相关操作现在由ExtractTabController处理 ==========
 
     // ========== 算法相关操作现在由AlgorithmTabController处理 ==========
 
@@ -81,9 +70,7 @@ private slots:
 
     void on_btn_clearLog_clicked();
 
-    void on_btn_drawRegion_clicked();
-
-    void on_btn_clearRegion_clicked();
+    // ========== 区域绘制现在由ExtractTabController处理 ==========
 
     // ========== 算法选择现在由AlgorithmTabController处理 ==========
 
@@ -134,7 +121,7 @@ private:
     bool m_isDrawingRegion;
     // ✅ 新增：显示多边形的图形项
     QGraphicsPolygonItem * m_polygonItem;
-    void calculateRegionFeatures(const QVector<QPointF>& points);
+    // ========== 区域特征计算现在由ExtractTabController处理 ==========
 
     // ========== 算法编辑索引现在由AlgorithmTabController管理 ==========
 
@@ -143,6 +130,7 @@ private:
     std::unique_ptr<TemplateController> m_templateController;
     std::unique_ptr<FilterTabController> m_filterController;
     std::unique_ptr<AlgorithmTabController> m_algorithmController;
+    std::unique_ptr<ExtractTabController> m_extractController;
 
 };
 

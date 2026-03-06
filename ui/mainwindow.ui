@@ -38,7 +38,7 @@
        <rect>
         <x>280</x>
         <y>30</y>
-        <width>101</width>
+        <width>111</width>
         <height>31</height>
        </rect>
       </property>
@@ -309,7 +309,7 @@
         <x>90</x>
         <y>20</y>
         <width>321</width>
-        <height>27</height>
+        <height>28</height>
        </rect>
       </property>
       <layout class="QHBoxLayout" name="horizontalLayout_8">
@@ -346,7 +346,7 @@
        <rect>
         <x>90</x>
         <y>70</y>
-        <width>321</width>
+        <width>325</width>
         <height>27</height>
        </rect>
       </property>

@@ -64,6 +64,7 @@ void FilterTabController::setupConnections()
 void FilterTabController::filterColorChannelsChanged()
 {
     m_debounceTimer->start(150);
+    emit filterConfigChanged();
 }
 
 void FilterTabController::handleFilterModeChanged(int index)

@@ -48,7 +48,8 @@ SOURCES += \
     controllers/image_tab_controller.cpp \
     controllers/enhancement_tab_controller.cpp \
     controllers/filter_tab_controller.cpp \
-    controllers/algorithm_tab_controller.cpp
+    controllers/algorithm_tab_controller.cpp \
+    controllers/extract_tab_controller.cpp
 
 # ===== 头文件 =====
 HEADERS += \
@@ -69,7 +70,8 @@ HEADERS += \
     controllers/image_tab_controller.h \
     controllers/enhancement_tab_controller.h \
     controllers/filter_tab_controller.h \
-    controllers/algorithm_tab_controller.h
+    controllers/algorithm_tab_controller.h \
+    controllers/extract_tab_controller.h
 
 
 # ===== UI 文件 =====
