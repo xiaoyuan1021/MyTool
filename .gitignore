@@ -4,6 +4,7 @@
 .qtc_clangd/
 .qtcreator/
 
+.claude
 # Build directories
 build/
 build-*/
@@ -23,6 +24,7 @@ Thumbs.db
 # Temporary files
 *.log
 *.tmp
+*.pdb
 
 # 第三方库
 3rdparty/opencv/

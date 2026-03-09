@@ -95,7 +95,11 @@ cv::Mat PipelineContext::getFinalDisplay() const
             return processed;
         }
         return srcBgr;
-
+    case Mode::LineDetect:
+        if (!lineDetect.empty()) 
+        {
+            return lineDetect;
+        }
     default:
         return srcBgr;
     }

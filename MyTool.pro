@@ -52,7 +52,8 @@ HEADERS += \
     controllers/enhancement_tab_controller.h \
     controllers/filter_tab_controller.h \
     controllers/algorithm_tab_controller.h \
-    controllers/extract_tab_controller.h
+    controllers/extract_tab_controller.h \
+    controllers/line_detect_tab_controller.h
 
 # ===== 源文件 =====
 SOURCES += \
@@ -74,7 +75,8 @@ SOURCES += \
     controllers/enhancement_tab_controller.cpp \
     controllers/filter_tab_controller.cpp \
     controllers/algorithm_tab_controller.cpp \
-    controllers/extract_tab_controller.cpp
+    controllers/extract_tab_controller.cpp \
+    controllers/line_detect_tab_controller.cpp
 
 # ===== UI 文件 =====
 FORMS += \

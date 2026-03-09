@@ -25,6 +25,7 @@
 #include "controllers/filter_tab_controller.h"
 #include "controllers/algorithm_tab_controller.h"
 #include "controllers/extract_tab_controller.h"
+#include "controllers/line_detect_tab_controller.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -100,7 +101,7 @@ private:
     Ui::MainWindow *ui;
     ImageView *m_view;
 
-    // ✅ 核心模块（简化为两个）
+    // ✅ 核心模块
     PipelineManager* m_pipelineManager;  // Pipeline管理器
     RoiManager m_roiManager;              // ROI管理器
     SystemMonitor * m_systemMonitor;
@@ -131,6 +132,7 @@ private:
     std::unique_ptr<FilterTabController> m_filterController;
     std::unique_ptr<AlgorithmTabController> m_algorithmController;
     std::unique_ptr<ExtractTabController> m_extractController;
+    std::unique_ptr<LineDetectTabController> m_lineDetectController;
 
 };
 

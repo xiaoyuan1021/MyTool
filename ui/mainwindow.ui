@@ -24,7 +24,7 @@
      </rect>
     </property>
     <property name="currentIndex">
-     <number>1</number>
+     <number>0</number>
     </property>
     <property name="tabBarAutoHide">
      <bool>true</bool>
@@ -1718,6 +1718,170 @@
         </spacer>
        </item>
       </layout>
+     </widget>
+    </widget>
+    <widget class="QWidget" name="tab_2">
+     <attribute name="title">
+      <string>直线</string>
+     </attribute>
+     <widget class="QComboBox" name="comboBox_lineAlgorithm">
+      <property name="geometry">
+       <rect>
+        <x>130</x>
+        <y>20</y>
+        <width>121</width>
+        <height>26</height>
+       </rect>
+      </property>
+      <item>
+       <property name="text">
+        <string>HoughP</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>LSD</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>EDLines</string>
+       </property>
+      </item>
+     </widget>
+     <widget class="QLabel" name="label_38">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>20</y>
+        <width>101</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>直线检测类型</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="btn_applyLineDetecter">
+      <property name="geometry">
+       <rect>
+        <x>300</x>
+        <y>20</y>
+        <width>86</width>
+        <height>26</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>应用</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_39">
+      <property name="geometry">
+       <rect>
+        <x>20</x>
+        <y>60</y>
+        <width>71</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>阈值</string>
+      </property>
+     </widget>
+     <widget class="QSlider" name="Slider_LSDThreshold">
+      <property name="geometry">
+       <rect>
+        <x>120</x>
+        <y>60</y>
+        <width>161</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="orientation">
+       <enum>Qt::Orientation::Horizontal</enum>
+      </property>
+     </widget>
+     <widget class="QSpinBox" name="SpinBox_LSDThreshold">
+      <property name="geometry">
+       <rect>
+        <x>310</x>
+        <y>60</y>
+        <width>73</width>
+        <height>25</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QSpinBox" name="SpinBox_LSDMinLineLength">
+      <property name="geometry">
+       <rect>
+        <x>310</x>
+        <y>110</y>
+        <width>73</width>
+        <height>25</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QSlider" name="Slider_LSDMinLineLength">
+      <property name="geometry">
+       <rect>
+        <x>120</x>
+        <y>110</y>
+        <width>161</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="orientation">
+       <enum>Qt::Orientation::Horizontal</enum>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_40">
+      <property name="geometry">
+       <rect>
+        <x>20</x>
+        <y>100</y>
+        <width>91</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>最小直线长度</string>
+      </property>
+     </widget>
+     <widget class="QSpinBox" name="SpinBox_LSDMaxLineGap">
+      <property name="geometry">
+       <rect>
+        <x>310</x>
+        <y>150</y>
+        <width>73</width>
+        <height>25</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_41">
+      <property name="geometry">
+       <rect>
+        <x>20</x>
+        <y>150</y>
+        <width>71</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>最大间隙</string>
+      </property>
+     </widget>
+     <widget class="QSlider" name="Slider_LSDMaxLineGap">
+      <property name="geometry">
+       <rect>
+        <x>120</x>
+        <y>150</y>
+        <width>161</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="orientation">
+       <enum>Qt::Orientation::Horizontal</enum>
+      </property>
      </widget>
     </widget>
    </widget>

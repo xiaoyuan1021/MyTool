@@ -36,7 +36,8 @@ struct DisplayConfig
         Enhanced,          // 显示增强后的图
         MaskGreenWhite,    // Mask 显示为绿白
         MaskOverlay,       // Mask 叠加在原图上
-        Processed          // 显示算法处理结果
+        Processed,         // 显示算法处理结果
+        LineDetect         // 显示直线检测结果
     };
 
     Mode mode=Mode::Original;
@@ -103,6 +104,14 @@ struct PipelineConfig
     // double maxCircularity = 1.0;//最大圆度
     // int maxRegionCount = 0; // 例如：0 表示“不能有缺陷”
 
+    // ========== 直线检测参数 ==========
+    int lineDetectAlgorithm = 0;  // 0=HoughP, 1=LSD, 2=EDline
+    double lineRho = 1.0;
+    double lineTheta = CV_PI / 180.0;
+    int lineThreshold = 50;
+    double lineMinLength = 30.0;
+    double lineMaxGap = 10.0;
+    bool enableLineDetect = false;
 
     void syncConfigFromUI(QSlider* brightness,QSlider* contrast,QSlider* gamma,
                           QSlider* sharpen,QSlider* grayLow,QSlider* grayHigh)
@@ -138,6 +147,7 @@ struct PipelineContext
     cv::Mat enhanced;    // 增强后
     cv::Mat mask;        // 过滤得到的 mask (0/255)
     cv::Mat processed;   // 算法处理后的图（可能还是 mask / 或灰度）
+    cv::Mat lineDetect;  // 直线检测结果（新增）
     // 特征
     std::vector<RegionFeature> regions;
     // 输出

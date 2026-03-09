@@ -389,3 +389,42 @@ private:
     const PipelineConfig* m_cfg;
     imageprocessor* m_processor;
 };
+
+// 直线检测
+class StepLineDetect : public IPipelineStep
+{
+public:
+    explicit StepLineDetect(const PipelineConfig* cfg) : cfg_(cfg) {}
+
+    void run(PipelineContext &ctx) override
+    {
+        if (!cfg_ || !cfg_->enableLineDetect) return;
+        if (ctx.srcBgr.empty()) return;
+
+        cv::Mat src = ctx.srcBgr;
+        cv::Mat gray;
+        cv::cvtColor(src, gray, cv::COLOR_BGR2GRAY);
+
+        // 添加边缘检测
+        cv::Mat edges;
+        cv::Canny(gray, edges, 50, 150);
+
+        std::vector<cv::Vec4f> lines;
+        
+        // 在边缘图上做HoughP
+        cv::HoughLinesP(edges, lines, cfg_->lineRho, cfg_->lineTheta,
+                       cfg_->lineThreshold, cfg_->lineMinLength, cfg_->lineMaxGap);
+
+        // 绘制直线到lineDetect
+        ctx.lineDetect = src.clone();
+        for (const auto& line : lines) {
+            cv::line(ctx.lineDetect, 
+                    cv::Point(line[0], line[1]), 
+                    cv::Point(line[2], line[3]), 
+                    cv::Scalar(0, 255, 0), 2);
+        }
+    }
+
+private:
+    const PipelineConfig* cfg_;
+};

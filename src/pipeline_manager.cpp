@@ -152,6 +152,7 @@ void PipelineManager::initPipeline()
     m_pipeline.add(std::make_unique<StepColorFilter>(&m_config, m_processor.get()));
     m_pipeline.add(std::make_unique<StepAlgorithmQueue>(m_processor.get(), &m_algorithmQueue));
     m_pipeline.add(std::make_unique<StepShapeFilter>(&m_config));
+    m_pipeline.add(std::make_unique<StepLineDetect>(&m_config));
 
     //qDebug() << "[PipelineManager] Pipeline初始化完成";
 }
@@ -190,7 +191,7 @@ void PipelineManager::setDisplayMode(DisplayConfig::Mode mode)
 
 void PipelineManager::setOverlayAlpha(float alpha)
 {
-
+    Q_UNUSED(alpha);
 }
 
 void PipelineManager::setColorFilterEnabled(bool enabled)

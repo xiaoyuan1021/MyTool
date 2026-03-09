@@ -30,7 +30,9 @@ MainWindow::MainWindow(QWidget *parent)
 
     setupSystemMonitor();
     Logger::instance()->setTextEdit(ui->textEdit_log);
-    Logger::instance()->setLogFile("test.log");
+
+    QString logPath = QCoreApplication::applicationDirPath() + "/../../logs/test.log";
+    Logger::instance()->setLogFile(logPath);
     Logger::instance()->enableFileLog(true);
 
     m_imageTabController = std::make_unique<ImageTabController>(
@@ -49,9 +51,18 @@ MainWindow::MainWindow(QWidget *parent)
 
     m_templateController = std::make_unique<TemplateController>(
         ui, m_view, &m_roiManager, this);
+
+    m_templateController->initialize();
     connect(m_templateController.get(), &TemplateController::imageToShow,
             this, &MainWindow::showImage);
-    m_templateController->initialize();
+    connect(m_templateController.get(), &TemplateController::templateCreated,
+            this, [this](const QString& name) {
+                Logger::instance()->info(QString("模板已创建: %1").arg(name));
+            });
+    connect(m_templateController.get(), &TemplateController::matchCompleted,
+            this, [](int count) {
+                Logger::instance()->info(QString("匹配完成，找到 %1 个目标").arg(count));
+            });
 
     m_filterController = std::make_unique<FilterTabController>(
         ui, m_pipelineManager, this);
@@ -71,6 +82,11 @@ MainWindow::MainWindow(QWidget *parent)
             this, &MainWindow::processAndDisplay);
     m_extractController->initialize();
 
+    m_lineDetectController = std::make_unique<LineDetectTabController>
+    (
+        ui, m_pipelineManager, [this]() { m_processDebounceTimer->start(); }, this
+    );
+    m_lineDetectController->initialize();
 }
 
 MainWindow::~MainWindow()
@@ -210,21 +226,6 @@ void MainWindow::setupConnections()
                 //Logger::instance()->info(QString("算法队列数量:").arg(count));
             });
 
-
-    // ========== 算法相关连接现在由AlgorithmTabController处理 ==========
-    // ✅ 新的模板控制器信号
-    connect(m_templateController.get(), &TemplateController::templateCreated,
-            this, [this](const QString& name) {
-                Logger::instance()->info(QString("模板已创建: %1").arg(name));
-            });
-
-    connect(m_templateController.get(), &TemplateController::matchCompleted,
-            this, [](int count) {
-                Logger::instance()->info(QString("匹配完成，找到 %1 个目标").arg(count));
-            });
-
-    // ========== 颜色通道滑块连接现在由FilterTabController处理 ==========
-
 }
 
 void MainWindow::setupSliderSpinBoxPair(QSlider *slider, QSpinBox *spinbox,
@@ -264,7 +265,7 @@ void MainWindow::processAndDisplay()
     cv::Mat displayImage = result.getFinalDisplay();
     showImage(displayImage);
 
-    // ========== 6. 更新统计信息 ==========
+    // ========== 6. 更新判定label显示 ==========
     int count = result.currentRegions;
     ui->lineEdit_nowRegions->setText(QString::number(count));
 }
@@ -279,6 +280,7 @@ void MainWindow::setDisplayModeForCurrentTab()
     case 3: case 5: case 6: m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite); break;
     case 4: m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Processed); break;
     default: m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original); break;
+    case 7: m_pipelineManager->setDisplayMode(DisplayConfig::Mode::LineDetect); break;
     }
 }
 

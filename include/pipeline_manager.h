@@ -43,6 +43,9 @@ public:
     // 获取当前配置（只读）
     const PipelineConfig& getConfig() const { return m_config; }
 
+    // 获取当前配置（可写）
+    PipelineConfig& getConfig() { return m_config; }
+
     // ========== 算法队列管理 ==========
 
     // 添加算法步骤
