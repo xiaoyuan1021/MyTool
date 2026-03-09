@@ -2,6 +2,7 @@
 #include "ui_mainwindow.h"
 #include "logger.h"
 #include <QFile>
+#include <QDir>
 #include <QTimer>
 #include <QInputDialog>
 
@@ -272,7 +273,7 @@ void MainWindow::setDisplayModeForCurrentTab()
 {
     switch (m_currentTabIndex) 
     {
-    case 0: m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Enhanced); break;  
+    case 0: m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Channel); break;  
     case 1: m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Enhanced); break;
     case 2: m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original); break;
     case 3: case 5: case 6: m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite); break;
@@ -290,7 +291,12 @@ void MainWindow::showImage(const cv::Mat &img)
 // ========== 文件操作 ==========
 void MainWindow::on_btn_openImg_clicked()
 {
-    QString path = QCoreApplication::applicationDirPath() + "/images/";
+    // 优先使用项目根目录的images文件夹，如果不存在则使用应用目录
+    QString path = QCoreApplication::applicationDirPath() + "/../../images/";
+    QDir dir(path);
+    if (!dir.exists()) {
+        path = QCoreApplication::applicationDirPath() + "/images/";
+    }
 
     // 第一步：打开文件对话框，让用户选择文件
     QString fileName = m_fileManager->selectImageFile(path);
@@ -301,6 +307,7 @@ void MainWindow::on_btn_openImg_clicked()
 
     // 第二步：读取图像文件（通过信号返回结果）
     // 连接一次性信号，在图像加载后触发处理
+    // 不太好吧
     QMetaObject::Connection conn = connect(m_fileManager, &FileManager::imageLoaded,
             this, [this](const cv::Mat&) {
                 processAndDisplay();
@@ -320,41 +327,21 @@ void MainWindow::on_btn_saveImg_clicked()
 // ========== ROI操作 ==========
 void MainWindow::on_btn_drawRoi_clicked()
 {
-    if (m_roiManager.getFullImage().empty()) return;
-
-    m_view->setRoiMode(true);
-    m_view->setDragMode(QGraphicsView::NoDrag);
-    ui->statusbar->showMessage("请按下左键绘制ROI");
+    m_roiManager.enableDrawRoiMode(m_view, ui->statusbar);
 }
 
 void MainWindow::on_btn_resetROI_clicked()
 {
-    if (m_roiManager.getFullImage().empty()) return;
-
-    m_roiManager.resetRoi();
-    m_view->clearRoi();
-
-    showImage(m_roiManager.getFullImage());
-    ui->statusbar->showMessage("ROI已重置，处理使用完整图像", 2000);
-    Logger::instance()->info("ROI已重置");
+    m_roiManager.resetRoiWithUI(m_view, ui->statusbar);
 }
 
 void MainWindow::onRoiSelected(const QRectF &roiImgRectF)
 {
-    if (!m_roiManager.applyRoi(roiImgRectF))
-    {
-        ui->statusbar->showMessage("ROI应用失败", 2000);
+    if (!m_roiManager.handleRoiSelected(roiImgRectF, ui->statusbar)) {
         return;
     }
 
     processAndDisplay();
-
-    cv::Rect roi = m_roiManager.getLastRoi();
-    ui->statusbar->showMessage(
-        QString("ROI已选择：x=%1 y=%2 w=%3 h=%4")
-            .arg(roi.x).arg(roi.y).arg(roi.width).arg(roi.height),
-        2000
-        );
 }
 
 //判定

@@ -49,7 +49,16 @@ cv::Mat PipelineContext::getFinalDisplay() const
     {
     case Mode::Original:
         return srcBgr.empty() ? cv::Mat() : srcBgr;
-
+    
+    case Mode::Channel:
+        if (!channelImg.empty()) 
+        {
+            return channelImg;
+        }
+        else
+        {
+            return srcBgr;
+        }
     case Mode::Enhanced:
         if (!enhanced.empty()) {
             // 如果是单通道，转成彩色
@@ -122,6 +131,7 @@ cv::Mat PipelineContext::convertToGreenWhite(const cv::Mat &mask) const
         }
     }
 
+    
     return result;
 }
 

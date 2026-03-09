@@ -2,6 +2,11 @@
 
 #include <opencv2/opencv.hpp>
 #include <QRectF>
+#include <QString>
+
+// 前向声明
+class ImageView;
+class QStatusBar;
 
 /**
  * @class RoiManager
@@ -11,8 +16,7 @@
  * - 管理完整图像和ROI裁剪后的图像
  * - 应用和重置ROI
  * - 跟踪ROI的激活状态和坐标
- *
- * 不负责：UI显示、用户交互等
+ * - 处理ROI相关的UI交互逻辑
  */
 class RoiManager
 {
@@ -65,6 +69,30 @@ public:
      * @brief 清空所有数据
      */
     void clear();
+
+    // ========== UI交互相关方法 ==========
+
+    /**
+     * @brief 启用ROI绘制模式
+     * @param view ImageView指针
+     * @param statusBar 状态栏指针
+     */
+    void enableDrawRoiMode(ImageView *view, QStatusBar *statusBar);
+
+    /**
+     * @brief 处理ROI选择完成
+     * @param roiImgRectF 选中的ROI矩形
+     * @param statusBar 状态栏指针
+     * @return 是否处理成功
+     */
+    bool handleRoiSelected(const QRectF &roiImgRectF, QStatusBar *statusBar);
+
+    /**
+     * @brief 重置ROI并更新UI
+     * @param view ImageView指针
+     * @param statusBar 状态栏指针
+     */
+    void resetRoiWithUI(ImageView *view, QStatusBar *statusBar);
 
 private:
     cv::Mat m_fullImage;      // 完整图像

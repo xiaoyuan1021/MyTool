@@ -71,11 +71,20 @@ void EnhancementTabController::applyState(const EnhancementState &state)
     const QSignalBlocker b2(m_ui->Slider_contrast);
     const QSignalBlocker b3(m_ui->Slider_gamma);
     const QSignalBlocker b4(m_ui->Slider_sharpen);
+    const QSignalBlocker sb1(m_ui->spinBox_brightness);
+    const QSignalBlocker sb2(m_ui->spinBox_contrast);
+    const QSignalBlocker sb3(m_ui->spinBox_gamma);
+    const QSignalBlocker sb4(m_ui->spinBox_sharpen);
 
     m_ui->Slider_brightness->setValue(state.brightness);
     m_ui->Slider_contrast->setValue(state.contrast);
     m_ui->Slider_gamma->setValue(state.gamma);
     m_ui->Slider_sharpen->setValue(state.sharpen);
+
+    m_ui->spinBox_brightness->setValue(state.brightness);
+    m_ui->spinBox_contrast->setValue(state.contrast);
+    m_ui->spinBox_gamma->setValue(state.gamma);
+    m_ui->spinBox_sharpen->setValue(state.sharpen);
 
     if (m_processCallback) m_processCallback();
 }

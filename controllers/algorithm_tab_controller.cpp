@@ -172,8 +172,8 @@ void AlgorithmTabController::saveCurrentEdit()
     m_pipeline->updateAlgorithmStep(m_editingAlgorithmIndex, step);
     emit algorithmChanged();
 
-    Logger::instance()->info(QString("已保存算法 #%1: %2 的参数修改")
-        .arg(m_editingAlgorithmIndex + 1).arg(step.name));
+    // Logger::instance()->info(QString("已保存算法 #%1: %2 的参数修改")
+    //     .arg(m_editingAlgorithmIndex + 1).arg(step.name));
 }
 
 void AlgorithmTabController::loadAlgorithmParameters(int index)
