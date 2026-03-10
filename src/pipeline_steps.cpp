@@ -320,17 +320,55 @@ void StepLineDetect::run(PipelineContext &ctx)
         cv::Canny(gray, edges, 50, 150);
 
         std::vector<cv::Vec4f> lines;
-        
-        // 在边缘图上做HoughP
-        cv::HoughLinesP(edges, lines, cfg_->lineRho, cfg_->lineTheta,
-                       cfg_->lineThreshold, cfg_->lineMinLength, cfg_->lineMaxGap);
+
+        // 根据算法选择
+        if (cfg_->lineDetectAlgorithm == 0) 
+        {
+            
+            // HoughP
+            cv::HoughLinesP(edges, lines, cfg_->lineRho, cfg_->lineTheta,
+                           cfg_->lineThreshold, cfg_->lineMinLength, cfg_->lineMaxGap);
+        }
+        else if (cfg_->lineDetectAlgorithm == 1)
+        {
+            // EDlines - 直接在原图上检测
+            cv::Ptr<cv::ximgproc::EdgeDrawing> ed = cv::ximgproc::createEdgeDrawing();
+            ed->detectEdges(gray);
+            std::vector<std::vector<cv::Point>> segments = ed->getSegments();
+
+            qDebug() << "[EDlines] 检测到" << segments.size() << "条线段";
+
+            // 转换为Vec4f格式
+            for (const auto& seg : segments)
+            {
+                if (seg.size() >= 2)
+                {
+                    cv::Point p1 = seg.front();
+                    cv::Point p2 = seg.back();
+                    lines.push_back(cv::Vec4f(p1.x, p1.y, p2.x, p2.y));
+                }
+            }
+        }
 
         // 绘制直线到lineDetect
         ctx.lineDetect = src.clone();
+
         for (const auto& line : lines) {
-            cv::line(ctx.lineDetect, 
-                    cv::Point(line[0], line[1]), 
-                    cv::Point(line[2], line[3]), 
+            cv::line(ctx.lineDetect,
+                    cv::Point(line[0], line[1]),
+                    cv::Point(line[2], line[3]),
                     cv::Scalar(0, 255, 0), 2);
+        }
+
+        // 如果是EDlines，绘制完整的线段
+        if (cfg_->lineDetectAlgorithm == 1) {
+            cv::Ptr<cv::ximgproc::EdgeDrawing> ed = cv::ximgproc::createEdgeDrawing();
+            ed->detectEdges(gray);
+            std::vector<std::vector<cv::Point>> segments = ed->getSegments();
+            for (const auto& seg : segments) {
+                for (size_t i = 0; i < seg.size() - 1; i++) {
+                    cv::line(ctx.lineDetect, seg[i], seg[i+1], cv::Scalar(0, 255, 0), 1);
+                }
+            }
         }
     }

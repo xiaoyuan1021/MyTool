@@ -4,6 +4,7 @@
 #include "image_processor.h"
 #include "shape_filter_types.h"
 #include <HalconCpp.h>
+#include <opencv2/ximgproc.hpp>
 
 using namespace HalconCpp;
 

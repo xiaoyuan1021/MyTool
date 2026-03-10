@@ -12,6 +12,7 @@ INCLUDEPATH += $$PWD/controllers
 # ===== OpenCV 配置 (使用本地 3rdparty) =====
 OPENCV_DIR = $$PWD/3rdparty/opencv
 INCLUDEPATH += $$OPENCV_DIR/include/opencv4
+INCLUDEPATH += $$OPENCV_DIR/include/opencv4/opencv2/ximgproc
 
 LIBS += -L$$OPENCV_DIR/lib \
         -lopencv_core4d \
@@ -20,7 +21,8 @@ LIBS += -L$$OPENCV_DIR/lib \
         -lopencv_imgproc4d \
         -lopencv_videoio4d \
         -lopencv_dnn4d \
-        -lopencv_photo4d
+        -lopencv_photo4d \
+        -lopencv_ximgproc4d
 
 # ===== HALCON 配置 (使用本地 3rdparty) =====
 HALCON_DIR = $$PWD/3rdparty/halcon
