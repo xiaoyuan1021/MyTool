@@ -71,6 +71,7 @@ SOURCES += \
     src/file_manager.cpp \
     src/roi_manager.cpp \
     src/template_controller.cpp \
+    src/pipeline_steps.cpp \
     controllers/image_tab_controller.cpp \
     controllers/enhancement_tab_controller.cpp \
     controllers/filter_tab_controller.cpp \
