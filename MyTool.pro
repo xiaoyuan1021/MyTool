@@ -22,7 +22,8 @@ LIBS += -L$$OPENCV_DIR/lib \
         -lopencv_videoio4d \
         -lopencv_dnn4d \
         -lopencv_photo4d \
-        -lopencv_ximgproc4d
+        -lopencv_ximgproc4d \
+        -lopencv_line_descriptor4d
 
 # ===== HALCON 配置 (使用本地 3rdparty) =====
 HALCON_DIR = $$PWD/3rdparty/halcon

@@ -1,4 +1,5 @@
 #include "pipeline_steps.h"
+#include <opencv2/line_descriptor.hpp>
 
 void StepColorChannel::run(PipelineContext &ctx)
 {
@@ -306,6 +307,47 @@ void StepColorFilter::run(PipelineContext& ctx)
                          .arg(m_cfg->colorFilterMode == PipelineConfig::ColorFilterMode::RGB ? "RGB" : "HSV");
     }
 
+// ========== 直线检测辅助函数 ==========
+
+static void detectLinesHoughP(const cv::Mat& edges, const PipelineConfig* cfg, std::vector<cv::Vec4f>& lines)
+{
+    cv::HoughLinesP(edges, lines, cfg->lineRho, cfg->lineTheta,
+                   cfg->lineThreshold, cfg->lineMinLength, cfg->lineMaxGap);
+}
+
+static void detectLinesLSD(const cv::Mat& src, std::vector<cv::Vec4f>& lines)
+{
+    auto LSDDetector = cv::line_descriptor::LSDDetector::createLSDDetector();
+    std::vector<cv::line_descriptor::KeyLine> keylines;
+    LSDDetector->detect(src, keylines, 2, 1);
+    qDebug() << "[LSD] 检测到" << keylines.size() << "条直线";
+    for (const auto& kl : keylines)
+    {
+        cv::Point2f p1 = kl.getStartPoint();
+        cv::Point2f p2 = kl.getEndPoint();
+        if (p1 != p2) {
+            lines.push_back(cv::Vec4f(p1.x, p1.y, p2.x, p2.y));
+        }
+    }
+}
+
+static void detectLinesEDlines(const cv::Mat& src, std::vector<cv::Vec4f>& lines)
+{
+    auto edDetector = cv::line_descriptor::BinaryDescriptor::createBinaryDescriptor();
+    std::vector<cv::line_descriptor::KeyLine> keylines;
+    edDetector->detect(src, keylines);
+    qDebug() << "[EDlines] 检测到" << keylines.size() << "条直线";
+
+    for (const auto& kl : keylines)
+    {
+        cv::Point2f p1 = kl.getStartPoint();
+        cv::Point2f p2 = kl.getEndPoint();
+        if (p1 != p2) {
+            lines.push_back(cv::Vec4f(p1.x, p1.y, p2.x, p2.y));
+        }
+    }
+}
+
 void StepLineDetect::run(PipelineContext &ctx) 
     {
         if (!cfg_ || !cfg_->enableLineDetect) return;
@@ -322,50 +364,43 @@ void StepLineDetect::run(PipelineContext &ctx)
         std::vector<cv::Vec4f> lines;
 
         // 根据算法选择
-        if (cfg_->lineDetectAlgorithm == 0) 
+        if (cfg_->lineDetectAlgorithm == 0)
         {
-            
-            // HoughP
-            cv::HoughLinesP(edges, lines, cfg_->lineRho, cfg_->lineTheta,
-                           cfg_->lineThreshold, cfg_->lineMinLength, cfg_->lineMaxGap);
+            detectLinesHoughP(edges, cfg_, lines);
         }
         else if (cfg_->lineDetectAlgorithm == 1)
         {
-            // EDlines - 直接在原图上检测
-            cv::Ptr<cv::ximgproc::EdgeDrawing> ed = cv::ximgproc::createEdgeDrawing();
-            ed->detectEdges(gray);
-            std::vector<std::vector<cv::Point>> segments = ed->getSegments();
-
-            qDebug() << "[EDlines] 检测到" << segments.size() << "条线段";
-
-            // 转换为Vec4f格式
-            for (const auto& seg : segments)
-            {
-                if (seg.size() >= 2)
-                {
-                    cv::Point p1 = seg.front();
-                    cv::Point p2 = seg.back();
-                    lines.push_back(cv::Vec4f(p1.x, p1.y, p2.x, p2.y));
-                }
-            }
+            detectLinesLSD(gray, lines);
+        }
+        else if (cfg_->lineDetectAlgorithm == 2)
+        {
+            detectLinesEDlines(src, lines);
         }
 
         // 绘制直线到lineDetect
         ctx.lineDetect = src.clone();
 
-        for (const auto& line : lines) {
-            cv::line(ctx.lineDetect,
-                    cv::Point(line[0], line[1]),
-                    cv::Point(line[2], line[3]),
-                    cv::Scalar(0, 255, 0), 2);
+        // HoughP和LSD用端点连线
+        if (cfg_->lineDetectAlgorithm == 0 || cfg_->lineDetectAlgorithm == 1)
+        {
+            for (const auto& line : lines)
+            {
+                cv::line(ctx.lineDetect,
+                        cv::Point(line[0], line[1]),
+                        cv::Point(line[2], line[3]),
+                        cv::Scalar(0, 255, 0), 1);
+            }
         }
-
-        // 如果是EDlines，绘制完整的线段
-        if (cfg_->lineDetectAlgorithm == 1) {
+        // EDlines用EdgeDrawing绘制完整边缘链
+        else if (cfg_->lineDetectAlgorithm == 2)
+        {
             cv::Ptr<cv::ximgproc::EdgeDrawing> ed = cv::ximgproc::createEdgeDrawing();
             ed->detectEdges(gray);
             std::vector<std::vector<cv::Point>> segments = ed->getSegments();
-            for (const auto& seg : segments) {
+
+            ctx.lineDetect = src.clone();
+            for (const auto& seg : segments) 
+            {
                 for (size_t i = 0; i < seg.size() - 1; i++) {
                     cv::line(ctx.lineDetect, seg[i], seg[i+1], cv::Scalar(0, 255, 0), 1);
                 }
