@@ -20,12 +20,14 @@
 #include "template_controller.h"
 #include "system_monitor.h"
 #include "file_manager.h"
-#include "controllers/image_tab_controller.h"
 #include "controllers/enhancement_tab_controller.h"
 #include "controllers/filter_tab_controller.h"
 #include "controllers/algorithm_tab_controller.h"
 #include "controllers/extract_tab_controller.h"
 #include "controllers/line_detect_tab_controller.h"
+#include "log_page.h"
+#include "image_tab_widget.h"
+#include "enhance_tab_widget.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -81,6 +83,9 @@ private slots:
 
     void on_tabWidget_currentChanged(int index);
 
+    void on_btn_Log_clicked();
+
+    void on_btn_Home_clicked();
 
 private:
     // ========== 初始化 ==========
@@ -113,6 +118,7 @@ private:
     int m_currentTabIndex;  // 记录当前tab索引
 
     bool m_needsReprocess = false;
+    bool m_isDestroying = false;  // 标记程序是否正在关闭
 
     void setupSystemMonitor();
 
@@ -126,13 +132,14 @@ private:
 
     // ========== 算法编辑索引现在由AlgorithmTabController管理 ==========
 
-    std::unique_ptr<ImageTabController> m_imageTabController;
-    std::unique_ptr<EnhancementTabController> m_enhancementController;
+    std::unique_ptr<EnhanceTabWidget> m_enhanceTabWidget;
     std::unique_ptr<TemplateController> m_templateController;
     std::unique_ptr<FilterTabController> m_filterController;
     std::unique_ptr<AlgorithmTabController> m_algorithmController;
     std::unique_ptr<ExtractTabController> m_extractController;
     std::unique_ptr<LineDetectTabController> m_lineDetectController;
+    std::unique_ptr<LogPage> m_logPage;
+    std::unique_ptr<ImageTabWidget> m_imageTabWidget;
 
 };
 

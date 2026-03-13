@@ -2,65 +2,86 @@
    全局
 ========================= */
 QWidget {
-    background-color: #F3F6FB;
+    background-color: #F0F9F6;
     font-family: "Microsoft YaHei";
     font-size: 12px;
-    color: #2E3440;
+    color: #1F3A34;
 }
 
 /* =========================
    按钮
 ========================= */
 QPushButton {
-    background-color: #4C8BF5;
+    background-color: #10B981;
     color: white;
     border: none;
     border-radius: 8px;
     padding: 6px 14px;
+    font-weight: bold;
 }
 QPushButton:hover {
-    background-color: #3B78E0;
+    background-color: #059669;
 }
 QPushButton:pressed {
-    background-color: #2F5FC4;
+    background-color: #047857;
 }
 QPushButton:disabled {
-    background-color: #BFCBE3;
-    color: #EEF2FA;
+    background-color: #A7F3D0;
+    color: #ECFDF5;
 }
 
 /* =========================
    下拉框
 ========================= */
 QComboBox {
-    background-color: white;
-    border: 1px solid #DCE3F0;
+    background-color: #FFFFFF;
+    border: 2px solid #10B981;
     border-radius: 6px;
     padding: 4px 10px;
+    color: #1F3A34;
+    font-weight: bold;
 }
 QComboBox:hover {
-    border-color: #4C8BF5;
+    background-color: #F0FFFE;
+    border-color: #F97316;
+}
+QComboBox:focus {
+    border-color: #F97316;
+    background-color: #FFFBEB;
 }
 QComboBox::drop-down {
     border: none;
+    background-color: #10B981;
+    width: 20px;
+}
+QComboBox::down-arrow {
+    image: none;
 }
 
 /* =========================
    滑动条
 ========================= */
 QSlider::groove:horizontal {
-    background: #E4E9F2;
-    height: 6px;
-    border-radius: 3px;
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                                stop:0 #FF6B6B,
+                                stop:0.25 #F97316,
+                                stop:0.5 #10B981,
+                                stop:0.75 #3B82F6,
+                                stop:1 #8B5CF6);
+    height: 8px;
+    border-radius: 4px;
 }
 QSlider::handle:horizontal {
-    background: #4C8BF5;
-    width: 14px;
-    border-radius: 7px;
+    background: #FFFFFF;
+    width: 16px;
+    height: 16px;
+    border-radius: 8px;
     margin: -4px 0;
+    border: 2px solid #10B981;
 }
 QSlider::handle:horizontal:hover {
-    background: #3B78E0;
+    background: #F0F9F6;
+    border-color: #F97316;
 }
 
 /* =========================
@@ -68,12 +89,13 @@ QSlider::handle:horizontal:hover {
 ========================= */
 QSpinBox {
     background-color: white;
-    border: 1px solid #DCE3F0;
+    border: 2px solid #D1FAE5;
     border-radius: 6px;
     padding: 3px 6px;
+    color: #1F3A34;
 }
 QSpinBox:hover {
-    border-color: #4C8BF5;
+    border-color: #10B981;
 }
 
 /* =========================
@@ -81,14 +103,14 @@ QSpinBox:hover {
 ========================= */
 QListWidget {
     background-color: white;
-    border: 1px solid #DCE3F0;
+    border: 2px solid #D1FAE5;
     border-radius: 8px;
 }
 QListWidget::item {
     padding: 6px;
 }
 QListWidget::item:selected {
-    background-color: #4C8BF5;
+    background-color: #10B981;
     color: white;
     border-radius: 4px;
 }
@@ -98,7 +120,7 @@ QListWidget::item:selected {
 ========================= */
 QStackedWidget {
     background-color: white;
-    border: 1px solid #DCE3F0;
+    border: 2px solid #D1FAE5;
     border-radius: 10px;
 }
 
@@ -107,7 +129,7 @@ QStackedWidget {
 ========================= */
 QTabWidget::pane {
     background-color: white;
-    border: 1px solid #DCE3F0;
+    border: 2px solid #D1FAE5;
     border-radius: 10px;
     top: -1px;
 }
@@ -123,14 +145,14 @@ QTabBar::tab {
 
 QTabBar::tab:selected {
     background: white;
-    color: #4C8BF5;
+    color: #10B981;
     font-weight: bold;
-    border: 1px solid #DCE3F0;
+    border: 2px solid #D1FAE5;
     border-bottom: none;
 }
 
 QTabBar::tab:hover {
-    color: #4C8BF5;
+    color: #F97316;
 }
 
 /* =========================
@@ -138,11 +160,22 @@ QTabBar::tab:hover {
 ========================= */
 QStatusBar {
     background-color: #FFFFFF;
-    border-top: 1px solid #DCE3F0;
+    border-top: 2px solid #D1FAE5;
     color: #6B7280;
     padding-left: 8px;
 }
 
 QStatusBar::item {
     border: none;
+}
+
+/* =========================
+   Tab Widgets
+========================= */
+EnhanceTabWidget {
+    background-color: white;
+}
+
+ImageTabWidget {
+    background-color: white;
 }

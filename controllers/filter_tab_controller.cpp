@@ -87,6 +87,7 @@ void FilterTabController::configureColorFilter(int filterModeIndex)
         targetMode = PipelineConfig::FilterMode::Gray;
         m_pipeline->setGrayFilterEnabled(true);
         m_pipeline->setColorFilterEnabled(false);
+        syncGrayParameters();
         break;
     case 2:  // RGB
         targetMode = PipelineConfig::FilterMode::RGB;
@@ -107,6 +108,12 @@ void FilterTabController::configureColorFilter(int filterModeIndex)
     }
 
     m_pipeline->setCurrentFilterMode(targetMode);
+}
+
+void FilterTabController::syncGrayParameters()
+{
+    m_pipeline->getConfig().grayLow = m_ui->Slider_grayLow->value();
+    m_pipeline->getConfig().grayHigh = m_ui->Slider_grayHigh->value();
 }
 
 void FilterTabController::syncRGBParameters()

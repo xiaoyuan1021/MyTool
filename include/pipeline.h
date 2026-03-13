@@ -56,7 +56,7 @@ struct DisplayConfig
 
 struct PipelineConfig
 {
-    enum class Channel {Gray,RGB,BGR,HSV,B,G,R} channel=Channel::RGB;
+    enum class Channel {Gray,RGB,HSV,B,G,R} channel=Channel::RGB;
 
     enum class ColorFilterMode { None, RGB, HSV };
 
@@ -116,6 +116,10 @@ struct PipelineConfig
     void syncConfigFromUI(QSlider* brightness,QSlider* contrast,QSlider* gamma,
                           QSlider* sharpen,QSlider* grayLow,QSlider* grayHigh)
     {
+        // 添加空指针检查，防止访问已删除的对象
+        // if (!brightness || !contrast || !gamma || !sharpen || !grayLow || !grayHigh)
+        //     return;
+
         this->brightness = brightness->value();
         this->contrast   = contrast->value() / 100.0;
         this->gamma      = gamma->value() / 100.0;

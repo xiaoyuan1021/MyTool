@@ -348,6 +348,20 @@ static void detectLinesEDlines(const cv::Mat& src, std::vector<cv::Vec4f>& lines
     }
 }
 
+static void EDdrawing(const cv::Mat& src, cv::Ptr<cv::ximgproc::EdgeDrawing> ed, PipelineContext& ctx)
+{
+    ed = cv::ximgproc::createEdgeDrawing();
+    ed->detectEdges(src);
+    std::vector<std::vector<cv::Point>> segments = ed->getSegments();
+    for (const auto& seg : segments) 
+        {
+            for (size_t i = 0; i < seg.size() - 1; i++) 
+            {
+            cv::line(ctx.lineDetect, seg[i], seg[i+1], cv::Scalar(0, 255, 0), 1);
+            }
+        }
+}
+
 void StepLineDetect::run(PipelineContext &ctx) 
     {
         if (!cfg_ || !cfg_->enableLineDetect) return;
@@ -394,16 +408,7 @@ void StepLineDetect::run(PipelineContext &ctx)
         // EDlines用EdgeDrawing绘制完整边缘链
         else if (cfg_->lineDetectAlgorithm == 2)
         {
-            cv::Ptr<cv::ximgproc::EdgeDrawing> ed = cv::ximgproc::createEdgeDrawing();
-            ed->detectEdges(gray);
-            std::vector<std::vector<cv::Point>> segments = ed->getSegments();
-
-            ctx.lineDetect = src.clone();
-            for (const auto& seg : segments) 
-            {
-                for (size_t i = 0; i < seg.size() - 1; i++) {
-                    cv::line(ctx.lineDetect, seg[i], seg[i+1], cv::Scalar(0, 255, 0), 1);
-                }
-            }
+            cv::Ptr<cv::ximgproc::EdgeDrawing> ed;
+            EDdrawing(gray, ed, ctx);
         }
     }

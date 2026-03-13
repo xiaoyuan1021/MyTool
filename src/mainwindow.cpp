@@ -5,6 +5,7 @@
 #include <QDir>
 #include <QTimer>
 #include <QInputDialog>
+#include <QDebug>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -29,29 +30,30 @@ MainWindow::MainWindow(QWidget *parent)
     setupConnections();
 
     setupSystemMonitor();
-    Logger::instance()->setTextEdit(ui->textEdit_log);
 
     QString logPath = QCoreApplication::applicationDirPath() + "/../../logs/test.log";
     Logger::instance()->setLogFile(logPath);
     Logger::instance()->enableFileLog(true);
 
-    m_imageTabController = std::make_unique<ImageTabController>(
-    ui, m_pipelineManager, this);
-    connect(m_imageTabController.get(), &ImageTabController::channelChanged,
-            this, [this](PipelineConfig::Channel channel) {
-                Q_UNUSED(channel);
+    // 创建 ImageTabWidget 并添加到 tabWidget
+    m_imageTabWidget = std::make_unique<ImageTabWidget>(m_pipelineManager, this);
+    ui->tabWidget->insertTab(0, m_imageTabWidget.get(), "图像");
+    connect(m_imageTabWidget.get(), &ImageTabWidget::channelChanged,
+            this, [this](int channel) {
+                
+                m_pipelineManager->getConfig().channel = static_cast<PipelineConfig::Channel>(channel);
+            
                 processAndDisplay();
+                
             });
-    m_imageTabController->initialize();
 
-    m_enhancementController = std::make_unique<EnhancementTabController>(
-    ui, m_pipelineManager, m_processDebounceTimer,
-    [this]() { processAndDisplay(); }, this);
-    m_enhancementController->initialize();
-
+    m_enhanceTabWidget = std::make_unique<EnhanceTabWidget>(
+    m_pipelineManager, this);
+    ui->tabWidget->insertTab(1, m_enhanceTabWidget.get(), "增强");
+    connect(m_enhanceTabWidget.get(), &EnhanceTabWidget::processRequested,
+            this, &MainWindow::processAndDisplay);
     m_templateController = std::make_unique<TemplateController>(
         ui, m_view, &m_roiManager, this);
-
     m_templateController->initialize();
     connect(m_templateController.get(), &TemplateController::imageToShow,
             this, &MainWindow::showImage);
@@ -87,10 +89,42 @@ MainWindow::MainWindow(QWidget *parent)
         ui, m_pipelineManager, [this]() { m_processDebounceTimer->start(); }, this
     );
     m_lineDetectController->initialize();
+
+    // 初始化日志页面
+    m_logPage = std::make_unique<LogPage>(this);
+    ui->stackedWidget_MainWindow->addWidget(m_logPage.get());
+
+    // 将 Logger 的输出连接到 LogPage
+    connect(Logger::instance(), &Logger::logMessage,
+            m_logPage.get(), &LogPage::appendLog);
+
+    // 确保初始显示 Home 页面
+    ui->stackedWidget_MainWindow->setCurrentIndex(0);
 }
 
 MainWindow::~MainWindow()
 {
+    m_isDestroying = true;
+
+    // 断开所有信号槽连接，防止 UI 销毁时触发槽函数
+    if (m_imageTabWidget) {
+        disconnect(m_imageTabWidget.get(), nullptr, this, nullptr);
+    }
+    if (m_enhanceTabWidget) {
+        disconnect(m_enhanceTabWidget.get(), nullptr, this, nullptr);
+    }
+    if (m_filterController) {
+        disconnect(m_filterController.get(), nullptr, this, nullptr);
+    }
+    if (m_lineDetectController) {
+        disconnect(m_lineDetectController.get(), nullptr, this, nullptr);
+    }
+
+    // 断开 tabWidget 的信号
+    if (ui && ui->tabWidget) {
+        disconnect(ui->tabWidget, nullptr, this, nullptr);
+    }
+
     delete ui;
 }
 
@@ -117,11 +151,6 @@ void MainWindow::setupUI()
     ui->spinBox_matchNumber->setValue(3);
 
     // 设置滑块-数字框对
-    setupSliderSpinBoxPair(ui->Slider_brightness, ui->spinBox_brightness, -100, 100, 0);
-    setupSliderSpinBoxPair(ui->Slider_contrast, ui->spinBox_contrast, 0, 300, 100);
-    setupSliderSpinBoxPair(ui->Slider_gamma, ui->spinBox_gamma, 10, 300, 100);
-    setupSliderSpinBoxPair(ui->Slider_sharpen, ui->spinBox_sharpen, 0, 500, 100);
-
     setupSliderSpinBoxPair(ui->Slider_grayLow, ui->spinBox_grayLow, 0, 255, 0);
     setupSliderSpinBoxPair(ui->Slider_grayHigh, ui->spinBox_grayHigh, 0, 255, 0);
 
@@ -245,11 +274,11 @@ void MainWindow::setupSliderSpinBoxPair(QSlider *slider, QSpinBox *spinbox,
 
 void MainWindow::processAndDisplay()
 {
-    // ========== 1. 同步基础参数 ==========
-    m_pipelineManager->syncFromUI(
-        ui->Slider_brightness, ui->Slider_contrast, ui->Slider_gamma,
-        ui->Slider_sharpen, ui->Slider_grayLow, ui->Slider_grayHigh
-        );
+    // 防止程序关闭时访问已销毁的UI对象
+    // if (!ui || !ui->Slider_brightness) {
+    //     qDebug() << "[MainWindow] UI已销毁，忽略processAndDisplay";
+    //     return;
+    // }
 
     // ========== 2. 配置颜色过滤 (委托给FilterController) ==========
     m_filterController->configureColorFilter(ui->comboBox_filterMode->currentIndex());
@@ -401,7 +430,29 @@ void MainWindow::on_btn_openLog_clicked()
 
 void MainWindow::on_tabWidget_currentChanged(int index)
 {
+    // 防止程序关闭时访问已销毁的UI对象
+    // if (m_isDestroying) {
+    //     qDebug() << "[MainWindow] 程序正在关闭，忽略tabWidget_currentChanged";
+    //     return;
+    // }
+
     if(m_roiManager.getFullImage().empty()) return;
+
     m_currentTabIndex = index;
     processAndDisplay();
+}
+
+void MainWindow::on_btn_Log_clicked()
+{
+    qDebug() << "Log button clicked, switching to index 1";
+    qDebug() << "Current widget count:" << ui->stackedWidget_MainWindow->count();
+    ui->tabWidget->hide();
+    ui->stackedWidget_MainWindow->setCurrentIndex(1);
+}
+
+void MainWindow::on_btn_Home_clicked()
+{
+    qDebug() << "Home button clicked, switching to index 0";
+    ui->tabWidget->show();
+    ui->stackedWidget_MainWindow->setCurrentIndex(0);
 }

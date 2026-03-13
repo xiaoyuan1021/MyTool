@@ -51,6 +51,9 @@ HEADERS += \
     include/file_manager.h \
     include/roi_manager.h \
     include/template_controller.h \
+    include/log_page.h \
+    include/image_tab_widget.h \
+    include/enhance_tab_widget.h \
     controllers/image_tab_controller.h \
     controllers/enhancement_tab_controller.h \
     controllers/filter_tab_controller.h \
@@ -75,6 +78,9 @@ SOURCES += \
     src/roi_manager.cpp \
     src/template_controller.cpp \
     src/pipeline_steps.cpp \
+    src/log_page.cpp \
+    src/image_tab_widget.cpp \
+    src/enhance_tab_widget.cpp \
     controllers/image_tab_controller.cpp \
     controllers/enhancement_tab_controller.cpp \
     controllers/filter_tab_controller.cpp \
@@ -84,7 +90,10 @@ SOURCES += \
 
 # ===== UI 文件 =====
 FORMS += \
-    ui/mainwindow.ui
+    ui/mainwindow.ui \
+    ui/log_page.ui \
+    ui/tabs/image_tab.ui \
+    ui/tabs/enhance_tab.ui
 
 # ===== 资源文件 =====
 RESOURCES += \

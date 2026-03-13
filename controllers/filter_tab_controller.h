@@ -24,6 +24,7 @@ private:
     QTimer* m_debounceTimer = nullptr;
 
     void setupConnections();
+    void syncGrayParameters();
     void syncRGBParameters();
     void syncHSVParameters();
     

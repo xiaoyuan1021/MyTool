@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(qmake:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(dir:*)"
     ]
   }
 }

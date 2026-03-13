@@ -15,6 +15,7 @@ public:
                              QTimer* debounceTimer,
                              std::function<void()> processCallback,
                              QObject* parent = nullptr);
+    ~EnhancementTabController();
 
     void initialize();
 
@@ -24,32 +25,12 @@ private slots:
     void handleGammaChanged(int value);
     void handleSharpenChanged(int value);
 
-    void handleReset();
-    void handleSave();
-    void handleUndo();
+    //void handleReset();
+    //void handleSave();
+    //void handleUndo();
 
 private:
-    struct EnhancementState 
-    { 
-        int brightness = 0;
-        int contrast = 100;
-        int gamma = 100;
-        int sharpen = 100;
-
-        bool operator==(const EnhancementState& other) const
-        {
-            return brightness == other.brightness &&
-                contrast == other.contrast &&
-                gamma == other.gamma &&
-                sharpen == other.sharpen;
-        }   
-    };
-    EnhancementState captureState() const;
-    void applyState(const EnhancementState& state);
-    void pushSnapshot(const EnhancementState& state);
-    void updateUndoUi();
-
-    QStack<EnhancementState> m_enhancementHistory;
+    
     Ui::MainWindow* m_ui = nullptr;
     PipelineManager* m_pipeline = nullptr;
     QTimer* m_debounceTimer = nullptr;

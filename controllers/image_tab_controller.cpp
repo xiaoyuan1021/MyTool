@@ -12,8 +12,9 @@ ImageTabController::ImageTabController(Ui::MainWindow* ui,
 
 void ImageTabController::initialize()
 {
-    connect(m_ui->btn_applyChannel, &QPushButton::clicked,
-            this, &ImageTabController::handleApplyChannel);
+    // 已被 ImageTabWidget 替代，此方法不再使用
+    // connect(m_ui->btn_applyChannel, &QPushButton::clicked,
+    //         this, &ImageTabController::handleApplyChannel);
 }
 
 PipelineConfig::Channel ImageTabController::channelFromIndex(int index) const
@@ -32,13 +33,10 @@ PipelineConfig::Channel ImageTabController::channelFromIndex(int index) const
 
 void ImageTabController::handleApplyChannel()
 {
-    if (!m_ui || !m_pipeline) return;
-
-    int comboIndex = m_ui->comboBox_channels->currentIndex();
-    PipelineConfig::Channel channel = channelFromIndex(comboIndex);
-
-    // 设置通道模式到Pipeline
-    m_pipeline->setChannelMode(channel);
-
-    emit channelChanged(channel);
+    // 已被 ImageTabWidget 替代，此方法不再使用
+    // if (!m_ui || !m_pipeline) return;
+    // int comboIndex = m_ui->comboBox_channels->currentIndex();
+    // PipelineConfig::Channel channel = channelFromIndex(comboIndex);
+    // m_pipeline->setChannelMode(channel);
+    // emit channelChanged(channel);
 }
