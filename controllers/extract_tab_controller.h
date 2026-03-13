@@ -26,14 +26,18 @@ private slots:
     void extractRegions();
     void drawRegion();
     void clearRegion();
+    void onFilterListItemClicked(QListWidgetItem* item);
 
 private:
     void setupConnections();
-    //void calculateRegionFeatures(const QVector<QPointF>& points);
+    void updateFilterListWidget();
+    void displayFilterCondition(int index);
 
 private:
     Ui::MainWindow* m_ui;
     PipelineManager* m_pipeline;
     ImageView* m_view;
     RoiManager* m_roiManager;
+    QVector<FilterCondition> m_filterConditions;
+    int m_currentSelectedIndex = -1;  // 记录当前选中的条件索引
 };

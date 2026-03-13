@@ -48,55 +48,54 @@ void StepEnhance::run(PipelineContext& ctx)
 
 void StepGrayFilter::run(PipelineContext& ctx)
 {
-    if (cfg_->currentFilterMode != PipelineConfig::FilterMode::Gray) 
+    if (cfg_->currentFilterMode != PipelineConfig::FilterMode::Gray)
+    {
+        return;
+    }
+
+    if (!cfg_ || !cfg_->enableGrayFilter)
+    {
+        ctx.mask.release();
+        return;
+    }
+
+    if (ctx.enhanced.empty())
+    {
+        return;
+    }
+
+    cv::Mat gray;
+    if (ctx.enhanced.channels() == 3)
+    {
+        cv::cvtColor(ctx.enhanced, gray, cv::COLOR_BGR2GRAY);
+    } else {
+        gray = ctx.enhanced;
+    }
+
+    try
+    {
+        if (!gray.isContinuous())
         {
-            return;  // 不是灰度过滤模式，直接返回
+            gray = gray.clone();
         }
 
+        HImage hImg("byte", (Hlong)gray.cols, (Hlong)gray.rows, (void*)gray.data);
+        HRegion region = hImg.Threshold(
+            (double)cfg_->grayLow,
+            (double)cfg_->grayHigh
+            );
 
-        if (!cfg_ || !cfg_->enableGrayFilter) 
-        {
-            ctx.mask.release();
-            return;
-        }
+        ctx.mask = ImageUtils::HRegionToMat(region, gray.cols, gray.rows);
 
-        if (ctx.enhanced.empty()) 
-        {
-            return;
-        }
-
-        cv::Mat gray;
-        if (ctx.enhanced.channels() == 3) 
-        {
-            cv::cvtColor(ctx.enhanced, gray, cv::COLOR_BGR2GRAY);
-        } else {
-            gray = ctx.enhanced;
-        }
-
-        try 
-        {
-            if (!gray.isContinuous()) 
-            {
-                gray = gray.clone();
-            }
-
-            HImage hImg("byte", (Hlong)gray.cols, (Hlong)gray.rows, (void*)gray.data);
-            HRegion region = hImg.Threshold(
-                (double)cfg_->grayLow,
-                (double)cfg_->grayHigh
-                );
-
-            ctx.mask = ImageUtils::HRegionToMat(region, gray.cols, gray.rows);
-
-            ctx.reason = QString("灰度过滤: 范围[%1,%2]")
-                             .arg(cfg_->grayLow)
-                             .arg(cfg_->grayHigh);
-        }
-        catch (const HalconCpp::HException& ex) 
-        {
-            qDebug() << "Halcon Threshold error:" << ex.ErrorMessage().Text();
-            ctx.mask.release();
-        }
+        ctx.reason = QString("灰度过滤: 范围[%1,%2]")
+                         .arg(cfg_->grayLow)
+                         .arg(cfg_->grayHigh);
+    }
+    catch (const HalconCpp::HException& ex)
+    {
+        qDebug() << "Halcon Threshold error:" << ex.ErrorMessage().Text();
+        ctx.mask.release();
+    }
 }
 
 void StepAlgorithmQueue::run(PipelineContext& ctx)

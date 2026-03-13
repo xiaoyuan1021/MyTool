@@ -11,6 +11,12 @@ ExtractTabController::ExtractTabController(Ui::MainWindow* ui, PipelineManager* 
 void ExtractTabController::initialize()
 {
     setupConnections();
+
+    // 连接 QListWidget 的点击信号
+    connect(m_ui->listWidget_select, &QListWidget::itemClicked, this, [this](QListWidgetItem* item) {
+        int index = item->data(Qt::UserRole).toInt();
+        displayFilterCondition(index);
+    });
 }
 
 void ExtractTabController::setupConnections()
@@ -57,11 +63,32 @@ void ExtractTabController::onConditionChanged(int index)
 
 void ExtractTabController::clearFilter()
 {
+    if (m_currentSelectedIndex < 0 || m_currentSelectedIndex >= m_filterConditions.size()) {
+        m_ui->statusbar->showMessage("请先选择要删除的条件", 2000);
+        return;
+    }
+
+    // 从本地列表中移除
+    m_filterConditions.removeAt(m_currentSelectedIndex);
+
+    // 清空 Pipeline 中的所有条件
     m_pipeline->clearShapeFilter();
+
+    // 重新添加剩余的条件到 Pipeline
+    for (const FilterCondition& condition : m_filterConditions) {
+        m_pipeline->addFilterCondition(condition);
+    }
+
+    // 清空输入框
     m_ui->lineEdit_minArea->clear();
     m_ui->lineEdit_maxArea->clear();
+
+    // 更新列表显示
+    updateFilterListWidget();
+    m_currentSelectedIndex = -1;
+
     emit extractionChanged();
-    m_ui->statusbar->showMessage("已清除所有筛选条件", 2000);
+    m_ui->statusbar->showMessage("已删除选中的筛选条件", 2000);
 }
 
 void ExtractTabController::addFilter()
@@ -86,6 +113,15 @@ void ExtractTabController::addFilter()
 
     FilterCondition condition(feature, minValue, maxValue);
     m_pipeline->addFilterCondition(condition);
+
+    // 保存条件到本地列表
+    m_filterConditions.append(condition);
+
+    // 更新列表显示
+    updateFilterListWidget();
+
+    // 自动执行处理
+    extractRegions();
 
     m_ui->statusbar->showMessage(QString("已应用筛选: %1").arg(condition.toString()), 2000);
     Logger::instance()->info(QString("已应用筛选: %1").arg(condition.toString()));
@@ -141,4 +177,46 @@ void ExtractTabController::calculateRegionFeatures(const QVector<QPointF>& point
         Logger::instance()->info(feature.toString());
     }
     Logger::instance()->info("======================================");
+}
+
+void ExtractTabController::updateFilterListWidget()
+{
+    m_ui->listWidget_select->clear();
+    for (int i = 0; i < m_filterConditions.size(); ++i) {
+        const FilterCondition& condition = m_filterConditions[i];
+        // 只显示条件类型名称，不显示具体数值
+        QString featureName;
+        switch(condition.feature) {
+        case ShapeFeature::Area: featureName = "面积"; break;
+        case ShapeFeature::Circularity: featureName = "圆度"; break;
+        case ShapeFeature::Width: featureName = "宽度"; break;
+        case ShapeFeature::Height: featureName = "高度"; break;
+        default: featureName = "未知"; break;
+        }
+        QListWidgetItem* item = new QListWidgetItem(featureName);
+        item->setData(Qt::UserRole, i);
+        m_ui->listWidget_select->addItem(item);
+    }
+}
+
+void ExtractTabController::onFilterListItemClicked(QListWidgetItem* item)
+{
+    Q_UNUSED(item);
+    // 这个函数现在不再使用，因为 QListView 需要用 clicked 信号
+    // 改用 Model 的方式处理
+}
+
+void ExtractTabController::displayFilterCondition(int index)
+{
+    if (index < 0 || index >= m_filterConditions.size()) return;
+
+    m_currentSelectedIndex = index;
+    const FilterCondition& condition = m_filterConditions[index];
+
+    // 更新 comboBox_select 显示当前条件的类型
+    m_ui->comboBox_select->setCurrentIndex(static_cast<int>(condition.feature));
+
+    // 更新输入框显示最小值和最大值
+    m_ui->lineEdit_minArea->setText(QString::number(condition.minValue));
+    m_ui->lineEdit_maxArea->setText(QString::number(condition.maxValue));
 }

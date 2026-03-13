@@ -54,9 +54,9 @@ HEADERS += \
     include/log_page.h \
     include/image_tab_widget.h \
     include/enhance_tab_widget.h \
+    include/filter_tab_widget.h \
     controllers/image_tab_controller.h \
     controllers/enhancement_tab_controller.h \
-    controllers/filter_tab_controller.h \
     controllers/algorithm_tab_controller.h \
     controllers/extract_tab_controller.h \
     controllers/line_detect_tab_controller.h
@@ -81,9 +81,9 @@ SOURCES += \
     src/log_page.cpp \
     src/image_tab_widget.cpp \
     src/enhance_tab_widget.cpp \
+    src/filter_tab_widget.cpp \
     controllers/image_tab_controller.cpp \
     controllers/enhancement_tab_controller.cpp \
-    controllers/filter_tab_controller.cpp \
     controllers/algorithm_tab_controller.cpp \
     controllers/extract_tab_controller.cpp \
     controllers/line_detect_tab_controller.cpp
@@ -93,7 +93,8 @@ FORMS += \
     ui/mainwindow.ui \
     ui/log_page.ui \
     ui/tabs/image_tab.ui \
-    ui/tabs/enhance_tab.ui
+    ui/tabs/enhance_tab.ui \
+    ui/tabs/filter_tab.ui
 
 # ===== 资源文件 =====
 RESOURCES += \

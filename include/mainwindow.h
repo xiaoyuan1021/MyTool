@@ -21,13 +21,13 @@
 #include "system_monitor.h"
 #include "file_manager.h"
 #include "controllers/enhancement_tab_controller.h"
-#include "controllers/filter_tab_controller.h"
 #include "controllers/algorithm_tab_controller.h"
 #include "controllers/extract_tab_controller.h"
 #include "controllers/line_detect_tab_controller.h"
 #include "log_page.h"
 #include "image_tab_widget.h"
 #include "enhance_tab_widget.h"
+#include "filter_tab_widget.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -133,8 +133,8 @@ private:
     // ========== 算法编辑索引现在由AlgorithmTabController管理 ==========
 
     std::unique_ptr<EnhanceTabWidget> m_enhanceTabWidget;
+    std::unique_ptr<FilterTabWidget> m_filterTabWidget;
     std::unique_ptr<TemplateController> m_templateController;
-    std::unique_ptr<FilterTabController> m_filterController;
     std::unique_ptr<AlgorithmTabController> m_algorithmController;
     std::unique_ptr<ExtractTabController> m_extractController;
     std::unique_ptr<LineDetectTabController> m_lineDetectController;
