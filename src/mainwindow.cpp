@@ -37,7 +37,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     // 创建 ImageTabWidget 并添加到 tabWidget
     m_imageTabWidget = std::make_unique<ImageTabWidget>(m_pipelineManager, this);
-    ui->tabWidget->insertTab(0, m_imageTabWidget.get(), "图像");
+    ui->tabWidget->addTab(m_imageTabWidget.get(), "图像");
     connect(m_imageTabWidget.get(), &ImageTabWidget::channelChanged,
             this, [this](int channel) {
                 
@@ -49,18 +49,18 @@ MainWindow::MainWindow(QWidget *parent)
 
     m_enhanceTabWidget = std::make_unique<EnhanceTabWidget>(
     m_pipelineManager, this);
-    ui->tabWidget->insertTab(1, m_enhanceTabWidget.get(), "增强");
+    ui->tabWidget->addTab(m_enhanceTabWidget.get(), "增强");
     connect(m_enhanceTabWidget.get(), &EnhanceTabWidget::processRequested,
             this, &MainWindow::processAndDisplay);
 
     m_filterTabWidget = std::make_unique<FilterTabWidget>(m_pipelineManager, this);
-    ui->tabWidget->insertTab(2, m_filterTabWidget.get(), "过滤");
+    ui->tabWidget->addTab(m_filterTabWidget.get(), "过滤");
     connect(m_filterTabWidget.get(), &FilterTabWidget::filterConfigChanged,
             this, &MainWindow::processAndDisplay);
 
     m_templateTabWidget = std::make_unique<TemplateTabWidget>(
         m_view, &m_roiManager, this);
-    ui->tabWidget->insertTab(3, m_templateTabWidget.get(), "补正");
+    ui->tabWidget->addTab(m_templateTabWidget.get(), "补正");
     m_templateTabWidget->initialize();
     connect(m_templateTabWidget.get(), &TemplateTabWidget::imageToShow,
             this, &MainWindow::showImage);
@@ -79,17 +79,25 @@ MainWindow::MainWindow(QWidget *parent)
             this, &MainWindow::processAndDisplay);
     m_algorithmController->initialize();
 
-    m_extractController = std::make_unique<ExtractTabController>(
-        ui, m_pipelineManager, m_view, &m_roiManager, this);
-    connect(m_extractController.get(), &ExtractTabController::extractionChanged,
-            this, &MainWindow::processAndDisplay);
-    m_extractController->initialize();
+    // m_extractController = std::make_unique<ExtractTabController>(
+    //     ui, m_pipelineManager, m_view, &m_roiManager, this);
+    // connect(m_extractController.get(), &ExtractTabController::extractionChanged,
+    //         this, &MainWindow::processAndDisplay);
+    // m_extractController->initialize();
 
-    m_lineDetectController = std::make_unique<LineDetectTabController>
-    (
-        ui, m_pipelineManager, [this]() { m_processDebounceTimer->start(); }, this
-    );
-    m_lineDetectController->initialize();
+
+    m_extractTabWidget = std::make_unique<ExtractTabWidget>(
+        m_pipelineManager, m_view, &m_roiManager, this);
+    ui->tabWidget->addTab(m_extractTabWidget.get(), "提取");
+    m_extractTabWidget->initialize();
+    connect(m_extractTabWidget.get(), &ExtractTabWidget::extractionChanged,
+            this, &MainWindow::processAndDisplay);
+
+    m_lineDetectTabWidget = std::make_unique<LineDetectTabWidget>(
+        m_pipelineManager, [this]() { m_processDebounceTimer->start(); }, this);
+    ui->tabWidget->addTab(m_lineDetectTabWidget.get(), "直线");
+    m_lineDetectTabWidget->initialize();
+
 
     // 初始化日志页面
     m_logPage = std::make_unique<LogPage>(this);
@@ -106,29 +114,6 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow()
 {
     m_isDestroying = true;
-
-    // 断开所有信号槽连接，防止 UI 销毁时触发槽函数
-    if (m_imageTabWidget) {
-        disconnect(m_imageTabWidget.get(), nullptr, this, nullptr);
-    }
-    if (m_enhanceTabWidget) {
-        disconnect(m_enhanceTabWidget.get(), nullptr, this, nullptr);
-    }
-    if (m_filterTabWidget) {
-        disconnect(m_filterTabWidget.get(), nullptr, this, nullptr);
-    }
-    if (m_templateTabWidget) {
-        disconnect(m_templateTabWidget.get(), nullptr, this, nullptr);
-    }
-    if (m_lineDetectController) {
-        disconnect(m_lineDetectController.get(), nullptr, this, nullptr);
-    }
-
-    // 断开 tabWidget 的信号
-    if (ui && ui->tabWidget) {
-        disconnect(ui->tabWidget, nullptr, this, nullptr);
-    }
-
     delete ui;
 }
 
@@ -232,24 +217,24 @@ void MainWindow::setupConnections()
                     );
             });
 
-    connect(m_view, &ImageView::polygonDrawingFinished, this,
-            [this](const QString& type, const QVector<QPointF>& points) {
-                Logger::instance()->info(
-                    QString("[%1] 多边形绘制完成，共 %2 个顶点")
-                        .arg(type)
-                        .arg(points.size())
-                    );
+    // connect(m_view, &ImageView::polygonDrawingFinished, this,
+    //         [this](const QString& type, const QVector<QPointF>& points) {
+    //             Logger::instance()->info(
+    //                 QString("[%1] 多边形绘制完成，共 %2 个顶点")
+    //                     .arg(type)
+    //                     .arg(points.size())
+    //                 );
 
-                if (type == "region") {
-                    // 区域计算现在由ExtractTabController处理
-                    m_extractController->calculateRegionFeatures(points);
-                }
-                // 模板创建现在由 TemplateUIController 处理
-            });
+    //             if (type == "region") {
+    //                 // 区域计算现在由ExtractTabController处理
+    //                 m_extractController->calculateRegionFeatures(points);
+    //             }
+    //             // 模板创建现在由 TemplateUIController 处理
+    //         });
     // ========== PipelineManager信号 ==========
     connect(m_pipelineManager, &PipelineManager::pipelineFinished,
             [this](const QString& message) {
-                ui->statusbar->showMessage(message, 2000);
+                //ui->statusbar->showMessage(message, 2000);
             });
 
     connect(m_pipelineManager, &PipelineManager::algorithmQueueChanged,
@@ -297,27 +282,31 @@ void MainWindow::processAndDisplay()
 
     // ========== 6. 更新判定label显示 ==========
     int count = result.currentRegions;
-    ui->lineEdit_nowRegions->setText(QString::number(count));
+    if (m_currentTabIndex == 1) {  // 判定Tab的索引是1
+        ui->lineEdit_nowRegions->setText(QString::number(count));
+    }
 }
 
 void MainWindow::setDisplayModeForCurrentTab()
 {
     switch (m_currentTabIndex)
     {
-    case 0: // 图像Tab
-    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Channel); break;
-    case 1: // 增强Tab
-    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Enhanced); break;
-    case 2: // 过滤Tab
-    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite); break;
-    case 3: // 补正Tab
-    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original); break;
-    case 4: // 处理Tab
+    case 0: // 处理Tab
     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Processed); break;
-    case 5: // 提取Tab
+    case 1: // 判定Tab
     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite); break;
-    case 6: // 判定Tab
+    case 2: // 图像Tab
+    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Channel); break;
+    case 3: // 增强Tab
+    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Enhanced); break;
+    case 4: // 过滤Tab
     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite); break;
+    case 5: // 补正Tab
+    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original); break;
+
+    case 6: // 提取Tab
+    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite); break;
+    
     case 7: // 直线检测Tab
     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::LineDetect); break;
     default: m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original); break;
@@ -446,6 +435,8 @@ void MainWindow::on_tabWidget_currentChanged(int index)
     //     qDebug() << "[MainWindow] 程序正在关闭，忽略tabWidget_currentChanged";
     //     return;
     // }
+
+    //qDebug() << "[DEBUG] Tab changed to index:" << index << "Tab title:" << ui->tabWidget->tabText(index);
 
     if(m_roiManager.getFullImage().empty()) return;
 

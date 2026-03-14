@@ -93,7 +93,7 @@ FilterTabWidget::FilterTabWidget(PipelineManager* pipelineManager, QWidget* pare
 
 FilterTabWidget::~FilterTabWidget()
 {
-    m_ui = nullptr;
+    delete m_ui;
 }
 
 void FilterTabWidget::setupConnections()

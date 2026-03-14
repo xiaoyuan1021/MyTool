@@ -187,5 +187,5 @@ void EnhanceTabWidget::syncConfigToPipeline()
 
 EnhanceTabWidget::~EnhanceTabWidget()
 {
-    m_ui = nullptr;
+    delete m_ui;
 }

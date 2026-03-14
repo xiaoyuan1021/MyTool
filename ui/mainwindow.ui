@@ -251,7 +251,7 @@
      </rect>
     </property>
     <property name="currentIndex">
-     <number>3</number>
+     <number>1</number>
     </property>
     <property name="tabBarAutoHide">
      <bool>true</bool>
@@ -577,213 +577,6 @@
       </layout>
      </widget>
     </widget>
-    <widget class="QWidget" name="tab_7">
-     <attribute name="title">
-      <string>提取</string>
-     </attribute>
-     <widget class="QWidget" name="ExtractTabWidget" native="true">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>10</y>
-        <width>511</width>
-        <height>291</height>
-       </rect>
-      </property>
-      <widget class="QListWidget" name="listWidget_select">
-       <property name="geometry">
-        <rect>
-         <x>30</x>
-         <y>130</y>
-         <width>141</width>
-         <height>91</height>
-        </rect>
-       </property>
-      </widget>
-      <widget class="QStackedWidget" name="stackedWidget_selectCondition">
-       <property name="geometry">
-        <rect>
-         <x>220</x>
-         <y>120</y>
-         <width>291</width>
-         <height>91</height>
-        </rect>
-       </property>
-       <property name="currentIndex">
-        <number>0</number>
-       </property>
-       <widget class="QWidget" name="page">
-        <widget class="QWidget" name="">
-         <property name="geometry">
-          <rect>
-           <x>50</x>
-           <y>10</y>
-           <width>201</width>
-           <height>71</height>
-          </rect>
-         </property>
-         <layout class="QVBoxLayout" name="verticalLayout_9">
-          <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_4">
-            <item>
-             <widget class="QLabel" name="label_2">
-              <property name="text">
-               <string>最小值</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLineEdit" name="lineEdit_minArea"/>
-            </item>
-           </layout>
-          </item>
-          <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_5">
-            <item>
-             <widget class="QLabel" name="label_3">
-              <property name="text">
-               <string>最大值</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLineEdit" name="lineEdit_maxArea"/>
-            </item>
-           </layout>
-          </item>
-         </layout>
-        </widget>
-       </widget>
-       <widget class="QWidget" name="page_2"/>
-      </widget>
-      <widget class="QWidget" name="">
-       <property name="geometry">
-        <rect>
-         <x>20</x>
-         <y>80</y>
-         <width>239</width>
-         <height>28</height>
-        </rect>
-       </property>
-       <layout class="QHBoxLayout" name="horizontalLayout_7">
-        <item>
-         <widget class="QPushButton" name="btn_addFilter">
-          <property name="text">
-           <string>添加</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="btn_clearFilter">
-          <property name="text">
-           <string>清除</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="btn_select">
-          <property name="text">
-           <string>提取</string>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </widget>
-      <widget class="QWidget" name="">
-       <property name="geometry">
-        <rect>
-         <x>20</x>
-         <y>10</y>
-         <width>381</width>
-         <height>62</height>
-        </rect>
-       </property>
-       <layout class="QHBoxLayout" name="horizontalLayout_8">
-        <item>
-         <layout class="QVBoxLayout" name="verticalLayout_6">
-          <item>
-           <widget class="QComboBox" name="comboBox_condition">
-            <item>
-             <property name="text">
-              <string>满足所有条件</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string>满足任意条件</string>
-             </property>
-            </item>
-           </widget>
-          </item>
-          <item>
-           <widget class="QComboBox" name="comboBox_select">
-            <property name="currentIndex">
-             <number>0</number>
-            </property>
-            <item>
-             <property name="text">
-              <string>面积</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string>圆度</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string>宽度</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string>高度</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string>紧凑度</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string>凸性</string>
-             </property>
-            </item>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item>
-         <layout class="QVBoxLayout" name="verticalLayout">
-          <item>
-           <widget class="QPushButton" name="btn_drawRegion">
-            <property name="text">
-             <string>绘制区域</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="btn_clearRegion">
-            <property name="text">
-             <string>清除区域</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-       </layout>
-      </widget>
-     </widget>
-     <zorder>ExtractTabWidget</zorder>
-     <zorder>comboBox_condition</zorder>
-     <zorder>comboBox_select</zorder>
-     <zorder>btn_select</zorder>
-     <zorder>btn_clearFilter</zorder>
-     <zorder>btn_addFilter</zorder>
-     <zorder>btn_drawRegion</zorder>
-     <zorder>btn_clearRegion</zorder>
-    </widget>
     <widget class="QWidget" name="tab_8">
      <attribute name="title">
       <string>判定</string>
@@ -982,181 +775,6 @@
       </layout>
      </widget>
     </widget>
-    <widget class="QWidget" name="tab_2">
-     <attribute name="title">
-      <string>直线</string>
-     </attribute>
-     <widget class="QWidget" name="LineDetectTabWidget" native="true">
-      <property name="geometry">
-       <rect>
-        <x>40</x>
-        <y>20</y>
-        <width>431</width>
-        <height>281</height>
-       </rect>
-      </property>
-      <widget class="QWidget" name="layoutWidget">
-       <property name="geometry">
-        <rect>
-         <x>30</x>
-         <y>30</y>
-         <width>361</width>
-         <height>30</height>
-        </rect>
-       </property>
-       <layout class="QHBoxLayout" name="horizontalLayout_21">
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_18">
-          <item>
-           <widget class="QLabel" name="label_38">
-            <property name="text">
-             <string>直线检测类型</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QComboBox" name="comboBox_lineAlgorithm">
-            <item>
-             <property name="text">
-              <string>HoughP</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string>LSD</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string>EDLines</string>
-             </property>
-            </item>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item>
-         <spacer name="horizontalSpacer_41">
-          <property name="orientation">
-           <enum>Qt::Orientation::Horizontal</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>40</width>
-            <height>20</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-        <item>
-         <widget class="QPushButton" name="btn_applyLineDetecter">
-          <property name="text">
-           <string>应用</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <spacer name="horizontalSpacer_42">
-          <property name="orientation">
-           <enum>Qt::Orientation::Horizontal</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>40</width>
-            <height>20</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-       </layout>
-      </widget>
-      <widget class="QStackedWidget" name="stackedWidget_LineDetect">
-       <property name="geometry">
-        <rect>
-         <x>20</x>
-         <y>110</y>
-         <width>381</width>
-         <height>151</height>
-        </rect>
-       </property>
-       <property name="currentIndex">
-        <number>1</number>
-       </property>
-       <widget class="QWidget" name="None"/>
-       <widget class="QWidget" name="HoughP">
-        <layout class="QGridLayout" name="gridLayout_3">
-         <item row="1" column="0">
-          <layout class="QVBoxLayout" name="verticalLayout_4">
-           <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_15">
-             <item>
-              <widget class="QLabel" name="label_39">
-               <property name="text">
-                <string>阈值</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QSlider" name="Slider_HoughPThreshold">
-               <property name="orientation">
-                <enum>Qt::Orientation::Horizontal</enum>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QSpinBox" name="SpinBox_HoughPThreshold"/>
-             </item>
-            </layout>
-           </item>
-           <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_16">
-             <item>
-              <widget class="QLabel" name="label_40">
-               <property name="text">
-                <string>最小直线长度</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QSlider" name="Slider_HoughPMinLineLength">
-               <property name="orientation">
-                <enum>Qt::Orientation::Horizontal</enum>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QSpinBox" name="SpinBox_HoughPMinLineLength"/>
-             </item>
-            </layout>
-           </item>
-           <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_17">
-             <item>
-              <widget class="QLabel" name="label_41">
-               <property name="text">
-                <string>最大间隙</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QSlider" name="Slider_HoughPMaxLineGap">
-               <property name="orientation">
-                <enum>Qt::Orientation::Horizontal</enum>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QSpinBox" name="SpinBox_HoughPMaxLineGap"/>
-             </item>
-            </layout>
-           </item>
-          </layout>
-         </item>
-        </layout>
-       </widget>
-      </widget>
-     </widget>
-    </widget>
    </widget>
    <widget class="QStackedWidget" name="stackedWidget_MainWindow">
     <property name="geometry">
@@ -1198,7 +816,7 @@
      <string>删除检测</string>
     </property>
    </widget>
-   <widget class="QWidget" name="">
+   <widget class="QWidget" name="layoutWidget">
     <property name="geometry">
      <rect>
       <x>0</x>
@@ -1209,7 +827,7 @@
     </property>
     <layout class="QHBoxLayout" name="horizontalLayout_9"/>
    </widget>
-   <widget class="QWidget" name="">
+   <widget class="QWidget" name="layoutWidget">
     <property name="geometry">
      <rect>
       <x>0</x>
@@ -1220,6 +838,8 @@
     </property>
     <layout class="QHBoxLayout" name="horizontalLayout_14"/>
    </widget>
+   <zorder>layoutWidget</zorder>
+   <zorder>layoutWidget</zorder>
    <zorder>stackedWidget_MainWindow</zorder>
    <zorder>tabWidget</zorder>
    <zorder>graphicsView</zorder>

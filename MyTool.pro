@@ -5,6 +5,7 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 CONFIG += c++17
 
 INCLUDEPATH += $$PWD/include
+INCLUDEPATH += $$PWD/include/widgets
 INCLUDEPATH += $$PWD/controllers
 
 # DEFINES += PROJECT_DIR=\\\"$$PWD\\\"
@@ -51,16 +52,15 @@ HEADERS += \
     include/file_manager.h \
     include/roi_manager.h \
     include/log_page.h \
-    include/image_tab_widget.h \
-    include/enhance_tab_widget.h \
-    include/filter_tab_widget.h \
-    include/template_tab_widget.h \
+    include/widgets/image_tab_widget.h \
+    include/widgets/enhance_tab_widget.h \
+    include/widgets/filter_tab_widget.h \
+    include/widgets/template_tab_widget.h \
+    include/widgets/line_tab_widget.h \
+    include/widgets/extract_tab_widget.h \
     controllers/image_tab_controller.h \
     controllers/enhancement_tab_controller.h \
-    controllers/algorithm_tab_controller.h \
-    controllers/extract_tab_controller.h \
-    controllers/line_detect_tab_controller.h
-
+    controllers/algorithm_tab_controller.h
 # ===== 源文件 =====
 SOURCES += \
     src/match_strategy.cpp \
@@ -78,16 +78,15 @@ SOURCES += \
     src/roi_manager.cpp \
     src/pipeline_steps.cpp \
     src/log_page.cpp \
-    src/image_tab_widget.cpp \
-    src/enhance_tab_widget.cpp \
-    src/filter_tab_widget.cpp \
-    src/template_tab_widget.cpp \
+    src/widgets/image_tab_widget.cpp \
+    src/widgets/enhance_tab_widget.cpp \
+    src/widgets/filter_tab_widget.cpp \
+    src/widgets/template_tab_widget.cpp \
+    src/widgets/line_tab_widget.cpp \
+    src/widgets/extract_tab_widget.cpp \
     controllers/image_tab_controller.cpp \
     controllers/enhancement_tab_controller.cpp \
-    controllers/algorithm_tab_controller.cpp \
-    controllers/extract_tab_controller.cpp \
-    controllers/line_detect_tab_controller.cpp
-
+    controllers/algorithm_tab_controller.cpp
 # ===== UI 文件 =====
 FORMS += \
     ui/mainwindow.ui \
@@ -95,7 +94,9 @@ FORMS += \
     ui/tabs/image_tab.ui \
     ui/tabs/enhance_tab.ui \
     ui/tabs/filter_tab.ui \
-    ui/tabs/template_tab.ui
+    ui/tabs/template_tab.ui \
+    ui/tabs/line_tab.ui \
+    ui/tabs/extract_tab.ui
 
 # ===== 资源文件 =====
 RESOURCES += \

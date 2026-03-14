@@ -24,10 +24,12 @@
 #include "controllers/extract_tab_controller.h"
 #include "controllers/line_detect_tab_controller.h"
 #include "log_page.h"
-#include "image_tab_widget.h"
-#include "enhance_tab_widget.h"
-#include "filter_tab_widget.h"
-#include "template_tab_widget.h"
+#include "widgets/image_tab_widget.h"
+#include "widgets/enhance_tab_widget.h"
+#include "widgets/filter_tab_widget.h"
+#include "widgets/template_tab_widget.h"
+#include "widgets/line_tab_widget.h"
+#include "widgets/extract_tab_widget.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -135,6 +137,8 @@ private:
     std::unique_ptr<EnhanceTabWidget> m_enhanceTabWidget;
     std::unique_ptr<FilterTabWidget> m_filterTabWidget;
     std::unique_ptr<TemplateTabWidget> m_templateTabWidget;
+    std::unique_ptr<LineDetectTabWidget> m_lineDetectTabWidget;
+    std::unique_ptr<ExtractTabWidget> m_extractTabWidget;
     //std::unique_ptr<TemplateController> m_templateController;
     std::unique_ptr<AlgorithmTabController> m_algorithmController;
     std::unique_ptr<ExtractTabController> m_extractController;
