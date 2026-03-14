@@ -32,13 +32,13 @@ void TemplateController::initialize()
     initializeStrategies();
 
     // 连接信号槽
-    connect(m_ui->btn_drawTemplate, &QPushButton::clicked, this, &TemplateController::drawTemplate);
-    connect(m_ui->btn_clearTemplate, &QPushButton::clicked, this, &TemplateController::clearTemplateDrawing);
-    connect(m_ui->btn_creatTemplate, &QPushButton::clicked, this, &TemplateController::createTemplate);
-    connect(m_ui->btn_findTemplate, &QPushButton::clicked, this, &TemplateController::findTemplate);
-    connect(m_ui->btn_clearAllTemplates, &QPushButton::clicked, this, &TemplateController::clearAllTemplates);
-    connect(m_ui->comboBox_matchType, QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this, &TemplateController::onMatchTypeChanged);
+    // connect(m_ui->btn_drawTemplate, &QPushButton::clicked, this, &TemplateController::drawTemplate);
+    // connect(m_ui->btn_clearTemplate, &QPushButton::clicked, this, &TemplateController::clearTemplateDrawing);
+    // connect(m_ui->btn_creatTemplate, &QPushButton::clicked, this, &TemplateController::createTemplate);
+    // connect(m_ui->btn_findTemplate, &QPushButton::clicked, this, &TemplateController::findTemplate);
+    // connect(m_ui->btn_clearAllTemplates, &QPushButton::clicked, this, &TemplateController::clearAllTemplates);
+    // connect(m_ui->comboBox_matchType, QOverload<int>::of(&QComboBox::currentIndexChanged),
+    //         this, &TemplateController::onMatchTypeChanged);
 }
 
 void TemplateController::initializeStrategies()
@@ -150,33 +150,33 @@ void TemplateController::findTemplate()
         return;
     }
 
-    double minScore = m_ui->doubleSpinBox_minScore->value();
-    int maxMatches = m_ui->spinBox_matchNumber->value();
+    // double minScore = m_ui->doubleSpinBox_minScore->value();
+    // int maxMatches = m_ui->spinBox_matchNumber->value();
 
     Logger::instance()->info("========== 开始模板匹配 ==========");
     m_ui->statusbar->showMessage("正在搜索模板...");
 
-    QVector<MatchResult> results = m_currentStrategy->findMatches(
-        m_roiManager->getCurrentImage(), minScore, maxMatches, 0.75);
+    // QVector<MatchResult> results = m_currentStrategy->findMatches(
+    //     m_roiManager->getCurrentImage(), minScore, maxMatches, 0.75);
 
-    if (results.isEmpty()) {
-        Logger::instance()->info("未找到匹配目标");
-        QMessageBox::information(m_parent, "结果", "未找到匹配目标");
-        m_ui->statusbar->showMessage("未找到匹配", 3000);
-    } else {
-        cv::Mat resultImage = m_currentStrategy->drawMatches(m_roiManager->getCurrentImage(), results);
-        emit imageToShow(resultImage);
+    // if (results.isEmpty()) {
+    //     Logger::instance()->info("未找到匹配目标");
+    //     QMessageBox::information(m_parent, "结果", "未找到匹配目标");
+    //     m_ui->statusbar->showMessage("未找到匹配", 3000);
+    // } else {
+    //     cv::Mat resultImage = m_currentStrategy->drawMatches(m_roiManager->getCurrentImage(), results);
+    //     emit imageToShow(resultImage);
 
-        QString msg = QString("找到 %1 个匹配目标").arg(results.size());
-        m_ui->statusbar->showMessage(msg, 5000);
-        emit matchCompleted(results.size());
+    //     QString msg = QString("找到 %1 个匹配目标").arg(results.size());
+    //     m_ui->statusbar->showMessage(msg, 5000);
+    //     emit matchCompleted(results.size());
 
-        QString resultText = QString("找到 %1 个匹配目标\n\n").arg(results.size());
-        for (int i = 0; i < results.size(); ++i) {
-            resultText += QString("#%1: %2\n").arg(i + 1).arg(results[i].toString());
-        }
-        QMessageBox::information(m_parent, "匹配结果", resultText);
-    }
+    //     QString resultText = QString("找到 %1 个匹配目标\n\n").arg(results.size());
+    //     for (int i = 0; i < results.size(); ++i) {
+    //         resultText += QString("#%1: %2\n").arg(i + 1).arg(results[i].toString());
+    //     }
+    //     QMessageBox::information(m_parent, "匹配结果", resultText);
+    // }
 }
 
 void TemplateController::clearAllTemplates()
@@ -196,21 +196,21 @@ void TemplateController::clearAllTemplates()
 void TemplateController::onMatchTypeChanged(int index)
 {
     Q_UNUSED(index);
-    QString typeName = m_ui->comboBox_matchType->currentText();
-    MatchType type = (typeName == "NCC Model") ? MatchType::NCCModel :
-                     (typeName == "Opencv Model") ? MatchType::OpenCVTM : MatchType::ShapeModel;
+    // QString typeName = m_ui->comboBox_matchType->currentText();
+    // MatchType type = (typeName == "NCC Model") ? MatchType::NCCModel :
+    //                  (typeName == "Opencv Model") ? MatchType::OpenCVTM : MatchType::ShapeModel;
 
-    setMatchType(type);
-    m_ui->statusbar->showMessage(QString("当前匹配算法: %1").arg(typeName), 2000);
+    // setMatchType(type);
+    // m_ui->statusbar->showMessage(QString("当前匹配算法: %1").arg(typeName), 2000);
 }
 
 void TemplateController::updateUIState(bool hasTemplate)
 {
-    m_ui->btn_findTemplate->setEnabled(hasTemplate);
-    m_ui->btn_clearAllTemplates->setEnabled(hasTemplate);
+    // m_ui->btn_findTemplate->setEnabled(hasTemplate);
+    // m_ui->btn_clearAllTemplates->setEnabled(hasTemplate);
 
-    if (hasTemplate) 
-    {
-        m_ui->statusbar->showMessage(QString("✓ 已创建模板 [%1]").arg(getCurrentStrategyName()), 2000);
-    }
+    // if (hasTemplate) 
+    // {
+    //     m_ui->statusbar->showMessage(QString("✓ 已创建模板 [%1]").arg(getCurrentStrategyName()), 2000);
+    // }
 }

@@ -58,16 +58,17 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_filterTabWidget.get(), &FilterTabWidget::filterConfigChanged,
             this, &MainWindow::processAndDisplay);
 
-    m_templateController = std::make_unique<TemplateController>(
-        ui, m_view, &m_roiManager, this);
-    m_templateController->initialize();
-    connect(m_templateController.get(), &TemplateController::imageToShow,
+    m_templateTabWidget = std::make_unique<TemplateTabWidget>(
+        m_view, &m_roiManager, this);
+    ui->tabWidget->insertTab(3, m_templateTabWidget.get(), "补正");
+    m_templateTabWidget->initialize();
+    connect(m_templateTabWidget.get(), &TemplateTabWidget::imageToShow,
             this, &MainWindow::showImage);
-    connect(m_templateController.get(), &TemplateController::templateCreated,
+    connect(m_templateTabWidget.get(), &TemplateTabWidget::templateCreated,
             this, [this](const QString& name) {
                 Logger::instance()->info(QString("模板已创建: %1").arg(name));
             });
-    connect(m_templateController.get(), &TemplateController::matchCompleted,
+    connect(m_templateTabWidget.get(), &TemplateTabWidget::matchCompleted,
             this, [](int count) {
                 Logger::instance()->info(QString("匹配完成，找到 %1 个目标").arg(count));
             });
@@ -116,6 +117,9 @@ MainWindow::~MainWindow()
     if (m_filterTabWidget) {
         disconnect(m_filterTabWidget.get(), nullptr, this, nullptr);
     }
+    if (m_templateTabWidget) {
+        disconnect(m_templateTabWidget.get(), nullptr, this, nullptr);
+    }
     if (m_lineDetectController) {
         disconnect(m_lineDetectController.get(), nullptr, this, nullptr);
     }
@@ -146,9 +150,7 @@ void MainWindow::setupUI()
     ui->spinBox_height->setValue(5);
 
     ui->lineEdit_nowRegions->setReadOnly(true);
-    ui->doubleSpinBox_minScore->setValue(0.5);
-    ui->doubleSpinBox_minScore->setSingleStep(0.1);
-    ui->spinBox_matchNumber->setValue(3);
+    
 
     // 设置滑块-数字框对
     // setupSliderSpinBoxPair(ui->Slider_grayLow, ui->spinBox_grayLow, 0, 255, 0);
@@ -302,13 +304,23 @@ void MainWindow::setDisplayModeForCurrentTab()
 {
     switch (m_currentTabIndex)
     {
-    case 0: m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Channel); break;
-    case 1: m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Enhanced); break;
-    case 2: m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite); break;
-    case 3: case 5: case 6: m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite); break;
-    case 4: m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Processed); break;
+    case 0: // 图像Tab
+    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Channel); break;
+    case 1: // 增强Tab
+    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Enhanced); break;
+    case 2: // 过滤Tab
+    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite); break;
+    case 3: // 补正Tab
+    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original); break;
+    case 4: // 处理Tab
+    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Processed); break;
+    case 5: // 提取Tab
+    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite); break;
+    case 6: // 判定Tab
+    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite); break;
+    case 7: // 直线检测Tab
+    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::LineDetect); break;
     default: m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original); break;
-    case 7: m_pipelineManager->setDisplayMode(DisplayConfig::Mode::LineDetect); break;
     }
 }
 

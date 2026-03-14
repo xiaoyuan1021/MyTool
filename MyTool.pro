@@ -50,11 +50,11 @@ HEADERS += \
     include/match_strategy.h \
     include/file_manager.h \
     include/roi_manager.h \
-    include/template_controller.h \
     include/log_page.h \
     include/image_tab_widget.h \
     include/enhance_tab_widget.h \
     include/filter_tab_widget.h \
+    include/template_tab_widget.h \
     controllers/image_tab_controller.h \
     controllers/enhancement_tab_controller.h \
     controllers/algorithm_tab_controller.h \
@@ -76,12 +76,12 @@ SOURCES += \
     src/system_monitor.cpp \
     src/file_manager.cpp \
     src/roi_manager.cpp \
-    src/template_controller.cpp \
     src/pipeline_steps.cpp \
     src/log_page.cpp \
     src/image_tab_widget.cpp \
     src/enhance_tab_widget.cpp \
     src/filter_tab_widget.cpp \
+    src/template_tab_widget.cpp \
     controllers/image_tab_controller.cpp \
     controllers/enhancement_tab_controller.cpp \
     controllers/algorithm_tab_controller.cpp \
@@ -94,7 +94,8 @@ FORMS += \
     ui/log_page.ui \
     ui/tabs/image_tab.ui \
     ui/tabs/enhance_tab.ui \
-    ui/tabs/filter_tab.ui
+    ui/tabs/filter_tab.ui \
+    ui/tabs/template_tab.ui
 
 # ===== 资源文件 =====
 RESOURCES += \

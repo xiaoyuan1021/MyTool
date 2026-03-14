@@ -17,7 +17,6 @@
 #include "image_utils.h"
 #include "halcon_algorithm.h"
 #include "pipeline_manager.h"  // ✅ 新增：使用Pipeline管理器
-#include "template_controller.h"
 #include "system_monitor.h"
 #include "file_manager.h"
 #include "controllers/enhancement_tab_controller.h"
@@ -28,6 +27,7 @@
 #include "image_tab_widget.h"
 #include "enhance_tab_widget.h"
 #include "filter_tab_widget.h"
+#include "template_tab_widget.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -134,7 +134,8 @@ private:
 
     std::unique_ptr<EnhanceTabWidget> m_enhanceTabWidget;
     std::unique_ptr<FilterTabWidget> m_filterTabWidget;
-    std::unique_ptr<TemplateController> m_templateController;
+    std::unique_ptr<TemplateTabWidget> m_templateTabWidget;
+    //std::unique_ptr<TemplateController> m_templateController;
     std::unique_ptr<AlgorithmTabController> m_algorithmController;
     std::unique_ptr<ExtractTabController> m_extractController;
     std::unique_ptr<LineDetectTabController> m_lineDetectController;

@@ -53,7 +53,7 @@ FilterTabWidget::FilterTabWidget(PipelineManager* pipelineManager, QWidget* pare
     m_ui->spinBox_grayLow->setRange(0, 255);
     m_ui->spinBox_grayLow->setValue(0);
     m_ui->spinBox_grayHigh->setRange(0, 255);
-    m_ui->spinBox_grayHigh->setValue(255);
+    m_ui->spinBox_grayHigh->setValue(120);
 
     m_ui->spinBox_rgb_R_Low->setRange(0, 255);
     m_ui->spinBox_rgb_R_Low->setValue(0);
