@@ -189,3 +189,22 @@ EnhanceTabWidget::~EnhanceTabWidget()
 {
     delete m_ui;
 }
+
+void EnhanceTabWidget::getEnhanceConfig(int& brightness, int& contrast, int& gamma, int& sharpen) const
+{
+    EnhancementState state = captureState();
+    brightness = state.brightness;
+    contrast = state.contrast;
+    gamma = state.gamma;
+    sharpen = state.sharpen;
+}
+
+void EnhanceTabWidget::setEnhanceConfig(int brightness, int contrast, int gamma, int sharpen)
+{
+    EnhancementState state;
+    state.brightness = brightness;
+    state.contrast = contrast;
+    state.gamma = gamma;
+    state.sharpen = sharpen;
+    applyState(state);
+}

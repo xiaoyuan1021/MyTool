@@ -3,6 +3,7 @@
 #include <QFile>
 #include <QStandardPaths>
 #include <QDir>
+#include <QCoreApplication>
 #include "logger.h"
 
 QJsonObject AppConfig::toJson() const
@@ -37,6 +38,8 @@ QJsonObject AppConfig::toJson() const
     QJsonObject judgeObj;
     judgeObj["minRegionCount"] = minRegionCount;
     judgeObj["maxRegionCount"] = maxRegionCount;
+    judgeObj["currentRegionCount"] = currentRegionCount;
+
     json["judge"] = judgeObj;
 
     return json;
@@ -72,10 +75,12 @@ void AppConfig::fromJson(const QJsonObject& json)
     }
 
     // 判定配置
-    if (json.contains("judge")) {
+    if (json.contains("judge")) 
+    {
         QJsonObject judgeObj = json["judge"].toObject();
         minRegionCount = judgeObj["minRegionCount"].toInt(0);
         maxRegionCount = judgeObj["maxRegionCount"].toInt(1000);
+        currentRegionCount = judgeObj["currentRegionCount"].toInt(0);
     }
 }
 
@@ -87,12 +92,14 @@ ConfigManager& ConfigManager::instance()
 
 bool ConfigManager::saveConfig(const AppConfig& config, const QString& filePath)
 {
-    try {
+    try 
+    {
         QJsonObject json = config.toJson();
         QJsonDocument doc(json);
 
         QFile file(filePath);
-        if (!file.open(QIODevice::WriteOnly)) {
+        if (!file.open(QIODevice::WriteOnly)) 
+        {
             Logger::instance()->error(QString("无法打开配置文件: %1").arg(filePath));
             return false;
         }
@@ -102,7 +109,9 @@ bool ConfigManager::saveConfig(const AppConfig& config, const QString& filePath)
 
         Logger::instance()->info(QString("配置已保存: %1").arg(filePath));
         return true;
-    } catch (const std::exception& e) {
+    } 
+    catch (const std::exception& e) 
+    {
         Logger::instance()->error(QString("保存配置失败: %1").arg(e.what()));
         return false;
     }
@@ -110,14 +119,17 @@ bool ConfigManager::saveConfig(const AppConfig& config, const QString& filePath)
 
 bool ConfigManager::loadConfig(AppConfig& config, const QString& filePath)
 {
-    try {
+    try 
+    {
         QFile file(filePath);
-        if (!file.exists()) {
+        if (!file.exists()) 
+        {
             Logger::instance()->warning(QString("配置文件不存在: %1").arg(filePath));
             return false;
         }
 
-        if (!file.open(QIODevice::ReadOnly)) {
+        if (!file.open(QIODevice::ReadOnly)) 
+        {
             Logger::instance()->error(QString("无法打开配置文件: %1").arg(filePath));
             return false;
         }
@@ -134,7 +146,9 @@ bool ConfigManager::loadConfig(AppConfig& config, const QString& filePath)
         config.fromJson(doc.object());
         Logger::instance()->info(QString("配置已加载: %1").arg(filePath));
         return true;
-    } catch (const std::exception& e) {
+    } 
+    catch (const std::exception& e) 
+    {
         Logger::instance()->error(QString("加载配置失败: %1").arg(e.what()));
         return false;
     }
@@ -142,7 +156,8 @@ bool ConfigManager::loadConfig(AppConfig& config, const QString& filePath)
 
 QString ConfigManager::getDefaultConfigPath() const
 {
-    QString configDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    QDir().mkpath(configDir);
-    return configDir + "/app_config.json";
+    //QString configDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QString appPath = QCoreApplication::applicationDirPath();
+    QString rawPath = appPath + "/../../app_config.json";
+    return QDir::cleanPath(rawPath);
 }

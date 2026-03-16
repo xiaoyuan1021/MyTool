@@ -277,3 +277,24 @@ void FilterTabWidget::syncHSVParameters()
 
     m_pipelineManager->setHSVRange(hLow, hHigh, sLow, sHigh, vLow, vHigh);
 }
+
+void FilterTabWidget::getFilterConfig(int& mode, int& grayLow, int& grayHigh) const
+{
+    mode = m_ui->comboBox_filterMode->currentIndex();
+    grayLow = m_ui->Slider_grayLow->value();
+    grayHigh = m_ui->Slider_grayHigh->value();
+}
+
+void FilterTabWidget::setFilterConfig(int mode, int grayLow, int grayHigh)
+{
+    const QSignalBlocker b1(m_ui->Slider_grayLow);
+    const QSignalBlocker b2(m_ui->Slider_grayHigh);
+    const QSignalBlocker sb1(m_ui->spinBox_grayLow);
+    const QSignalBlocker sb2(m_ui->spinBox_grayHigh);
+
+    m_ui->comboBox_filterMode->setCurrentIndex(mode);
+    m_ui->Slider_grayLow->setValue(grayLow);
+    m_ui->Slider_grayHigh->setValue(grayHigh);
+    m_ui->spinBox_grayLow->setValue(grayLow);
+    m_ui->spinBox_grayHigh->setValue(grayHigh);
+}

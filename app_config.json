@@ -1,0 +1,25 @@
+{
+    "enhance": {
+        "brightness": 0,
+        "contrast": 220,
+        "gamma": 100,
+        "sharpen": 100
+    },
+    "filter": {
+        "enabled": false,
+        "grayHigh": 138,
+        "grayLow": 0,
+        "mode": 1
+    },
+    "judge": {
+        "currentRegionCount": 0,
+        "maxRegionCount": 500,
+        "minRegionCount": 200
+    },
+    "roi": {
+        "height": 0,
+        "width": 0,
+        "x": 0,
+        "y": 0
+    }
+}

@@ -16,6 +16,9 @@ public:
     ~JudgeTabWidget();
     void setCurrentRegionCount(int count);
 
+    void getJudgeConfig(int& minCount, int& maxCount, int& currentCount) const;
+    void setJudgeConfig(int minCount, int maxCount, int currentCount);
+
 private slots:
     void onRunTestClicked();
 

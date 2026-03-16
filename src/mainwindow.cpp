@@ -375,35 +375,51 @@ void MainWindow::loadConfig()
 void MainWindow::collectConfigFromUI(AppConfig& config)
 {
     // 收集 ROI 配置
-    if (m_roiManager.getRoiRect().isValid()) {
-        config.roiRect = m_roiManager.getRoiRect();
+    if (m_roiManager.isRoiActive()) {
+        cv::Rect roi = m_roiManager.getLastRoi();
+        config.roiRect = QRectF(roi.x, roi.y, roi.width, roi.height);
     }
 
-    // 收集增强参数（从 EnhanceTabWidget）
-    // 这里需要从 UI 中获取，暂时使用默认值
-    // 后续可以添加 getter 方法到各个 Widget
+    // 收集增强参数
+    if (m_enhanceTabWidget) {
+        m_enhanceTabWidget->getEnhanceConfig(config.brightness, config.contrast,
+                                             config.gamma, config.sharpen);
+    }
 
-    // 收集过滤配置（从 FilterTabWidget）
-    // 后续添加
+    // 收集过滤配置
+    if (m_filterTabWidget) {
+        m_filterTabWidget->getFilterConfig(config.filterMode, config.grayLow, config.grayHigh);
+    }
 
-    // 收集判定配置（从 JudgeTabWidget）
-    // 后续添加
+    // 收集判定配置
+    if (m_judgeTabWidget) 
+    {
+        m_judgeTabWidget->getJudgeConfig(config.minRegionCount, config.maxRegionCount, config.currentRegionCount);
+    }
 }
 
 void MainWindow::applyConfigToUI(const AppConfig& config)
 {
     // 应用 ROI 配置
     if (config.roiRect.isValid()) {
-        m_roiManager.setRoiRect(config.roiRect);
+        m_roiManager.applyRoi(config.roiRect);
         Logger::instance()->info("已恢复 ROI 配置");
     }
 
     // 应用增强参数
-    // 后续添加
+    if (m_enhanceTabWidget) {
+        m_enhanceTabWidget->setEnhanceConfig(config.brightness, config.contrast,
+                                             config.gamma, config.sharpen);
+    }
 
     // 应用过滤配置
-    // 后续添加
+    if (m_filterTabWidget) {
+        m_filterTabWidget->setFilterConfig(config.filterMode, config.grayLow, config.grayHigh);
+    }
 
     // 应用判定配置
-    // 后续添加
+    if (m_judgeTabWidget) 
+    {
+        m_judgeTabWidget->setJudgeConfig(config.minRegionCount, config.maxRegionCount, config.currentRegionCount);
+    }
 }

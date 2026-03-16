@@ -42,13 +42,30 @@ void JudgeTabWidget::onRunTestClicked()
     int currentCount = m_pipelineManager->getLastContext().currentRegions;
     bool pass = (currentCount >= minRegions && currentCount <= maxRegions);
 
-    if (pass) {
+    if (pass) 
+    {
         QMessageBox::information(this, "判定结果",
                                QString("✅ OK\n当前区域数: %1\n符合范围: [%2, %3]")
                                    .arg(currentCount).arg(minRegions).arg(maxRegions));
-    } else {
+    } 
+    else 
+    {
         QMessageBox::warning(this, "判定结果",
                            QString("❌ NG\n当前区域数: %1\n要求范围: [%2, %3]")
                                .arg(currentCount).arg(minRegions).arg(maxRegions));
     }
+}
+
+void JudgeTabWidget::getJudgeConfig(int& minCount, int& maxCount, int& currentCount) const
+{
+    minCount = m_ui->lineEdit_minRegionCount->text().toInt();
+    maxCount = m_ui->lineEdit_maxRegionCount->text().toInt();
+    currentCount = m_ui->lineEdit_nowRegions->text().toInt();
+}
+
+void JudgeTabWidget::setJudgeConfig(int minCount, int maxCount, int currentCount)
+{
+    m_ui->lineEdit_minRegionCount->setText(QString::number(minCount));
+    m_ui->lineEdit_maxRegionCount->setText(QString::number(maxCount));
+    m_ui->lineEdit_nowRegions->setText(QString::number(currentCount));
 }

@@ -22,6 +22,10 @@ public:
     explicit EnhanceTabWidget(PipelineManager* pipelineManager, QWidget* parent = nullptr);
     ~EnhanceTabWidget();
 
+    // 配置管理
+    void getEnhanceConfig(int& brightness, int& contrast, int& gamma, int& sharpen) const;
+    void setEnhanceConfig(int brightness, int contrast, int gamma, int sharpen);
+
 signals:
     void brightnessChanged(int);
     void contrastChanged(int);

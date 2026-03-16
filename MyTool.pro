@@ -59,7 +59,9 @@ HEADERS += \
     include/widgets/line_tab_widget.h \
     include/widgets/extract_tab_widget.h \
     include/widgets/process_tab_widget.h \
-    include/widgets/judge_tab_widget.h
+    include/widgets/judge_tab_widget.h \
+    include/config_manager.h
+
 # ===== 源文件 =====
 SOURCES += \
     src/match_strategy.cpp \
@@ -84,7 +86,8 @@ SOURCES += \
     src/widgets/line_tab_widget.cpp \
     src/widgets/extract_tab_widget.cpp \
     src/widgets/process_tab_widget.cpp \
-    src/widgets/judge_tab_widget.cpp
+    src/widgets/judge_tab_widget.cpp \
+    src/config_manager.cpp
 
 # ===== UI 文件 =====
 FORMS += \

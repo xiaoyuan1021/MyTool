@@ -15,6 +15,9 @@ public:
     explicit FilterTabWidget(PipelineManager* pipelineManager, QWidget* parent = nullptr);
     ~FilterTabWidget();
 
+    void getFilterConfig(int& mode, int& grayLow, int& grayHigh) const;
+    void setFilterConfig(int mode, int grayLow, int grayHigh);
+
 signals:
     void filterConfigChanged();
 

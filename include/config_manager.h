@@ -25,6 +25,7 @@ struct AppConfig
     // 判定配置
     int minRegionCount = 0;
     int maxRegionCount = 1000;
+    int currentRegionCount = 0;
 
     // 转换为 JSON
     QJsonObject toJson() const;
