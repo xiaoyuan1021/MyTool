@@ -46,7 +46,7 @@ void TemplateTabWidget::initialize()
     connect(m_ui->btn_clearTemplate, &QPushButton::clicked, this, &TemplateTabWidget::clearTemplateDrawing);
     connect(m_ui->btn_creatTemplate, &QPushButton::clicked, this, &TemplateTabWidget::createTemplate);
     connect(m_ui->btn_findTemplate, &QPushButton::clicked, this, &TemplateTabWidget::findTemplate);
-    connect(m_ui->btn_clearAllTemplates, &QPushButton::clicked, this, &TemplateTabWidget::clearAllTemplates);
+    //connect(m_ui->btn_clearAllTemplates, &QPushButton::clicked, this, &TemplateTabWidget::clearAllTemplates);
     connect(m_ui->comboBox_matchType, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &TemplateTabWidget::onMatchTypeChanged);
 }
@@ -100,6 +100,7 @@ void TemplateTabWidget::drawTemplate()
 void TemplateTabWidget::clearTemplateDrawing()
 {
     m_view->clearPolygonDrawing();
+    clearMatchResults();
     //m_ui->statusbar->showMessage("已清除模板区域");
     Logger::instance()->info("已清除模板区域");
 }
@@ -123,6 +124,7 @@ void TemplateTabWidget::createTemplate()
     if (!ok || name.isEmpty()) return;
 
     createTemplateFromPolygon(points, name);
+    
 }
 
 void TemplateTabWidget::createTemplateFromPolygon(const QVector<QPointF>& points, const QString& name)
@@ -189,17 +191,24 @@ void TemplateTabWidget::findTemplate()
     }
 }
 
-void TemplateTabWidget::clearAllTemplates()
-{
-    QMessageBox::StandardButton reply = QMessageBox::question(
-        m_parent, "确认", "确定要清空所有模板吗？",
-        QMessageBox::Yes | QMessageBox::No);
+// void TemplateTabWidget::clearAllTemplates()
+// {
+//     QMessageBox::StandardButton reply = QMessageBox::question(
+//         m_parent, "确认", "确定要清空所有模板吗？",
+//         QMessageBox::Yes | QMessageBox::No);
 
-    if (reply == QMessageBox::Yes)
-    {
-        clearTemplate();
-        Logger::instance()->info("已清空所有模板");
-        //m_ui->statusbar->showMessage("已清空所有模板", 3000);
+//     if (reply == QMessageBox::Yes)
+//     {
+//         clearTemplate();
+//         Logger::instance()->info("已清空所有模板");
+//     }
+// }
+
+void TemplateTabWidget::clearMatchResults()
+{
+    if (!m_roiManager->getCurrentImage().empty()) {
+        emit imageToShow(m_roiManager->getCurrentImage());
+        Logger::instance()->info("已清除匹配结果");
     }
 }
 
@@ -217,7 +226,7 @@ void TemplateTabWidget::onMatchTypeChanged(int index)
 void TemplateTabWidget::updateUIState(bool hasTemplate)
 {
     m_ui->btn_findTemplate->setEnabled(hasTemplate);
-    m_ui->btn_clearAllTemplates->setEnabled(hasTemplate);
+    //m_ui->btn_clearAllTemplates->setEnabled(hasTemplate);
 
     if (hasTemplate) 
     {

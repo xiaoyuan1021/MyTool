@@ -5,11 +5,17 @@
 #include "pipeline_manager.h"
 #include <QListWidgetItem>
 
-class AlgorithmTabController : public QObject
+namespace Ui {
+    class Form_Process;
+}
+
+class ProcessTabWidget : public QWidget
 {
     Q_OBJECT
+
 public:
-    AlgorithmTabController(Ui::MainWindow* ui, PipelineManager* pipeline, QObject* parent = nullptr);
+    explicit ProcessTabWidget(PipelineManager* pipelineManager, QWidget *parent = nullptr);
+    ~ProcessTabWidget();
     void initialize();
 
 signals:
@@ -29,7 +35,7 @@ private:
     void loadAlgorithmParameters(int index);
 
 private:
-    Ui::MainWindow* m_ui;
-    PipelineManager* m_pipeline;
+    Ui::Form_Process *m_ui;
+    PipelineManager* m_pipelineManager;
     int m_editingAlgorithmIndex = -1;
 };

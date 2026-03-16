@@ -58,9 +58,8 @@ HEADERS += \
     include/widgets/template_tab_widget.h \
     include/widgets/line_tab_widget.h \
     include/widgets/extract_tab_widget.h \
-    controllers/image_tab_controller.h \
-    controllers/enhancement_tab_controller.h \
-    controllers/algorithm_tab_controller.h
+    include/widgets/process_tab_widget.h \
+    include/widgets/judge_tab_widget.h
 # ===== 源文件 =====
 SOURCES += \
     src/match_strategy.cpp \
@@ -84,9 +83,9 @@ SOURCES += \
     src/widgets/template_tab_widget.cpp \
     src/widgets/line_tab_widget.cpp \
     src/widgets/extract_tab_widget.cpp \
-    controllers/image_tab_controller.cpp \
-    controllers/enhancement_tab_controller.cpp \
-    controllers/algorithm_tab_controller.cpp
+    src/widgets/process_tab_widget.cpp \
+    src/widgets/judge_tab_widget.cpp
+
 # ===== UI 文件 =====
 FORMS += \
     ui/mainwindow.ui \
@@ -96,7 +95,9 @@ FORMS += \
     ui/tabs/filter_tab.ui \
     ui/tabs/template_tab.ui \
     ui/tabs/line_tab.ui \
-    ui/tabs/extract_tab.ui
+    ui/tabs/extract_tab.ui \
+    ui/tabs/process_tab.ui \
+    ui/tabs/judge_tab.ui
 
 # ===== 资源文件 =====
 RESOURCES += \

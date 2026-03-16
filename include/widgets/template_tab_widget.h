@@ -48,7 +48,8 @@ public slots:
     void clearTemplateDrawing();
     void createTemplate();
     void findTemplate();
-    void clearAllTemplates();
+    //void clearAllTemplates();
+    void clearMatchResults();
     void onMatchTypeChanged(int index);
 
 signals:

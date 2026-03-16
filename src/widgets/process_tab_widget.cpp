@@ -1,30 +1,40 @@
-#include "algorithm_tab_controller.h"
+#include "process_tab_widget.h"
+#include "ui_process_tab.h"
 #include "logger.h"
 #include <QMessageBox>
 
-AlgorithmTabController::AlgorithmTabController(Ui::MainWindow* ui, PipelineManager* pipeline, QObject* parent)
-    : QObject(parent), m_ui(ui), m_pipeline(pipeline)
+ProcessTabWidget::ProcessTabWidget
+(PipelineManager* pipelineManager, QWidget* parent)
+    : QWidget(parent),
+      m_pipelineManager(pipelineManager),
+      m_ui(new Ui::Form_Process)
 {
+    m_ui->setupUi(this);
 }
 
-void AlgorithmTabController::initialize()
+ProcessTabWidget::~ProcessTabWidget()
+{
+    delete m_ui;
+}
+
+void ProcessTabWidget::initialize()
 {
     setupConnections();
 }
 
-void AlgorithmTabController::setupConnections()
+void ProcessTabWidget::setupConnections()
 {
-    connect(m_ui->btn_addOption, &QPushButton::clicked, this, &AlgorithmTabController::addAlgorithm);
-    connect(m_ui->btn_removeOption, &QPushButton::clicked, this, &AlgorithmTabController::removeAlgorithm);
-    connect(m_ui->btn_optionUp, &QPushButton::clicked, this, &AlgorithmTabController::moveAlgorithmUp);
-    connect(m_ui->btn_optionDown, &QPushButton::clicked, this, &AlgorithmTabController::moveAlgorithmDown);
+    connect(m_ui->btn_addOption, &QPushButton::clicked, this, &ProcessTabWidget::addAlgorithm);
+    connect(m_ui->btn_removeOption, &QPushButton::clicked, this, &ProcessTabWidget::removeAlgorithm);
+    connect(m_ui->btn_optionUp, &QPushButton::clicked, this, &ProcessTabWidget::moveAlgorithmUp);
+    connect(m_ui->btn_optionDown, &QPushButton::clicked, this, &ProcessTabWidget::moveAlgorithmDown);
     connect(m_ui->comboBox_selectAlgorithm, QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this, &AlgorithmTabController::onAlgorithmTypeChanged);
+            this, &ProcessTabWidget::onAlgorithmTypeChanged);
     connect(m_ui->algorithmListWidget, &QListWidget::currentItemChanged,
-            this, &AlgorithmTabController::onAlgorithmSelectionChanged);
+            this, &ProcessTabWidget::onAlgorithmSelectionChanged);
 }
 
-void AlgorithmTabController::addAlgorithm()
+void ProcessTabWidget::addAlgorithm()
 {
     saveCurrentEdit();
 
@@ -49,7 +59,7 @@ void AlgorithmTabController::addAlgorithm()
         break;
     }
 
-    m_pipeline->addAlgorithmStep(step);
+    m_pipelineManager->addAlgorithmStep(step);
     QListWidgetItem *item = new QListWidgetItem(step.name);
     m_ui->algorithmListWidget->addItem(item);
 
@@ -57,54 +67,54 @@ void AlgorithmTabController::addAlgorithm()
     emit algorithmChanged();
 }
 
-void AlgorithmTabController::removeAlgorithm()
+void ProcessTabWidget::removeAlgorithm()
 {
     saveCurrentEdit();
     int row = m_ui->algorithmListWidget->currentRow();
     if (row < 0) return;
 
-    m_pipeline->removeAlgorithmStep(row);
+    m_pipelineManager->removeAlgorithmStep(row);
     delete m_ui->algorithmListWidget->takeItem(row);
 
     Logger::instance()->info("移除算法");
     emit algorithmChanged();
 }
 
-void AlgorithmTabController::moveAlgorithmUp()
+void ProcessTabWidget::moveAlgorithmUp()
 {
     saveCurrentEdit();
     int currentRow = m_ui->algorithmListWidget->currentRow();
 
     if (currentRow <= 0) return;
 
-    m_pipeline->swapAlgorithmStep(currentRow, currentRow - 1);
+    m_pipelineManager->swapAlgorithmStep(currentRow, currentRow - 1);
 
     QListWidgetItem *item = m_ui->algorithmListWidget->takeItem(currentRow);
     m_ui->algorithmListWidget->insertItem(currentRow - 1, item);
     m_ui->algorithmListWidget->setCurrentRow(currentRow - 1);
 
     emit algorithmChanged();
-    m_ui->statusbar->showMessage("算法步骤已上移", 1000);
+    //m_ui->statusbar->showMessage("算法步骤已上移", 1000);
 }
 
-void AlgorithmTabController::moveAlgorithmDown()
+void ProcessTabWidget::moveAlgorithmDown()
 {
     saveCurrentEdit();
     int currentRow = m_ui->algorithmListWidget->currentRow();
 
     if (currentRow < 0 || currentRow >= m_ui->algorithmListWidget->count() - 1) return;
 
-    m_pipeline->swapAlgorithmStep(currentRow, currentRow + 1);
+    m_pipelineManager->swapAlgorithmStep(currentRow, currentRow + 1);
 
     QListWidgetItem *item = m_ui->algorithmListWidget->takeItem(currentRow);
     m_ui->algorithmListWidget->insertItem(currentRow + 1, item);
     m_ui->algorithmListWidget->setCurrentRow(currentRow + 1);
 
     emit algorithmChanged();
-    m_ui->statusbar->showMessage("算法步骤已下移", 1000);
+    //m_ui->statusbar->showMessage("算法步骤已下移", 1000);
 }
 
-void AlgorithmTabController::onAlgorithmTypeChanged(int index)
+void ProcessTabWidget::onAlgorithmTypeChanged(int index)
 {
     switch (index) {
     case 0: case 2: case 4: case 6:
@@ -122,7 +132,7 @@ void AlgorithmTabController::onAlgorithmTypeChanged(int index)
     }
 }
 
-void AlgorithmTabController::onAlgorithmSelectionChanged(QListWidgetItem* current, QListWidgetItem* previous)
+void ProcessTabWidget::onAlgorithmSelectionChanged(QListWidgetItem* current, QListWidgetItem* previous)
 {
     Q_UNUSED(previous);
 
@@ -135,19 +145,19 @@ void AlgorithmTabController::onAlgorithmSelectionChanged(QListWidgetItem* curren
         loadAlgorithmParameters(newIndex);
         m_editingAlgorithmIndex = newIndex;
 
-        m_ui->statusbar->showMessage(
-            QString("正在编辑: %1 (修改参数后点击其他项自动保存)")
-                .arg(current->text()), 3000);
+        // m_ui->statusbar->showMessage(
+        //     QString("正在编辑: %1 (修改参数后点击其他项自动保存)")
+        //         .arg(current->text()), 3000);
     } else {
         m_editingAlgorithmIndex = -1;
     }
 }
 
-void AlgorithmTabController::saveCurrentEdit()
+void ProcessTabWidget::saveCurrentEdit()
 {
     if (m_editingAlgorithmIndex < 0) return;
 
-    const QVector<AlgorithmStep>& queue = m_pipeline->getAlgorithmQueue();
+    const QVector<AlgorithmStep>& queue = m_pipelineManager->getAlgorithmQueue();
     if (m_editingAlgorithmIndex >= queue.size()) {
         m_editingAlgorithmIndex = -1;
         return;
@@ -169,16 +179,16 @@ void AlgorithmTabController::saveCurrentEdit()
         break;
     }
 
-    m_pipeline->updateAlgorithmStep(m_editingAlgorithmIndex, step);
+    m_pipelineManager->updateAlgorithmStep(m_editingAlgorithmIndex, step);
     emit algorithmChanged();
 
     // Logger::instance()->info(QString("已保存算法 #%1: %2 的参数修改")
     //     .arg(m_editingAlgorithmIndex + 1).arg(step.name));
 }
 
-void AlgorithmTabController::loadAlgorithmParameters(int index)
+void ProcessTabWidget::loadAlgorithmParameters(int index)
 {
-    const QVector<AlgorithmStep>& queue = m_pipeline->getAlgorithmQueue();
+    const QVector<AlgorithmStep>& queue = m_pipelineManager->getAlgorithmQueue();
     if (index < 0 || index >= queue.size()) return;
 
     const AlgorithmStep& step = queue[index];

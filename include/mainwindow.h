@@ -16,13 +16,10 @@
 #include "image_view.h"
 #include "image_utils.h"
 #include "halcon_algorithm.h"
-#include "pipeline_manager.h"  // ✅ 新增：使用Pipeline管理器
+#include "pipeline_manager.h"
 #include "system_monitor.h"
 #include "file_manager.h"
-#include "controllers/enhancement_tab_controller.h"
-#include "controllers/algorithm_tab_controller.h"
-#include "controllers/extract_tab_controller.h"
-#include "controllers/line_detect_tab_controller.h"
+#include "config_manager.h"
 #include "log_page.h"
 #include "widgets/image_tab_widget.h"
 #include "widgets/enhance_tab_widget.h"
@@ -30,6 +27,8 @@
 #include "widgets/template_tab_widget.h"
 #include "widgets/line_tab_widget.h"
 #include "widgets/extract_tab_widget.h"
+#include "widgets/process_tab_widget.h"
+#include "widgets/judge_tab_widget.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -56,93 +55,54 @@ public:
     ~MainWindow();
 
 private slots:
-    // ========== 文件操作 ==========
     void on_btn_openImg_clicked();
     void on_btn_saveImg_clicked();
-
-    // ========== ROI操作 ==========
     void on_btn_drawRoi_clicked();
     void on_btn_resetROI_clicked();
     void onRoiSelected(const QRectF &roiRect);
-
-    // ========== 算法队列操作现在由AlgorithmTabController处理 ==========
-
-    // ========== 提取相关操作现在由ExtractTabController处理 ==========
-
-    // ========== 算法相关操作现在由AlgorithmTabController处理 ==========
-
-    void on_btn_runTest_clicked();
-
     void on_btn_clearLog_clicked();
-
-    // ========== 区域绘制现在由ExtractTabController处理 ==========
-
-    // ========== 算法选择现在由AlgorithmTabController处理 ==========
-
-    // ========== 过滤模式现在由FilterTabController处理 ==========
-
     void on_btn_openLog_clicked();
-
     void on_tabWidget_currentChanged(int index);
-
     void on_btn_Log_clicked();
-
     void on_btn_Home_clicked();
 
 private:
-    // ========== 初始化 ==========
     void setupUI();
     void setupConnections();
-    void setupSliderSpinBoxPair(QSlider* slider, QSpinBox* spinbox,
-                                int min, int max, int defaultValue);
-
-    // ========== 核心处理 ==========
-    void processAndDisplay();  // ✅ 统一的处理入口
+    void processAndDisplay();
     void showImage(const cv::Mat& img);
     void setDisplayModeForCurrentTab();
 
-    // ========== 算法参数处理现在由AlgorithmTabController处理 ==========
-
 private:
-    // UI
     Ui::MainWindow *ui;
     ImageView *m_view;
 
-    // ✅ 核心模块
-    PipelineManager* m_pipelineManager;  // Pipeline管理器
-    RoiManager m_roiManager;              // ROI管理器
-    SystemMonitor * m_systemMonitor;
-    FileManager* m_fileManager;           // ✅ 文件管理器
-
-    // ✅ 新增：防抖定时器
+    PipelineManager* m_pipelineManager;
+    RoiManager m_roiManager;
+    SystemMonitor* m_systemMonitor;
+    FileManager* m_fileManager;
     QTimer* m_processDebounceTimer;
 
-    int m_currentTabIndex;  // 记录当前tab索引
-
+    int m_currentTabIndex;
     bool m_needsReprocess = false;
-    bool m_isDestroying = false;  // 标记程序是否正在关闭
+    bool m_isDestroying = false;
 
     void setupSystemMonitor();
 
-    // ✅ 新增：存储绘制的多边形点
-    QVector <QPointF> m_drawnpoints;
-    // ✅ 新增：绘制模式标志
-    bool m_isDrawingRegion;
-    // ✅ 新增：显示多边形的图形项
-    QGraphicsPolygonItem * m_polygonItem;
-    // ========== 区域特征计算现在由ExtractTabController处理 ==========
-
-    // ========== 算法编辑索引现在由AlgorithmTabController管理 ==========
+    void saveConfig();
+    void loadConfig();
+    void collectConfigFromUI(AppConfig& config);
+    void applyConfigToUI(const AppConfig& config);
 
     std::unique_ptr<EnhanceTabWidget> m_enhanceTabWidget;
     std::unique_ptr<FilterTabWidget> m_filterTabWidget;
     std::unique_ptr<TemplateTabWidget> m_templateTabWidget;
     std::unique_ptr<LineDetectTabWidget> m_lineDetectTabWidget;
     std::unique_ptr<ExtractTabWidget> m_extractTabWidget;
-    //std::unique_ptr<TemplateController> m_templateController;
-    std::unique_ptr<AlgorithmTabController> m_algorithmController;
-    std::unique_ptr<ExtractTabController> m_extractController;
-    std::unique_ptr<LineDetectTabController> m_lineDetectController;
+    std::unique_ptr<ProcessTabWidget> m_processTabWidget;
+    std::unique_ptr<JudgeTabWidget> m_judgeTabWidget;
+
+    
     std::unique_ptr<LogPage> m_logPage;
     std::unique_ptr<ImageTabWidget> m_imageTabWidget;
 

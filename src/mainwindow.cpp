@@ -6,6 +6,7 @@
 #include <QTimer>
 #include <QInputDialog>
 #include <QDebug>
+#include <QShortcut>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -15,8 +16,6 @@ MainWindow::MainWindow(QWidget *parent)
     , m_fileManager(new FileManager(this))
     , m_processDebounceTimer(nullptr)
     , m_currentTabIndex(0)
-    , m_isDrawingRegion(false)
-    , m_polygonItem(nullptr)
 {
     ui->setupUi(this);
 
@@ -73,11 +72,22 @@ MainWindow::MainWindow(QWidget *parent)
                 Logger::instance()->info(QString("匹配完成，找到 %1 个目标").arg(count));
             });
 
-    m_algorithmController = std::make_unique<AlgorithmTabController>(
-        ui, m_pipelineManager, this);
-    connect(m_algorithmController.get(), &AlgorithmTabController::algorithmChanged,
+    // 添加快捷键清除匹配结果（按 Escape 键）
+    QShortcut *clearMatchShortcut = new QShortcut(Qt::Key_Escape, this);
+    connect(clearMatchShortcut, &QShortcut::activated, m_templateTabWidget.get(), &TemplateTabWidget::clearMatchResults);
+
+    // m_algorithmController = std::make_unique<AlgorithmTabController>(
+    //     ui, m_pipelineManager, this);
+    // connect(m_algorithmController.get(), &AlgorithmTabController::algorithmChanged,
+    //         this, &MainWindow::processAndDisplay);
+    // m_algorithmController->initialize();
+
+    m_processTabWidget = std::make_unique<ProcessTabWidget>(
+        m_pipelineManager, this);
+    ui->tabWidget->addTab(m_processTabWidget.get(), "处理");
+    connect(m_processTabWidget.get(), &ProcessTabWidget::algorithmChanged,
             this, &MainWindow::processAndDisplay);
-    m_algorithmController->initialize();
+    m_processTabWidget->initialize();
 
     // m_extractController = std::make_unique<ExtractTabController>(
     //     ui, m_pipelineManager, m_view, &m_roiManager, this);
@@ -93,11 +103,15 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_extractTabWidget.get(), &ExtractTabWidget::extractionChanged,
             this, &MainWindow::processAndDisplay);
 
+    m_judgeTabWidget = std::make_unique<JudgeTabWidget>(m_pipelineManager, this);
+    ui->tabWidget->addTab(m_judgeTabWidget.get(), "判定");
+
     m_lineDetectTabWidget = std::make_unique<LineDetectTabWidget>(
         m_pipelineManager, [this]() { m_processDebounceTimer->start(); }, this);
     ui->tabWidget->addTab(m_lineDetectTabWidget.get(), "直线");
     m_lineDetectTabWidget->initialize();
 
+    
 
     // 初始化日志页面
     m_logPage = std::make_unique<LogPage>(this);
@@ -109,11 +123,15 @@ MainWindow::MainWindow(QWidget *parent)
 
     // 确保初始显示 Home 页面
     ui->stackedWidget_MainWindow->setCurrentIndex(0);
+
+    // 自动加载配置
+    loadConfig();
 }
 
 MainWindow::~MainWindow()
 {
     m_isDestroying = true;
+    saveConfig();
     delete ui;
 }
 
@@ -127,35 +145,6 @@ void MainWindow::setupSystemMonitor()
 void MainWindow::setupUI()
 {
     m_view = static_cast<ImageView*>(ui->graphicsView);
-
-    //算法处理
-    ui->doubleSpinBox_radius->setValue(3.5);
-    ui->doubleSpinBox_radius->setDecimals(1);
-    ui->spinBox_width ->setValue(5);
-    ui->spinBox_height->setValue(5);
-
-    ui->lineEdit_nowRegions->setReadOnly(true);
-    
-
-    // 设置滑块-数字框对
-    // setupSliderSpinBoxPair(ui->Slider_grayLow, ui->spinBox_grayLow, 0, 255, 0);
-    // setupSliderSpinBoxPair(ui->Slider_grayHigh, ui->spinBox_grayHigh, 0, 255, 0);
-
-    // setupSliderSpinBoxPair(ui->Slider_rgb_R_Low,ui->spinBox_rgb_R_Low,0,255,0);
-    // setupSliderSpinBoxPair(ui->Slider_rgb_G_Low,ui->spinBox_rgb_G_Low,0,255,0);
-    // setupSliderSpinBoxPair(ui->Slider_rgb_B_Low,ui->spinBox_rgb_B_Low,0,255,0);
-
-    // setupSliderSpinBoxPair(ui->Slider_rgb_R_High,ui->spinBox_rgb_R_High,0,255,0);
-    // setupSliderSpinBoxPair(ui->Slider_rgb_G_High,ui->spinBox_rgb_G_High,0,255,0);
-    // setupSliderSpinBoxPair(ui->Slider_rgb_B_High,ui->spinBox_rgb_B_High,0,255,0);
-
-    // setupSliderSpinBoxPair(ui->Slider_hsv_H_Low,ui->spinBox_hsv_H_Low,0,179,0);
-    // setupSliderSpinBoxPair(ui->Slider_hsv_S_Low,ui->spinBox_hsv_S_Low,0,255,0);
-    // setupSliderSpinBoxPair(ui->Slider_hsv_V_Low,ui->spinBox_hsv_V_Low,0,255,0);
-
-    // setupSliderSpinBoxPair(ui->Slider_hsv_H_High,ui->spinBox_hsv_H_High,0,179,0);
-    // setupSliderSpinBoxPair(ui->Slider_hsv_S_High,ui->spinBox_hsv_S_High,0,255,0);
-    // setupSliderSpinBoxPair(ui->Slider_hsv_V_High,ui->spinBox_hsv_V_High,0,255,0);
 
     // 加载样式表
     QFile file(":/style.qss");
@@ -216,74 +205,27 @@ void MainWindow::setupConnections()
                         .arg(point.y(), 0, 'f', 1)
                     );
             });
-
-    // connect(m_view, &ImageView::polygonDrawingFinished, this,
-    //         [this](const QString& type, const QVector<QPointF>& points) {
-    //             Logger::instance()->info(
-    //                 QString("[%1] 多边形绘制完成，共 %2 个顶点")
-    //                     .arg(type)
-    //                     .arg(points.size())
-    //                 );
-
-    //             if (type == "region") {
-    //                 // 区域计算现在由ExtractTabController处理
-    //                 m_extractController->calculateRegionFeatures(points);
-    //             }
-    //             // 模板创建现在由 TemplateUIController 处理
-    //         });
-    // ========== PipelineManager信号 ==========
-    connect(m_pipelineManager, &PipelineManager::pipelineFinished,
-            [this](const QString& message) {
-                //ui->statusbar->showMessage(message, 2000);
-            });
-
-    connect(m_pipelineManager, &PipelineManager::algorithmQueueChanged,
-            []() {
-                //Logger::instance()->info(QString("算法队列数量:").arg(count));
-            });
-
-}
-
-void MainWindow::setupSliderSpinBoxPair(QSlider *slider, QSpinBox *spinbox,
-                                        int min, int max, int defaultValue)
-{
-    slider->setRange(min, max);
-    slider->setValue(defaultValue);
-    spinbox->setRange(min, max);
-    spinbox->setValue(defaultValue);
-
-    connect(slider, &QSlider::valueChanged, spinbox, &QSpinBox::setValue);
-    connect(spinbox, QOverload<int>::of(&QSpinBox::valueChanged),
-            slider, &QSlider::setValue);
 }
 
 // ========== 核心处理 ==========
 
 void MainWindow::processAndDisplay()
 {
-    // 防止程序关闭时访问已销毁的UI对象
-    // if (!ui || !ui->Slider_brightness) {
-    //     qDebug() << "[MainWindow] UI已销毁，忽略processAndDisplay";
-    //     return;
-    // }
-
-    // ========== 2. 颜色过滤由 FilterTabWidget 自己管理 ==========
-
-    // ========== 3. 根据当前Tab设置显示模式 ==========
+    // ========== 设置显示模式 ==========
     setDisplayModeForCurrentTab();
 
-    // ========== 4. 执行 Pipeline ==========
+    // ========== 执行 Pipeline ==========
     cv::Mat currentImage = m_roiManager.getCurrentImage();
     const PipelineContext& result = m_pipelineManager->execute(currentImage);
 
-    // ========== 5. 显示结果 ==========
+    // ========== 显示结果 ==========
     cv::Mat displayImage = result.getFinalDisplay();
     showImage(displayImage);
 
-    // ========== 6. 更新判定label显示 ==========
+    // ========== 更新判定Tab显示 ==========
     int count = result.currentRegions;
-    if (m_currentTabIndex == 1) {  // 判定Tab的索引是1
-        ui->lineEdit_nowRegions->setText(QString::number(count));
+    if (m_judgeTabWidget) {
+        m_judgeTabWidget->setCurrentRegionCount(count);
     }
 }
 
@@ -291,20 +233,20 @@ void MainWindow::setDisplayModeForCurrentTab()
 {
     switch (m_currentTabIndex)
     {
-    case 0: // 处理Tab
-    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Processed); break;
-    case 1: // 判定Tab
-    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite); break;
-    case 2: // 图像Tab
+    case 0: // 图像Tab
     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Channel); break;
-    case 3: // 增强Tab
+    case 1: // 增强Tab
     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Enhanced); break;
-    case 4: // 过滤Tab
+    case 2: // 过滤Tab
     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite); break;
-    case 5: // 补正Tab
+    case 3: // 补正Tab
     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original); break;
+    case 4: // 处理Tab
+    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Processed); break;
+    case 5: // 提取Tab
+    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite); break;
 
-    case 6: // 提取Tab
+    case 6: // 判定Tab
     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite); break;
     
     case 7: // 直线检测Tab
@@ -329,24 +271,18 @@ void MainWindow::on_btn_openImg_clicked()
         path = QCoreApplication::applicationDirPath() + "/images/";
     }
 
-    // 第一步：打开文件对话框，让用户选择文件
     QString fileName = m_fileManager->selectImageFile(path);
     if (fileName.isEmpty()) {
         Logger::instance()->warning("用户取消了文件选择");
         return;
     }
 
-    // 第二步：读取图像文件（通过信号返回结果）
-    // 连接一次性信号，在图像加载后触发处理
-    // 不太好吧
     QMetaObject::Connection conn = connect(m_fileManager, &FileManager::imageLoaded,
             this, [this](const cv::Mat&) {
                 processAndDisplay();
             });
 
     m_fileManager->readImageFile(fileName);
-
-    // 断开连接以避免重复触发
     disconnect(conn);
 }
 
@@ -375,47 +311,6 @@ void MainWindow::onRoiSelected(const QRectF &roiImgRectF)
     processAndDisplay();
 }
 
-//判定
-
-void MainWindow::on_btn_runTest_clicked()
-{
-    if(m_roiManager.getCurrentImage().empty())
-    {
-        QMessageBox::warning(this,"提示","请先打开图像");
-        return;
-    }
-    bool ok1,ok2;
-    int minRegions=ui->lineEdit_minRegionCount->text().toInt(&ok1);
-    int maxRegions=ui->lineEdit_maxRegionCount->text().toInt(&ok2);
-
-    if(!ok1 || !ok2)
-    {
-        QMessageBox::warning(this, "输入错误", "请输入有效的数字！");
-        return;
-    }
-    if (minRegions < 0 || maxRegions < minRegions)
-    {
-        QMessageBox::warning(this, "输入错误",
-                             "最小值不能为负数，且最大值不能小于最小值！");
-        return;
-    }
-    int currentCount=m_pipelineManager->getLastContext().currentRegions;
-    bool pass=(currentCount >= minRegions && currentCount <= maxRegions);
-
-    if(pass)
-    {
-        QMessageBox::information(this,"判定结果",QString("✅ OK\n当前区域数: %1\n符合范围: [%2, %3]")
-                                               .arg(currentCount).arg(minRegions).arg(maxRegions));
-    }
-    else
-    {
-        QMessageBox::warning(this, "判定结果",
-                             QString("❌ NG\n当前区域数: %1\n要求范围: [%2, %3]")
-                                 .arg(currentCount)
-                                 .arg(minRegions)
-                                 .arg(maxRegions));
-    }
-}
 //清空当前日志
 void MainWindow::on_btn_clearLog_clicked()
 {
@@ -431,12 +326,9 @@ void MainWindow::on_btn_openLog_clicked()
 void MainWindow::on_tabWidget_currentChanged(int index)
 {
     // 防止程序关闭时访问已销毁的UI对象
-    // if (m_isDestroying) {
-    //     qDebug() << "[MainWindow] 程序正在关闭，忽略tabWidget_currentChanged";
-    //     return;
-    // }
-
-    //qDebug() << "[DEBUG] Tab changed to index:" << index << "Tab title:" << ui->tabWidget->tabText(index);
+    if (m_isDestroying) {
+        return;
+    }
 
     if(m_roiManager.getFullImage().empty()) return;
 
@@ -446,15 +338,72 @@ void MainWindow::on_tabWidget_currentChanged(int index)
 
 void MainWindow::on_btn_Log_clicked()
 {
-    qDebug() << "Log button clicked, switching to index 1";
-    qDebug() << "Current widget count:" << ui->stackedWidget_MainWindow->count();
     ui->tabWidget->hide();
     ui->stackedWidget_MainWindow->setCurrentIndex(1);
 }
 
 void MainWindow::on_btn_Home_clicked()
 {
-    qDebug() << "Home button clicked, switching to index 0";
     ui->tabWidget->show();
     ui->stackedWidget_MainWindow->setCurrentIndex(0);
+}
+
+// ========== 配置管理 ==========
+
+void MainWindow::saveConfig()
+{
+    AppConfig config;
+    collectConfigFromUI(config);
+
+    QString configPath = ConfigManager::instance().getDefaultConfigPath();
+    if (ConfigManager::instance().saveConfig(config, configPath)) {
+        Logger::instance()->info("配置已自动保存");
+    }
+}
+
+void MainWindow::loadConfig()
+{
+    AppConfig config;
+    QString configPath = ConfigManager::instance().getDefaultConfigPath();
+
+    if (ConfigManager::instance().loadConfig(config, configPath)) {
+        applyConfigToUI(config);
+        Logger::instance()->info("配置已自动加载");
+    }
+}
+
+void MainWindow::collectConfigFromUI(AppConfig& config)
+{
+    // 收集 ROI 配置
+    if (m_roiManager.getRoiRect().isValid()) {
+        config.roiRect = m_roiManager.getRoiRect();
+    }
+
+    // 收集增强参数（从 EnhanceTabWidget）
+    // 这里需要从 UI 中获取，暂时使用默认值
+    // 后续可以添加 getter 方法到各个 Widget
+
+    // 收集过滤配置（从 FilterTabWidget）
+    // 后续添加
+
+    // 收集判定配置（从 JudgeTabWidget）
+    // 后续添加
+}
+
+void MainWindow::applyConfigToUI(const AppConfig& config)
+{
+    // 应用 ROI 配置
+    if (config.roiRect.isValid()) {
+        m_roiManager.setRoiRect(config.roiRect);
+        Logger::instance()->info("已恢复 ROI 配置");
+    }
+
+    // 应用增强参数
+    // 后续添加
+
+    // 应用过滤配置
+    // 后续添加
+
+    // 应用判定配置
+    // 后续添加
 }

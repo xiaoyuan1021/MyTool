@@ -32,6 +32,13 @@ void ExtractTabWidget::initialize()
     });
 
     connect(m_ui->btn_clearRegion, &QPushButton::clicked, this, &ExtractTabWidget::clearRegion);
+
+    // 连接矩形绘制完成信号
+    connect(m_view, &ImageView::polygonDrawingFinished, this, [this](const QString &type, QVector<QPointF> points) {
+        if (type == "region") {
+            calculateRegionFeatures(points);
+        }
+    });
 }
 
 void ExtractTabWidget::setupConnections()
@@ -172,7 +179,9 @@ void ExtractTabWidget::drawRegion()
         Logger::instance()->warning("请先打开图像");
         return;
     }
-    m_view->startPolygonDrawing("region");
+    //m_view->startPolygonDrawing("region");
+    m_view->startRectangleDrawing("region");
+
     Logger::instance()->info("请在图像上点击左键添加顶点，右键完成绘制");
 }
 

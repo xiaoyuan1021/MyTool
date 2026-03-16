@@ -4,7 +4,8 @@
       "Bash(qmake:*)",
       "Bash(wc:*)",
       "Bash(dir:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(find:*)"
     ]
   }
 }

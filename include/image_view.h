@@ -49,6 +49,10 @@ public:
     void finishPolygonDrawing();
     void clearPolygonDrawing();
 
+    void startRectangleDrawing(const QString &drawingType);
+    void finishRectangleDrawing();
+    void clearRectangleDrawing();
+
     QVector<QPointF> getPolygonPoints() const;
 
 signals:
@@ -106,6 +110,11 @@ private:
 
     QString m_currentDrawingType;
     void updatePolygonPath(const QVector<QPointF> &points, QGraphicsPathItem *&pathItem);
+
+    bool m_rectangleMode = false;
+    QPointF m_rectStartPosImg;
+    QGraphicsRectItem *m_rectItem = nullptr;
+    QString m_currentRectDrawingType;
 };
 
 #endif // IMAGE_VIEW_H

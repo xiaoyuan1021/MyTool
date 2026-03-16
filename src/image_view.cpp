@@ -159,6 +159,52 @@ void ImageView::mousePressEvent(QMouseEvent *event)
         }
     }
 
+    if (m_rectangleMode)
+    {
+        if (event->button() == Qt::LeftButton)
+        {
+            m_rectStartPosImg = viewPosToImagePos(event->pos());
+
+            if (m_rectItem) {
+                delete m_rectItem;
+                m_rectItem = nullptr;
+            }
+
+            m_rectItem = new QGraphicsRectItem(QRectF(m_rectStartPosImg, QSizeF(0, 0)), m_pixmapItem);
+            QSize imgSize = getImageSize();
+            double imageScale = std::max(imgSize.width(), imgSize.height()) / 5000.0;
+            double adaptiveWidth = std::max(2.0, imageScale * 3.0);
+
+            QColor rectColor = (m_currentRectDrawingType == "template") ? Qt::blue : Qt::red;
+            m_rectItem->setPen(QPen(rectColor, adaptiveWidth, Qt::SolidLine));
+
+            setDragMode(QGraphicsView::NoDrag);
+            event->accept();
+            return;
+        }
+        else if (event->button() == Qt::RightButton)
+        {
+            // 右键完成矩形绘制
+            if (m_rectItem) {
+                QRectF rectImg = m_rectItem->rect();
+                if (rectImg.width() > 0 && rectImg.height() > 0) {
+                    // 将矩形的四个顶点转换为多边形点
+                    QVector<QPointF> rectPoints;
+                    rectPoints.append(rectImg.topLeft());
+                    rectPoints.append(rectImg.topRight());
+                    rectPoints.append(rectImg.bottomRight());
+                    rectPoints.append(rectImg.bottomLeft());
+
+                    emit polygonDrawingFinished(m_currentRectDrawingType, rectPoints);
+                    clearRectangleDrawing();
+                }
+            }
+
+            event->accept();
+            return;
+        }
+    }
+
     if(event->button()==Qt::RightButton && m_roiReady)
     {
         emit roiSelected(m_roiRectImg);
@@ -292,6 +338,16 @@ void ImageView::mouseMoveEvent(QMouseEvent *event)
         QPointF curImgPos = viewPosToImagePos(event->pos());
         QRectF rect(m_roiStartPosImg, curImgPos);
         m_roiRectItem->setRect(rect.normalized());
+        event->accept();
+        return;
+    }
+
+    // 矩形绘制中
+    if (m_rectangleMode && m_rectItem)
+    {
+        QPointF curImgPos = viewPosToImagePos(event->pos());
+        QRectF rect(m_rectStartPosImg, curImgPos);
+        m_rectItem->setRect(rect.normalized());
         event->accept();
         return;
     }
@@ -536,4 +592,34 @@ void ImageView::updatePolygonPath(const QVector<QPointF> &points, QGraphicsPathI
     QColor penColor =(m_currentDrawingType =="template") ? Qt::blue :Qt::red;
     pathItem = new QGraphicsPathItem(path, m_pixmapItem);
     pathItem->setPen(QPen(penColor, 2, Qt::SolidLine));
+}
+
+void ImageView::startRectangleDrawing(const QString &drawingType)
+{
+    m_rectangleMode = true;
+    m_currentRectDrawingType = drawingType;
+
+    if (m_rectItem) {
+        delete m_rectItem;
+        m_rectItem = nullptr;
+    }
+
+    Logger::instance()->info(QString("开始绘制矩形%1 请拖拽绘制矩形，右键完成")
+                                 .arg(drawingType == "template" ? "模板" : "区域"));
+}
+
+void ImageView::finishRectangleDrawing()
+{
+    m_rectangleMode = false;
+    m_currentRectDrawingType.clear();
+}
+
+void ImageView::clearRectangleDrawing()
+{
+    m_rectangleMode = false;
+    m_currentRectDrawingType.clear();
+    if (m_rectItem) {
+        delete m_rectItem;
+        m_rectItem = nullptr;
+    }
 }
