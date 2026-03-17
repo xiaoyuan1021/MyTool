@@ -77,6 +77,7 @@ public:
     void clearShapeFilter();
     void enableShapeFilter(bool enable);
     void setFeatureRange(ShapeFeature feature, double minValue, double maxValue);
+    void setShapeFilterConfig(const ShapeFilterConfig& config);
 
     void setChannelMode(PipelineConfig::Channel channel);
     PipelineConfig::Channel getChannelMode() const;

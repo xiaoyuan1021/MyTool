@@ -17,6 +17,7 @@ public:
     explicit ProcessTabWidget(PipelineManager* pipelineManager, QWidget *parent = nullptr);
     ~ProcessTabWidget();
     void initialize();
+    void refreshAlgorithmListUI(const QVector<AlgorithmStep>& algorithmQueue);
 
 signals:
     void algorithmChanged();

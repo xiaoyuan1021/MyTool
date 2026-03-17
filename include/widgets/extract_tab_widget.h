@@ -22,6 +22,8 @@ public:
     ~ExtractTabWidget();
     void initialize();
     void calculateRegionFeatures(const QVector<QPointF>& points);
+    void getExtractConfig(ShapeFilterConfig& config) const;
+    void setExtractConfig(const ShapeFilterConfig& config);
 
 signals:
     void extractionChanged();
@@ -35,6 +37,7 @@ private slots:
     void drawRegion();
     void clearRegion();
     void onFilterListItemClicked(QListWidgetItem* item);
+    //void getFilterConditions(QVector<FilterCondition>& conditions) const;
 
 private:
     void setupConnections();

@@ -65,6 +65,9 @@ private slots:
     void on_tabWidget_currentChanged(int index);
     void on_btn_Log_clicked();
     void on_btn_Home_clicked();
+    void on_btn_saveConfig_clicked();
+    void on_btn_importConfig_clicked();
+
 
 private:
     void setupUI();

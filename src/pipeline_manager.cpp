@@ -39,7 +39,6 @@ void PipelineManager::setAreaFilterEnabled(bool enabled)
 void PipelineManager::addFilterCondition(const FilterCondition& condition)
 {
     m_config.shapeFilter.addCondition(condition);
-    m_config.shapeFilter.enabled = true;  // 添加条件时自动启用
 }
 
 void PipelineManager::setFilterMode(FilterMode mode)
@@ -54,7 +53,7 @@ void PipelineManager::clearShapeFilter()
 
 void PipelineManager::enableShapeFilter(bool enable)
 {
-    m_config.shapeFilter.enabled = enable;
+    //m_config.shapeFilter.enabled = enable;
 }
 
 void PipelineManager::setFeatureRange(ShapeFeature feature, double minValue, double maxValue)
@@ -65,6 +64,11 @@ void PipelineManager::setFeatureRange(ShapeFeature feature, double minValue, dou
     // 简单实现：添加新条件
     FilterCondition cond(feature, minValue, maxValue);
     addFilterCondition(cond);
+}
+
+void PipelineManager::setShapeFilterConfig(const ShapeFilterConfig& config)
+{
+    m_config.shapeFilter = config;
 }
 
 // ========== 算法队列管理 ==========

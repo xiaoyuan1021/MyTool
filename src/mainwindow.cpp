@@ -124,14 +124,11 @@ MainWindow::MainWindow(QWidget *parent)
     // 确保初始显示 Home 页面
     ui->stackedWidget_MainWindow->setCurrentIndex(0);
 
-    // 自动加载配置
-    loadConfig();
 }
 
 MainWindow::~MainWindow()
 {
     m_isDestroying = true;
-    saveConfig();
     delete ui;
 }
 
@@ -205,6 +202,9 @@ void MainWindow::setupConnections()
                         .arg(point.y(), 0, 'f', 1)
                     );
             });
+    // connect(ui->btn_saveConfig, &QPushButton::clicked, this, &MainWindow::on_btn_saveConfig_clicked);
+    // connect(ui->btn_importConfig, &QPushButton::clicked, this, &MainWindow::on_btn_importConfig_clicked);
+
 }
 
 // ========== 核心处理 ==========
@@ -222,7 +222,7 @@ void MainWindow::processAndDisplay()
     cv::Mat displayImage = result.getFinalDisplay();
     showImage(displayImage);
 
-    // ========== 更新判定Tab显示 ==========
+    //========== 更新判定Tab显示 ==========
     int count = result.currentRegions;
     if (m_judgeTabWidget) {
         m_judgeTabWidget->setCurrentRegionCount(count);
@@ -348,29 +348,46 @@ void MainWindow::on_btn_Home_clicked()
     ui->stackedWidget_MainWindow->setCurrentIndex(0);
 }
 
+void MainWindow::on_btn_saveConfig_clicked()
+{
+    saveConfig();
+}
+
+void MainWindow::on_btn_importConfig_clicked()
+{
+    loadConfig();
+}
+
 // ========== 配置管理 ==========
 
 void MainWindow::saveConfig()
 {
+    QString filePath = QFileDialog::getSaveFileName(this, 
+        "保存配置", "", "JSON Files (*.json)");
+    if (filePath.isEmpty()) return;
     AppConfig config;
     collectConfigFromUI(config);
 
     QString configPath = ConfigManager::instance().getDefaultConfigPath();
-    if (ConfigManager::instance().saveConfig(config, configPath)) {
-        Logger::instance()->info("配置已自动保存");
+    if (ConfigManager::instance().saveConfig(config, filePath)) {
+        Logger::instance()->info("配置已保存到: " + filePath);
     }
 }
 
 void MainWindow::loadConfig()
 {
+    QString filePath = QFileDialog::getOpenFileName(this, 
+        "导入配置", "", "JSON Files (*.json)");
+    
+    if (filePath.isEmpty()) return;
+    
     AppConfig config;
-    QString configPath = ConfigManager::instance().getDefaultConfigPath();
-
-    if (ConfigManager::instance().loadConfig(config, configPath)) {
+    if (ConfigManager::instance().loadConfig(config, filePath)) {
         applyConfigToUI(config);
-        Logger::instance()->info("配置已自动加载");
+        Logger::instance()->info("配置已从: " + filePath + " 加载");
     }
 }
+
 
 void MainWindow::collectConfigFromUI(AppConfig& config)
 {
@@ -391,11 +408,20 @@ void MainWindow::collectConfigFromUI(AppConfig& config)
         m_filterTabWidget->getFilterConfig(config.filterMode, config.grayLow, config.grayHigh);
     }
 
+    // 收集提取配置
+    if (m_extractTabWidget) {
+        m_extractTabWidget->getExtractConfig(config.shapeFilterConfig);
+    }
+
     // 收集判定配置
-    if (m_judgeTabWidget) 
+    if (m_judgeTabWidget)
     {
         m_judgeTabWidget->getJudgeConfig(config.minRegionCount, config.maxRegionCount, config.currentRegionCount);
     }
+
+    // 收集算法队列
+    config.algorithmQueue = m_pipelineManager->getAlgorithmQueue();
+
 }
 
 void MainWindow::applyConfigToUI(const AppConfig& config)
@@ -417,9 +443,33 @@ void MainWindow::applyConfigToUI(const AppConfig& config)
         m_filterTabWidget->setFilterConfig(config.filterMode, config.grayLow, config.grayHigh);
     }
 
+    // 应用提取配置
+    if (m_extractTabWidget) {
+        m_extractTabWidget->setExtractConfig(config.shapeFilterConfig);
+    }
+
     // 应用判定配置
-    if (m_judgeTabWidget) 
+    if (m_judgeTabWidget)
     {
         m_judgeTabWidget->setJudgeConfig(config.minRegionCount, config.maxRegionCount, config.currentRegionCount);
     }
+
+    // 应用算法队列
+    m_pipelineManager->clearAlgorithmQueue();
+    for (const auto& step : config.algorithmQueue)
+    {
+        m_pipelineManager->addAlgorithmStep(step);
+    }
+
+    // 刷新ProcessTabWidget的UI列表显示
+    if (m_processTabWidget)
+    {
+        m_processTabWidget->refreshAlgorithmListUI(config.algorithmQueue);
+    }
+
+    // 同步Pipeline中的提取配置
+    m_pipelineManager->setShapeFilterConfig(config.shapeFilterConfig);
+
+    // 触发Pipeline更新以应用所有配置
+    processAndDisplay();
 }

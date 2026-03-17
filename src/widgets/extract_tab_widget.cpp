@@ -269,3 +269,34 @@ void ExtractTabWidget::displayFilterCondition(int index)
         m_ui->lineEdit_maxArea->setText(QString::number(condition.maxValue));
     }
 }
+
+void ExtractTabWidget::getExtractConfig(ShapeFilterConfig& config) const
+{
+    config.conditions = m_filterConditions;
+    config.mode = (m_ui && m_ui->comboBox_condition) ?
+                  ((m_ui->comboBox_condition->currentIndex() == 0) ? FilterMode::And : FilterMode::Or) :
+                  FilterMode::And;
+}
+
+void ExtractTabWidget::setExtractConfig(const ShapeFilterConfig& config)
+{
+    if (!m_ui || !m_pipeline) return;
+
+    // 清空当前条件
+    m_filterConditions.clear();
+    m_pipeline->clearShapeFilter();
+
+    // 应用新配置
+    m_filterConditions = config.conditions;
+    m_pipeline->setShapeFilterConfig(config);
+
+    // 更新UI显示
+    updateFilterListWidget();
+
+    // 更新模式选择
+    if (m_ui->comboBox_condition) {
+        m_ui->comboBox_condition->setCurrentIndex(config.mode == FilterMode::And ? 0 : 1);
+    }
+
+    Logger::instance()->info(QString("已加载提取配置: %1 个条件").arg(config.conditions.size()));
+}

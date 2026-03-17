@@ -22,6 +22,16 @@ void ProcessTabWidget::initialize()
     setupConnections();
 }
 
+void ProcessTabWidget::refreshAlgorithmListUI(const QVector<AlgorithmStep> &algorithmQueue)
+{
+    m_ui->algorithmListWidget->clear();
+    for (const auto& step : algorithmQueue) 
+    {
+        QListWidgetItem *item = new QListWidgetItem(step.name);
+        m_ui->algorithmListWidget->addItem(item);
+    }
+}
+
 void ProcessTabWidget::setupConnections()
 {
     connect(m_ui->btn_addOption, &QPushButton::clicked, this, &ProcessTabWidget::addAlgorithm);

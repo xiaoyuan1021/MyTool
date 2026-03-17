@@ -19,6 +19,7 @@ JudgeTabWidget::~JudgeTabWidget()
 
 void JudgeTabWidget::setCurrentRegionCount(int count)
 {
+    count = m_pipelineManager->getLastContext().currentRegions;
     m_ui->lineEdit_nowRegions->setText(QString::number(count));
 }
 

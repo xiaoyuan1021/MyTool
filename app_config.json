@@ -1,9 +1,49 @@
 {
+    "algorithms": [
+        {
+            "description": "Halcon图像处理算法",
+            "enabled": true,
+            "name": "联合",
+            "params": {
+                "HalconAlgoType": 8
+            },
+            "type": "HalconAlgorithm"
+        },
+        {
+            "description": "Halcon图像处理算法",
+            "enabled": true,
+            "name": "圆形开运算",
+            "params": {
+                "HalconAlgoType": 0,
+                "radius": 1
+            },
+            "type": "HalconAlgorithm"
+        },
+        {
+            "description": "Halcon图像处理算法",
+            "enabled": true,
+            "name": "连通",
+            "params": {
+                "HalconAlgoType": 9
+            },
+            "type": "HalconAlgorithm"
+        }
+    ],
     "enhance": {
         "brightness": 0,
         "contrast": 220,
         "gamma": 100,
         "sharpen": 100
+    },
+    "extract": {
+        "conditions": [
+            {
+                "feature": "area",
+                "maxValue": 1000,
+                "minValue": 520
+            }
+        ],
+        "mode": "and"
     },
     "filter": {
         "enabled": false,
@@ -12,14 +52,14 @@
         "mode": 1
     },
     "judge": {
-        "currentRegionCount": 0,
-        "maxRegionCount": 500,
-        "minRegionCount": 200
+        "currentRegionCount": 1,
+        "maxRegionCount": 1,
+        "minRegionCount": 1
     },
     "roi": {
-        "height": 0,
-        "width": 0,
-        "x": 0,
-        "y": 0
+        "height": 265,
+        "width": 344,
+        "x": 504,
+        "y": 421
     }
 }

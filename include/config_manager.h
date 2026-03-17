@@ -4,12 +4,14 @@
 #include <QRect>
 #include <QJsonObject>
 #include <QJsonDocument>
-
+#include <image_processor.h>
+#include <roi_manager.h>
+#include <shape_filter_types.h>
 struct AppConfig
 {
     // ROI 配置
     QRectF roiRect;
-
+    //cv::Rect roiRect;
     // 增强参数
     int brightness = 0;
     int contrast = 100;
@@ -21,6 +23,11 @@ struct AppConfig
     int grayLow = 0;
     int grayHigh = 255;
     bool enableFilter = false;
+    // 算法队列配置
+    QVector<AlgorithmStep> algorithmQueue;
+
+    // 提取配置
+    ShapeFilterConfig shapeFilterConfig;
 
     // 判定配置
     int minRegionCount = 0;

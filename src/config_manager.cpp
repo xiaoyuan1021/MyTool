@@ -18,6 +18,7 @@ QJsonObject AppConfig::toJson() const
     roiObj["height"] = roiRect.height();
     json["roi"] = roiObj;
 
+    
     // 增强参数
     QJsonObject enhanceObj;
     enhanceObj["brightness"] = brightness;
@@ -34,6 +35,20 @@ QJsonObject AppConfig::toJson() const
     filterObj["enabled"] = enableFilter;
     json["filter"] = filterObj;
 
+    // 提取配置
+    QJsonObject extractObj;
+    extractObj["mode"] = (shapeFilterConfig.mode == FilterMode::And) ? "and" : "or";
+    QJsonArray conditionsArray;
+    for (const auto& cond : shapeFilterConfig.conditions) {
+        QJsonObject condObj;
+        condObj["feature"] = getFeatureName(cond.feature);
+        condObj["minValue"] = cond.minValue;
+        condObj["maxValue"] = cond.maxValue;
+        conditionsArray.append(condObj);
+    }
+    extractObj["conditions"] = conditionsArray;
+    json["extract"] = extractObj;
+
     // 判定配置
     QJsonObject judgeObj;
     judgeObj["minRegionCount"] = minRegionCount;
@@ -41,6 +56,24 @@ QJsonObject AppConfig::toJson() const
     judgeObj["currentRegionCount"] = currentRegionCount;
 
     json["judge"] = judgeObj;
+
+    // 算法队列配置
+    QJsonArray algorithmArray;
+    for (const auto& step : algorithmQueue) {
+        QJsonObject stepObj;
+        stepObj["name"] = step.name;
+        stepObj["type"] = step.type;
+        stepObj["enabled"] = step.enabled;
+        stepObj["description"] = step.description;
+        
+        QJsonObject paramsObj;
+        for (auto it = step.params.begin(); it != step.params.end(); ++it) {
+            paramsObj[it.key()] = QJsonValue::fromVariant(it.value());
+        }
+        stepObj["params"] = paramsObj;
+        algorithmArray.append(stepObj);
+    }
+    json["algorithms"] = algorithmArray;
 
     return json;
 }
@@ -74,6 +107,33 @@ void AppConfig::fromJson(const QJsonObject& json)
         enableFilter = filterObj["enabled"].toBool(false);
     }
 
+    // 提取配置
+    if (json.contains("extract")) {
+        QJsonObject extractObj = json["extract"].toObject();
+        shapeFilterConfig.clear();
+
+        QString modeStr = extractObj["mode"].toString("and");
+        shapeFilterConfig.mode = (modeStr == "and") ? FilterMode::And : FilterMode::Or;
+
+        QJsonArray conditionsArray = extractObj["conditions"].toArray();
+        for (const auto& item : conditionsArray) {
+            QJsonObject condObj = item.toObject();
+            QString featureName = condObj["feature"].toString();
+            double minValue = condObj["minValue"].toDouble(0.0);
+            double maxValue = condObj["maxValue"].toDouble(1e18);
+
+            ShapeFeature feature = ShapeFeature::Area;
+            if (featureName == "circularity") feature = ShapeFeature::Circularity;
+            else if (featureName == "width") feature = ShapeFeature::Width;
+            else if (featureName == "height") feature = ShapeFeature::Height;
+            else if (featureName == "compactness") feature = ShapeFeature::Compactness;
+            else if (featureName == "convexity") feature = ShapeFeature::Convexity;
+            else if (featureName == "anisometry") feature = ShapeFeature::RectangularityAnisometry;
+
+            shapeFilterConfig.addCondition(FilterCondition(feature, minValue, maxValue));
+        }
+    }
+
     // 判定配置
     if (json.contains("judge")) 
     {
@@ -81,6 +141,27 @@ void AppConfig::fromJson(const QJsonObject& json)
         minRegionCount = judgeObj["minRegionCount"].toInt(0);
         maxRegionCount = judgeObj["maxRegionCount"].toInt(1000);
         currentRegionCount = judgeObj["currentRegionCount"].toInt(0);
+    }
+
+    // 算法队列配置
+    if (json.contains("algorithms")) 
+    {
+        algorithmQueue.clear();
+        QJsonArray algorithmArray = json["algorithms"].toArray();
+        for (const auto& item : algorithmArray) {
+            QJsonObject stepObj = item.toObject();
+            AlgorithmStep step;
+            step.name = stepObj["name"].toString();
+            step.type = stepObj["type"].toString();
+            step.enabled = stepObj["enabled"].toBool(true);
+            step.description = stepObj["description"].toString();
+            
+            QJsonObject paramsObj = stepObj["params"].toObject();
+            for (auto it = paramsObj.begin(); it != paramsObj.end(); ++it) {
+                step.params[it.key()] = it.value().toVariant();
+            }
+            algorithmQueue.append(step);
+        }
     }
 }
 
@@ -158,6 +239,7 @@ QString ConfigManager::getDefaultConfigPath() const
 {
     //QString configDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     QString appPath = QCoreApplication::applicationDirPath();
+    qDebug()<<appPath;
     QString rawPath = appPath + "/../../app_config.json";
     return QDir::cleanPath(rawPath);
 }

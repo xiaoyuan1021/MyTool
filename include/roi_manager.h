@@ -66,6 +66,12 @@ public:
     cv::Rect getLastRoi() const;
 
     /**
+     * @brief 获取ROI位置信息
+     * @return ROI矩形（OpenCV坐标系），若ROI未激活则返回空矩形
+     */
+    cv::Rect getRoiPosition() const;
+
+    /**
      * @brief 清空所有数据
      */
     void clear();

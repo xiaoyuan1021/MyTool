@@ -17,9 +17,7 @@ enum class ShapeFeature
     Height,         // 高度（外接矩形）
     Compactness,    // 紧凑度
     Convexity,      // 凸性
-    RectangularityAnisometry, // 矩形度/各向异性
-    Row,            // 中心行坐标
-    Column          // 中心列坐标
+    RectangularityAnisometry // 矩形度/各向异性
 };
 
 /**
@@ -36,8 +34,6 @@ inline const char* getFeatureName(ShapeFeature feature)
     case ShapeFeature::Compactness:   return "compactness";
     case ShapeFeature::Convexity:     return "convexity";
     case ShapeFeature::RectangularityAnisometry: return "anisometry";
-    case ShapeFeature::Row:           return "row";
-    case ShapeFeature::Column:        return "column";
     default:                          return "area";
     }
 }
@@ -56,8 +52,6 @@ inline QString getFeatureDisplayName(ShapeFeature feature)
     case ShapeFeature::Compactness:   return "紧凑度";
     case ShapeFeature::Convexity:     return "凸性";
     case ShapeFeature::RectangularityAnisometry: return "矩形度";
-    case ShapeFeature::Row:           return "中心行";
-    case ShapeFeature::Column:        return "中心列";
     default:                          return "未知";
     }
 }
@@ -70,26 +64,23 @@ struct FilterCondition
     ShapeFeature feature;   // 特征类型
     double minValue;        // 最小值
     double maxValue;        // 最大值
-    bool enabled;           // 是否启用此条件
 
     FilterCondition()
         : feature(ShapeFeature::Area)
         , minValue(0.0)
         , maxValue(1e18)
-        , enabled(false)
     {}
 
     FilterCondition(ShapeFeature f, double min, double max)
         : feature(f)
         , minValue(min)
         , maxValue(max)
-        , enabled(true)
     {}
 
     // 判断是否有效（范围合理）
     bool isValid() const
     {
-        return enabled && minValue >= 0 && maxValue >= minValue;
+        return minValue >= 0 && maxValue >= minValue;
     }
 
     // 获取描述字符串
@@ -123,11 +114,9 @@ struct ShapeFilterConfig
 {
     QVector<FilterCondition> conditions;  // 筛选条件列表
     FilterMode mode;                      // 筛选模式（AND/OR）
-    bool enabled;                         // 是否启用筛选
 
     ShapeFilterConfig()
         : mode(FilterMode::And)
-        , enabled(false)
     {}
 
     // 添加条件
@@ -140,7 +129,6 @@ struct ShapeFilterConfig
     void clear()
     {
         conditions.clear();
-        enabled = false;
     }
 
     // 获取启用的条件数量
@@ -156,7 +144,7 @@ struct ShapeFilterConfig
     // 是否有有效条件
     bool hasValidConditions() const
     {
-        return enabled && getEnabledCount() > 0;
+        return getEnabledCount() > 0;
     }
 
     // 获取描述字符串
