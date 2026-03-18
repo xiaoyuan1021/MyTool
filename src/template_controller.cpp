@@ -25,6 +25,7 @@ TemplateController::TemplateController(Ui::MainWindow* ui,
     m_defaultParams.metric = "use_polarity";
     m_defaultParams.nccLevels = 0;
     m_defaultParams.matchMethod = cv::TM_CCOEFF_NORMED;
+    m_defaultParams.greediness = 0.7;
 }
 
 void TemplateController::initialize()

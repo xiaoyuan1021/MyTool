@@ -247,7 +247,7 @@ void MainWindow::setDisplayModeForCurrentTab()
     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite); break;
 
     case 6: // 判定Tab
-    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite); break;
+    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskOverlay); break;
     
     case 7: // 直线检测Tab
     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::LineDetect); break;
@@ -376,9 +376,10 @@ void MainWindow::saveConfig()
 
 void MainWindow::loadConfig()
 {
-    QString filePath = QFileDialog::getOpenFileName(this, 
-        "导入配置", "", "JSON Files (*.json)");
-    
+    QString configPath = ConfigManager::instance().getDefaultConfigPath();
+    QString filePath = QFileDialog::getOpenFileName(this,
+        "导入配置", configPath, "JSON Files (*.json)");
+
     if (filePath.isEmpty()) return;
     
     AppConfig config;

@@ -1,6 +1,7 @@
 #include "match_strategy.h"
 #include "logger.h"
 #include "image_utils.h"
+#include <QCoreApplication>
 
 match_strategy::match_strategy() {}
 
@@ -25,39 +26,125 @@ bool ShapeMatchStrategy::createTemplate(const Mat &fullImage, const QVector<QPoi
         Logger::instance()->error("[Shape] 创建模板失败：多边形顶点数不足");
         return false;
     }
+
+    // 检查多边形是否足够大
+    std::vector<cv::Point> cvPolygon;
+    for(const QPointF& pt : pologonPoints)
+    {
+        cvPolygon.push_back(cv::Point(pt.x(), pt.y()));
+    }
+    cv::Rect boundingRect = cv::boundingRect(cvPolygon);
+
+    // 检查模板区域大小（至少 20x20 像素）
+    if (boundingRect.width < 20 || boundingRect.height < 20)
+    {
+        Logger::instance()->error(QString("[Shape] 创建模板失败：模板区域过小 (%1x%2)，建议至少 20x20 像素")
+                                     .arg(boundingRect.width).arg(boundingRect.height));
+        return false;
+    }
+
     try
     {
-        HImage templateRegion =createTemplateRegion(fullImage,pologonPoints);
+        HImage templateRegion = createTemplateRegion(fullImage, pologonPoints);
+
+        // 检查提取的模板区域是否有效
+        Hlong regionWidth = 0, regionHeight = 0;
+        templateRegion.GetImageSize(&regionWidth, &regionHeight);
+
+        if (regionWidth < 10 || regionHeight < 10)
+        {
+            Logger::instance()->error(QString("[Shape] 创建模板失败：提取的模板区域过小 (%1x%2)")
+                                         .arg(regionWidth).arg(regionHeight));
+            return false;
+        }
+
+        Logger::instance()->info(QString("[Shape] 模板区域大小: %1x%2").arg(regionWidth).arg(regionHeight));
+
+        // 关键：使用 "point_reduction_low" 而不是 "auto" 或 "none"
+        // "auto" 会自动选择激进的优化策略（如 point_reduction_high）导致特征点不足
+        // "none" 保留所有特征点，但可能导致过度拟合，匹配分数低
+        // "point_reduction_low" 是平衡方案：保留足够特征点，又不过度优化
         m_model.CreateShapeModel(templateRegion,
                                  params.numLevels,
                                  params.angleStart,
                                  params.angleExtent,
                                  params.angleStep,
-                                 params.optimization.toStdString().c_str(),
+                                 "point_reduction_low",  // 温和的优化
                                  params.metric.toStdString().c_str(),
                                  "auto",
                                  "auto");
-        m_model.GetShapeModelOrigin(&m_modelRow, &m_modelCol);
-        std::vector<cv::Point> cvPolygon;
-        for(const QPointF& pt : pologonPoints)
-        {
-            cvPolygon.push_back(cv::Point(pt.x(),pt.y()));//?
-        }
-        cv::Rect boundingRect = cv::boundingRect(cvPolygon);
-        m_templateImage =fullImage(boundingRect).clone();
 
-        m_polygonPoints =pologonPoints;
-        extractTemplateContour(pologonPoints);//有啥用
-        m_hasTemplate =true;
+        // 诊断：检查模型中的特征点数量
+        double angleStart, angleExtent, angleStep, scaleMin, scaleMax, scaleStep;
+        HString metric;
+        Hlong minContrast;
+        Hlong numLevels = m_model.GetShapeModelParams(&angleStart, &angleExtent, &angleStep,
+                                                       &scaleMin, &scaleMax, &scaleStep,
+                                                       &metric, &minContrast);
+        Logger::instance()->info(QString("[Shape] Shape Model 创建成功，金字塔层数: %1").arg(numLevels));
+        Logger::instance()->info(QString("[Shape] 角度范围: [%1, %2], 步长: %3").arg(angleStart).arg(angleExtent).arg(angleStep));
+        Logger::instance()->info(QString("[Shape] 最小对比度: %1").arg(minContrast));
+
+        // 使用 InspectShapeModel 可视化特征点
+        try {
+            HRegion modelRegions;
+            HImage inspectImage = templateRegion.InspectShapeModel(&modelRegions, numLevels, 128);
+
+            Logger::instance()->info("[Shape] InspectShapeModel 执行成功");
+
+            // 检查 inspectImage 是否有效
+            Hlong inspectWidth = 0, inspectHeight = 0;
+            inspectImage.GetImageSize(&inspectWidth, &inspectHeight);
+            Logger::instance()->info(QString("[Shape] InspectShapeModel 输出图像大小: %1x%2").arg(inspectWidth).arg(inspectHeight));
+
+            // 将检查结果保存为调试图像
+            HObject hObj = inspectImage;
+            cv::Mat debugMat = ImageUtils::HImageToMat(hObj);
+            Logger::instance()->info(QString("[Shape] HImageToMat 转换后 Mat 大小: %1x%2, 通道数: %3, 是否为空: %4")
+                                         .arg(debugMat.cols).arg(debugMat.rows).arg(debugMat.channels()).arg(debugMat.empty()));
+
+            if (!debugMat.empty()) {
+                QString debugPath = QCoreApplication::applicationDirPath() + "/../../debug_shape_model.png";
+                bool writeSuccess = cv::imwrite(debugPath.toStdString(), debugMat);
+                Logger::instance()->info(QString("[Shape] 模型检查图像保存 %1: %2")
+                                             .arg(writeSuccess ? "成功" : "失败").arg(debugPath));
+            } else {
+                Logger::instance()->warning("[Shape] debugMat 为空，无法保存");
+            }
+        } catch (const HException& ex) {
+            Logger::instance()->warning(QString("[Shape] InspectShapeModel 失败: %1").arg(ex.ErrorMessage().Text()));
+        } catch (const std::exception& ex) {
+            Logger::instance()->warning(QString("[Shape] 诊断过程异常: %1").arg(ex.what()));
+        }
+
+        m_model.GetShapeModelOrigin(&m_modelRow, &m_modelCol);
+
+        m_templateImage = fullImage(boundingRect).clone();
+
+        // 保存 ROI 偏移量和尺寸（用于坐标转换）
+        m_roiOffsetX = boundingRect.x;
+        m_roiOffsetY = boundingRect.y;
+        m_templateWidth = boundingRect.width;
+        m_templateHeight = boundingRect.height;
+
+        Logger::instance()->info(QString("[Shape] ShapeModel 原点: row=%1, col=%2").arg(m_modelRow).arg(m_modelCol));
+        Logger::instance()->info(QString("[Shape] ROI 偏移量: x=%1, y=%2").arg(m_roiOffsetX).arg(m_roiOffsetY));
+
+        m_polygonPoints = pologonPoints;
+        extractTemplateContour(pologonPoints);
+        m_hasTemplate = true;
         Logger::instance()->info(
-            QString("✅ [Shape] 模板创建成功:"));
+            QString("✅ [Shape] 模板创建成功 (区域: %1x%2, 顶点: %3)")
+                .arg(boundingRect.width)
+                .arg(boundingRect.height)
+                .arg(pologonPoints.size()));
         return true;
     }
     catch (const HException& ex)
     {
-        Logger::instance()->info(QString("[Shape] 创建模板失败: %1")
+        Logger::instance()->error(QString("[Shape] 创建模板失败: %1")
                                      .arg(ex.ErrorMessage().Text()));
-        m_hasTemplate =false;
+        m_hasTemplate = false;
         return false;
     }
 }
@@ -147,29 +234,17 @@ Mat ShapeMatchStrategy::drawMatches(const Mat &searchImage, const QVector<MatchR
             color = QColor(255, 165, 0);    // 橙色 - 低质量
         }
 
+        // 绘制轮廓
         drawSingleMatch(painter, matches[i], color);
 
-        //绘制中心点
-        QPointF center(matches[i].column, matches[i].row);
-
-        //实心圆
-        painter.setBrush(color);
-        painter.setPen(Qt::NoPen);
-        painter.drawEllipse(center,5, 5);
-
-        // 空心圆
-        painter.setBrush(Qt::NoBrush);
-        painter.setPen(QPen(color, 2));
-        painter.drawEllipse(center, 8, 8);
-
-        // 绘制文字信息
+        // 绘制分数信息（放在轮廓外侧，避免重合）
         QString info = QString("#%1 Score:%2")
                            .arg(i + 1)
                            .arg(matches[i].score, 0, 'f', 2);
         painter.setPen(color);
         QFont font("Arial", 10, QFont::Bold);
         painter.setFont(font);
-        painter.drawText(QPointF(matches[i].column + 15, matches[i].row - 15), info);
+        painter.drawText(QPointF(matches[i].column + 20, matches[i].row - 20), info);
     }
     painter.end();
     cv::Mat results = ImageUtils::Qimage2Mat(qImg, true);
@@ -178,76 +253,92 @@ Mat ShapeMatchStrategy::drawMatches(const Mat &searchImage, const QVector<MatchR
 
 HImage ShapeMatchStrategy::createTemplateRegion(const Mat &image, const QVector<QPointF> &polygon)
 {
+    // 诊断：输入图像大小
+    Logger::instance()->info(QString("[Shape] createTemplateRegion 输入图像大小: %1x%2").arg(image.cols).arg(image.rows));
+    Logger::instance()->info(QString("[Shape] 多边形顶点数: %1").arg(polygon.size()));
 
-    HImage hImage = ImageUtils::Mat2HImage(image);
-
-
-    HTuple rows, cols;
-    for (const QPointF& pt : polygon) {
-        rows.Append(pt.y());
-        cols.Append(pt.x());
+    if (polygon.size() < 3) {
+        Logger::instance()->error("[Shape] 多边形顶点数不足");
+        return ImageUtils::Mat2HImage(image);
     }
 
-    HRegion polygonRegion;
-    polygonRegion.GenRegionPolygon(rows, cols);
+    // 打印多边形坐标
+    for (int i = 0; i < polygon.size(); ++i) {
+        Logger::instance()->info(QString("[Shape] 顶点 %1: (%2, %3)").arg(i).arg(polygon[i].x()).arg(polygon[i].y()));
+    }
 
-    // 3️⃣ 裁剪图像
-    return hImage.ReduceDomain(polygonRegion);
+    // 关键修复：使用矩形 ROI 而不是多边形裁剪
+    // 原因：多边形坐标是相对于完整图像的，但输入的是 ROI 图像，坐标系统不匹配
+    // 导致 ReduceDomain 无法正确裁剪，返回整个图像
+
+    std::vector<cv::Point> cvPolygon;
+    for (const QPointF& pt : polygon) {
+        cvPolygon.push_back(cv::Point(pt.x(), pt.y()));
+    }
+    cv::Rect boundingRect = cv::boundingRect(cvPolygon);
+
+    // 确保矩形在图像范围内
+    boundingRect &= cv::Rect(0, 0, image.cols, image.rows);
+
+    if (boundingRect.width <= 0 || boundingRect.height <= 0) {
+        Logger::instance()->error("[Shape] 外接矩形无效");
+        return ImageUtils::Mat2HImage(image);
+    }
+
+    Logger::instance()->info(QString("[Shape] 外接矩形: x=%1, y=%2, w=%3, h=%4")
+                                 .arg(boundingRect.x).arg(boundingRect.y)
+                                 .arg(boundingRect.width).arg(boundingRect.height));
+
+    // 提取矩形 ROI
+    cv::Mat roi = image(boundingRect).clone();
+    HImage result = ImageUtils::Mat2HImage(roi);
+
+    Logger::instance()->info(QString("[Shape] 提取的 ROI 大小: %1x%2").arg(roi.cols).arg(roi.rows));
+
+    return result;
 }
 
 void ShapeMatchStrategy::extractTemplateContour(const QVector<QPointF> &polygon)
 {
     try {
-        // 1️⃣ 创建多边形轮廓
-        HTuple rows, cols;
+        m_templateRows.Clear();
+        m_templateCols.Clear();
+
+        // 计算模板中心
+        double templateCenterRow = m_roiOffsetY + m_templateHeight / 2.0;
+        double templateCenterCol = m_roiOffsetX + m_templateWidth / 2.0;
+
+        // 存储相对于模板中心的偏移，而不是绝对坐标
+        // 这样在 drawSingleMatch 中就可以直接旋转和平移，无需复杂的坐标转换
         for (const QPointF& pt : polygon) {
-            rows.Append(pt.y());
-            cols.Append(pt.x());
+            double offsetRow = pt.y() - templateCenterRow;
+            double offsetCol = pt.x() - templateCenterCol;
+            m_templateRows.Append(offsetRow);
+            m_templateCols.Append(offsetCol);
         }
 
-        // 2️⃣ 生成轮廓Region
-        m_templateContour.GenRegionPolygon(rows, cols);
-
-        // 3️⃣ 获取轮廓边界点
-        HRegion boundary = m_templateContour.Boundary("inner");
-        boundary.GetRegionPoints(&m_templateRows, &m_templateCols);
-
-        // 如果边界点太少，使用原始多边形点
-        if (m_templateRows.Length() < 4) {
-            m_templateRows = rows;
-            m_templateCols = cols;
-        }
+        Logger::instance()->info(QString("[Shape] 提取模板轮廓成功，轮廓点数: %1 (相对于模板中心)").arg(m_templateRows.Length()));
 
     } catch (const HException& ex) {
         Logger::instance()->warning(
             QString("[Shape] 提取模板轮廓失败: %1").arg(ex.ErrorMessage().Text())
             );
-        // 使用原始多边形作为后备
-        HTuple rows, cols;
-        for (const QPointF& pt : polygon) {
-            rows.Append(pt.y());
-            cols.Append(pt.x());
-        }
-        m_templateRows = rows;
-        m_templateCols = cols;
     }
 }
 
 void ShapeMatchStrategy::drawSingleMatch(QPainter &painter, const MatchResult &match, const QColor &color) const
 {
     try {
-        // 📖 仿射变换原理：
-        // 1. 平移到原点（-modelRow, -modelCol）
-        // 2. 旋转（match.angle）
-        // 3. 平移到匹配位置（match.row, match.column）
+        if (m_templateRows.Length() < 3) {
+            Logger::instance()->warning(QString("[Shape] drawSingleMatch: 轮廓点不足 (%1)").arg(m_templateRows.Length()));
+            return;
+        }
 
         HTuple homMat2D;
         HomMat2dIdentity(&homMat2D);
-        HomMat2dTranslate(homMat2D, -m_modelRow, -m_modelCol, &homMat2D);
         HomMat2dRotate(homMat2D, match.angle * 0.0174533, 0, 0, &homMat2D);
         HomMat2dTranslate(homMat2D, match.row, match.column, &homMat2D);
 
-        // 对轮廓点应用仿射变换
         HTuple transformedRows, transformedCols;
         AffineTransPoint2d(homMat2D,
                            m_templateRows,
@@ -256,24 +347,21 @@ void ShapeMatchStrategy::drawSingleMatch(QPainter &painter, const MatchResult &m
                            &transformedCols);
 
         QPolygonF polygon;
-
         for (int i = 0; i < transformedRows.Length(); ++i)
         {
             polygon<<QPointF(transformedCols[i].D(), transformedRows[i].D());
         }
 
-        // 绘制填充多边形（半透明）
         if (polygon.size() >= 3)
         {
             QColor fillColor = color;
-            fillColor.setAlpha(76);  // 30% 不透明度 (255 * 0.3 ≈ 76)
+            fillColor.setAlpha(100);
             painter.setBrush(fillColor);
             painter.setPen(Qt::NoPen);
             painter.drawPolygon(polygon);
 
-            // 绘制轮廓线
             painter.setBrush(Qt::NoBrush);
-            painter.setPen(QPen(color, 2));
+            painter.setPen(QPen(color, 3));
             painter.drawPolygon(polygon);
         }
 

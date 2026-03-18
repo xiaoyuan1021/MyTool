@@ -26,6 +26,7 @@ TemplateTabWidget::TemplateTabWidget(ImageView* view,
     m_defaultParams.metric = "use_polarity";
     m_defaultParams.nccLevels = 0;
     m_defaultParams.matchMethod = cv::TM_CCOEFF_NORMED;
+    m_defaultParams.greediness = 0.7;
 }
 
 TemplateTabWidget::~TemplateTabWidget()
@@ -114,7 +115,21 @@ void TemplateTabWidget::createTemplate()
 
     QVector<QPointF> points = m_view->getPolygonPoints();
     if (points.size() < 3) {
-        QMessageBox::warning(m_parent, "提示", "请先绘制模板区域！");
+        QMessageBox::warning(m_parent, "提示", "请先绘制模板区域！\n需要至少 3 个顶点");
+        return;
+    }
+
+    // 检查模板区域大小
+    std::vector<cv::Point> cvPolygon;
+    for(const QPointF& pt : points) {
+        cvPolygon.push_back(cv::Point(pt.x(), pt.y()));
+    }
+    cv::Rect boundingRect = cv::boundingRect(cvPolygon);
+
+    if (boundingRect.width < 20 || boundingRect.height < 20) {
+        QMessageBox::warning(m_parent, "提示",
+            QString("模板区域过小！\n当前大小: %1x%2 像素\n建议至少: 20x20 像素")
+                .arg(boundingRect.width).arg(boundingRect.height));
         return;
     }
 
@@ -124,7 +139,7 @@ void TemplateTabWidget::createTemplate()
     if (!ok || name.isEmpty()) return;
 
     createTemplateFromPolygon(points, name);
-    
+
 }
 
 void TemplateTabWidget::createTemplateFromPolygon(const QVector<QPointF>& points, const QString& name)
@@ -141,12 +156,10 @@ void TemplateTabWidget::createTemplateFromPolygon(const QVector<QPointF>& points
     if (success) {
         QMessageBox::information(m_parent, "成功", QString("模板创建成功！\n算法：%1").arg(getCurrentStrategyName()));
         m_view->clearPolygonDrawing();
-        //m_ui->statusbar->showMessage("模板创建成功", 3000);
         updateUIState(true);
         emit templateCreated(name);
     } else {
         QMessageBox::warning(m_parent, "失败", "模板创建失败，请查看日志");
-        //m_ui->statusbar->showMessage("模板创建失败", 3000);
     }
 }
 
@@ -169,7 +182,7 @@ void TemplateTabWidget::findTemplate()
     //m_ui->statusbar->showMessage("正在搜索模板...");
 
     QVector<MatchResult> results = m_currentStrategy->findMatches(
-        m_roiManager->getCurrentImage(), minScore, maxMatches, 0.75);
+        m_roiManager->getCurrentImage(), minScore, maxMatches, 0.7);
 
     if (results.isEmpty()) {
         Logger::instance()->info("未找到匹配目标");

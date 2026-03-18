@@ -310,8 +310,16 @@ void StepColorFilter::run(PipelineContext& ctx)
 
 static void detectLinesHoughP(const cv::Mat& edges, const PipelineConfig* cfg, std::vector<cv::Vec4f>& lines)
 {
-    cv::HoughLinesP(edges, lines, cfg->lineRho, cfg->lineTheta,
+    std::vector<cv::Vec4i> linesInt;
+    cv::HoughLinesP(edges, linesInt, cfg->lineRho, cfg->lineTheta,
                    cfg->lineThreshold, cfg->lineMinLength, cfg->lineMaxGap);
+
+    // 转换为 Vec4f
+    for (const auto& line : linesInt) {
+        lines.push_back(cv::Vec4f(line[0], line[1], line[2], line[3]));
+    }
+
+    qDebug() << "[HoughP] 检测到" << lines.size() << "条直线";
 }
 
 static void detectLinesLSD(const cv::Mat& src, std::vector<cv::Vec4f>& lines)

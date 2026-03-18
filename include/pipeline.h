@@ -41,7 +41,7 @@ struct DisplayConfig
     };
 
     Mode mode=Mode::Original;
-    float overlayAlpha =0.3f;
+    float overlayAlpha =0.7f;
 
     bool shouldShowGreenWhite() const
     {

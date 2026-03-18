@@ -239,7 +239,6 @@ QString ConfigManager::getDefaultConfigPath() const
 {
     //QString configDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     QString appPath = QCoreApplication::applicationDirPath();
-    qDebug()<<appPath;
     QString rawPath = appPath + "/../../app_config.json";
     return QDir::cleanPath(rawPath);
 }
