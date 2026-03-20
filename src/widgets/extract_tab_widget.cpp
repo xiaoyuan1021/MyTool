@@ -253,6 +253,9 @@ void ExtractTabWidget::displayFilterCondition(int index)
 {
     if (!m_ui || index < 0 || index >= m_filterConditions.size()) return;
 
+    // 先保存前一个条件的修改
+    saveCurrentFilterCondition();
+
     m_currentSelectedIndex = index;
     const FilterCondition& condition = m_filterConditions[index];
 
@@ -299,4 +302,33 @@ void ExtractTabWidget::setExtractConfig(const ShapeFilterConfig& config)
     }
 
     Logger::instance()->info(QString("已加载提取配置: %1 个条件").arg(config.conditions.size()));
+}
+
+void ExtractTabWidget::saveCurrentFilterCondition()
+{
+    if (m_currentSelectedIndex < 0 || m_currentSelectedIndex >= m_filterConditions.size()) return;
+    if (!m_ui || !m_pipeline) return;
+
+    // 从输入框读取用户编辑的值
+    bool ok1, ok2;
+    double minValue = m_ui->lineEdit_minArea->text().toDouble(&ok1);
+    double maxValue = m_ui->lineEdit_maxArea->text().toDouble(&ok2);
+
+    // 验证输入有效性
+    if (!ok1 || !ok2 || minValue < 0 || maxValue < minValue) {
+        return;  // 输入无效，不保存
+    }
+
+    // 更新本地列表中的条件
+    m_filterConditions[m_currentSelectedIndex].minValue = minValue;
+    m_filterConditions[m_currentSelectedIndex].maxValue = maxValue;
+
+    // 重新同步到 Pipeline
+    m_pipeline->clearShapeFilter();
+    for (const FilterCondition& condition : m_filterConditions) {
+        m_pipeline->addFilterCondition(condition);
+    }
+
+    // 触发重新处理
+    emit extractionChanged();
 }

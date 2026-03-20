@@ -24,7 +24,8 @@ public:
     void calculateRegionFeatures(const QVector<QPointF>& points);
     void getExtractConfig(ShapeFilterConfig& config) const;
     void setExtractConfig(const ShapeFilterConfig& config);
-
+    void saveCurrentFilterCondition();
+    
 signals:
     void extractionChanged();
 

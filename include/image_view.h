@@ -53,6 +53,10 @@ public:
     void finishRectangleDrawing();
     void clearRectangleDrawing();
 
+    // 参考线绘制
+    void startReferenceLineDrawing();
+    void clearReferenceLine();
+
     QVector<QPointF> getPolygonPoints() const;
 
 signals:
@@ -64,6 +68,9 @@ signals:
 
     void polygonDrawingPointAdded(const QString &type, const QPointF &point);
     void polygonDrawingFinished(const QString &type, QVector<QPointF> points);
+    
+    // 参考线绘制完成信号
+    void referenceLineDrawn(const cv::Point2f& start, const cv::Point2f& end);
 
 protected:
     void wheelEvent(QWheelEvent *event) override;
@@ -115,6 +122,11 @@ private:
     QPointF m_rectStartPosImg;
     QGraphicsRectItem *m_rectItem = nullptr;
     QString m_currentRectDrawingType;
+    
+    // 参考线绘制
+    bool m_referenceLineMode = false;
+    QPointF m_refLineStartPosImg;
+    QGraphicsLineItem *m_referenceLineItem = nullptr;
 };
 
 #endif // IMAGE_VIEW_H

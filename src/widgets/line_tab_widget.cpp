@@ -1,6 +1,7 @@
 #include "line_tab_widget.h"
 #include "ui_line_tab.h"
 #include "logger.h"
+#include <QMessageBox>
 
 LineDetectTabWidget::LineDetectTabWidget(PipelineManager* pipelineManager,
                                          std::function<void()> processCallback,
@@ -72,6 +73,19 @@ void LineDetectTabWidget::initialize()
     connect(m_ui->SpinBox_HoughPMaxLineGap, QOverload<int>::of(&QSpinBox::valueChanged),
             m_ui->Slider_HoughPMaxLineGap, &QSlider::setValue);
 
+    // ========== 参考线匹配信号连接 ==========
+    connect(m_ui->chk_enableReferenceLine, &QCheckBox::toggled, this, &LineDetectTabWidget::onReferenceLineEnabledChanged);
+    connect(m_ui->btn_drawReferenceLine, &QPushButton::clicked, this, &LineDetectTabWidget::onDrawReferenceLineClicked);
+    connect(m_ui->btn_clearReferenceLine, &QPushButton::clicked, this, &LineDetectTabWidget::onClearReferenceLineClicked);
+    connect(m_ui->spin_angleThreshold, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &LineDetectTabWidget::onAngleThresholdChanged);
+    connect(m_ui->spin_distanceThreshold, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &LineDetectTabWidget::onDistanceThresholdChanged);
+
+    // 初始化参考线匹配控件状态
+    m_ui->groupBox_referenceLine->setEnabled(true);
+    m_ui->spin_angleThreshold->setValue(15.0);
+    m_ui->spin_distanceThreshold->setValue(50.0);
+    updateReferenceLineStatus();
+
 }
 
 void LineDetectTabWidget::onLineAlgorithmChanged(int value)
@@ -133,7 +147,21 @@ void LineDetectTabWidget::handleApply()
     m_pipelineManager->getConfig().lineThreshold = state.threshold;
     m_pipelineManager->getConfig().lineMinLength = state.minLineLength;
     m_pipelineManager->getConfig().lineMaxGap = state.maxLineGap;
-    m_pipelineManager->getConfig().enableLineDetect = true;
+    
+    // 判断是否启用参考线匹配模式
+    bool useReferenceLineMatch = m_pipelineManager->getConfig().enableReferenceLineMatch && 
+                                  m_pipelineManager->getConfig().referenceLineValid;
+    
+    if (useReferenceLineMatch) {
+        // 参考线匹配模式：禁用普通直线检测
+        m_pipelineManager->getConfig().enableLineDetect = false;
+        Logger::instance()->info("使用参考线匹配模式检测直线");
+    } else {
+        // 普通直线检测模式：禁用参考线匹配
+        m_pipelineManager->getConfig().enableLineDetect = true;
+        m_pipelineManager->getConfig().enableReferenceLineMatch = false;
+        Logger::instance()->info("使用普通直线检测模式");
+    }
 
     // 设置显示模式为LineDetect
     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::LineDetect);
@@ -171,4 +199,121 @@ void LineDetectTabWidget::setLineState(const LineDetectState &state)
     m_ui->SpinBox_HoughPThreshold->setValue(state.threshold);
     m_ui->SpinBox_HoughPMinLineLength->setValue(state.minLineLength);
     m_ui->SpinBox_HoughPMaxLineGap->setValue(state.maxLineGap);
+}
+
+// ========== 参考线匹配槽函数 ==========
+
+void LineDetectTabWidget::onReferenceLineEnabledChanged(bool enabled)
+{
+    if (!m_pipelineManager) return;
+
+    m_pipelineManager->getConfig().enableReferenceLineMatch = enabled;
+
+    // 如果启用参考线匹配，禁用普通直线检测
+    if (enabled) {
+        m_pipelineManager->getConfig().enableLineDetect = false;
+    }
+
+    updateReferenceLineStatus();
+
+    if (m_processCallback) {
+        m_processCallback();
+    }
+}
+
+void LineDetectTabWidget::onDrawReferenceLineClicked()
+{
+    // 发射信号请求绘制参考线
+    emit requestDrawReferenceLine();
+    
+    // 提示用户
+    Logger::instance()->info("请在图像上点击并拖拽绘制参考线");
+    
+}
+
+void LineDetectTabWidget::onClearReferenceLineClicked()
+{
+    if (!m_pipelineManager) return;
+
+    // 清除参考线数据
+    m_pipelineManager->getConfig().referenceLineValid = false;
+    m_pipelineManager->getConfig().referenceLineStart = cv::Point2f(0, 0);
+    m_pipelineManager->getConfig().referenceLineEnd = cv::Point2f(0, 0);
+
+    updateReferenceLineStatus();
+
+    // 发射信号请求清除绘制
+    emit requestClearReferenceLine();
+
+    if (m_processCallback) {
+        m_processCallback();
+    }
+}
+
+void LineDetectTabWidget::onAngleThresholdChanged(double value)
+{
+    if (!m_pipelineManager) return;
+
+    m_pipelineManager->getConfig().angleThreshold = value;
+
+    if (m_pipelineManager->getConfig().enableReferenceLineMatch && 
+        m_pipelineManager->getConfig().referenceLineValid) {
+        if (m_processCallback) {
+            m_processCallback();
+        }
+    }
+}
+
+void LineDetectTabWidget::onDistanceThresholdChanged(double value)
+{
+    if (!m_pipelineManager) return;
+
+    m_pipelineManager->getConfig().distanceThreshold = value;
+
+    if (m_pipelineManager->getConfig().enableReferenceLineMatch && 
+        m_pipelineManager->getConfig().referenceLineValid) {
+        if (m_processCallback) {
+            m_processCallback();
+        }
+    }
+}
+
+void LineDetectTabWidget::updateReferenceLineStatus()
+{
+    if (!m_pipelineManager || !m_ui) return;
+
+    const PipelineConfig& cfg = m_pipelineManager->getConfig();
+    QString status;
+
+    if (!cfg.enableReferenceLineMatch) {
+        status = "状态：参考线匹配未启用";
+    } else if (!cfg.referenceLineValid) {
+        status = "状态：参考线未绘制\n点击\"绘制参考线\"按钮开始";
+    } else {
+        status = QString("状态：参考线已绘制\n起点:(%1,%2)\n终点:(%3,%4)")
+                     .arg(cfg.referenceLineStart.x, 0, 'f', 1)
+                     .arg(cfg.referenceLineStart.y, 0, 'f', 1)
+                     .arg(cfg.referenceLineEnd.x, 0, 'f', 1)
+                     .arg(cfg.referenceLineEnd.y, 0, 'f', 1);
+    }
+
+    m_ui->label_referenceLineStatus->setText(status);
+}
+
+void LineDetectTabWidget::setReferenceLine(const cv::Point2f& start, const cv::Point2f& end)
+{
+    if (!m_pipelineManager) return;
+
+    m_pipelineManager->getConfig().referenceLineStart = start;
+    m_pipelineManager->getConfig().referenceLineEnd = end;
+    m_pipelineManager->getConfig().referenceLineValid = true;
+
+    updateReferenceLineStatus();
+
+    // 自动启用参考线匹配
+    m_ui->chk_enableReferenceLine->setChecked(true);
+
+    if (m_processCallback) {
+        m_processCallback();
+    }
 }

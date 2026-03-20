@@ -1,27 +1,28 @@
 #include "pipeline_steps.h"
 #include <opencv2/line_descriptor.hpp>
+#include <cmath>
 
 void StepColorChannel::run(PipelineContext &ctx)
 {
     if (ctx.srcBgr.empty() || !cfg_) return;
     switch (cfg_->channel)
     {
-    case PipelineConfig::Channel::Gray:
+    case ChannelMode::Gray:
         cv::cvtColor(ctx.srcBgr, ctx.channelImg, cv::COLOR_BGR2GRAY);
         break;
-    case PipelineConfig::Channel::RGB:
+    case ChannelMode::RGB:
         ctx.channelImg = ctx.srcBgr;
         break;
-    case PipelineConfig::Channel::HSV:
+    case ChannelMode::HSV:
         cv::cvtColor(ctx.srcBgr, ctx.channelImg, cv::COLOR_BGR2HSV);
         break;
-    case PipelineConfig::Channel::B:
+    case ChannelMode::B:
         cv::extractChannel(ctx.srcBgr, ctx.channelImg, 0);
         break;
-    case PipelineConfig::Channel::G:
+    case ChannelMode::G:
         cv::extractChannel(ctx.srcBgr, ctx.channelImg, 1);
         break;
-    case PipelineConfig::Channel::R:
+    case ChannelMode::R:
         cv::extractChannel(ctx.srcBgr, ctx.channelImg, 2);
         break;
     default:
@@ -48,7 +49,7 @@ void StepEnhance::run(PipelineContext& ctx)
 
 void StepGrayFilter::run(PipelineContext& ctx)
 {
-    if (cfg_->currentFilterMode != PipelineConfig::FilterMode::Gray)
+    if (cfg_->currentFilterMode != ImageFilterMode::Gray)
     {
         return;
     }
@@ -197,7 +198,7 @@ void StepShapeFilter::run(PipelineContext& ctx)
 
 HRegion StepShapeFilter::applyFilter(const HRegion& regions, const ShapeFilterConfig& config)
     {
-        if (config.mode == FilterMode::And) {
+        if (config.mode == ShapeFilterLogicMode::And) {
             return applyFilterAnd(regions, config);
         } else {
             return applyFilterOr(regions, config);
@@ -264,8 +265,8 @@ HRegion StepShapeFilter::applyFilterOr(const HRegion& regions, const ShapeFilter
 
 void StepColorFilter::run(PipelineContext& ctx) 
     {
-        if (m_cfg->currentFilterMode != PipelineConfig::FilterMode::RGB &&
-            m_cfg->currentFilterMode != PipelineConfig::FilterMode::HSV) {
+        if (m_cfg->currentFilterMode != ImageFilterMode::RGB &&
+            m_cfg->currentFilterMode != ImageFilterMode::HSV) {
             return;  // 不是颜色过滤模式，直接返回
         }
 
@@ -278,7 +279,7 @@ void StepColorFilter::run(PipelineContext& ctx)
         cv::Mat filterMask;
         switch (m_cfg->colorFilterMode)
         {
-        case PipelineConfig::ColorFilterMode::RGB:
+        case ColorFilterMode::RGB:
             filterMask = m_processor->filterRGB(
                 input,
                 m_cfg->rLow, m_cfg->rHigh,
@@ -287,7 +288,7 @@ void StepColorFilter::run(PipelineContext& ctx)
                 );
             break;
 
-        case PipelineConfig::ColorFilterMode::HSV:
+        case ColorFilterMode::HSV:
             filterMask = m_processor->filterHSV(
                 input,
                 m_cfg->hLow, m_cfg->hHigh,
@@ -300,10 +301,10 @@ void StepColorFilter::run(PipelineContext& ctx)
             return;
         }
 
-        cv::bitwise_not(filterMask,ctx.mask);//影响性能吗
+        cv::bitwise_not(filterMask,ctx.mask);
 
         ctx.reason = QString("颜色过滤: %1 模式")
-                         .arg(m_cfg->colorFilterMode == PipelineConfig::ColorFilterMode::RGB ? "RGB" : "HSV");
+                         .arg(m_cfg->colorFilterMode == ColorFilterMode::RGB ? "RGB" : "HSV");
     }
 
 // ========== 直线检测辅助函数 ==========
@@ -419,3 +420,190 @@ void StepLineDetect::run(PipelineContext &ctx)
             EDdrawing(gray, ed, ctx);
         }
     }
+
+// ========== 参考线匹配辅助函数 ==========
+
+/**
+ * 计算直线角度（与X轴正方向的夹角，范围-180到180度）
+ */
+static double calculateLineAngle(const cv::Vec4f& line)
+{
+    cv::Point2f p1(line[0], line[1]);
+    cv::Point2f p2(line[2], line[3]);
+    double angle = std::atan2(p2.y - p1.y, p2.x - p1.x) * 180.0 / CV_PI;
+    return angle;
+}
+
+/**
+ * 计算点到直线的距离
+ * @param point 目标点
+ * @param lineStart 直线起点
+ * @param lineEnd 直线终点
+ * @return 点到直线的距离
+ */
+static double pointToLineDistance(const cv::Point2f& point, 
+                                  const cv::Point2f& lineStart, 
+                                  const cv::Point2f& lineEnd)
+{
+    cv::Point2f lineVec = lineEnd - lineStart;
+    cv::Point2f pointVec = point - lineStart;
+    
+    double lineLength = cv::norm(lineVec);
+    if (lineLength < 1e-6) {
+        return cv::norm(pointVec);
+    }
+    
+    double cross = std::abs(lineVec.x * pointVec.y - lineVec.y * pointVec.x);
+    return cross / lineLength;
+}
+
+/**
+ * 计算两条直线的角度差（考虑方向性）
+ */
+static double calculateAngleDifference(double angle1, double angle2)
+{
+    double diff = std::abs(angle1 - angle2);
+    // 处理角度环绕（如170度和-170度相差20度而非340度）
+    if (diff > 180.0) {
+        diff = 360.0 - diff;
+    }
+    return diff;
+}
+
+/**
+ * 检测直线是否与参考线匹配
+ */
+static bool isLineMatchingReference(const cv::Vec4f& line,
+                                    const cv::Point2f& refStart,
+                                    const cv::Point2f& refEnd,
+                                    double refAngle,
+                                    double angleThreshold,
+                                    double distanceThreshold)
+{
+    // 计算检测直线的角度
+    double lineAngle = calculateLineAngle(line);
+    double angleDiff = calculateAngleDifference(lineAngle, refAngle);
+    
+    // 角度过滤
+    if (angleDiff > angleThreshold) {
+        return false;
+    }
+    
+    // 计算检测直线的中点到参考线的距离
+    cv::Point2f lineMid((line[0] + line[2]) / 2.0f, (line[1] + line[3]) / 2.0f);
+    double dist = pointToLineDistance(lineMid, refStart, refEnd);
+    
+    // 距离过滤
+    if (dist > distanceThreshold) {
+        return false;
+    }
+    
+    return true;
+}
+
+/**
+ * 计算参考线角度
+ */
+static double calculateReferenceLineAngle(const PipelineConfig* cfg)
+{
+    return std::atan2(cfg->referenceLineEnd.y - cfg->referenceLineStart.y,
+                      cfg->referenceLineEnd.x - cfg->referenceLineStart.x) * 180.0 / CV_PI;
+}
+
+// ========== 参考线匹配步骤 ==========
+
+void StepReferenceLineFilter::run(PipelineContext& ctx)
+{
+    if (!cfg_ || !cfg_->enableReferenceLineMatch) {
+        return;
+    }
+    
+    if (!cfg_->referenceLineValid) {
+        ctx.reason = "参考线未绘制";
+        return;
+    }
+    
+    if (ctx.srcBgr.empty()) {
+        return;
+    }
+    
+    // 先执行直线检测获取所有直线
+    cv::Mat src = ctx.srcBgr;
+    cv::Mat gray;
+    cv::cvtColor(src, gray, cv::COLOR_BGR2GRAY);
+    
+    cv::Mat edges;
+    cv::Canny(gray, edges, 50, 150);
+    
+    std::vector<cv::Vec4f> allLines;
+    
+    // 根据算法检测直线
+    if (cfg_->lineDetectAlgorithm == 0) {
+        detectLinesHoughP(edges, cfg_, allLines);
+    } else if (cfg_->lineDetectAlgorithm == 1) {
+        detectLinesLSD(gray, allLines);
+    } else if (cfg_->lineDetectAlgorithm == 2) {
+        detectLinesEDlines(src, allLines);
+    }
+    
+    // 计算参考线角度
+    double refAngle = calculateReferenceLineAngle(cfg_);
+    
+    // 筛选匹配的直线
+    std::vector<cv::Vec4f> matchedLines;
+    for (const auto& line : allLines) {
+        if (isLineMatchingReference(line,
+                                    cfg_->referenceLineStart,
+                                    cfg_->referenceLineEnd,
+                                    refAngle,
+                                    cfg_->angleThreshold,
+                                    cfg_->distanceThreshold)) {
+            matchedLines.push_back(line);
+        }
+    }
+    
+    // 绘制结果
+    ctx.lineDetect = src.clone();
+    
+    // 绘制参考线（黄色虚线）
+    cv::line(ctx.lineDetect,
+             cfg_->referenceLineStart,
+             cfg_->referenceLineEnd,
+             cv::Scalar(0, 255, 255), 2, cv::LINE_AA);
+    
+    // 绘制匹配的直线（红色）
+    for (const auto& line : matchedLines) {
+        cv::line(ctx.lineDetect,
+                 cv::Point(line[0], line[1]),
+                 cv::Point(line[2], line[3]),
+                 cv::Scalar(0, 0, 255), 2, cv::LINE_AA);
+    }
+    
+    // 绘制不匹配的直线（绿色，半透明）
+    for (const auto& line : allLines) {
+        bool isMatched = false;
+        for (const auto& matched : matchedLines) {
+            if (std::abs(line[0] - matched[0]) < 1 && 
+                std::abs(line[1] - matched[1]) < 1 &&
+                std::abs(line[2] - matched[2]) < 1 &&
+                std::abs(line[3] - matched[3]) < 1) {
+                isMatched = true;
+                break;
+            }
+        }
+        if (!isMatched) {
+            cv::line(ctx.lineDetect,
+                     cv::Point(line[0], line[1]),
+                     cv::Point(line[2], line[3]),
+                     cv::Scalar(0, 255, 0), 1, cv::LINE_AA);
+        }
+    }
+    
+    ctx.reason = QString("参考线匹配: 找到 %1/%2 条匹配直线 (角度容差:%3°, 距离容差:%4px)")
+                     .arg(matchedLines.size())
+                     .arg(allLines.size())
+                     .arg(cfg_->angleThreshold)
+                     .arg(cfg_->distanceThreshold);
+    
+    qDebug() << "[ReferenceLineFilter]" << ctx.reason;
+}

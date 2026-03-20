@@ -98,3 +98,14 @@ private:
     const PipelineConfig* cfg_;
 };
 
+// 参考线匹配
+class StepReferenceLineFilter : public IPipelineStep
+{
+public:
+    explicit StepReferenceLineFilter(const PipelineConfig* cfg) : cfg_(cfg) {}
+
+    void run(PipelineContext &ctx) override;
+private:
+    const PipelineConfig* cfg_ = nullptr;
+};
+

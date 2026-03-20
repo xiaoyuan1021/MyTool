@@ -157,6 +157,7 @@ void PipelineManager::initPipeline()
     m_pipeline.add(std::make_unique<StepAlgorithmQueue>(m_processor.get(), &m_algorithmQueue));
     m_pipeline.add(std::make_unique<StepShapeFilter>(&m_config));
     m_pipeline.add(std::make_unique<StepLineDetect>(&m_config));
+    m_pipeline.add(std::make_unique<StepReferenceLineFilter>(&m_config));  // 添加参考线匹配步骤
 
     //qDebug() << "[PipelineManager] Pipeline初始化完成";
 }

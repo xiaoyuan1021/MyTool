@@ -205,6 +205,65 @@ void ImageView::mousePressEvent(QMouseEvent *event)
         }
     }
 
+    // 参考线绘制模式
+    if (m_referenceLineMode)
+    {
+        if (event->button() == Qt::LeftButton)
+        {
+            QPointF imgPos = viewPosToImagePos(event->pos());
+            
+            if (m_refLineStartPosImg.isNull()) {
+                // 第一次点击：设置起点
+                m_refLineStartPosImg = imgPos;
+                Logger::instance()->info(QString("参考线起点已设置: (%1, %2)，请点击终点")
+                    .arg(imgPos.x(), 0, 'f', 1)
+                    .arg(imgPos.y(), 0, 'f', 1));
+            } else {
+                // 第二次点击：设置终点并完成绘制
+                if (m_referenceLineItem) {
+                    delete m_referenceLineItem;
+                    m_referenceLineItem = nullptr;
+                }
+                
+                // 创建参考线
+                m_referenceLineItem = new QGraphicsLineItem(
+                    QLineF(m_refLineStartPosImg, imgPos), m_pixmapItem);
+                
+                // 设置参考线样式（黄色虚线）
+                QSize imgSize = getImageSize();
+                double imageScale = std::max(imgSize.width(), imgSize.height()) / 5000.0;
+                double adaptiveWidth = std::max(2.0, imageScale * 3.0);
+                
+                QPen linePen(QColor(255, 165, 0), adaptiveWidth, Qt::DashLine);
+                m_referenceLineItem->setPen(linePen);
+                
+                // 转换为cv::Point2f并发射信号
+                cv::Point2f start(m_refLineStartPosImg.x(), m_refLineStartPosImg.y());
+                cv::Point2f end(imgPos.x(), imgPos.y());
+                emit referenceLineDrawn(start, end);
+                
+                Logger::instance()->info(QString("参考线绘制完成: 起点(%1,%2) -> 终点(%3,%4)")
+                    .arg(start.x, 0, 'f', 1).arg(start.y, 0, 'f', 1)
+                    .arg(end.x, 0, 'f', 1).arg(end.y, 0, 'f', 1));
+                
+                // 完成绘制
+                m_referenceLineMode = false;
+            }
+            
+            event->accept();
+            return;
+        }
+        else if (event->button() == Qt::RightButton)
+        {
+            // 右键取消绘制
+            m_referenceLineMode = false;
+            m_refLineStartPosImg = QPointF();
+            Logger::instance()->info("参考线绘制已取消");
+            event->accept();
+            return;
+        }
+    }
+
     if(event->button()==Qt::RightButton && m_roiReady)
     {
         emit roiSelected(m_roiRectImg);
@@ -621,5 +680,31 @@ void ImageView::clearRectangleDrawing()
     if (m_rectItem) {
         delete m_rectItem;
         m_rectItem = nullptr;
+    }
+}
+
+// =================== 参考线绘制 ===================
+void ImageView::startReferenceLineDrawing()
+{
+    m_referenceLineMode = true;
+    m_refLineStartPosImg = QPointF();
+    
+    // 清除旧的参考线
+    if (m_referenceLineItem) {
+        delete m_referenceLineItem;
+        m_referenceLineItem = nullptr;
+    }
+    
+    Logger::instance()->info("请在图像上点击绘制参考线起点");
+}
+
+void ImageView::clearReferenceLine()
+{
+    m_referenceLineMode = false;
+    m_refLineStartPosImg = QPointF();
+    
+    if (m_referenceLineItem) {
+        delete m_referenceLineItem;
+        m_referenceLineItem = nullptr;
     }
 }

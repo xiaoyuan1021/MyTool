@@ -110,6 +110,23 @@ MainWindow::MainWindow(QWidget *parent)
         m_pipelineManager, [this]() { m_processDebounceTimer->start(); }, this);
     ui->tabWidget->addTab(m_lineDetectTabWidget.get(), "直线");
     m_lineDetectTabWidget->initialize();
+    
+    // 连接参考线绘制信号
+    connect(m_lineDetectTabWidget.get(), &LineDetectTabWidget::requestDrawReferenceLine,
+            this, [this]() {
+                // 启用参考线绘制模式
+                m_view->startReferenceLineDrawing();
+            });
+    
+    connect(m_lineDetectTabWidget.get(), &LineDetectTabWidget::requestClearReferenceLine,
+            this, [this]() {
+                // 清除参考线
+                m_view->clearReferenceLine();
+            });
+    
+    // 连接参考线绘制完成信号
+    connect(m_view, &ImageView::referenceLineDrawn,
+            m_lineDetectTabWidget.get(), &LineDetectTabWidget::setReferenceLine);
 
     
 
