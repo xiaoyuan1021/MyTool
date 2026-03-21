@@ -1,6 +1,8 @@
 #include "pipeline_steps.h"
 #include <opencv2/line_descriptor.hpp>
 #include <cmath>
+#include <algorithm>
+#include <HalconCpp.h>
 
 void StepColorChannel::run(PipelineContext &ctx)
 {
@@ -370,6 +372,97 @@ static void EDdrawing(const cv::Mat& src, cv::Ptr<cv::ximgproc::EdgeDrawing> ed,
         }
 }
 
+/**
+ * 使用Halcon的EdgesSubPix算子检测亚像素边缘
+ */
+static void detectLinesEdgesSubPix(const cv::Mat& src, const PipelineConfig* cfg, std::vector<cv::Vec4f>& lines)
+{
+    try {
+        if (src.empty()) return;
+        
+        // 转换为Halcon图像
+        HImage hImg;
+        if (src.channels() == 3) {
+            cv::Mat gray;
+            cv::cvtColor(src, gray, cv::COLOR_BGR2GRAY);
+            hImg = HImage("byte", (Hlong)gray.cols, (Hlong)gray.rows, (void*)gray.data);
+        } else {
+            hImg = HImage("byte", (Hlong)src.cols, (Hlong)src.rows, (void*)src.data);
+        }
+        
+        // 使用EdgesSubPix检测亚像素边缘
+        HXLDCont edges = hImg.EdgesSubPix(
+            cfg->edgeFilter.toStdString().c_str(),
+            cfg->edgeAlpha,
+            (Hlong)cfg->edgeLow,
+            (Hlong)cfg->edgeHigh
+        );
+        
+        // 获取边缘轮廓数量
+        HTuple numContours;
+        HalconCpp::CountObj(edges, &numContours);
+        
+        int contourCount = numContours[0].I();
+        qDebug() << "[EdgesSubPix] 检测到" << contourCount << "个轮廓";
+        
+        // 遍历每个轮廓
+        for (int c = 1; c <= contourCount; c++) {
+            // 选择第c个轮廓
+            HXLDCont contour = edges.SelectObj(c);
+            
+            // 获取轮廓点
+            HTuple rows, cols;
+            contour.GetContourXld(&rows, &cols);
+            
+            int numPoints = rows.Length();
+            if (numPoints >= 2) {
+                // 使用最小二乘法拟合直线
+                std::vector<cv::Point2f> points;
+                for (int i = 0; i < numPoints; i++) {
+                    points.push_back(cv::Point2f((float)cols[i].D(), (float)rows[i].D()));
+                }
+                
+                // 如果点数足够，拟合直线
+                if ((int)points.size() >= 2) {
+                    cv::Vec4f line;
+                    cv::fitLine(points, line, cv::DIST_L2, 0, 0.01, 0.01);
+                    
+                    // 计算直线的端点
+                    float vx = line[0];
+                    float vy = line[1];
+                    float x = line[2];
+                    float y = line[3];
+                    
+                    // 找到点集在直线方向上的最远点
+                    float minProj = 1e10, maxProj = -1e10;
+                    for (const auto& pt : points) {
+                        float proj = (pt.x - x) * vx + (pt.y - y) * vy;
+                        minProj = (std::min)(minProj, proj);
+                        maxProj = (std::max)(maxProj, proj);
+                    }
+                    
+                    // 计算端点
+                    float x1 = x + minProj * vx;
+                    float y1 = y + minProj * vy;
+                    float x2 = x + maxProj * vx;
+                    float y2 = y + maxProj * vy;
+                    
+                    // 过滤太短的线段
+                    float length = std::sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1));
+                    if (length >= cfg->lineMinLength) {
+                        lines.push_back(cv::Vec4f(x1, y1, x2, y2));
+                    }
+                }
+            }
+        }
+        
+        qDebug() << "[EdgesSubPix] 最终检测到" << lines.size() << "条直线";
+        
+    } catch (const HalconCpp::HException& ex) {
+        qDebug() << "[EdgesSubPix] Halcon错误:" << ex.ErrorMessage().Text();
+    }
+}
+
 void StepLineDetect::run(PipelineContext &ctx) 
     {
         if (!cfg_ || !cfg_->enableLineDetect) return;
@@ -398,6 +491,10 @@ void StepLineDetect::run(PipelineContext &ctx)
         {
             detectLinesEDlines(src, lines);
         }
+        else if (cfg_->lineDetectAlgorithm == 3)
+        {
+            detectLinesEdgesSubPix(src, cfg_, lines);
+        }
 
         // 绘制直线到lineDetect
         ctx.lineDetect = src.clone();
@@ -418,6 +515,17 @@ void StepLineDetect::run(PipelineContext &ctx)
         {
             cv::Ptr<cv::ximgproc::EdgeDrawing> ed;
             EDdrawing(gray, ed, ctx);
+        }
+        // EdgesSubPix用端点连线
+        else if (cfg_->lineDetectAlgorithm == 3)
+        {
+            for (const auto& line : lines)
+            {
+                cv::line(ctx.lineDetect,
+                        cv::Point(line[0], line[1]),
+                        cv::Point(line[2], line[3]),
+                        cv::Scalar(0, 255, 0), 2);
+            }
         }
     }
 
@@ -527,13 +635,47 @@ void StepReferenceLineFilter::run(PipelineContext& ctx)
         return;
     }
     
-    // 先执行直线检测获取所有直线
     cv::Mat src = ctx.srcBgr;
+    
+    // 计算参考线包围的搜索区域
+    cv::Point2f refStart = cfg_->referenceLineStart;
+    cv::Point2f refEnd = cfg_->referenceLineEnd;
+    
+    // 计算参考线的法向量
+    cv::Point2f lineDir = refEnd - refStart;
+    double lineLength = cv::norm(lineDir);
+    if (lineLength < 1e-6) {
+        ctx.reason = "参考线长度太短";
+        return;
+    }
+    
+    cv::Point2f normal(-lineDir.y / lineLength, lineDir.x / lineLength);
+    
+    // 计算搜索区域的四个角点
+    double halfWidth = cfg_->searchRegionWidth / 2.0;
+    cv::Point2f offset = normal * halfWidth;
+    
+    std::vector<cv::Point> searchRegion = {
+        cv::Point(refStart.x + offset.x, refStart.y + offset.y),
+        cv::Point(refEnd.x + offset.x, refEnd.y + offset.y),
+        cv::Point(refEnd.x - offset.x, refEnd.y - offset.y),
+        cv::Point(refStart.x - offset.x, refStart.y - offset.y)
+    };
+    
+    // 创建搜索区域的掩码
+    cv::Mat regionMask = cv::Mat::zeros(src.size(), CV_8UC1);
+    std::vector<std::vector<cv::Point>> contours = {searchRegion};
+    cv::fillPoly(regionMask, contours, cv::Scalar(255));
+    
+    // 只在搜索区域内进行直线检测
     cv::Mat gray;
     cv::cvtColor(src, gray, cv::COLOR_BGR2GRAY);
     
+    cv::Mat maskedGray;
+    gray.copyTo(maskedGray, regionMask);
+    
     cv::Mat edges;
-    cv::Canny(gray, edges, 50, 150);
+    cv::Canny(maskedGray, edges, 50, 150);
     
     std::vector<cv::Vec4f> allLines;
     
@@ -541,9 +683,11 @@ void StepReferenceLineFilter::run(PipelineContext& ctx)
     if (cfg_->lineDetectAlgorithm == 0) {
         detectLinesHoughP(edges, cfg_, allLines);
     } else if (cfg_->lineDetectAlgorithm == 1) {
-        detectLinesLSD(gray, allLines);
+        detectLinesLSD(maskedGray, allLines);
     } else if (cfg_->lineDetectAlgorithm == 2) {
-        detectLinesEDlines(src, allLines);
+        detectLinesEDlines(maskedGray, allLines);
+    } else if (cfg_->lineDetectAlgorithm == 3) {
+        detectLinesEdgesSubPix(maskedGray, cfg_, allLines);
     }
     
     // 计算参考线角度
@@ -565,21 +709,22 @@ void StepReferenceLineFilter::run(PipelineContext& ctx)
     // 绘制结果
     ctx.lineDetect = src.clone();
     
-    // 绘制参考线（黄色虚线）
+    // 绘制参考线（醒目的黄色粗线）
     cv::line(ctx.lineDetect,
              cfg_->referenceLineStart,
              cfg_->referenceLineEnd,
-             cv::Scalar(0, 255, 255), 2, cv::LINE_AA);
+             cv::Scalar(0, 255, 255), 4, cv::LINE_AA);
     
-    // 绘制匹配的直线（红色）
-    for (const auto& line : matchedLines) {
+    // 只显示第一个匹配的直线（最匹配的直线）
+    if (!matchedLines.empty()) {
+        const auto& line = matchedLines[0];
         cv::line(ctx.lineDetect,
                  cv::Point(line[0], line[1]),
                  cv::Point(line[2], line[3]),
-                 cv::Scalar(0, 0, 255), 2, cv::LINE_AA);
+                 cv::Scalar(255, 0, 255), 3, cv::LINE_AA);
     }
     
-    // 绘制不匹配的直线（绿色，半透明）
+    // 绘制不匹配的直线（绿色，较细）
     for (const auto& line : allLines) {
         bool isMatched = false;
         for (const auto& matched : matchedLines) {
@@ -604,6 +749,10 @@ void StepReferenceLineFilter::run(PipelineContext& ctx)
                      .arg(allLines.size())
                      .arg(cfg_->angleThreshold)
                      .arg(cfg_->distanceThreshold);
+    
+    // 设置匹配结果到上下文
+    ctx.matchedLineCount = matchedLines.size();
+    ctx.totalLineCount = allLines.size();
     
     qDebug() << "[ReferenceLineFilter]" << ctx.reason;
 }

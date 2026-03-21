@@ -56,12 +56,10 @@ bool RoiManager::applyRoi(const QRectF &roiRectF)
 
 void RoiManager::resetRoi()
 {
-    if(m_isRoiActive)
-    {
-        m_roiImage.release();
-        m_isRoiActive = false;
-        Logger::instance()->info("[RoiManager] ROI已重置");
-    }
+    // 无论ROI是否激活，都执行重置操作
+    m_roiImage.release();
+    m_isRoiActive = false;
+    Logger::instance()->info("[RoiManager] ROI已重置");
 }
 
 bool RoiManager::isRoiActive() const

@@ -4,14 +4,14 @@
 
 Pipeline::Pipeline() 
 {
-    qDebug() << "[Pipeline] Pipeline实例创建";
+    //qDebug() << "[Pipeline] Pipeline实例创建";
 }
 
 void Pipeline::add(std::unique_ptr<IPipelineStep> step)
 {
     if (step) {
         steps_.push_back(std::move(step));
-        qDebug() << "[Pipeline] 添加步骤，当前步骤数:" << steps_.size();
+        //qDebug() << "[Pipeline] 添加步骤，当前步骤数:" << steps_.size();
     } else {
         qDebug() << "[Pipeline] 警告：尝试添加空步骤";
     }

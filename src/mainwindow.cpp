@@ -25,6 +25,41 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(m_processDebounceTimer, &QTimer::timeout,this,&MainWindow::processAndDisplay);
 
+    // 连接多线程处理完成信号
+    connect(&m_pipelineWatcher, &QFutureWatcher<PipelineContext>::finished, 
+            this, [this]() {
+                m_isProcessing = false;
+                PipelineContext result = m_pipelineWatcher.result();
+                // 更新UI显示
+                cv::Mat displayImage = result.getFinalDisplay();
+                showImage(displayImage);
+
+                // 更新判定Tab显示
+                int count = result.currentRegions;
+                if (m_judgeTabWidget) {
+                    m_judgeTabWidget->setCurrentRegionCount(count);
+                }
+                
+                // 更新直线检测Tab匹配结果
+                if (m_lineDetectTabWidget && result.totalLineCount > 0) {
+                    const PipelineConfig& cfg = m_pipelineManager->getConfig();
+                    m_lineDetectTabWidget->updateMatchResultStatus(
+                        result.matchedLineCount, 
+                        result.totalLineCount, 
+                        cfg.angleThreshold, 
+                        cfg.distanceThreshold
+                    );
+                }
+                
+                // 更新条码Tab识别结果
+                if (m_barcodeTabWidget) {
+                    m_barcodeTabWidget->updateResultsTable(result.barcodeResults);
+                    m_barcodeTabWidget->updateStatus(result.barcodeStatus);
+                }
+                // 恢复状态栏
+                ui->statusbar->showMessage("处理完成", 2000);
+            });
+
     setupUI();
     setupConnections();
 
@@ -122,13 +157,18 @@ MainWindow::MainWindow(QWidget *parent)
             this, [this]() {
                 // 清除参考线
                 m_view->clearReferenceLine();
+                // 重新处理图像以清除匹配结果
+                processAndDisplay();
             });
     
     // 连接参考线绘制完成信号
     connect(m_view, &ImageView::referenceLineDrawn,
             m_lineDetectTabWidget.get(), &LineDetectTabWidget::setReferenceLine);
 
-    
+    // 创建条码Tab并添加到tabWidget
+    m_barcodeTabWidget = std::make_unique<BarcodeTabWidget>(
+        m_pipelineManager, [this]() { m_processDebounceTimer->start(); }, this);
+    ui->tabWidget->addTab(m_barcodeTabWidget.get(), "条码");
 
     // 初始化日志页面
     m_logPage = std::make_unique<LogPage>(this);
@@ -171,6 +211,9 @@ void MainWindow::setupUI()
 
 void MainWindow::setupConnections()
 {
+    // ========== 手动连接按钮信号 ==========
+    connect(ui->btn_resetROI, &QPushButton::clicked, this, &MainWindow::on_btn_resetROI_clicked);
+    
     // ========== FileManager信号 ==========
     connect(m_fileManager, &FileManager::imageLoaded,
             this, [this](const cv::Mat& img) {
@@ -228,22 +271,30 @@ void MainWindow::setupConnections()
 
 void MainWindow::processAndDisplay()
 {
+    // 如果正在处理，跳过本次请求（避免堆积）
+    if (m_isProcessing) {
+        return;
+    }
+
     // ========== 设置显示模式 ==========
     setDisplayModeForCurrentTab();
 
-    // ========== 执行 Pipeline ==========
+    // ========== 获取当前图像 ==========
     cv::Mat currentImage = m_roiManager.getCurrentImage();
-    const PipelineContext& result = m_pipelineManager->execute(currentImage);
-
-    // ========== 显示结果 ==========
-    cv::Mat displayImage = result.getFinalDisplay();
-    showImage(displayImage);
-
-    //========== 更新判定Tab显示 ==========
-    int count = result.currentRegions;
-    if (m_judgeTabWidget) {
-        m_judgeTabWidget->setCurrentRegionCount(count);
+    if (currentImage.empty()) {
+        return;
     }
+
+    // ========== 使用QtConcurrent在后台线程执行Pipeline ==========
+    m_isProcessing = true;
+    ui->statusbar->showMessage("正在处理...");
+
+    QFuture<PipelineContext> future = QtConcurrent::run(
+        [this, currentImage]() -> PipelineContext {
+            return m_pipelineManager->execute(currentImage);
+        }
+    );
+    m_pipelineWatcher.setFuture(future);
 }
 
 void MainWindow::setDisplayModeForCurrentTab()
@@ -268,6 +319,8 @@ void MainWindow::setDisplayModeForCurrentTab()
     
     case 7: // 直线检测Tab
     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::LineDetect); break;
+    case 8: // 条码Tab
+    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original); break;
     default: m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original); break;
     }
 }
@@ -317,6 +370,7 @@ void MainWindow::on_btn_drawRoi_clicked()
 void MainWindow::on_btn_resetROI_clicked()
 {
     m_roiManager.resetRoiWithUI(m_view, ui->statusbar);
+    processAndDisplay();  // 立即更新显示
 }
 
 void MainWindow::onRoiSelected(const QRectF &roiImgRectF)

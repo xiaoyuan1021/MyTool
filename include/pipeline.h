@@ -5,10 +5,24 @@
 #include <QSlider>
 #include <QSpinBox>
 #include <QPointF>
+#include <QString>
+#include <QRectF>
 #include "shape_filter_types.h"
 #include "pipeline_types.h"
 #include "region_feature.h"
 #include "display_config.h"
+
+/**
+ * 条码识别结果
+ */
+struct BarcodeResult
+{
+    QString type;           // 条码类型 (如 "EAN-13", "QR Code")
+    QString data;           // 解码数据
+    QRectF location;        // 位置 (bounding box)
+    double quality = 0.0;   // 识别质量 (0-100)
+    int orientation = 0;    // 条码方向角度
+};
 
 struct PipelineConfig
 {
@@ -55,13 +69,19 @@ struct PipelineConfig
     // int maxRegionCount = 0; // 例如：0 表示“不能有缺陷”
 
     // ========== 直线检测参数 ==========
-    int lineDetectAlgorithm = 0;  // 0=HoughP, 1=LSD, 2=EDline
+    int lineDetectAlgorithm = 0;  // 0=HoughP, 1=LSD, 2=EDline, 3=EdgesSubPix(Halcon)
     double lineRho = 1.0;
     double lineTheta = CV_PI / 180.0;
     int lineThreshold = 50;
     double lineMinLength = 30.0;
     double lineMaxGap = 10.0;
     bool enableLineDetect = false;
+    
+    // EdgesSubPix参数(Halcon)
+    QString edgeFilter = "canny";  // 滤波器类型: canny, lanser, deriche1, deriche2, shen
+    double edgeAlpha = 1.0;        // 平滑参数
+    int edgeLow = 20;              // 低阈值
+    int edgeHigh = 40;             // 高阈值
 
     // ========== 参考线匹配参数 ==========
     bool enableReferenceLineMatch = false;
@@ -70,6 +90,10 @@ struct PipelineConfig
     bool referenceLineValid = false;
     double angleThreshold = 15.0;      // 角度容差（度）
     double distanceThreshold = 50.0;   // 距离容差（像素）
+    int searchRegionWidth = 100;       // 搜索区域宽度（像素）
+    
+    // ========== 条码识别参数 ==========
+    BarcodeConfig barcode;
 
     void syncConfigFromUI(QSlider* brightness,QSlider* contrast,QSlider* gamma,
                           QSlider* sharpen,QSlider* grayLow,QSlider* grayHigh)
@@ -118,6 +142,14 @@ struct PipelineContext
 
     bool pass = true;
     QString reason;
+    
+    // 参考线匹配结果
+    int matchedLineCount = 0;
+    int totalLineCount = 0;
+    
+    // 条码识别结果
+    QVector<BarcodeResult> barcodeResults;
+    QString barcodeStatus;  // 识别状态信息
 
     cv::Mat getFinalDisplay() const;
 

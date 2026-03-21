@@ -62,10 +62,14 @@ private slots:
     void onClearReferenceLineClicked();
     void onAngleThresholdChanged(double value);
     void onDistanceThresholdChanged(double value);
+    void onSearchRegionWidthChanged(int value);
 
 public:
     // 更新参考线状态显示
     void updateReferenceLineStatus();
+    
+    // 更新匹配结果状态
+    void updateMatchResultStatus(int matchedCount, int totalCount, double angleThreshold, double distanceThreshold);
     
     // 设置参考线（供ImageView调用）
     void setReferenceLine(const cv::Point2f& start, const cv::Point2f& end);

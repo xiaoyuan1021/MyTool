@@ -55,6 +55,11 @@
          <string>EDLines</string>
         </property>
        </item>
+       <item>
+        <property name="text">
+         <string>EdgesSubPix(Halcon)</string>
+        </property>
+       </item>
       </widget>
      </item>
      <item>
@@ -313,6 +318,49 @@
         </item>
         <item>
          <spacer name="horizontalSpacer_distance">
+          <property name="orientation">
+           <enum>Qt::Orientation::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_searchWidth">
+        <item>
+         <widget class="QLabel" name="label_searchRegionWidth">
+          <property name="text">
+           <string>搜索区域宽度</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QSpinBox" name="spin_searchRegionWidth">
+          <property name="suffix">
+           <string>px</string>
+          </property>
+          <property name="minimum">
+           <number>20</number>
+          </property>
+          <property name="maximum">
+           <number>500</number>
+          </property>
+          <property name="singleStep">
+           <number>10</number>
+          </property>
+          <property name="value">
+           <number>100</number>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="horizontalSpacer_searchWidth">
           <property name="orientation">
            <enum>Qt::Orientation::Horizontal</enum>
           </property>

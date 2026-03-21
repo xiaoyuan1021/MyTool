@@ -79,11 +79,13 @@ void LineDetectTabWidget::initialize()
     connect(m_ui->btn_clearReferenceLine, &QPushButton::clicked, this, &LineDetectTabWidget::onClearReferenceLineClicked);
     connect(m_ui->spin_angleThreshold, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &LineDetectTabWidget::onAngleThresholdChanged);
     connect(m_ui->spin_distanceThreshold, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &LineDetectTabWidget::onDistanceThresholdChanged);
+    connect(m_ui->spin_searchRegionWidth, QOverload<int>::of(&QSpinBox::valueChanged), this, &LineDetectTabWidget::onSearchRegionWidthChanged);
 
     // 初始化参考线匹配控件状态
     m_ui->groupBox_referenceLine->setEnabled(true);
     m_ui->spin_angleThreshold->setValue(15.0);
     m_ui->spin_distanceThreshold->setValue(50.0);
+    m_ui->spin_searchRegionWidth->setValue(100);
     updateReferenceLineStatus();
 
 }
@@ -99,6 +101,9 @@ void LineDetectTabWidget::onLineAlgorithmChanged(int value)
         m_ui->stackedWidget_LineDetect->setCurrentIndex(0);
         break;
     case 2: // EDline
+        m_ui->stackedWidget_LineDetect->setCurrentIndex(0);
+        break;
+    case 3: // EdgesSubPix(Halcon)
         m_ui->stackedWidget_LineDetect->setCurrentIndex(0);
         break;
     default:
@@ -226,9 +231,8 @@ void LineDetectTabWidget::onDrawReferenceLineClicked()
     // 发射信号请求绘制参考线
     emit requestDrawReferenceLine();
     
-    // 提示用户
-    Logger::instance()->info("请在图像上点击并拖拽绘制参考线");
-    
+    // 提示用户（不弹窗，只在日志显示）
+    Logger::instance()->info("请在图像上点击绘制参考线的起点和终点");
 }
 
 void LineDetectTabWidget::onClearReferenceLineClicked()
@@ -278,6 +282,20 @@ void LineDetectTabWidget::onDistanceThresholdChanged(double value)
     }
 }
 
+void LineDetectTabWidget::onSearchRegionWidthChanged(int value)
+{
+    if (!m_pipelineManager) return;
+
+    m_pipelineManager->getConfig().searchRegionWidth = value;
+
+    if (m_pipelineManager->getConfig().enableReferenceLineMatch && 
+        m_pipelineManager->getConfig().referenceLineValid) {
+        if (m_processCallback) {
+            m_processCallback();
+        }
+    }
+}
+
 void LineDetectTabWidget::updateReferenceLineStatus()
 {
     if (!m_pipelineManager || !m_ui) return;
@@ -316,4 +334,25 @@ void LineDetectTabWidget::setReferenceLine(const cv::Point2f& start, const cv::P
     if (m_processCallback) {
         m_processCallback();
     }
+}
+
+void LineDetectTabWidget::updateMatchResultStatus(int matchedCount, int totalCount, double angleThreshold, double distanceThreshold)
+{
+    if (!m_ui) return;
+
+    QString status;
+    
+    if (matchedCount > 0) {
+        status = QString("匹配结果: %1/%2 条直线匹配成功\n角度容差: %3°, 距离容差: %4px")
+                     .arg(matchedCount)
+                     .arg(totalCount)
+                     .arg(angleThreshold)
+                     .arg(distanceThreshold);
+    } else {
+        status = QString("匹配结果: 未找到匹配直线\n角度容差: %1°, 距离容差: %2px")
+                     .arg(angleThreshold)
+                     .arg(distanceThreshold);
+    }
+
+    m_ui->label_referenceLineStatus->setText(status);
 }

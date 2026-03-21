@@ -1,4 +1,5 @@
 #include "pipeline_manager.h"
+#include "barcode_step.h"
 #include <QDebug>
 
 PipelineManager::PipelineManager(QObject* parent)
@@ -106,12 +107,11 @@ void PipelineManager::clearAlgorithmQueue()
 
 // ========== Pipeline执行 ==========
 
-const PipelineContext& PipelineManager::execute(const cv::Mat& inputImage)
+PipelineContext PipelineManager::execute(const cv::Mat& inputImage)
 {
     if (inputImage.empty())
     {
-        static const PipelineContext emptyContext;
-        return emptyContext;
+        return PipelineContext();
     }
 
     // ✅ 显式释放所有Mat
@@ -128,7 +128,7 @@ const PipelineContext& PipelineManager::execute(const cv::Mat& inputImage)
     m_lastContext.srcBgr = inputImage;
 
     m_lastContext.displayConfig.mode = m_displayMode;
-    m_lastContext.displayConfig.overlayAlpha = m_overlayAlpha;;
+    m_lastContext.displayConfig.overlayAlpha = m_overlayAlpha;
 
     // 执行Pipeline
     m_pipeline.run(m_lastContext);
@@ -139,6 +139,7 @@ const PipelineContext& PipelineManager::execute(const cv::Mat& inputImage)
                           : m_lastContext.reason;
     emit pipelineFinished(message);
 
+    // ✅ 返回副本，避免多线程竞争
     return m_lastContext;
 }
 
@@ -158,6 +159,7 @@ void PipelineManager::initPipeline()
     m_pipeline.add(std::make_unique<StepShapeFilter>(&m_config));
     m_pipeline.add(std::make_unique<StepLineDetect>(&m_config));
     m_pipeline.add(std::make_unique<StepReferenceLineFilter>(&m_config));  // 添加参考线匹配步骤
+    m_pipeline.add(std::make_unique<StepBarcodeRecognition>(&m_config.barcode));  // 添加条码识别步骤
 
     //qDebug() << "[PipelineManager] Pipeline初始化完成";
 }

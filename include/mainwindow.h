@@ -10,6 +10,8 @@
 #include <QTimer>
 #include <QStack>
 #include <QSignalBlocker>
+#include <QtConcurrent/QtConcurrent>
+#include <QFutureWatcher>
 
 #include <opencv2/opencv.hpp>
 
@@ -29,6 +31,7 @@
 #include "widgets/extract_tab_widget.h"
 #include "widgets/process_tab_widget.h"
 #include "widgets/judge_tab_widget.h"
+#include "widgets/barcode_tab_widget.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -104,10 +107,15 @@ private:
     std::unique_ptr<ExtractTabWidget> m_extractTabWidget;
     std::unique_ptr<ProcessTabWidget> m_processTabWidget;
     std::unique_ptr<JudgeTabWidget> m_judgeTabWidget;
+    std::unique_ptr<BarcodeTabWidget> m_barcodeTabWidget;
 
     
     std::unique_ptr<LogPage> m_logPage;
     std::unique_ptr<ImageTabWidget> m_imageTabWidget;
+
+    // 多线程处理相关
+    QFutureWatcher<PipelineContext> m_pipelineWatcher;
+    bool m_isProcessing = false;
 
 };
 

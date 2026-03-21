@@ -24,7 +24,11 @@ LIBS += -L$$OPENCV_DIR/lib \
         -lopencv_dnn4d \
         -lopencv_photo4d \
         -lopencv_ximgproc4d \
-        -lopencv_line_descriptor4d
+        -lopencv_line_descriptor4d \
+        -lopencv_features2d4d \
+        -lopencv_calib3d4d \
+        -lopencv_flann4d \
+        -lopencv_video4d
 
 # ===== HALCON 配置 (使用本地 3rdparty) =====
 HALCON_DIR = $$PWD/3rdparty/halcon
@@ -46,6 +50,7 @@ HEADERS += \
     include/pipeline.h \
     include/pipeline_manager.h \
     include/pipeline_steps.h \
+    include/barcode_step.h \
     include/shape_filter_types.h \
     include/system_monitor.h \
     include/match_strategy.h \
@@ -60,6 +65,7 @@ HEADERS += \
     include/widgets/extract_tab_widget.h \
     include/widgets/process_tab_widget.h \
     include/widgets/judge_tab_widget.h \
+    include/widgets/barcode_tab_widget.h \
     include/config_manager.h
 
 # ===== 源文件 =====
@@ -78,6 +84,7 @@ SOURCES += \
     src/file_manager.cpp \
     src/roi_manager.cpp \
     src/pipeline_steps.cpp \
+    src/barcode_step.cpp \
     src/log_page.cpp \
     src/widgets/image_tab_widget.cpp \
     src/widgets/enhance_tab_widget.cpp \
@@ -87,6 +94,7 @@ SOURCES += \
     src/widgets/extract_tab_widget.cpp \
     src/widgets/process_tab_widget.cpp \
     src/widgets/judge_tab_widget.cpp \
+    src/widgets/barcode_tab_widget.cpp \
     src/config_manager.cpp
 
 # ===== UI 文件 =====
@@ -100,7 +108,8 @@ FORMS += \
     ui/tabs/line_tab.ui \
     ui/tabs/extract_tab.ui \
     ui/tabs/process_tab.ui \
-    ui/tabs/judge_tab.ui
+    ui/tabs/judge_tab.ui \
+    ui/tabs/barcode_tab.ui
 
 # ===== 资源文件 =====
 RESOURCES += \

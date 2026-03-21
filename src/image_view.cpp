@@ -229,12 +229,12 @@ void ImageView::mousePressEvent(QMouseEvent *event)
                 m_referenceLineItem = new QGraphicsLineItem(
                     QLineF(m_refLineStartPosImg, imgPos), m_pixmapItem);
                 
-                // 设置参考线样式（黄色虚线）
+                // 设置参考线样式（醒目的黄色粗虚线）
                 QSize imgSize = getImageSize();
                 double imageScale = std::max(imgSize.width(), imgSize.height()) / 5000.0;
-                double adaptiveWidth = std::max(2.0, imageScale * 3.0);
+                double adaptiveWidth = std::max(3.0, imageScale * 4.0);  // 增加线宽
                 
-                QPen linePen(QColor(255, 165, 0), adaptiveWidth, Qt::DashLine);
+                QPen linePen(QColor(255, 255, 0), adaptiveWidth, Qt::DashLine);  // 更亮的黄色
                 m_referenceLineItem->setPen(linePen);
                 
                 // 转换为cv::Point2f并发射信号
