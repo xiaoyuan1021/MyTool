@@ -1,4 +1,5 @@
 #include "pipeline_manager.h"
+#include "barcode_step.h"
 #include <QDebug>
 
 PipelineManager::PipelineManager(QObject* parent)
@@ -39,7 +40,6 @@ void PipelineManager::setAreaFilterEnabled(bool enabled)
 void PipelineManager::addFilterCondition(const FilterCondition& condition)
 {
     m_config.shapeFilter.addCondition(condition);
-    m_config.shapeFilter.enabled = true;  // 添加条件时自动启用
 }
 
 void PipelineManager::setFilterMode(FilterMode mode)
@@ -54,7 +54,7 @@ void PipelineManager::clearShapeFilter()
 
 void PipelineManager::enableShapeFilter(bool enable)
 {
-    m_config.shapeFilter.enabled = enable;
+    //m_config.shapeFilter.enabled = enable;
 }
 
 void PipelineManager::setFeatureRange(ShapeFeature feature, double minValue, double maxValue)
@@ -65,6 +65,11 @@ void PipelineManager::setFeatureRange(ShapeFeature feature, double minValue, dou
     // 简单实现：添加新条件
     FilterCondition cond(feature, minValue, maxValue);
     addFilterCondition(cond);
+}
+
+void PipelineManager::setShapeFilterConfig(const ShapeFilterConfig& config)
+{
+    m_config.shapeFilter = config;
 }
 
 // ========== 算法队列管理 ==========
@@ -102,12 +107,11 @@ void PipelineManager::clearAlgorithmQueue()
 
 // ========== Pipeline执行 ==========
 
-const PipelineContext& PipelineManager::execute(const cv::Mat& inputImage)
+PipelineContext PipelineManager::execute(const cv::Mat& inputImage)
 {
     if (inputImage.empty())
     {
-        static const PipelineContext emptyContext;
-        return emptyContext;
+        return PipelineContext();
     }
 
     // ✅ 显式释放所有Mat
@@ -124,7 +128,7 @@ const PipelineContext& PipelineManager::execute(const cv::Mat& inputImage)
     m_lastContext.srcBgr = inputImage;
 
     m_lastContext.displayConfig.mode = m_displayMode;
-    m_lastContext.displayConfig.overlayAlpha = m_overlayAlpha;;
+    m_lastContext.displayConfig.overlayAlpha = m_overlayAlpha;
 
     // 执行Pipeline
     m_pipeline.run(m_lastContext);
@@ -135,6 +139,7 @@ const PipelineContext& PipelineManager::execute(const cv::Mat& inputImage)
                           : m_lastContext.reason;
     emit pipelineFinished(message);
 
+    // ✅ 返回副本，避免多线程竞争
     return m_lastContext;
 }
 
@@ -152,6 +157,9 @@ void PipelineManager::initPipeline()
     m_pipeline.add(std::make_unique<StepColorFilter>(&m_config, m_processor.get()));
     m_pipeline.add(std::make_unique<StepAlgorithmQueue>(m_processor.get(), &m_algorithmQueue));
     m_pipeline.add(std::make_unique<StepShapeFilter>(&m_config));
+    m_pipeline.add(std::make_unique<StepLineDetect>(&m_config));
+    m_pipeline.add(std::make_unique<StepReferenceLineFilter>(&m_config));  // 添加参考线匹配步骤
+    m_pipeline.add(std::make_unique<StepBarcodeRecognition>(&m_config.barcode));  // 添加条码识别步骤
 
     //qDebug() << "[PipelineManager] Pipeline初始化完成";
 }
@@ -190,7 +198,7 @@ void PipelineManager::setDisplayMode(DisplayConfig::Mode mode)
 
 void PipelineManager::setOverlayAlpha(float alpha)
 {
-
+    Q_UNUSED(alpha);
 }
 
 void PipelineManager::setColorFilterEnabled(bool enabled)

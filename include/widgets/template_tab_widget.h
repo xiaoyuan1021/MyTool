@@ -1,5 +1,4 @@
-#ifndef TEMPLATE_CONTROLLER_H
-#define TEMPLATE_CONTROLLER_H
+#pragma once
 
 #include <QObject>
 #include <QWidget>
@@ -8,28 +7,29 @@
 #include <opencv2/opencv.hpp>
 #include "match_strategy.h"
 
-QT_BEGIN_NAMESPACE
-namespace Ui { class MainWindow; }
-QT_END_NAMESPACE
+namespace Ui 
+{
+class TemplateTabWidget;
+}
 
 class ImageView;
 class RoiManager;
 
-enum class MatchType {
+enum class MatchType 
+{
     ShapeModel,
     NCCModel,
     OpenCVTM
 };
 
-class TemplateController : public QObject
+class TemplateTabWidget : public QWidget
 {
     Q_OBJECT
-
 public:
-    explicit TemplateController(Ui::MainWindow* ui,
-                               ImageView* view,
+    explicit TemplateTabWidget(ImageView* view,
                                RoiManager* roiManager,
                                QWidget* parent = nullptr);
+    ~TemplateTabWidget();
 
     void initialize();
 
@@ -48,7 +48,8 @@ public slots:
     void clearTemplateDrawing();
     void createTemplate();
     void findTemplate();
-    void clearAllTemplates();
+    //void clearAllTemplates();
+    void clearMatchResults();
     void onMatchTypeChanged(int index);
 
 signals:
@@ -62,7 +63,7 @@ private:
     void initializeStrategies();
 
 private:
-    Ui::MainWindow* m_ui;
+    Ui::TemplateTabWidget* m_ui;
     ImageView* m_view;
     RoiManager* m_roiManager;
     QWidget* m_parent;
@@ -73,5 +74,3 @@ private:
     QMap<MatchType, std::shared_ptr<IMatchStrategy>> m_strategies;
     TemplateParams m_defaultParams;
 };
-
-#endif // TEMPLATE_CONTROLLER_H

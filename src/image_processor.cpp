@@ -73,9 +73,9 @@ Mat imageprocessor::executeAlgorithmQueue(const Mat &src, const QVector<Algorith
                 continue;
             }
 
-            qDebug() << QString("  执行步骤 %1: %2")
-                            .arg(executedSteps + 1)
-                            .arg(step.name);
+            // qDebug() << QString("  执行步骤 %1: %2")
+            //                 .arg(executedSteps + 1)
+            //                 .arg(step.name);
 
             // ✅ 直接在HRegion上链式操作（不创建临时Mat）
             currentRegion = halconAlgo.execute(currentRegion, step);

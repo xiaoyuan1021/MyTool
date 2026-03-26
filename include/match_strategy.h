@@ -35,6 +35,7 @@ struct TemplateParams
     double angleStart;
     double angleExtent;
     double angleStep;
+    double greediness;
     QString optimization;
     QString metric;
     //NCC
@@ -93,6 +94,12 @@ private:
     HTuple m_templateCols;
     double m_modelRow;
     double m_modelCol;
+
+    // ROI 偏移量（用于坐标转换）
+    int m_roiOffsetX = 0;
+    int m_roiOffsetY = 0;
+    int m_templateWidth = 0;
+    int m_templateHeight = 0;
 
     HImage createTemplateRegion(const cv::Mat& image,
                                 const QVector<QPointF>& polygon);

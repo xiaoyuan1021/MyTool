@@ -43,6 +43,9 @@ public:
     // 获取当前配置（只读）
     const PipelineConfig& getConfig() const { return m_config; }
 
+    // 获取当前配置（可写）
+    PipelineConfig& getConfig() { return m_config; }
+
     // ========== 算法队列管理 ==========
 
     // 添加算法步骤
@@ -63,8 +66,8 @@ public:
 
     // 执行Pipeline处理
     // 输入：BGR图像
-    // 输出：处理结果上下文
-    const PipelineContext& execute(const cv::Mat& inputImage);
+    // 输出：处理结果上下文（返回独立副本，线程安全）
+    PipelineContext execute(const cv::Mat& inputImage);
 
     // 获取最后一次执行的上下文
     const PipelineContext& getLastContext() const { return m_lastContext; }
@@ -74,6 +77,7 @@ public:
     void clearShapeFilter();
     void enableShapeFilter(bool enable);
     void setFeatureRange(ShapeFeature feature, double minValue, double maxValue);
+    void setShapeFilterConfig(const ShapeFilterConfig& config);
 
     void setChannelMode(PipelineConfig::Channel channel);
     PipelineConfig::Channel getChannelMode() const;

@@ -1,6 +1,54 @@
 #include "pipeline.h"
 
-Pipeline::Pipeline() {}
+// ========== Pipeline类实现 ==========
+
+Pipeline::Pipeline() 
+{
+    //qDebug() << "[Pipeline] Pipeline实例创建";
+}
+
+void Pipeline::add(std::unique_ptr<IPipelineStep> step)
+{
+    if (step) {
+        steps_.push_back(std::move(step));
+        //qDebug() << "[Pipeline] 添加步骤，当前步骤数:" << steps_.size();
+    } else {
+        qDebug() << "[Pipeline] 警告：尝试添加空步骤";
+    }
+}
+
+void Pipeline::run(PipelineContext& ctx)
+{
+    if (steps_.empty()) {
+        qDebug() << "[Pipeline] 警告：没有步骤可执行";
+        return;
+    }
+
+    qDebug() << "[Pipeline] 开始执行，共" << steps_.size() << "个步骤";
+    
+    for (size_t i = 0; i < steps_.size(); ++i) {
+        auto& step = steps_[i];
+        if (step) {
+            qDebug() << "[Pipeline] 执行步骤" << (i + 1);
+            step->run(ctx);
+        } else {
+            qDebug() << "[Pipeline] 警告：步骤" << (i + 1) << "为空，跳过";
+        }
+    }
+    
+    qDebug() << "[Pipeline] 执行完成";
+}
+
+size_t Pipeline::stepCount() const
+{
+    return steps_.size();
+}
+
+void Pipeline::clear()
+{
+    steps_.clear();
+    qDebug() << "[Pipeline] 已清空所有步骤";
+}
 
 cv::Mat maskToGreenWhite(const cv::Mat &mask)
 {
@@ -49,7 +97,16 @@ cv::Mat PipelineContext::getFinalDisplay() const
     {
     case Mode::Original:
         return srcBgr.empty() ? cv::Mat() : srcBgr;
-
+    
+    case Mode::Channel:
+        if (!channelImg.empty()) 
+        {
+            return channelImg;
+        }
+        else
+        {
+            return srcBgr;
+        }
     case Mode::Enhanced:
         if (!enhanced.empty()) {
             // 如果是单通道，转成彩色
@@ -86,7 +143,11 @@ cv::Mat PipelineContext::getFinalDisplay() const
             return processed;
         }
         return srcBgr;
-
+    case Mode::LineDetect:
+        if (!lineDetect.empty()) 
+        {
+            return lineDetect;
+        }
     default:
         return srcBgr;
     }
@@ -122,6 +183,7 @@ cv::Mat PipelineContext::convertToGreenWhite(const cv::Mat &mask) const
         }
     }
 
+    
     return result;
 }
 
@@ -135,31 +197,28 @@ cv::Mat PipelineContext::overlayMaskOnImage(const cv::Mat &bgr, const cv::Mat &m
         return bgr;
     }
 
+    // 确保 mask 为 CV_8U 类型
+    cv::Mat m;
+    if (mask.type() != CV_8U) {
+        mask.convertTo(m, CV_8U);
+    } else {
+        m = mask;
+    }
+
     cv::Mat result = bgr.clone();
 
-    // 创建绿色叠加层
-    cv::Mat greenOverlay = cv::Mat::zeros(bgr.size(), CV_8UC3);
-    greenOverlay.setTo(cv::Scalar(0, 255, 0));  // 绿色
-
-    // 使用 mask 进行混合
-    float alpha = displayConfig.overlayAlpha;
-    for (int y = 0; y < mask.rows; y++)
+    for (int y = 0; y < m.rows; y++)
     {
-        const uchar* mp = mask.ptr<uchar>(y);
+        const uchar* mp = m.ptr<uchar>(y);
         cv::Vec3b* rp = result.ptr<cv::Vec3b>(y);
-        const cv::Vec3b* gp = greenOverlay.ptr<cv::Vec3b>(y);
 
-        for (int x = 0; x < mask.cols; ++x)
+        for (int x = 0; x < m.cols; ++x)
         {
-            if (mp[x] == 0)  // 目标区域
+            if (mp[x] == 0)  // 目标区域 - 设为纯绿色
             {
-                // 混合颜色
-                rp[x] = cv::Vec3b(
-                    rp[x][0] * (1 - alpha) + gp[x][0] * alpha,
-                    rp[x][1] * (1 - alpha) + gp[x][1] * alpha,
-                    rp[x][2] * (1 - alpha) + gp[x][2] * alpha
-                    );
+                rp[x] = cv::Vec3b(0, 255, 0);  // 纯绿色
             }
+            // else: 背景区域保持原图不变
         }
     }
 

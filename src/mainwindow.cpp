@@ -2,8 +2,11 @@
 #include "ui_mainwindow.h"
 #include "logger.h"
 #include <QFile>
+#include <QDir>
 #include <QTimer>
 #include <QInputDialog>
+#include <QDebug>
+#include <QShortcut>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -13,8 +16,6 @@ MainWindow::MainWindow(QWidget *parent)
     , m_fileManager(new FileManager(this))
     , m_processDebounceTimer(nullptr)
     , m_currentTabIndex(0)
-    , m_isDrawingRegion(false)
-    , m_polygonItem(nullptr)
 {
     ui->setupUi(this);
 
@@ -24,87 +25,173 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(m_processDebounceTimer, &QTimer::timeout,this,&MainWindow::processAndDisplay);
 
+    // 连接多线程处理完成信号
+    connect(&m_pipelineWatcher, &QFutureWatcher<PipelineContext>::finished, 
+            this, [this]() {
+                m_isProcessing = false;
+                PipelineContext result = m_pipelineWatcher.result();
+                // 更新UI显示
+                cv::Mat displayImage = result.getFinalDisplay();
+                showImage(displayImage);
+
+                // 更新判定Tab显示
+                int count = result.currentRegions;
+                if (m_judgeTabWidget) {
+                    m_judgeTabWidget->setCurrentRegionCount(count);
+                }
+                
+                // 更新直线检测Tab匹配结果
+                if (m_lineDetectTabWidget && result.totalLineCount > 0) {
+                    const PipelineConfig& cfg = m_pipelineManager->getConfig();
+                    m_lineDetectTabWidget->updateMatchResultStatus(
+                        result.matchedLineCount, 
+                        result.totalLineCount, 
+                        cfg.angleThreshold, 
+                        cfg.distanceThreshold
+                    );
+                }
+                
+                // 更新条码Tab识别结果
+                if (m_barcodeTabWidget) {
+                    m_barcodeTabWidget->updateResultsTable(result.barcodeResults);
+                    m_barcodeTabWidget->updateStatus(result.barcodeStatus);
+                }
+                // 恢复状态栏
+                ui->statusbar->showMessage("处理完成", 2000);
+            });
+
     setupUI();
     setupConnections();
 
-    // m_enhancementHistory.push(captureEnhancementState());
-    // updateEnhancementUndoState();
-
-
     setupSystemMonitor();
-    Logger::instance()->setTextEdit(ui->textEdit_log);
-    Logger::instance()->setLogFile("test.log");
+
+    QString logPath = QCoreApplication::applicationDirPath() + "/../../logs/test.log";
+    Logger::instance()->setLogFile(logPath);
     Logger::instance()->enableFileLog(true);
 
-    m_imageTabController = std::make_unique<ImageTabController>(
-    ui, m_pipelineManager, this);
-    connect(m_imageTabController.get(), &ImageTabController::channelChanged,
-            this, [this](PipelineConfig::Channel channel) {
-                // 保留原先的显示模式逻辑
-                DisplayConfig::Mode mode =
-                    (channel == PipelineConfig::Channel::RGB)
-                        ? DisplayConfig::Mode::Original
-                        : DisplayConfig::Mode::Enhanced;
-                m_pipelineManager->setDisplayMode(mode);
+    // 创建 ImageTabWidget 并添加到 tabWidget
+    m_imageTabWidget = std::make_unique<ImageTabWidget>(m_pipelineManager, this);
+    ui->tabWidget->addTab(m_imageTabWidget.get(), "图像");
+    connect(m_imageTabWidget.get(), &ImageTabWidget::channelChanged,
+            this, [this](int channel) {
+                
+                m_pipelineManager->getConfig().channel = static_cast<PipelineConfig::Channel>(channel);
+            
+                processAndDisplay();
+                
+            });
+
+    m_enhanceTabWidget = std::make_unique<EnhanceTabWidget>(
+    m_pipelineManager, this);
+    ui->tabWidget->addTab(m_enhanceTabWidget.get(), "增强");
+    connect(m_enhanceTabWidget.get(), &EnhanceTabWidget::processRequested,
+            this, &MainWindow::processAndDisplay);
+
+    m_filterTabWidget = std::make_unique<FilterTabWidget>(m_pipelineManager, this);
+    ui->tabWidget->addTab(m_filterTabWidget.get(), "过滤");
+    connect(m_filterTabWidget.get(), &FilterTabWidget::filterConfigChanged,
+            this, &MainWindow::processAndDisplay);
+
+    m_templateTabWidget = std::make_unique<TemplateTabWidget>(
+        m_view, &m_roiManager, this);
+    ui->tabWidget->addTab(m_templateTabWidget.get(), "补正");
+    m_templateTabWidget->initialize();
+    connect(m_templateTabWidget.get(), &TemplateTabWidget::imageToShow,
+            this, &MainWindow::showImage);
+    connect(m_templateTabWidget.get(), &TemplateTabWidget::templateCreated,
+            this, [this](const QString& name) {
+                Logger::instance()->info(QString("模板已创建: %1").arg(name));
+            });
+    connect(m_templateTabWidget.get(), &TemplateTabWidget::matchCompleted,
+            this, [](int count) {
+                Logger::instance()->info(QString("匹配完成，找到 %1 个目标").arg(count));
+            });
+
+    // 添加快捷键清除匹配结果（按 Escape 键）
+    QShortcut *clearMatchShortcut = new QShortcut(Qt::Key_Escape, this);
+    connect(clearMatchShortcut, &QShortcut::activated, m_templateTabWidget.get(), &TemplateTabWidget::clearMatchResults);
+
+    // m_algorithmController = std::make_unique<AlgorithmTabController>(
+    //     ui, m_pipelineManager, this);
+    // connect(m_algorithmController.get(), &AlgorithmTabController::algorithmChanged,
+    //         this, &MainWindow::processAndDisplay);
+    // m_algorithmController->initialize();
+
+    m_processTabWidget = std::make_unique<ProcessTabWidget>(
+        m_pipelineManager, this);
+    ui->tabWidget->addTab(m_processTabWidget.get(), "处理");
+    connect(m_processTabWidget.get(), &ProcessTabWidget::algorithmChanged,
+            this, &MainWindow::processAndDisplay);
+    m_processTabWidget->initialize();
+
+    // m_extractController = std::make_unique<ExtractTabController>(
+    //     ui, m_pipelineManager, m_view, &m_roiManager, this);
+    // connect(m_extractController.get(), &ExtractTabController::extractionChanged,
+    //         this, &MainWindow::processAndDisplay);
+    // m_extractController->initialize();
+
+
+    m_extractTabWidget = std::make_unique<ExtractTabWidget>(
+        m_pipelineManager, m_view, &m_roiManager, this);
+    ui->tabWidget->addTab(m_extractTabWidget.get(), "提取");
+    m_extractTabWidget->initialize();
+    connect(m_extractTabWidget.get(), &ExtractTabWidget::extractionChanged,
+            this, &MainWindow::processAndDisplay);
+
+    m_judgeTabWidget = std::make_unique<JudgeTabWidget>(m_pipelineManager, this);
+    ui->tabWidget->addTab(m_judgeTabWidget.get(), "判定");
+
+    m_lineDetectTabWidget = std::make_unique<LineDetectTabWidget>(
+        m_pipelineManager, [this]() { m_processDebounceTimer->start(); }, this);
+    ui->tabWidget->addTab(m_lineDetectTabWidget.get(), "直线");
+    m_lineDetectTabWidget->initialize();
+    
+    // 连接参考线绘制信号
+    connect(m_lineDetectTabWidget.get(), &LineDetectTabWidget::requestDrawReferenceLine,
+            this, [this]() {
+                // 启用参考线绘制模式
+                m_view->startReferenceLineDrawing();
+            });
+    
+    connect(m_lineDetectTabWidget.get(), &LineDetectTabWidget::requestClearReferenceLine,
+            this, [this]() {
+                // 清除参考线
+                m_view->clearReferenceLine();
+                // 重新处理图像以清除匹配结果
                 processAndDisplay();
             });
-    m_imageTabController->initialize();
+    
+    // 连接参考线绘制完成信号
+    connect(m_view, &ImageView::referenceLineDrawn,
+            m_lineDetectTabWidget.get(), &LineDetectTabWidget::setReferenceLine);
 
-    m_enhancementController = std::make_unique<EnhancementTabController>(
-    ui, m_pipelineManager, m_processDebounceTimer,
-    [this]() { processAndDisplay(); }, this);
-m_enhancementController->initialize();
+    // 创建条码Tab并添加到tabWidget
+    m_barcodeTabWidget = std::make_unique<BarcodeTabWidget>(
+        m_pipelineManager, [this]() { m_processDebounceTimer->start(); }, this);
+    ui->tabWidget->addTab(m_barcodeTabWidget.get(), "条码");
 
-    m_templateController = std::make_unique<TemplateController>(
-        ui, m_view, &m_roiManager, this);
-    connect(m_templateController.get(), &TemplateController::imageToShow,
-            this, &MainWindow::showImage);
-    m_templateController->initialize();
+    // 初始化日志页面
+    m_logPage = std::make_unique<LogPage>(this);
+    ui->stackedWidget_MainWindow->addWidget(m_logPage.get());
 
+    // 将 Logger 的输出连接到 LogPage
+    connect(Logger::instance(), &Logger::logMessage,
+            m_logPage.get(), &LogPage::appendLog);
+
+    // 确保初始显示 Home 页面
+    ui->stackedWidget_MainWindow->setCurrentIndex(0);
 
 }
 
 MainWindow::~MainWindow()
 {
+    m_isDestroying = true;
     delete ui;
 }
 
 void MainWindow::setupSystemMonitor()
 {
-    //绑定显示控件
-    m_systemMonitor->setLabels(ui->label_cpu, ui->label_memory);
-
-    //设置更新间隔（1秒更新一次）
-    m_systemMonitor->setUpdateInterval(1000);
-
-    //启动监控
-    m_systemMonitor->startMonitoring();
-
-    //连接信号槽，用于日志记录或其他处理
-    connect(m_systemMonitor, &SystemMonitor::cpuUsageUpdated,
-            this, [this](double usage) {
-                // 当 CPU 占用率超过 80% 时记录日志
-                if (usage > 80.0)
-                {
-                    Logger::instance()->warning(
-                        QString("CPU 占用率过高: %1%").arg(usage, 0, 'f', 1)
-                        );
-                }
-            });
-
-    connect(m_systemMonitor, &SystemMonitor::memoryUsageUpdated,
-            this, [this](double usedMB, double totalMB, double percent) {
-                // 当内存使用率超过 90% 时记录日志
-                if (percent > 90.0)
-                {
-                    Logger::instance()->warning(
-                        QString("内存使用率过高: %1% (%2/%3 MB)")
-                            .arg(percent, 0, 'f', 1)
-                            .arg(usedMB, 0, 'f', 0)
-                            .arg(totalMB, 0, 'f', 0)
-                        );
-                }
-            });
+    m_systemMonitor->setupWithLogging(ui->label_cpu, ui->label_memory, 1000);
 }
 
 // ========== 初始化 ==========
@@ -112,42 +199,6 @@ void MainWindow::setupSystemMonitor()
 void MainWindow::setupUI()
 {
     m_view = static_cast<ImageView*>(ui->graphicsView);
-
-    //算法处理
-    ui->doubleSpinBox_radius->setValue(3.5);
-    ui->doubleSpinBox_radius->setDecimals(1);
-    ui->spinBox_width ->setValue(5);
-    ui->spinBox_height->setValue(5);
-
-    ui->lineEdit_nowRegions->setReadOnly(true);
-    ui->doubleSpinBox_minScore->setValue(0.5);
-    ui->doubleSpinBox_minScore->setSingleStep(0.1);
-    ui->spinBox_matchNumber->setValue(3);
-
-    // 设置滑块-数字框对
-    setupSliderSpinBoxPair(ui->Slider_brightness, ui->spinBox_brightness, -100, 100, 0);
-    setupSliderSpinBoxPair(ui->Slider_contrast, ui->spinBox_contrast, 0, 300, 100);
-    setupSliderSpinBoxPair(ui->Slider_gamma, ui->spinBox_gamma, 10, 300, 100);
-    setupSliderSpinBoxPair(ui->Slider_sharpen, ui->spinBox_sharpen, 0, 500, 100);
-
-    setupSliderSpinBoxPair(ui->Slider_grayLow, ui->spinBox_grayLow, 0, 255, 0);
-    setupSliderSpinBoxPair(ui->Slider_grayHigh, ui->spinBox_grayHigh, 0, 255, 0);
-
-    setupSliderSpinBoxPair(ui->Slider_rgb_R_Low,ui->spinBox_rgb_R_Low,0,255,0);
-    setupSliderSpinBoxPair(ui->Slider_rgb_G_Low,ui->spinBox_rgb_G_Low,0,255,0);
-    setupSliderSpinBoxPair(ui->Slider_rgb_B_Low,ui->spinBox_rgb_B_Low,0,255,0);
-
-    setupSliderSpinBoxPair(ui->Slider_rgb_R_High,ui->spinBox_rgb_R_High,0,255,0);
-    setupSliderSpinBoxPair(ui->Slider_rgb_G_High,ui->spinBox_rgb_G_High,0,255,0);
-    setupSliderSpinBoxPair(ui->Slider_rgb_B_High,ui->spinBox_rgb_B_High,0,255,0);
-
-    setupSliderSpinBoxPair(ui->Slider_hsv_H_Low,ui->spinBox_hsv_H_Low,0,179,0);
-    setupSliderSpinBoxPair(ui->Slider_hsv_S_Low,ui->spinBox_hsv_S_Low,0,255,0);
-    setupSliderSpinBoxPair(ui->Slider_hsv_V_Low,ui->spinBox_hsv_V_Low,0,255,0);
-
-    setupSliderSpinBoxPair(ui->Slider_hsv_H_High,ui->spinBox_hsv_H_High,0,179,0);
-    setupSliderSpinBoxPair(ui->Slider_hsv_S_High,ui->spinBox_hsv_S_High,0,255,0);
-    setupSliderSpinBoxPair(ui->Slider_hsv_V_High,ui->spinBox_hsv_V_High,0,255,0);
 
     // 加载样式表
     QFile file(":/style.qss");
@@ -160,6 +211,9 @@ void MainWindow::setupUI()
 
 void MainWindow::setupConnections()
 {
+    // ========== 手动连接按钮信号 ==========
+    connect(ui->btn_resetROI, &QPushButton::clicked, this, &MainWindow::on_btn_resetROI_clicked);
+    
     // ========== FileManager信号 ==========
     connect(m_fileManager, &FileManager::imageLoaded,
             this, [this](const cv::Mat& img) {
@@ -208,205 +262,67 @@ void MainWindow::setupConnections()
                         .arg(point.y(), 0, 'f', 1)
                     );
             });
+    // connect(ui->btn_saveConfig, &QPushButton::clicked, this, &MainWindow::on_btn_saveConfig_clicked);
+    // connect(ui->btn_importConfig, &QPushButton::clicked, this, &MainWindow::on_btn_importConfig_clicked);
 
-    connect(m_view, &ImageView::polygonDrawingFinished, this,
-            [this](const QString& type, const QVector<QPointF>& points) {
-                Logger::instance()->info(
-                    QString("[%1] 多边形绘制完成，共 %2 个顶点")
-                        .arg(type)
-                        .arg(points.size())
-                    );
-
-                if (type == "region") {
-                    // 区域计算
-                    calculateRegionFeatures(points);
-                }
-                // 模板创建现在由 TemplateUIController 处理
-            });
-    // ========== PipelineManager信号 ==========
-    connect(m_pipelineManager, &PipelineManager::pipelineFinished,
-            [this](const QString& message) {
-                ui->statusbar->showMessage(message, 2000);
-            });
-
-    connect(m_pipelineManager, &PipelineManager::algorithmQueueChanged,
-            []() {
-                //Logger::instance()->info(QString("算法队列数量:").arg(count));
-            });
-
-
-    connect(ui->comboBox_selectAlgorithm,QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this,&MainWindow::onAlgorithmTypeChanged);
-
-    connect(ui->algorithmListWidget,&QListWidget::currentItemChanged,
-            this,&MainWindow::onAlgorithmSelectionChanged);
-    // ✅ 新的模板控制器信号
-    connect(m_templateController.get(), &TemplateController::templateCreated,
-            this, [this](const QString& name) {
-                Logger::instance()->info(QString("模板已创建: %1").arg(name));
-            });
-
-    connect(m_templateController.get(), &TemplateController::matchCompleted,
-            this, [](int count) {
-                Logger::instance()->info(QString("匹配完成，找到 %1 个目标").arg(count));
-            });
-
-    // ========== 颜色通道滑块连接 ==========
-    // 灰度滑块
-    connect(ui->Slider_grayLow, &QSlider::valueChanged,
-            this, &MainWindow::filterColorChannelsChanged);
-    connect(ui->Slider_grayHigh, &QSlider::valueChanged,
-            this, &MainWindow::filterColorChannelsChanged);
-
-    // RGB 滑块
-    connect(ui->Slider_rgb_R_Low, &QSlider::valueChanged,
-            this, &MainWindow::filterColorChannelsChanged);
-    connect(ui->Slider_rgb_R_High, &QSlider::valueChanged,
-            this, &MainWindow::filterColorChannelsChanged);
-    connect(ui->Slider_rgb_G_Low, &QSlider::valueChanged,
-            this, &MainWindow::filterColorChannelsChanged);
-    connect(ui->Slider_rgb_G_High, &QSlider::valueChanged,
-            this, &MainWindow::filterColorChannelsChanged);
-    connect(ui->Slider_rgb_B_Low, &QSlider::valueChanged,
-            this, &MainWindow::filterColorChannelsChanged);
-    connect(ui->Slider_rgb_B_High, &QSlider::valueChanged,
-            this, &MainWindow::filterColorChannelsChanged);
-
-    // HSV 滑块
-    connect(ui->Slider_hsv_H_Low, &QSlider::valueChanged,
-            this, &MainWindow::filterColorChannelsChanged);
-    connect(ui->Slider_hsv_H_High, &QSlider::valueChanged,
-            this, &MainWindow::filterColorChannelsChanged);
-    connect(ui->Slider_hsv_S_Low, &QSlider::valueChanged,
-            this, &MainWindow::filterColorChannelsChanged);
-    connect(ui->Slider_hsv_S_High, &QSlider::valueChanged,
-            this, &MainWindow::filterColorChannelsChanged);
-    connect(ui->Slider_hsv_V_Low, &QSlider::valueChanged,
-            this, &MainWindow::filterColorChannelsChanged);
-    connect(ui->Slider_hsv_V_High, &QSlider::valueChanged,
-            this, &MainWindow::filterColorChannelsChanged);
-
-}
-
-void MainWindow::setupSliderSpinBoxPair(QSlider *slider, QSpinBox *spinbox,
-                                        int min, int max, int defaultValue)
-{
-    slider->setRange(min, max);
-    slider->setValue(defaultValue);
-    spinbox->setRange(min, max);
-    spinbox->setValue(defaultValue);
-
-    connect(slider, &QSlider::valueChanged, spinbox, &QSpinBox::setValue);
-    connect(spinbox, QOverload<int>::of(&QSpinBox::valueChanged),
-            slider, &QSlider::setValue);
 }
 
 // ========== 核心处理 ==========
 
 void MainWindow::processAndDisplay()
 {
-    // ========== 1. 同步基础参数 ==========
-    m_pipelineManager->syncFromUI(
-        ui->Slider_brightness, ui->Slider_contrast, ui->Slider_gamma,
-        ui->Slider_sharpen, ui->Slider_grayLow, ui->Slider_grayHigh
-        );
-
-    // ========== 2. 配置颜色过滤 ==========
-    int filterModeIndex = ui->comboBox_filterMode->currentIndex();
-
-    PipelineConfig::FilterMode targetMode;
-
-    switch (filterModeIndex)
-    {
-    case 0:  // None - 不启用颜色过滤
-        targetMode = PipelineConfig::FilterMode::None;
-        m_pipelineManager->setGrayFilterEnabled(false);
-        m_pipelineManager->setColorFilterEnabled(false);
-        break;
-    case 1:  // None - 不启用颜色过滤
-        targetMode = PipelineConfig::FilterMode::Gray;
-        m_pipelineManager->setGrayFilterEnabled(true);
-        m_pipelineManager->setColorFilterEnabled(false);
-        break;
-
-    case 2:  // RGB 模式
-        targetMode = PipelineConfig::FilterMode::RGB;
-        m_pipelineManager->setColorFilterEnabled(true);
-        m_pipelineManager->setColorFilterMode(PipelineConfig::ColorFilterMode::RGB);
-        m_pipelineManager->setRGBRange(
-            ui->Slider_rgb_R_Low->value(),
-            ui->Slider_rgb_R_High->value(),
-            ui->Slider_rgb_G_Low->value(),
-            ui->Slider_rgb_G_High->value(),
-            ui->Slider_rgb_B_Low->value(),
-            ui->Slider_rgb_B_High->value()
-            );
-        break;
-
-    case 3:  // HSV 模式
-        targetMode = PipelineConfig::FilterMode::HSV;
-        m_pipelineManager->setColorFilterEnabled(true);
-        m_pipelineManager->setColorFilterMode(PipelineConfig::ColorFilterMode::HSV);
-        m_pipelineManager->setHSVRange(
-            ui->Slider_hsv_H_Low->value(),
-            ui->Slider_hsv_H_High->value(),
-            ui->Slider_hsv_S_Low->value(),
-            ui->Slider_hsv_S_High->value(),
-            ui->Slider_hsv_V_Low->value(),
-            ui->Slider_hsv_V_High->value()
-            );
-        break;
-
-    default:
-        targetMode = PipelineConfig::FilterMode::None;
-        m_pipelineManager->setColorFilterEnabled(false);
-        break;
+    // 如果正在处理，跳过本次请求（避免堆积）
+    if (m_isProcessing) {
+        return;
     }
 
-    m_pipelineManager->setCurrentFilterMode(targetMode);
+    // ========== 设置显示模式 ==========
+    setDisplayModeForCurrentTab();
 
-    //========== 3. 根据当前Tab设置显示模式 ==========
-    //✅ 方案A：完全由Tab控制显示内容
+    // ========== 获取当前图像 ==========
+    cv::Mat currentImage = m_roiManager.getCurrentImage();
+    if (currentImage.empty()) {
+        return;
+    }
+
+    // ========== 使用QtConcurrent在后台线程执行Pipeline ==========
+    m_isProcessing = true;
+    ui->statusbar->showMessage("正在处理...");
+
+    QFuture<PipelineContext> future = QtConcurrent::run(
+        [this, currentImage]() -> PipelineContext {
+            return m_pipelineManager->execute(currentImage);
+        }
+    );
+    m_pipelineWatcher.setFuture(future);
+}
+
+void MainWindow::setDisplayModeForCurrentTab()
+{
     switch (m_currentTabIndex)
     {
-    case 0:  // "图像" Tab
-        //m_pipelineManager->setDisplayMode(m_channelFlag ? DisplayConfig::Mode::Enhanced : DisplayConfig::Mode::Original);
-        break;
-    case 1:  // "增强" Tab
-        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Enhanced);
-        break;
-    case 2:  // "补正" Tab
-        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original);
-        break;
-    case 3:  // "过滤" Tab
-        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite);
-        break;
-    case 4:  // "处理" Tab
-        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Processed);
-        break;
-    case 5:  // "提取" Tab
-        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite);
-        break;
-    case 6:  // "判定" Tab
-        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite);
-        break;
-    default:
-        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original);
-        break;
+    case 0: // 图像Tab
+    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Channel); break;
+    case 1: // 增强Tab
+    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Enhanced); break;
+    case 2: // 过滤Tab
+    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite); break;
+    case 3: // 补正Tab
+    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original); break;
+    case 4: // 处理Tab
+    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Processed); break;
+    case 5: // 提取Tab
+    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite); break;
+
+    case 6: // 判定Tab
+    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskOverlay); break;
+    
+    case 7: // 直线检测Tab
+    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::LineDetect); break;
+    case 8: // 条码Tab
+    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original); break;
+    default: m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original); break;
     }
-
-    // ========== 4. 执行 Pipeline ==========
-    cv::Mat currentImage = m_roiManager.getCurrentImage();
-    const PipelineContext& result = m_pipelineManager->execute(currentImage);
-
-    // ========== 5. 显示结果 ==========
-    cv::Mat displayImage = result.getFinalDisplay();
-    showImage(displayImage);
-
-    // ========== 6. 更新统计信息 ==========
-    int count = result.currentRegions;
-    ui->lineEdit_nowRegions->setText(QString::number(count));
-
 }
 
 void MainWindow::showImage(const cv::Mat &img)
@@ -416,635 +332,61 @@ void MainWindow::showImage(const cv::Mat &img)
 }
 
 // ========== 文件操作 ==========
-
 void MainWindow::on_btn_openImg_clicked()
 {
-    QString path = QCoreApplication::applicationDirPath() + "/images/";
+    // 优先使用项目根目录的images文件夹，如果不存在则使用应用目录
+    QString path = QCoreApplication::applicationDirPath() + "/../../images/";
+    QDir dir(path);
+    if (!dir.exists()) {
+        path = QCoreApplication::applicationDirPath() + "/images/";
+    }
 
-    // 第一步：打开文件对话框，让用户选择文件
     QString fileName = m_fileManager->selectImageFile(path);
     if (fileName.isEmpty()) {
         Logger::instance()->warning("用户取消了文件选择");
         return;
     }
 
-    // 第二步：读取图像文件（通过信号返回结果）
+    QMetaObject::Connection conn = connect(m_fileManager, &FileManager::imageLoaded,
+            this, [this](const cv::Mat&) {
+                processAndDisplay();
+            });
+
     m_fileManager->readImageFile(fileName);
+    disconnect(conn);
 }
 
 void MainWindow::on_btn_saveImg_clicked()
 {
-    const PipelineContext& ctx = m_pipelineManager->getLastContext();
-
-    if (ctx.srcBgr.empty())
-    {
-        QMessageBox::warning(this, "保存失败", "请先打开图片");
-        return;
-    }
-
-    QString saveName = QFileDialog::getSaveFileName(
-        this, "保存图片", ".", "*.jpg *.png *.tif"
-        );
-
-    if (saveName.isEmpty()) return;
-
-    cv::Mat toSave;
-
-    // 如果有mask，询问用户保存什么
-    if (!ctx.mask.empty() && cv::countNonZero(ctx.mask) > 0)
-    {
-        QMessageBox::StandardButton reply = QMessageBox::question(
-            this, "保存选项",
-            "保存原图还是处理后的mask?\n"
-            "Yes = 保存mask (黑白图)\n"
-            "No = 保存增强后的图像",
-            QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel
-            );
-
-        if (reply == QMessageBox::Yes) {
-            toSave = ctx.mask;
-        } else if (reply == QMessageBox::No) {
-            toSave = ctx.enhanced.empty() ? ctx.srcBgr : ctx.enhanced;
-        } else {
-            return;
-        }
-    }
-    else
-    {
-        toSave = ctx.enhanced.empty() ? ctx.srcBgr : ctx.enhanced;
-    }
-
-    // 使用 FileManager 保存文件
-    m_fileManager->saveImageFile(saveName, toSave);
+    m_fileManager->saveImageFileWithDialog(m_pipelineManager);
 }
 
-
 // ========== ROI操作 ==========
-
 void MainWindow::on_btn_drawRoi_clicked()
 {
-    if (m_roiManager.getFullImage().empty()) return;
-
-    m_view->setRoiMode(true);
-    m_view->setDragMode(QGraphicsView::NoDrag);
-    ui->statusbar->showMessage("请按下左键绘制ROI");
+    m_roiManager.enableDrawRoiMode(m_view, ui->statusbar);
 }
 
 void MainWindow::on_btn_resetROI_clicked()
 {
-    if (m_roiManager.getFullImage().empty()) return;
-
-    m_roiManager.resetRoi();
-    m_view->clearRoi();
-
-    showImage(m_roiManager.getFullImage());
-    ui->statusbar->showMessage("ROI已重置，处理使用完整图像", 2000);
-    Logger::instance()->info("ROI已重置");
+    m_roiManager.resetRoiWithUI(m_view, ui->statusbar);
+    processAndDisplay();  // 立即更新显示
 }
 
 void MainWindow::onRoiSelected(const QRectF &roiImgRectF)
 {
-    if (!m_roiManager.applyRoi(roiImgRectF))
-    {
-        ui->statusbar->showMessage("ROI应用失败", 2000);
+    if (!m_roiManager.handleRoiSelected(roiImgRectF, ui->statusbar)) {
         return;
     }
 
     processAndDisplay();
-
-    cv::Rect roi = m_roiManager.getLastRoi();
-    ui->statusbar->showMessage(
-        QString("ROI已选择：x=%1 y=%2 w=%3 h=%4")
-            .arg(roi.x).arg(roi.y).arg(roi.width).arg(roi.height),
-        2000
-        );
 }
 
-// ========== 算法队列操作 ==========
-
-void MainWindow::on_btn_addOption_clicked()
-{
-    saveCurrentEdit();
-
-    AlgorithmStep step;
-    int index = ui->comboBox_selectAlgorithm->currentIndex();
-    step.name = ui->comboBox_selectAlgorithm->currentText();
-    step.type = "HalconAlgorithm";
-    step.enabled = true;
-    step.description = "Halcon图像处理算法";
-    step.params["HalconAlgoType"] = index;
-
-    switch(index)
-    {
-    case 0: case 2: case 4: case 6:
-        step.params["radius"] = ui->doubleSpinBox_radius->value();
-        break;
-    case 1: case 3: case 5: case 7:
-        step.params["width"] =  ui->spinBox_width->value();
-        step.params["height"] = ui->spinBox_height->value();
-        break;
-    case 11:
-        step.params["shapeType"] = ui->comboBox_shapeType->currentData().toString();
-        break;
-    }
-    m_pipelineManager->addAlgorithmStep(step);
-    QListWidgetItem *item = new QListWidgetItem(step.name);
-    ui->algorithmListWidget->addItem(item);
-
-    Logger::instance()->info(QString("添加算法 %1").arg(step.name));
-
-    processAndDisplay();
-}
-
-void MainWindow::on_btn_removeOption_clicked()
-{
-    saveCurrentEdit();
-    int row = ui->algorithmListWidget->currentRow();
-    if (row < 0) return;
-
-    // ✅ 从Pipeline管理器移除
-    m_pipelineManager->removeAlgorithmStep(row);
-
-    // 从UI列表移除
-    delete ui->algorithmListWidget->takeItem(row);
-
-    //ui->statusbar->showMessage("已移除算法");
-    Logger::instance()->info("移除算法");
-    processAndDisplay();
-}
-
-void MainWindow::on_btn_optionUp_clicked()
-{
-    saveCurrentEdit();
-    int currentRow = ui->algorithmListWidget->currentRow();
-
-    // 边界检查
-    if (currentRow <= 0) {
-        return;
-    }
-
-    // 1️⃣ 交换 Pipeline 中的算法队列数据
-    m_pipelineManager->swapAlgorithmStep(currentRow, currentRow - 1);
-
-    // 2️⃣ 交换 UI 列表项
-    QListWidgetItem *item = ui->algorithmListWidget->takeItem(currentRow);  // 取出当前项
-    ui->algorithmListWidget->insertItem(currentRow - 1, item);              // 插入到上一行
-
-    // 3️⃣ 保持选中状态
-    ui->algorithmListWidget->setCurrentRow(currentRow - 1);
-
-    // 4️⃣ 重新处理图像（因为算法顺序变了）
-    processAndDisplay();
-
-    ui->statusbar->showMessage("算法步骤已上移", 1000);
-}
-
-void MainWindow::on_btn_optionDown_clicked()
-{
-    saveCurrentEdit();
-    int currentRow = ui->algorithmListWidget->currentRow();
-
-    // 边界检查
-    if (currentRow < 0 || currentRow >= ui->algorithmListWidget->count() - 1) {
-        return;
-    }
-
-    // 1️⃣ 交换 Pipeline 中的算法队列数据
-    m_pipelineManager->swapAlgorithmStep(currentRow, currentRow + 1);
-
-    // 2️⃣ 交换 UI 列表项
-    QListWidgetItem *item = ui->algorithmListWidget->takeItem(currentRow);  // 取出当前项
-    ui->algorithmListWidget->insertItem(currentRow + 1, item);              // 插入到下一行
-
-    // 3️⃣ 保持选中状态
-    ui->algorithmListWidget->setCurrentRow(currentRow + 1);
-
-    // 4️⃣ 重新处理图像
-    processAndDisplay();
-
-    ui->statusbar->showMessage("算法步骤已下移", 1000);
-}
-
-void MainWindow::onAlgorithmTypeChanged(int index)
-{
-    switch (index)
-    {
-    case 0: case 2: case 4: case 6:
-        ui->stackedWidget_Algorithm->setCurrentIndex(0);
-        break;
-    case 1: case 3: case 5: case 7:
-        ui->stackedWidget_Algorithm->setCurrentIndex(1);
-        break;
-    case 8: case 9: case 10:
-        ui->stackedWidget_Algorithm->setCurrentIndex(2);
-        break;
-    case 11:
-        ui->stackedWidget_Algorithm->setCurrentIndex(3);
-        break;
-    }
-}
-
-// ========== 区域筛选 ==========
-
-void MainWindow::on_comboBox_select_currentIndexChanged(int index)
-{
-    switch(index)
-    {
-    case 0:  // 面积
-        ui->lineEdit_minArea->setPlaceholderText("例如: 50");
-        ui->lineEdit_maxArea->setPlaceholderText("例如: 1000");
-        break;
-    case 1:  // 圆度
-        ui->lineEdit_minArea->setPlaceholderText("例如: 0.8");
-        ui->lineEdit_maxArea->setPlaceholderText("例如: 1.0");
-        break;
-    case 2:  // 宽度
-        ui->lineEdit_minArea->setPlaceholderText("例如: 10");
-        ui->lineEdit_maxArea->setPlaceholderText("例如: 100");
-        break;
-    case 3:  // 高度
-        ui->lineEdit_minArea->setPlaceholderText("例如: 10");
-        ui->lineEdit_maxArea->setPlaceholderText("例如: 100");
-        break;
-    }
-}
-
-void MainWindow::on_comboBox_condition_currentIndexChanged(int index)
-{
-    // 0 = 满足所有条件 (AND)
-    // 1 = 满足任意条件 (OR)
-    FilterMode mode = (index == 0) ? FilterMode::And : FilterMode::Or;
-    m_pipelineManager->setFilterMode(mode);
-
-    //qDebug() << "筛选模式已切换:" << getFilterModeName(mode);
-    Logger::instance()->info(QString("筛选模式已切换:%1").
-                             arg(getFilterModeName(mode)));
-}
-
-
-void MainWindow::on_btn_clearFilter_clicked()
-{
-    // 清除所有筛选条件
-    m_pipelineManager->clearShapeFilter();
-
-    // 清空输入框
-    ui->lineEdit_minArea->clear();
-    ui->lineEdit_maxArea->clear();
-
-    // 重新执行Pipeline
-    processAndDisplay();
-
-    ui->statusbar->showMessage("已清除所有筛选条件", 2000);
-}
-
-
-void MainWindow::on_btn_addFilter_clicked()
-{
-    const PipelineContext& ctx = m_pipelineManager->getLastContext();
-
-    if (ctx.processed.empty())
-    {
-        QMessageBox::warning(this, "提示", "请先执行算法处理!");
-        return;
-    }
-
-    // 1️⃣ 获取用户输入
-    bool ok1, ok2;
-    double minValue = ui->lineEdit_minArea->text().toDouble(&ok1);
-    double maxValue = ui->lineEdit_maxArea->text().toDouble(&ok2);
-
-    if (!ok1 || !ok2 || minValue < 0 || maxValue < minValue)
-    {
-        QMessageBox::warning(this, "输入错误", "请输入有效的范围!");
-        return;
-    }
-
-    // 2️⃣ 获取选择的特征类型
-    int featureIndex = ui->comboBox_select->currentIndex();
-    ShapeFeature feature;
-
-    switch(featureIndex)
-    {
-    case 0:  feature = ShapeFeature::Area; break;
-    case 1:  feature = ShapeFeature::Circularity; break;
-    case 2:  feature = ShapeFeature::Width; break;
-    case 3:  feature = ShapeFeature::Height; break;
-    case 4:  feature = ShapeFeature::Compactness; break;
-    case 5:  feature = ShapeFeature::Convexity; break;
-    default: feature = ShapeFeature::Area;
-    }
-
-    // 3️⃣ 添加筛选条件
-    FilterCondition condition(feature, minValue, maxValue);
-
-    // ✅ 方式1：清除旧条件，只保留当前条件（单特征筛选）
-    // m_pipelineManager->clearShapeFilter();
-    // m_pipelineManager->addFilterCondition(condition);
-
-    // ✅ 方式2：累加条件（多特征组合筛选）
-    // 如果你想支持用户多次点击"筛选"来添加多个条件：
-    m_pipelineManager->addFilterCondition(condition);
-
-    ui->statusbar->showMessage(
-        QString("已应用筛选: %1").arg(condition.toString()),
-        2000
-        );
-    Logger::instance()->info(QString("已应用筛选: %1").
-                            arg(condition.toString()));
-
-}
-
-//提取按钮
-void MainWindow::on_btn_select_clicked()
-{
-    //重新执行Pipeline
-    m_view->clearPolygon();
-    m_drawnpoints.clear();
-    processAndDisplay();
-    Logger::instance()->info("区域已提取");
-}
-
-// ========== 颜色通道 ==========
-
-void MainWindow::on_comboBox_channels_currentIndexChanged(int index)
-{
-    if(m_roiManager.getCurrentImage().empty()) return;
-    switch (index)
-    {
-    case 0:
-        m_pipelineManager->setChannelMode(PipelineConfig::Channel::Gray);
-        Logger::instance()->info("切换到灰度模式");
-        break;
-    case 1:
-        m_pipelineManager->setChannelMode(PipelineConfig::Channel::RGB);
-        Logger::instance()->info("切换到RGB模式");
-        break;
-    case 2:
-        m_pipelineManager->setChannelMode(PipelineConfig::Channel::HSV);
-        Logger::instance()->info("切换到HSV模式");
-        break;
-    case 3:
-        m_pipelineManager->setChannelMode(PipelineConfig::Channel::B);
-        Logger::instance()->info("切换到B通道");
-        break;
-    case 4:
-        m_pipelineManager->setChannelMode(PipelineConfig::Channel::G);
-        Logger::instance()->info("切换到G通道");
-        break;
-    case 5:
-        m_pipelineManager->setChannelMode(PipelineConfig::Channel::R);
-        Logger::instance()->info("切换到R通道");
-        break;
-    default:
-        Logger::instance()->warning("未知的通道类型");
-        return;
-    }
-    m_needsReprocess = true;
-    processAndDisplay();
-    ui->statusbar->showMessage(QString("已切换到 %1")
-                                   .arg(ui->comboBox_channels->currentText()));
-}
-
-//判定
-
-void MainWindow::on_btn_runTest_clicked()
-{
-    if(m_roiManager.getCurrentImage().empty())
-    {
-        QMessageBox::warning(this,"提示","请先打开图像");
-        return;
-    }
-    bool ok1,ok2;
-    int minRegions=ui->lineEdit_minRegionCount->text().toInt(&ok1);
-    int maxRegions=ui->lineEdit_maxRegionCount->text().toInt(&ok2);
-
-    if(!ok1 || !ok2)
-    {
-        QMessageBox::warning(this, "输入错误", "请输入有效的数字！");
-        return;
-    }
-    if (minRegions < 0 || maxRegions < minRegions)
-    {
-        QMessageBox::warning(this, "输入错误",
-                             "最小值不能为负数，且最大值不能小于最小值！");
-        return;
-    }
-    int currentCount=m_pipelineManager->getLastContext().currentRegions;
-    bool pass=(currentCount >= minRegions && currentCount <= maxRegions);
-
-    if(pass)
-    {
-        QMessageBox::information(this,"判定结果",QString("✅ OK\n当前区域数: %1\n符合范围: [%2, %3]")
-                                               .arg(currentCount).arg(minRegions).arg(maxRegions));
-    }
-    else
-    {
-        QMessageBox::warning(this, "判定结果",
-                             QString("❌ NG\n当前区域数: %1\n要求范围: [%2, %3]")
-                                 .arg(currentCount)
-                                 .arg(minRegions)
-                                 .arg(maxRegions));
-    }
-}
-
+//清空当前日志
 void MainWindow::on_btn_clearLog_clicked()
 {
     Logger::instance()->clear();
     Logger::instance()->info("日志已清空");
-}
-
-
-void MainWindow::on_btn_drawRegion_clicked()
-{
-    if(m_roiManager.getCurrentImage().empty())
-    {
-        Logger::instance()->warning("请先打开图像");
-        return;
-    }
-
-    m_view->startPolygonDrawing("region");
-
-
-    ui->statusbar->showMessage("请在图像上点击左键添加顶点，右键完成绘制");
-}
-
-void MainWindow::on_btn_clearRegion_clicked()
-{
-    m_view->clearPolygonDrawing();
-    ui->statusbar->showMessage("已清除绘制区域");
-}
-
-void MainWindow::calculateRegionFeatures(const QVector<QPointF>& points)
-{
-    if (points.size() < 3) {
-        Logger::instance()->warning("顶点数量不足，至少需要3个点");
-        return;
-    }
-
-    const PipelineContext& ctx = m_pipelineManager->getLastContext();
-
-    if (ctx.processed.empty() && ctx.mask.empty()) {
-        Logger::instance()->warning("请先执行算法处理，然后再绘制区域");
-        return;
-    }
-
-    // ========== 1. 获取处理后的图像 ==========
-    cv::Mat processedImg = ctx.processed.empty() ? ctx.mask : ctx.processed;
-
-    // ========== 2. 调用 HalconAlgorithm 进行区域分析 ==========
-    HalconAlgorithm analyzer;
-    QVector<RegionFeature> features = analyzer.analyzeRegionsInPolygon(points, processedImg);
-
-    // ========== 3. 如果没找到目标，直接返回 ==========
-    if (features.isEmpty()) {
-        return;  // analyzeRegionsInPolygon 内部已经输出了警告日志
-    }
-
-    // ========== 4. 输出结果到日志 ==========
-    Logger::instance()->info("========== ROI 区域特征分析 ==========");
-    Logger::instance()->info(QString("找到 %1 个连通域").arg(features.size()));
-    Logger::instance()->info("-----------------------------------");
-
-    for (const auto& feature : features) {
-        Logger::instance()->info(feature.toString());
-    }
-    Logger::instance()->info("======================================");
-}
-
-
-
-
-
-// ========== 算法选择变化处理 ==========
-void MainWindow::onAlgorithmSelectionChanged(QListWidgetItem* current, QListWidgetItem* previous)
-{
-    Q_UNUSED(previous);  // 不需要用到
-
-    // 1️⃣ 如果之前在编辑，先保存
-    if (m_editingAlgorithmIndex >= 0)
-    {
-        saveCurrentEdit();
-    }
-
-    // 2️⃣ 加载新选中项的参数
-    if (current)
-    {
-        int newIndex = ui->algorithmListWidget->row(current);
-        loadAlgorithmParameters(newIndex);
-        m_editingAlgorithmIndex = newIndex;
-
-        ui->statusbar->showMessage(
-            QString("正在编辑: %1 (修改参数后点击其他项自动保存)")
-                .arg(current->text()),
-            3000
-            );
-    }
-    else
-    {
-        // 没有选中项，重置编辑状态
-        m_editingAlgorithmIndex = -1;
-    }
-}
-
-void MainWindow::saveCurrentEdit()
-{
-    // 如果没有在编辑，直接返回
-    if (m_editingAlgorithmIndex < 0)
-    {
-        return;
-    }
-
-    // 1️⃣ 获取当前编辑的算法
-    const QVector<AlgorithmStep>& queue = m_pipelineManager->getAlgorithmQueue();
-    if (m_editingAlgorithmIndex >= queue.size())
-    {
-        m_editingAlgorithmIndex = -1;
-        return;
-    }
-
-    AlgorithmStep step = queue[m_editingAlgorithmIndex];  // 复制一份
-
-    // 2️⃣ 从UI读取修改后的参数
-    int algoType = step.params["HalconAlgoType"].toInt();
-
-    switch(algoType)
-    {
-    case 0: case 2: case 4: case 6:  // 圆形算法
-        step.params["radius"] = ui->doubleSpinBox_radius->value();
-        break;
-
-    case 1: case 3: case 5: case 7:  // 矩形算法
-        step.params["width"] = ui->spinBox_width->value();
-        step.params["height"] = ui->spinBox_height->value();
-        break;
-
-    case 11:  // 形状变换
-        step.params["shapeType"] = ui->comboBox_shapeType->currentData().toString();
-        break;
-    }
-
-    // 3️⃣ 更新到PipelineManager
-    m_pipelineManager->updateAlgorithmStep(m_editingAlgorithmIndex, step);
-
-    // 4️⃣ 重新处理图像
-    processAndDisplay();
-
-    // 5️⃣ 提示用户
-    Logger::instance()->info(
-        QString("已保存算法 #%1: %2 的参数修改")
-            .arg(m_editingAlgorithmIndex + 1).arg(step.name)
-        );
-}
-
-void MainWindow::loadAlgorithmParameters(int index)
-{
-    // 1️⃣ 获取算法步骤
-    const QVector<AlgorithmStep>& queue = m_pipelineManager->getAlgorithmQueue();
-    if (index < 0 || index >= queue.size()) {
-        return;
-    }
-
-    const AlgorithmStep& step = queue[index];
-    int algoType = step.params["HalconAlgoType"].toInt();
-
-    // 2️⃣ 切换到对应页面并填充参数
-    switch(algoType)
-    {
-    case 0: case 2: case 4: case 6:  // 圆形算法
-        ui->stackedWidget_Algorithm->setCurrentIndex(0);
-        ui->doubleSpinBox_radius->setValue(
-            step.params.value("radius", 3.5).toDouble()
-            );
-        break;
-
-    case 1: case 3: case 5: case 7:  // 矩形算法
-        ui->stackedWidget_Algorithm->setCurrentIndex(1);
-        ui->spinBox_width->setValue(
-            step.params.value("width", 5).toInt()
-            );
-        ui->spinBox_height->setValue(
-            step.params.value("height", 5).toInt()
-            );
-        break;
-
-    case 8: case 9: case 10:  // 无参数算法
-        ui->stackedWidget_Algorithm->setCurrentIndex(2);
-        break;
-
-    case 11:  // 形状变换
-        ui->stackedWidget_Algorithm->setCurrentIndex(3);
-        QString shapeType = step.params.value("shapeType", "convex").toString();
-        int comboIndex = ui->comboBox_shapeType->findData(shapeType);
-        if (comboIndex >= 0) {
-            ui->comboBox_shapeType->setCurrentIndex(comboIndex);
-        }
-        break;
-    }
-
-    // 3️⃣ 提示用户
-    // Logger::instance()->info(
-    //     QString("已加载算法 #%1: %2 的参数").arg(index + 1).arg(step.name)
-    //     );
 }
 
 void MainWindow::on_btn_openLog_clicked()
@@ -1052,38 +394,154 @@ void MainWindow::on_btn_openLog_clicked()
     Logger::instance()->openLogFolder(true);
 }
 
-void MainWindow::filterColorChannelsChanged()
+void MainWindow::on_tabWidget_currentChanged(int index)
 {
-    // 无论哪个颜色滑块改变，都启动防抖定时器
-    m_processDebounceTimer->start();
-}
-
-void MainWindow::on_comboBox_filterMode_currentIndexChanged(int index)
-{
-    switch (index)
-    {
-    case 0://NONE
-        ui->stackedWidget_filter->setCurrentIndex(0);
-        break;
-    case 1: //gray
-        ui->stackedWidget_filter->setCurrentIndex(1);
-        break;
-    case 2: //rgb
-        ui->stackedWidget_filter->setCurrentIndex(2);
-        break;
-    case 3: //hsv
-        ui->stackedWidget_filter->setCurrentIndex(3);
-        break;
-    default:
-        ui->stackedWidget_filter->setCurrentIndex(0);
-        break;
+    // 防止程序关闭时访问已销毁的UI对象
+    if (m_isDestroying) {
+        return;
     }
+
+    if(m_roiManager.getFullImage().empty()) return;
+
+    m_currentTabIndex = index;
     processAndDisplay();
 }
 
-void MainWindow::on_tabWidget_currentChanged(int index)
+void MainWindow::on_btn_Log_clicked()
 {
-    if(m_roiManager.getFullImage().empty()) return;
-    m_currentTabIndex = index;
+    ui->tabWidget->hide();
+    ui->stackedWidget_MainWindow->setCurrentIndex(1);
+}
+
+void MainWindow::on_btn_Home_clicked()
+{
+    ui->tabWidget->show();
+    ui->stackedWidget_MainWindow->setCurrentIndex(0);
+}
+
+void MainWindow::on_btn_saveConfig_clicked()
+{
+    saveConfig();
+}
+
+void MainWindow::on_btn_importConfig_clicked()
+{
+    loadConfig();
+}
+
+// ========== 配置管理 ==========
+
+void MainWindow::saveConfig()
+{
+    QString filePath = QFileDialog::getSaveFileName(this, 
+        "保存配置", "", "JSON Files (*.json)");
+    if (filePath.isEmpty()) return;
+    AppConfig config;
+    collectConfigFromUI(config);
+
+    QString configPath = ConfigManager::instance().getDefaultConfigPath();
+    if (ConfigManager::instance().saveConfig(config, filePath)) {
+        Logger::instance()->info("配置已保存到: " + filePath);
+    }
+}
+
+void MainWindow::loadConfig()
+{
+    QString configPath = ConfigManager::instance().getDefaultConfigPath();
+    QString filePath = QFileDialog::getOpenFileName(this,
+        "导入配置", configPath, "JSON Files (*.json)");
+
+    if (filePath.isEmpty()) return;
+    
+    AppConfig config;
+    if (ConfigManager::instance().loadConfig(config, filePath)) {
+        applyConfigToUI(config);
+        Logger::instance()->info("配置已从: " + filePath + " 加载");
+    }
+}
+
+
+void MainWindow::collectConfigFromUI(AppConfig& config)
+{
+    // 收集 ROI 配置
+    if (m_roiManager.isRoiActive()) {
+        cv::Rect roi = m_roiManager.getLastRoi();
+        config.roiRect = QRectF(roi.x, roi.y, roi.width, roi.height);
+    }
+
+    // 收集增强参数
+    if (m_enhanceTabWidget) {
+        m_enhanceTabWidget->getEnhanceConfig(config.brightness, config.contrast,
+                                             config.gamma, config.sharpen);
+    }
+
+    // 收集过滤配置
+    if (m_filterTabWidget) {
+        m_filterTabWidget->getFilterConfig(config.filterMode, config.grayLow, config.grayHigh);
+    }
+
+    // 收集提取配置
+    if (m_extractTabWidget) {
+        m_extractTabWidget->getExtractConfig(config.shapeFilterConfig);
+    }
+
+    // 收集判定配置
+    if (m_judgeTabWidget)
+    {
+        m_judgeTabWidget->getJudgeConfig(config.minRegionCount, config.maxRegionCount, config.currentRegionCount);
+    }
+
+    // 收集算法队列
+    config.algorithmQueue = m_pipelineManager->getAlgorithmQueue();
+
+}
+
+void MainWindow::applyConfigToUI(const AppConfig& config)
+{
+    // 应用 ROI 配置
+    if (config.roiRect.isValid()) {
+        m_roiManager.applyRoi(config.roiRect);
+        Logger::instance()->info("已恢复 ROI 配置");
+    }
+
+    // 应用增强参数
+    if (m_enhanceTabWidget) {
+        m_enhanceTabWidget->setEnhanceConfig(config.brightness, config.contrast,
+                                             config.gamma, config.sharpen);
+    }
+
+    // 应用过滤配置
+    if (m_filterTabWidget) {
+        m_filterTabWidget->setFilterConfig(config.filterMode, config.grayLow, config.grayHigh);
+    }
+
+    // 应用提取配置
+    if (m_extractTabWidget) {
+        m_extractTabWidget->setExtractConfig(config.shapeFilterConfig);
+    }
+
+    // 应用判定配置
+    if (m_judgeTabWidget)
+    {
+        m_judgeTabWidget->setJudgeConfig(config.minRegionCount, config.maxRegionCount, config.currentRegionCount);
+    }
+
+    // 应用算法队列
+    m_pipelineManager->clearAlgorithmQueue();
+    for (const auto& step : config.algorithmQueue)
+    {
+        m_pipelineManager->addAlgorithmStep(step);
+    }
+
+    // 刷新ProcessTabWidget的UI列表显示
+    if (m_processTabWidget)
+    {
+        m_processTabWidget->refreshAlgorithmListUI(config.algorithmQueue);
+    }
+
+    // 同步Pipeline中的提取配置
+    m_pipelineManager->setShapeFilterConfig(config.shapeFilterConfig);
+
+    // 触发Pipeline更新以应用所有配置
     processAndDisplay();
 }

@@ -1,21 +1,23 @@
-#ifndef FILE_MANAGER_H
-#define FILE_MANAGER_H
+#pragma once
 
 #include <QObject>
 #include <QString>
 #include <opencv2/opencv.hpp>
 
+class PipelineManager;
+
 /**
  * @class FileManager
- * @brief 文件管理器 - 负责图像文件的读写操作
+ * @brief 文件管理器 - 负责图像文件的读写操作和UI交互
  *
  * 职责：
  * - 打开文件对话框
  * - 读取图像文件
  * - 保存图像文件
+ * - 处理保存时的用户选择（mask vs enhanced）
  * - 通过信号报告结果和错误
  *
- * 不负责：UI显示、状态管理、Pipeline等业务逻辑
+ * 不负责：Pipeline处理、状态管理等业务逻辑
  */
 class FileManager : public QObject
 {
@@ -39,6 +41,14 @@ public:
      * 成功时发出 imageLoaded 信号，失败时发出 errorOccurred 信号
      */
     void readImageFile(const QString& filePath);
+
+    /**
+     * @brief 保存图像文件，带有用户选择对话框
+     * @param pipelineManager Pipeline管理器，用于获取图像数据
+     *
+     * 成功时发出 imageSaved 信号，失败时发出 errorOccurred 信号
+     */
+    void saveImageFileWithDialog(PipelineManager* pipelineManager);
 
     /**
      * @brief 保存图像文件
@@ -72,5 +82,3 @@ signals:
 
 private:
 };
-
-#endif // FILE_MANAGER_H

@@ -87,6 +87,7 @@ void Logger::info(const QString &message)
     }
     QString fileLog=QString("%1 [info] %2").arg(time,message);
     writeToFile(fileLog);
+    emit logMessage(fileLog);
 }
 
 void Logger::warning(const QString &message)
@@ -100,6 +101,7 @@ void Logger::warning(const QString &message)
     }
     QString fileLog=QString("%1 [warning] %2").arg(time,message);
     writeToFile(fileLog);
+    emit logMessage(fileLog);
 }
 
 void Logger::error(const QString &message)
@@ -113,6 +115,7 @@ void Logger::error(const QString &message)
     }
     QString fileLog=QString("%1 [error] %2").arg(time,message);
     writeToFile(fileLog);
+    emit logMessage(fileLog);
 }
 
 void Logger::clear()

@@ -14,7 +14,7 @@
 class Logger :public QObject
 {
     Q_OBJECT
-public:  
+public:
     // 获取单例
     static Logger* instance();
     // 设置日志显示控件
@@ -29,6 +29,9 @@ public:
     void warning(const QString & message);
     void error(const QString & message);
     void clear();
+
+signals:
+    void logMessage(const QString& message);
 
 private:
     Logger();// 私有构造函数（单例模式）

@@ -159,6 +159,111 @@ void ImageView::mousePressEvent(QMouseEvent *event)
         }
     }
 
+    if (m_rectangleMode)
+    {
+        if (event->button() == Qt::LeftButton)
+        {
+            m_rectStartPosImg = viewPosToImagePos(event->pos());
+
+            if (m_rectItem) {
+                delete m_rectItem;
+                m_rectItem = nullptr;
+            }
+
+            m_rectItem = new QGraphicsRectItem(QRectF(m_rectStartPosImg, QSizeF(0, 0)), m_pixmapItem);
+            QSize imgSize = getImageSize();
+            double imageScale = std::max(imgSize.width(), imgSize.height()) / 5000.0;
+            double adaptiveWidth = std::max(2.0, imageScale * 3.0);
+
+            QColor rectColor = (m_currentRectDrawingType == "template") ? Qt::blue : Qt::red;
+            m_rectItem->setPen(QPen(rectColor, adaptiveWidth, Qt::SolidLine));
+
+            setDragMode(QGraphicsView::NoDrag);
+            event->accept();
+            return;
+        }
+        else if (event->button() == Qt::RightButton)
+        {
+            // 右键完成矩形绘制
+            if (m_rectItem) {
+                QRectF rectImg = m_rectItem->rect();
+                if (rectImg.width() > 0 && rectImg.height() > 0) {
+                    // 将矩形的四个顶点转换为多边形点
+                    QVector<QPointF> rectPoints;
+                    rectPoints.append(rectImg.topLeft());
+                    rectPoints.append(rectImg.topRight());
+                    rectPoints.append(rectImg.bottomRight());
+                    rectPoints.append(rectImg.bottomLeft());
+
+                    emit polygonDrawingFinished(m_currentRectDrawingType, rectPoints);
+                    clearRectangleDrawing();
+                }
+            }
+
+            event->accept();
+            return;
+        }
+    }
+
+    // 参考线绘制模式
+    if (m_referenceLineMode)
+    {
+        if (event->button() == Qt::LeftButton)
+        {
+            QPointF imgPos = viewPosToImagePos(event->pos());
+            
+            if (m_refLineStartPosImg.isNull()) {
+                // 第一次点击：设置起点
+                m_refLineStartPosImg = imgPos;
+                Logger::instance()->info(QString("参考线起点已设置: (%1, %2)，请点击终点")
+                    .arg(imgPos.x(), 0, 'f', 1)
+                    .arg(imgPos.y(), 0, 'f', 1));
+            } else {
+                // 第二次点击：设置终点并完成绘制
+                if (m_referenceLineItem) {
+                    delete m_referenceLineItem;
+                    m_referenceLineItem = nullptr;
+                }
+                
+                // 创建参考线
+                m_referenceLineItem = new QGraphicsLineItem(
+                    QLineF(m_refLineStartPosImg, imgPos), m_pixmapItem);
+                
+                // 设置参考线样式（醒目的黄色粗虚线）
+                QSize imgSize = getImageSize();
+                double imageScale = std::max(imgSize.width(), imgSize.height()) / 5000.0;
+                double adaptiveWidth = std::max(3.0, imageScale * 4.0);  // 增加线宽
+                
+                QPen linePen(QColor(255, 255, 0), adaptiveWidth, Qt::DashLine);  // 更亮的黄色
+                m_referenceLineItem->setPen(linePen);
+                
+                // 转换为cv::Point2f并发射信号
+                cv::Point2f start(m_refLineStartPosImg.x(), m_refLineStartPosImg.y());
+                cv::Point2f end(imgPos.x(), imgPos.y());
+                emit referenceLineDrawn(start, end);
+                
+                Logger::instance()->info(QString("参考线绘制完成: 起点(%1,%2) -> 终点(%3,%4)")
+                    .arg(start.x, 0, 'f', 1).arg(start.y, 0, 'f', 1)
+                    .arg(end.x, 0, 'f', 1).arg(end.y, 0, 'f', 1));
+                
+                // 完成绘制
+                m_referenceLineMode = false;
+            }
+            
+            event->accept();
+            return;
+        }
+        else if (event->button() == Qt::RightButton)
+        {
+            // 右键取消绘制
+            m_referenceLineMode = false;
+            m_refLineStartPosImg = QPointF();
+            Logger::instance()->info("参考线绘制已取消");
+            event->accept();
+            return;
+        }
+    }
+
     if(event->button()==Qt::RightButton && m_roiReady)
     {
         emit roiSelected(m_roiRectImg);
@@ -292,6 +397,16 @@ void ImageView::mouseMoveEvent(QMouseEvent *event)
         QPointF curImgPos = viewPosToImagePos(event->pos());
         QRectF rect(m_roiStartPosImg, curImgPos);
         m_roiRectItem->setRect(rect.normalized());
+        event->accept();
+        return;
+    }
+
+    // 矩形绘制中
+    if (m_rectangleMode && m_rectItem)
+    {
+        QPointF curImgPos = viewPosToImagePos(event->pos());
+        QRectF rect(m_rectStartPosImg, curImgPos);
+        m_rectItem->setRect(rect.normalized());
         event->accept();
         return;
     }
@@ -458,88 +573,9 @@ void ImageView::setCursorForHandle(RoiHandle handle)
             cursor = Qt::ArrowCursor;
             break;
     }
-    
-    setCursor(cursor); 
+
+    setCursor(cursor);
 }
-
-void RoiManager::setFullImage(const cv::Mat &img)
-{
-    m_fullImage = img;
-    m_isRoiActive = false;
-    m_roiImage.release();
-}
-
-const cv::Mat& RoiManager::getCurrentImage() const
-{
-    return m_isRoiActive ? m_roiImage : m_fullImage;
-}
-
-const cv::Mat& RoiManager::getFullImage() const
-{
-    return m_fullImage;
-}
-
-bool RoiManager::applyRoi(const QRectF &roiRectF)
-{
-    if (m_fullImage.empty()) {
-        qDebug() << "[RoiManager] 完整图像为空";
-        return false;
-    }
-
-    // 转换并验证ROI区域
-    int x = std::max(0, (int)std::floor(roiRectF.x()));
-    int y = std::max(0, (int)std::floor(roiRectF.y()));
-    int w = std::min((int)std::ceil(roiRectF.width()),
-                     m_fullImage.cols - x);
-    int h = std::min((int)std::ceil(roiRectF.height()),
-                     m_fullImage.rows - y);
-
-    if (w <= 0 || h <= 0) {
-        qDebug() << "[RoiManager] ROI区域无效";
-        return false;
-    }
-
-    // 裁剪ROI
-    cv::Rect roi(x, y, w, h);
-    m_roiImage = m_fullImage(roi).clone();
-    m_isRoiActive = true;
-    m_lastRoi = roi;
-
-    // qDebug() << QString("[RoiManager] ROI已应用: x=%1 y=%2 w=%3 h=%4")
-    //                 .arg(x).arg(y).arg(w).arg(h);
-    Logger::instance()->info(QString("[RoiManager] ROI已应用: x=%1 y=%2 w=%3 h=%4")
-                                 .arg(x).arg(y).arg(w).arg(h));
-
-    return true;
-}
-
-void RoiManager::resetRoi()
-{
-    if(m_isRoiActive)
-    {
-        m_roiImage.release();
-        m_isRoiActive = false;
-        Logger::instance()->info("[RoiManager] ROI已重置");
-    }
-}
-
-bool RoiManager::isRoiActive() const
-{
-    return m_isRoiActive;
-}
-
-cv::Rect RoiManager::getLastRoi() const
-{
-    return m_lastRoi;
-}
-
-void RoiManager::clear()
-{
-    m_fullImage.release();
-    m_roiImage.release();
-    m_isRoiActive = false;
-}
-
 
 void ImageView::setPolygonMode(bool enable)
 {
@@ -615,4 +651,60 @@ void ImageView::updatePolygonPath(const QVector<QPointF> &points, QGraphicsPathI
     QColor penColor =(m_currentDrawingType =="template") ? Qt::blue :Qt::red;
     pathItem = new QGraphicsPathItem(path, m_pixmapItem);
     pathItem->setPen(QPen(penColor, 2, Qt::SolidLine));
+}
+
+void ImageView::startRectangleDrawing(const QString &drawingType)
+{
+    m_rectangleMode = true;
+    m_currentRectDrawingType = drawingType;
+
+    if (m_rectItem) {
+        delete m_rectItem;
+        m_rectItem = nullptr;
+    }
+
+    Logger::instance()->info(QString("开始绘制矩形%1 请拖拽绘制矩形，右键完成")
+                                 .arg(drawingType == "template" ? "模板" : "区域"));
+}
+
+void ImageView::finishRectangleDrawing()
+{
+    m_rectangleMode = false;
+    m_currentRectDrawingType.clear();
+}
+
+void ImageView::clearRectangleDrawing()
+{
+    m_rectangleMode = false;
+    m_currentRectDrawingType.clear();
+    if (m_rectItem) {
+        delete m_rectItem;
+        m_rectItem = nullptr;
+    }
+}
+
+// =================== 参考线绘制 ===================
+void ImageView::startReferenceLineDrawing()
+{
+    m_referenceLineMode = true;
+    m_refLineStartPosImg = QPointF();
+    
+    // 清除旧的参考线
+    if (m_referenceLineItem) {
+        delete m_referenceLineItem;
+        m_referenceLineItem = nullptr;
+    }
+    
+    Logger::instance()->info("请在图像上点击绘制参考线起点");
+}
+
+void ImageView::clearReferenceLine()
+{
+    m_referenceLineMode = false;
+    m_refLineStartPosImg = QPointF();
+    
+    if (m_referenceLineItem) {
+        delete m_referenceLineItem;
+        m_referenceLineItem = nullptr;
+    }
 }

@@ -4,11 +4,16 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++17
 
+INCLUDEPATH += $$PWD/include
+INCLUDEPATH += $$PWD/include/widgets
+INCLUDEPATH += $$PWD/controllers
+
 # DEFINES += PROJECT_DIR=\\\"$$PWD\\\"
 
 # ===== OpenCV 配置 (使用本地 3rdparty) =====
 OPENCV_DIR = $$PWD/3rdparty/opencv
 INCLUDEPATH += $$OPENCV_DIR/include/opencv4
+INCLUDEPATH += $$OPENCV_DIR/include/opencv4/opencv2/ximgproc
 
 LIBS += -L$$OPENCV_DIR/lib \
         -lopencv_core4d \
@@ -17,7 +22,13 @@ LIBS += -L$$OPENCV_DIR/lib \
         -lopencv_imgproc4d \
         -lopencv_videoio4d \
         -lopencv_dnn4d \
-        -lopencv_photo4d
+        -lopencv_photo4d \
+        -lopencv_ximgproc4d \
+        -lopencv_line_descriptor4d \
+        -lopencv_features2d4d \
+        -lopencv_calib3d4d \
+        -lopencv_flann4d \
+        -lopencv_video4d
 
 # ===== HALCON 配置 (使用本地 3rdparty) =====
 HALCON_DIR = $$PWD/3rdparty/halcon
@@ -27,9 +38,36 @@ INCLUDEPATH += $$HALCON_DIR/include \
 LIBS += -L$$HALCON_DIR/lib \
         -lhalconcppxl \
         -lhalconxl
+        
+# ===== 头文件 =====
+HEADERS += \
+    include/halcon_algorithm.h \
+    include/image_processor.h \
+    include/image_utils.h \
+    include/image_view.h \
+    include/logger.h \
+    include/mainwindow.h \
+    include/pipeline.h \
+    include/pipeline_manager.h \
+    include/pipeline_steps.h \
+    include/barcode_step.h \
+    include/shape_filter_types.h \
+    include/system_monitor.h \
+    include/match_strategy.h \
+    include/file_manager.h \
+    include/roi_manager.h \
+    include/log_page.h \
+    include/widgets/image_tab_widget.h \
+    include/widgets/enhance_tab_widget.h \
+    include/widgets/filter_tab_widget.h \
+    include/widgets/template_tab_widget.h \
+    include/widgets/line_tab_widget.h \
+    include/widgets/extract_tab_widget.h \
+    include/widgets/process_tab_widget.h \
+    include/widgets/judge_tab_widget.h \
+    include/widgets/barcode_tab_widget.h \
+    include/config_manager.h
 
-INCLUDEPATH += $$PWD/include
-INCLUDEPATH += $$PWD/controllers
 # ===== 源文件 =====
 SOURCES += \
     src/match_strategy.cpp \
@@ -44,44 +82,35 @@ SOURCES += \
     src/pipeline_manager.cpp \
     src/system_monitor.cpp \
     src/file_manager.cpp \
-    src/template_controller.cpp \
-    controllers/image_tab_controller.cpp \
-    controllers/enhancement_tab_controller.cpp
-
-# ===== 头文件 =====
-HEADERS += \
-    include/halcon_algorithm.h \
-    include/image_processor.h \
-    include/image_utils.h \
-    include/image_view.h \
-    include/logger.h \
-    include/mainwindow.h \
-    include/pipeline.h \
-    include/pipeline_manager.h \
-    include/pipeline_steps.h \
-    include/shape_filter_types.h \
-    include/system_monitor.h \
-    include/match_strategy.h \
-    include/file_manager.h \ 
-    include/template_controller.h \
-    controllers/image_tab_controller.h \
-    controllers/enhancement_tab_controller.h
-
+    src/roi_manager.cpp \
+    src/pipeline_steps.cpp \
+    src/barcode_step.cpp \
+    src/log_page.cpp \
+    src/widgets/image_tab_widget.cpp \
+    src/widgets/enhance_tab_widget.cpp \
+    src/widgets/filter_tab_widget.cpp \
+    src/widgets/template_tab_widget.cpp \
+    src/widgets/line_tab_widget.cpp \
+    src/widgets/extract_tab_widget.cpp \
+    src/widgets/process_tab_widget.cpp \
+    src/widgets/judge_tab_widget.cpp \
+    src/widgets/barcode_tab_widget.cpp \
+    src/config_manager.cpp
 
 # ===== UI 文件 =====
 FORMS += \
-    ui/mainwindow.ui
+    ui/mainwindow.ui \
+    ui/log_page.ui \
+    ui/tabs/image_tab.ui \
+    ui/tabs/enhance_tab.ui \
+    ui/tabs/filter_tab.ui \
+    ui/tabs/template_tab.ui \
+    ui/tabs/line_tab.ui \
+    ui/tabs/extract_tab.ui \
+    ui/tabs/process_tab.ui \
+    ui/tabs/judge_tab.ui \
+    ui/tabs/barcode_tab.ui
 
 # ===== 资源文件 =====
 RESOURCES += \
     resources/res.qrc
-
-# Default rules for deployment.
-qnx: target.path = /tmp/$${TARGET}/bin
-else: unix:!android: target.path = /opt/$${TARGET}/bin
-!isEmpty(target.path): INSTALLS += target
-
-DISTFILES +=
-
-RESOURCES += \
-    res.qrc

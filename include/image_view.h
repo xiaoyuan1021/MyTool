@@ -15,6 +15,7 @@
 
 #include <opencv2/opencv.hpp>
 #include "logger.h"
+#include "roi_manager.h"
 
 // ROI 交互状态
 enum RoiHandle
@@ -48,6 +49,14 @@ public:
     void finishPolygonDrawing();
     void clearPolygonDrawing();
 
+    void startRectangleDrawing(const QString &drawingType);
+    void finishRectangleDrawing();
+    void clearRectangleDrawing();
+
+    // 参考线绘制
+    void startReferenceLineDrawing();
+    void clearReferenceLine();
+
     QVector<QPointF> getPolygonPoints() const;
 
 signals:
@@ -59,6 +68,9 @@ signals:
 
     void polygonDrawingPointAdded(const QString &type, const QPointF &point);
     void polygonDrawingFinished(const QString &type, QVector<QPointF> points);
+    
+    // 参考线绘制完成信号
+    void referenceLineDrawn(const cv::Point2f& start, const cv::Point2f& end);
 
 protected:
     void wheelEvent(QWheelEvent *event) override;
@@ -105,28 +117,16 @@ private:
 
     QString m_currentDrawingType;
     void updatePolygonPath(const QVector<QPointF> &points, QGraphicsPathItem *&pathItem);
-};
 
-class RoiManager
-{
-public:
-    RoiManager() = default;
-
-    void setFullImage(const cv::Mat &img);
-
-    const cv::Mat &getCurrentImage() const;
-    const cv::Mat &getFullImage() const;
-    bool applyRoi(const QRectF &roiRectF);
-    void resetRoi();
-    bool isRoiActive() const;
-    cv::Rect getLastRoi() const;
-    void clear();
-
-private:
-    cv::Mat m_fullImage;
-    cv::Mat m_roiImage;
-    bool m_isRoiActive = false;
-    cv::Rect m_lastRoi;
+    bool m_rectangleMode = false;
+    QPointF m_rectStartPosImg;
+    QGraphicsRectItem *m_rectItem = nullptr;
+    QString m_currentRectDrawingType;
+    
+    // 参考线绘制
+    bool m_referenceLineMode = false;
+    QPointF m_refLineStartPosImg;
+    QGraphicsLineItem *m_referenceLineItem = nullptr;
 };
 
 #endif // IMAGE_VIEW_H

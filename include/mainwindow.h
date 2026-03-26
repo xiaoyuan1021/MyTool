@@ -10,18 +10,28 @@
 #include <QTimer>
 #include <QStack>
 #include <QSignalBlocker>
+#include <QtConcurrent/QtConcurrent>
+#include <QFutureWatcher>
 
 #include <opencv2/opencv.hpp>
 
 #include "image_view.h"
 #include "image_utils.h"
 #include "halcon_algorithm.h"
-#include "pipeline_manager.h"  // ✅ 新增：使用Pipeline管理器
-#include "template_controller.h"
+#include "pipeline_manager.h"
 #include "system_monitor.h"
 #include "file_manager.h"
-#include "controllers/image_tab_controller.h"
-#include "controllers/enhancement_tab_controller.h"
+#include "config_manager.h"
+#include "log_page.h"
+#include "widgets/image_tab_widget.h"
+#include "widgets/enhance_tab_widget.h"
+#include "widgets/filter_tab_widget.h"
+#include "widgets/template_tab_widget.h"
+#include "widgets/line_tab_widget.h"
+#include "widgets/extract_tab_widget.h"
+#include "widgets/process_tab_widget.h"
+#include "widgets/judge_tab_widget.h"
+#include "widgets/barcode_tab_widget.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -48,104 +58,64 @@ public:
     ~MainWindow();
 
 private slots:
-    // ========== 文件操作 ==========
     void on_btn_openImg_clicked();
     void on_btn_saveImg_clicked();
-    
-    // ========== ROI操作 ==========
     void on_btn_drawRoi_clicked();
     void on_btn_resetROI_clicked();
     void onRoiSelected(const QRectF &roiRect);
-
-    // ========== 算法队列操作 ==========
-    void on_btn_addOption_clicked();
-    void on_btn_removeOption_clicked();
-
-    // ========== 区域筛选 ==========
-    void on_btn_select_clicked();
-
-    // ========== 其他 ==========
-    void on_comboBox_channels_currentIndexChanged(int index);
-
-    void on_comboBox_select_currentIndexChanged(int index);
-
-    void on_comboBox_condition_currentIndexChanged(int index);
-
-    void on_btn_clearFilter_clicked();
-
-    void on_btn_addFilter_clicked();
-
-    void on_btn_optionUp_clicked();
-
-    void on_btn_optionDown_clicked();
-
-    void onAlgorithmTypeChanged(int index);
-
-    void on_btn_runTest_clicked();
-
     void on_btn_clearLog_clicked();
-
-    void on_btn_drawRegion_clicked();
-
-    void on_btn_clearRegion_clicked();
-
-    void onAlgorithmSelectionChanged(QListWidgetItem* current,QListWidgetItem* previous);
-
-    void on_comboBox_filterMode_currentIndexChanged(int index);
-
     void on_btn_openLog_clicked();
-
-    void filterColorChannelsChanged();
-
     void on_tabWidget_currentChanged(int index);
+    void on_btn_Log_clicked();
+    void on_btn_Home_clicked();
+    void on_btn_saveConfig_clicked();
+    void on_btn_importConfig_clicked();
 
 
 private:
-    // ========== 初始化 ==========
     void setupUI();
     void setupConnections();
-    void setupSliderSpinBoxPair(QSlider* slider, QSpinBox* spinbox,
-                                int min, int max, int defaultValue);
-
-    // ========== 核心处理 ==========
-    void processAndDisplay();  // ✅ 统一的处理入口
+    void processAndDisplay();
     void showImage(const cv::Mat& img);
-
-    void saveCurrentEdit();
-    void loadAlgorithmParameters(int index);
+    void setDisplayModeForCurrentTab();
 
 private:
-    // UI
     Ui::MainWindow *ui;
     ImageView *m_view;
 
-    // ✅ 核心模块（简化为两个）
-    PipelineManager* m_pipelineManager;  // Pipeline管理器
-    RoiManager m_roiManager;              // ROI管理器
-    SystemMonitor * m_systemMonitor;
-    FileManager* m_fileManager;           // ✅ 文件管理器
-
-    // ✅ 新增：防抖定时器
+    PipelineManager* m_pipelineManager;
+    RoiManager m_roiManager;
+    SystemMonitor* m_systemMonitor;
+    FileManager* m_fileManager;
     QTimer* m_processDebounceTimer;
 
-    int m_currentTabIndex;  // 记录当前tab索引
-
+    int m_currentTabIndex;
     bool m_needsReprocess = false;
+    bool m_isDestroying = false;
 
     void setupSystemMonitor();
 
-    // ✅ 新增：存储绘制的多边形点
-    QVector <QPointF> m_drawnpoints;
-    // ✅ 新增：绘制模式标志
-    bool m_isDrawingRegion;
-    // ✅ 新增：显示多边形的图形项
-    QGraphicsPolygonItem * m_polygonItem;
-    void calculateRegionFeatures(const QVector<QPointF>& points);
-    int m_editingAlgorithmIndex=-1;
+    void saveConfig();
+    void loadConfig();
+    void collectConfigFromUI(AppConfig& config);
+    void applyConfigToUI(const AppConfig& config);
 
-    std::unique_ptr<ImageTabController> m_imageTabController;
-    std::unique_ptr<EnhancementTabController> m_enhancementController;
-    std::unique_ptr<TemplateController> m_templateController;
+    std::unique_ptr<EnhanceTabWidget> m_enhanceTabWidget;
+    std::unique_ptr<FilterTabWidget> m_filterTabWidget;
+    std::unique_ptr<TemplateTabWidget> m_templateTabWidget;
+    std::unique_ptr<LineDetectTabWidget> m_lineDetectTabWidget;
+    std::unique_ptr<ExtractTabWidget> m_extractTabWidget;
+    std::unique_ptr<ProcessTabWidget> m_processTabWidget;
+    std::unique_ptr<JudgeTabWidget> m_judgeTabWidget;
+    std::unique_ptr<BarcodeTabWidget> m_barcodeTabWidget;
+
+    
+    std::unique_ptr<LogPage> m_logPage;
+    std::unique_ptr<ImageTabWidget> m_imageTabWidget;
+
+    // 多线程处理相关
+    QFutureWatcher<PipelineContext> m_pipelineWatcher;
+    bool m_isProcessing = false;
 
 };
 

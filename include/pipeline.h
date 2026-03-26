@@ -4,73 +4,38 @@
 #include <QVariantMap>
 #include <QSlider>
 #include <QSpinBox>
+#include <QPointF>
+#include <QString>
+#include <QRectF>
 #include "shape_filter_types.h"
+#include "pipeline_types.h"
+#include "region_feature.h"
+#include "display_config.h"
 
-struct RegionFeature
+/**
+ * 条码识别结果
+ */
+struct BarcodeResult
 {
-    int index = 0;           // 区域索引
-    double area = 0.0;      // 面积
-    double circularity = 0.0;  // 圆度
-    double centerX = 0.0;    //中心X坐标
-    double centerY = 0.0;   // 中心Y坐标
-    double width = 0.0;     // 宽度
-    double height = 0.0;    // 高度
-    cv::Rect bbox;          // 外接矩形（保留原有的）
-
-    // 转字符串方法
-    QString toString() const
-    {
-        return QString::asprintf(
-            "区域 %d: 面积=%.1f, 圆度=%.3f, 中心=(%.1f,%.1f), 尺寸=%.1f×%.1f",
-            index, area, circularity, centerX, centerY, width, height
-            );
-    }
-};
-
-struct DisplayConfig
-{
-    enum class Mode
-    {
-        Original,           // 显示原图
-        Channel,            //通道图
-        Enhanced,          // 显示增强后的图
-        MaskGreenWhite,    // Mask 显示为绿白
-        MaskOverlay,       // Mask 叠加在原图上
-        Processed          // 显示算法处理结果
-    };
-
-    Mode mode=Mode::Original;
-    float overlayAlpha =0.3f;
-
-    bool shouldShowGreenWhite() const
-    {
-        return mode == Mode::MaskGreenWhite;
-    }
-
-    bool shouldOverlay() const
-    {
-        return mode == Mode::MaskOverlay;
-    }
+    QString type;           // 条码类型 (如 "EAN-13", "QR Code")
+    QString data;           // 解码数据
+    QRectF location;        // 位置 (bounding box)
+    double quality = 0.0;   // 识别质量 (0-100)
+    int orientation = 0;    // 条码方向角度
 };
 
 struct PipelineConfig
 {
-    enum class Channel {Gray,RGB,BGR,HSV,B,G,R} channel=Channel::RGB;
+    // 使用独立定义的枚举类型（向后兼容的别名）
+    using Channel = ChannelMode;
+    using ColorFilterMode = ::ColorFilterMode;
+    using FilterMode = ::ImageFilterMode;  // 图像过滤模式
 
-    enum class ColorFilterMode { None, RGB, HSV };
-
-    // ========== 过滤模式枚举 ==========
-    enum class FilterMode {
-        None,      // 无过滤，只显示增强后的图像
-        Gray,      // 灰度过滤模式
-        RGB,       // RGB 颜色过滤模式
-        HSV        // HSV 颜色过滤模式
-    };
-
-    FilterMode currentFilterMode = FilterMode::None;  // ✅ 新增：当前过滤模式
+    ChannelMode channel = ChannelMode::RGB;
+    ImageFilterMode currentFilterMode = ImageFilterMode::None;
 
     bool enableColorFilter = false;
-    ColorFilterMode colorFilterMode = ColorFilterMode::None;
+    ::ColorFilterMode colorFilterMode = ::ColorFilterMode::None;
 
     int brightness = 0;
     double contrast = 1.0;
@@ -103,10 +68,40 @@ struct PipelineConfig
     // double maxCircularity = 1.0;//最大圆度
     // int maxRegionCount = 0; // 例如：0 表示“不能有缺陷”
 
+    // ========== 直线检测参数 ==========
+    int lineDetectAlgorithm = 0;  // 0=HoughP, 1=LSD, 2=EDline, 3=EdgesSubPix(Halcon)
+    double lineRho = 1.0;
+    double lineTheta = CV_PI / 180.0;
+    int lineThreshold = 50;
+    double lineMinLength = 30.0;
+    double lineMaxGap = 10.0;
+    bool enableLineDetect = false;
+    
+    // EdgesSubPix参数(Halcon)
+    QString edgeFilter = "canny";  // 滤波器类型: canny, lanser, deriche1, deriche2, shen
+    double edgeAlpha = 1.0;        // 平滑参数
+    int edgeLow = 20;              // 低阈值
+    int edgeHigh = 40;             // 高阈值
+
+    // ========== 参考线匹配参数 ==========
+    bool enableReferenceLineMatch = false;
+    cv::Point2f referenceLineStart;
+    cv::Point2f referenceLineEnd;
+    bool referenceLineValid = false;
+    double angleThreshold = 15.0;      // 角度容差（度）
+    double distanceThreshold = 50.0;   // 距离容差（像素）
+    int searchRegionWidth = 100;       // 搜索区域宽度（像素）
+    
+    // ========== 条码识别参数 ==========
+    BarcodeConfig barcode;
 
     void syncConfigFromUI(QSlider* brightness,QSlider* contrast,QSlider* gamma,
                           QSlider* sharpen,QSlider* grayLow,QSlider* grayHigh)
     {
+        // 添加空指针检查，防止访问已删除的对象
+        // if (!brightness || !contrast || !gamma || !sharpen || !grayLow || !grayHigh)
+        //     return;
+
         this->brightness = brightness->value();
         this->contrast   = contrast->value() / 100.0;
         this->gamma      = gamma->value() / 100.0;
@@ -138,6 +133,7 @@ struct PipelineContext
     cv::Mat enhanced;    // 增强后
     cv::Mat mask;        // 过滤得到的 mask (0/255)
     cv::Mat processed;   // 算法处理后的图（可能还是 mask / 或灰度）
+    cv::Mat lineDetect;  // 直线检测结果（新增）
     // 特征
     std::vector<RegionFeature> regions;
     // 输出
@@ -146,6 +142,14 @@ struct PipelineContext
 
     bool pass = true;
     QString reason;
+    
+    // 参考线匹配结果
+    int matchedLineCount = 0;
+    int totalLineCount = 0;
+    
+    // 条码识别结果
+    QVector<BarcodeResult> barcodeResults;
+    QString barcodeStatus;  // 识别状态信息
 
     cv::Mat getFinalDisplay() const;
 
@@ -166,14 +170,19 @@ class Pipeline
 {
 public:
     Pipeline();
-    void add(std::unique_ptr<IPipelineStep> step)
-    {
-        steps_.push_back(std::move(step));//为啥要move
-    }
-    void run(PipelineContext& ctx)
-    {
-        for(auto &s:steps_) s->run(ctx);
-    }
+    
+    // 添加Pipeline步骤
+    void add(std::unique_ptr<IPipelineStep> step);
+    
+    // 执行所有步骤
+    void run(PipelineContext& ctx);
+    
+    // 获取步骤数量
+    size_t stepCount() const;
+    
+    // 清空所有步骤
+    void clear();
+
 private:
     std::vector<std::unique_ptr<IPipelineStep>> steps_;
 };
