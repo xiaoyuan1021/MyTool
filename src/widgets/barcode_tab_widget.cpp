@@ -19,8 +19,6 @@ BarcodeTabWidget::BarcodeTabWidget(PipelineManager* pipelineManager,
             this, &BarcodeTabWidget::onCodeTypeChanged);
     connect(m_ui->spinBox_maxNum, QOverload<int>::of(&QSpinBox::valueChanged),
             this, &BarcodeTabWidget::onMaxNumChanged);
-    connect(m_ui->chk_returnQuality, &QCheckBox::toggled,
-            this, &BarcodeTabWidget::onReturnQualityChanged);
     connect(m_ui->btn_apply, &QPushButton::clicked,
             this, &BarcodeTabWidget::handleApply);
     
@@ -55,7 +53,6 @@ BarcodeConfig BarcodeTabWidget::getBarcodeConfig() const
     }
     
     config.maxNumSymbols = m_ui->spinBox_maxNum->value();
-    config.returnQuality = m_ui->chk_returnQuality->isChecked();
     
     return config;
 }
@@ -153,5 +150,5 @@ void BarcodeTabWidget::handleApply()
         m_processCallback();
     }
     
-    qDebug() << "[BarcodeTab] 应用条码识别设置";
+    //qDebug() << "[BarcodeTab] 应用条码识别设置";
 }

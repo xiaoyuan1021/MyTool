@@ -36,7 +36,7 @@ void Pipeline::run(PipelineContext& ctx)
         }
     }
     
-    qDebug() << "[Pipeline] 执行完成";
+    //qDebug() << "[Pipeline] 执行完成";
 }
 
 size_t Pipeline::stepCount() const

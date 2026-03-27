@@ -50,7 +50,7 @@ StepBarcodeRecognition::StepBarcodeRecognition(const BarcodeConfig* config)
     }
     catch (const HException& ex)
     {
-        qDebug() << "[Barcode] 一维条码模型创建异常:" << ex.ErrorMessage().Text();
+        //qDebug() << "[Barcode] 一维条码模型创建异常:" << ex.ErrorMessage().Text();
     }
     
     // 创建二维数据码模型
@@ -58,7 +58,7 @@ StepBarcodeRecognition::StepBarcodeRecognition(const BarcodeConfig* config)
     {
         // 创建QR Code模型
         dataCodeModel_.CreateDataCode2dModel("QR Code", HTuple(), HTuple());
-        qDebug() << "[Barcode] 二维数据码模型创建成功";
+        //qDebug() << "[Barcode] 二维数据码模型创建成功";
     }
     catch (const HException& ex)
     {
@@ -120,46 +120,12 @@ void StepBarcodeRecognition::run(PipelineContext& ctx)
             gray = input.clone();
         }
         
-        // 检测是否需要反色：条码应该是深色在浅色背景上
-        // 计算图像平均亮度，如果整体偏亮（深色背景浅色条码），则反色
-        cv::Scalar meanBrightness = cv::mean(gray);
-        bool needsInvert = (meanBrightness[0] < 128);  // 平均亮度低于128，说明是深色背景
+        // 直接使用灰度图像，不做额外预处理
+        // HALCON的条码识别算法内部有优化的图像处理机制
+        //qDebug() << "[Barcode] 图像预处理完成 - 尺寸:" << gray.cols << "x" << gray.rows;
         
-        if (needsInvert)
-        {
-            qDebug() << "[Barcode] 检测到深色背景，执行反色处理";
-            cv::bitwise_not(gray, gray);
-        }
-        
-        // 条码识别专用的图像预处理
-        // 条码识别需要清晰的边缘，避免过度处理
-        cv::Mat processed;
-        
-        // 方法1：直接使用灰度图（最保守的方法）
-        // 条码识别算法通常对原始图像处理效果更好
-        processed = gray.clone();
-        
-        // 可选：轻度对比度增强（仅在需要时）
-        // 如果平均亮度在合理范围内，不进行额外增强
-        if (meanBrightness[0] > 180 || meanBrightness[0] < 60)
-        {
-            // 仅在亮度极端时进行轻度调整
-            double alpha = 1.1;  // 非常保守的对比度增强
-            int beta = 0;
-            cv::Mat enhanced;
-            gray.convertTo(enhanced, -1, alpha, beta);
-            processed = enhanced;
-        }
-        
-        // 注意：条码识别不使用中值滤波，因为会模糊条码边缘
-        // HALCON的条码识别算法内部有降噪处理
-        
-        qDebug() << "[Barcode] 图像预处理完成 - 尺寸:" << processed.cols << "x" << processed.rows
-                 << "反色:" << (needsInvert ? "是" : "否")
-                 << "平均亮度:" << meanBrightness[0];
-        
-        hImg = HImage("byte", (Hlong)processed.cols, (Hlong)processed.rows, 
-                     (void*)processed.data);
+        hImg = HImage("byte", (Hlong)gray.cols, (Hlong)gray.rows, 
+                     (void*)gray.data);
         
         // 构建条码类型字符串
         QString codeTypeStr;
@@ -185,12 +151,12 @@ void StepBarcodeRecognition::run(PipelineContext& ctx)
         int numFound = 0;
         ctx.barcodeResults.clear();
         
-        qDebug() << "[Barcode] 开始识别 - 条码类型:" << codeTypeStr << "是否2D:" << use2DCode;
+        //qDebug() << "[Barcode] 开始识别 - 条码类型:" << codeTypeStr << "是否2D:" << use2DCode;
         
         if (use2DCode)
         {
             // 使用二维数据码模型
-            qDebug() << "[Barcode] 使用二维数据码模型识别";
+            //qDebug() << "[Barcode] 使用二维数据码模型识别";
             
             HTuple resultHandles, decodedStrings;
             HXLDCont symbolXLDs = dataCodeModel_.FindDataCode2d(hImg, HTuple(), HTuple(), 
@@ -266,20 +232,6 @@ void StepBarcodeRecognition::run(PipelineContext& ctx)
             HRegion symbolRegions = barcodeModel_.FindBarCode(hImg, codeType, &decodedStrings);
             
             numFound = decodedStrings.Length();
-            
-            // 尝试获取质量值
-            HTuple qualityValues;
-            try
-            {
-                if (cfg_->returnQuality)
-                {
-                    qualityValues = barcodeModel_.GetBarCodeResult("all", "quality");
-                }
-            }
-            catch (...)
-            {
-                qDebug() << "[Barcode] 无法获取质量值";
-            }
             
             qDebug() << "[Barcode] 识别到" << numFound << "个条码";
             
@@ -358,15 +310,8 @@ void StepBarcodeRecognition::run(PipelineContext& ctx)
                                             input.cols * 0.5, input.rows * 0.5);
                 }
                 
-                // 获取质量评分 - 使用在循环外已获取的质量值
-                if (qualityValues.Length() > i)
-                {
-                    result.quality = qualityValues[i].D();
-                }
-                else
-                {
-                    result.quality = -1.0;  // 表示质量不可用
-                }
+                // 质量评分功能已禁用
+                result.quality = -1.0;  // 表示质量不可用
                 
                 ctx.barcodeResults.append(result);
                 

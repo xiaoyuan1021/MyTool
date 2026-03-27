@@ -140,6 +140,9 @@
         </item>
         <item>
          <widget class="QSpinBox" name="spinBox_maxNum">
+          <property name="specialValueText">
+           <string>不限制</string>
+          </property>
           <property name="minimum">
            <number>0</number>
           </property>
@@ -148,9 +151,6 @@
           </property>
           <property name="value">
            <number>0</number>
-          </property>
-          <property name="specialValueText">
-           <string>不限制</string>
           </property>
          </widget>
         </item>
@@ -171,16 +171,6 @@
       </item>
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout_options">
-        <item>
-         <widget class="QCheckBox" name="chk_returnQuality">
-          <property name="text">
-           <string>返回质量评分</string>
-          </property>
-          <property name="checked">
-           <bool>true</bool>
-          </property>
-         </widget>
-        </item>
         <item>
          <spacer name="horizontalSpacer_options">
           <property name="orientation">
@@ -223,7 +213,7 @@
       <item>
        <widget class="QTableWidget" name="tableWidget_results">
         <property name="columnCount">
-         <number>4</number>
+         <number>2</number>
         </property>
         <column>
          <property name="text">
@@ -233,16 +223,6 @@
         <column>
          <property name="text">
           <string>数据</string>
-         </property>
-        </column>
-        <column>
-         <property name="text">
-          <string>质量</string>
-         </property>
-        </column>
-        <column>
-         <property name="text">
-          <string>位置</string>
          </property>
         </column>
        </widget>
