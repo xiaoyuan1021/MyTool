@@ -65,6 +65,8 @@ set(HEADERS
     include/widgets/process_tab_widget.h
     include/widgets/judge_tab_widget.h
     include/widgets/barcode_tab_widget.h
+    include/widgets/roi_list_widget.h
+    include/widgets/detection_config_widget.h
     include/config_manager.h
 )
 
@@ -95,6 +97,8 @@ set(SOURCES
     src/widgets/process_tab_widget.cpp
     src/widgets/judge_tab_widget.cpp
     src/widgets/barcode_tab_widget.cpp
+    src/widgets/roi_list_widget.cpp
+    src/widgets/detection_config_widget.cpp
     src/config_manager.cpp
 )
 

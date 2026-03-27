@@ -31,3 +31,5 @@ Thumbs.db
 3rdparty/halcon/
 
 images/
+build/*
+CMakeFiles/*

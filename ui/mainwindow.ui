@@ -6,12 +6,12 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1200</width>
-    <height>800</height>
+    <width>1400</width>
+    <height>900</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>图像处理工具</string>
+   <string>图像处理工具 - 多ROI模式</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout_main">
@@ -47,7 +47,13 @@
       <item>
        <widget class="QLabel" name="label_25">
         <property name="text">
-         <string>Blob分析工具</string>
+         <string>Blob分析工具 - 多ROI模式</string>
+        </property>
+        <property name="font">
+         <font>
+          <pointsize>12</pointsize>
+          <weight>700</weight>
+         </font>
         </property>
        </widget>
       </item>
@@ -64,10 +70,36 @@
         </property>
        </spacer>
       </item>
+      <item>
+       <widget class="QPushButton" name="btn_saveConfig">
+        <property name="text">
+         <string>保存配置</string>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>80</width>
+          <height>35</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btn_importConfig">
+        <property name="text">
+         <string>导入配置</string>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>80</width>
+          <height>35</height>
+         </size>
+        </property>
+       </widget>
+      </item>
      </layout>
     </item>
     
-    <!-- 主分割器：左侧控制面板 + 右侧图像显示 -->
+    <!-- 主分割器：三栏布局 -->
     <item>
      <widget class="QSplitter" name="splitter_main">
       <property name="orientation">
@@ -77,24 +109,103 @@
        <bool>false</bool>
       </property>
       
-      <!-- 左侧控制面板 -->
-      <widget class="QWidget" name="widget_leftPanel">
+      <!-- 左侧ROI列表面板 -->
+      <widget class="QWidget" name="widget_roiPanel">
        <property name="minimumSize">
         <size>
-         <width>300</width>
+         <width>250</width>
          <height>0</height>
         </size>
        </property>
        <property name="maximumSize">
         <size>
-         <width>500</width>
+         <width>400</width>
          <height>16777215</height>
         </size>
        </property>
-       <layout class="QVBoxLayout" name="verticalLayout_leftPanel">
-        <!-- 操作按钮组 -->
+       <layout class="QVBoxLayout" name="verticalLayout_roiPanel">
+        <!-- ROI面板标题 -->
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_buttons">
+         <layout class="QHBoxLayout" name="horizontalLayout_roiTitle">
+          <item>
+           <widget class="QLabel" name="label_roiTitle">
+            <property name="text">
+             <string>ROI列表</string>
+            </property>
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+              <weight>700</weight>
+             </font>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_roiTitle">
+            <property name="orientation">
+             <enum>Qt::Orientation::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </item>
+        
+        <!-- ROI操作按钮 -->
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_roiButtons">
+          <item>
+           <widget class="QPushButton" name="btn_addRoi">
+            <property name="text">
+             <string>+ 添加ROI</string>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>30</height>
+             </size>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btn_deleteRoi">
+            <property name="text">
+             <string>- 删除ROI</string>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>30</height>
+             </size>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        
+        <!-- ROI列表 -->
+        <item>
+         <widget class="QTreeWidget" name="treeWidget_roiList">
+          <property name="headerHidden">
+           <bool>true</bool>
+          </property>
+          <property name="rootIsDecorated">
+           <bool>true</bool>
+          </property>
+          <property name="alternatingRowColors">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        
+        <!-- 图像操作按钮 -->
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_imageButtons">
           <item>
            <widget class="QPushButton" name="btn_openImg">
             <property name="text">
@@ -109,9 +220,9 @@
            </widget>
           </item>
           <item>
-           <widget class="QPushButton" name="btn_drawRoi">
+           <widget class="QPushButton" name="btn_saveImg">
             <property name="text">
-             <string>绘制ROI</string>
+             <string>保存结果</string>
             </property>
             <property name="minimumSize">
              <size>
@@ -123,12 +234,14 @@
           </item>
          </layout>
         </item>
+        
+        <!-- ROI绘制操作按钮 -->
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_buttons2">
+         <layout class="QHBoxLayout" name="horizontalLayout_roiDrawButtons">
           <item>
-           <widget class="QPushButton" name="btn_saveImg">
+           <widget class="QPushButton" name="btn_drawRoi">
             <property name="text">
-             <string>保存结果</string>
+             <string>绘制ROI</string>
             </property>
             <property name="minimumSize">
              <size>
@@ -154,9 +267,9 @@
          </layout>
         </item>
         
-        <!-- 配置操作按钮 -->
+        <!-- 检测操作按钮 -->
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_config">
+         <layout class="QHBoxLayout" name="horizontalLayout_detectButtons">
           <item>
            <widget class="QPushButton" name="btn_addDetect">
             <property name="text">
@@ -174,36 +287,6 @@
            <widget class="QPushButton" name="btn_deleteDetect">
             <property name="text">
              <string>删除检测</string>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>0</width>
-              <height>30</height>
-             </size>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_config2">
-          <item>
-           <widget class="QPushButton" name="btn_saveConfig">
-            <property name="text">
-             <string>保存参数</string>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>0</width>
-              <height>30</height>
-             </size>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="btn_importConfig">
-            <property name="text">
-             <string>导入参数</string>
             </property>
             <property name="minimumSize">
              <size>
@@ -241,9 +324,9 @@
        </layout>
       </widget>
       
-      <!-- 右侧图像显示区域 -->
-      <widget class="QWidget" name="widget_rightPanel">
-       <layout class="QVBoxLayout" name="verticalLayout_rightPanel">
+      <!-- 中间图像显示区域 -->
+      <widget class="QWidget" name="widget_imagePanel">
+       <layout class="QVBoxLayout" name="verticalLayout_imagePanel">
         <item>
          <widget class="ImageView" name="graphicsView">
           <property name="sizePolicy">
@@ -251,6 +334,155 @@
             <horstretch>1</horstretch>
             <verstretch>1</verstretch>
            </sizepolicy>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      
+      <!-- 右侧检测项配置面板 -->
+      <widget class="QWidget" name="widget_detectionPanel">
+       <property name="minimumSize">
+        <size>
+         <width>300</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>500</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <layout class="QVBoxLayout" name="verticalLayout_detectionPanel">
+        <!-- 检测项面板标题 -->
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_detectionTitle">
+          <item>
+           <widget class="QLabel" name="label_detectionTitle">
+            <property name="text">
+             <string>检测项配置</string>
+            </property>
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+              <weight>700</weight>
+             </font>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_detectionTitle">
+            <property name="orientation">
+             <enum>Qt::Orientation::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </item>
+        
+        <!-- 当前ROI显示 -->
+        <item>
+         <widget class="QLabel" name="label_currentRoi">
+          <property name="text">
+           <string>当前ROI: 未选择</string>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">QLabel { 
+    background-color: #f0f0f0; 
+    padding: 8px; 
+    border: 1px solid #ccc; 
+    border-radius: 4px; 
+    font-weight: bold;
+}</string>
+          </property>
+         </widget>
+        </item>
+        
+        <!-- 检测项操作按钮 -->
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_detectionButtons">
+          <item>
+           <widget class="QPushButton" name="btn_addDetection">
+            <property name="text">
+             <string>+ 添加检测项</string>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>30</height>
+             </size>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btn_deleteDetection">
+            <property name="text">
+             <string>- 删除检测项</string>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>30</height>
+             </size>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        
+        <!-- 检测项列表 -->
+        <item>
+         <widget class="QScrollArea" name="scrollArea_detectionList">
+          <property name="widgetResizable">
+           <bool>true</bool>
+          </property>
+          <widget class="QWidget" name="scrollAreaWidgetContents">
+           <property name="geometry">
+            <rect>
+             <x>0</x>
+             <y>0</y>
+             <width>280</width>
+             <height>400</height>
+            </rect>
+           </property>
+           <layout class="QVBoxLayout" name="verticalLayout_detectionList">
+            <item>
+             <widget class="QLabel" name="label_noDetection">
+              <property name="text">
+               <string>请先选择一个ROI</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignmentFlag::AlignCenter</set>
+              </property>
+              <property name="styleSheet">
+               <string notr="true">QLabel { 
+    color: #999; 
+    font-style: italic; 
+    padding: 20px;
+}</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </widget>
+        </item>
+        
+        <!-- TabWidget用于显示检测配置 -->
+        <item>
+         <widget class="QTabWidget" name="tabWidget_detectionConfig">
+          <property name="currentIndex">
+           <number>-1</number>
+          </property>
+          <property name="tabBarAutoHide">
+           <bool>true</bool>
           </property>
          </widget>
         </item>
@@ -266,7 +498,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1200</width>
+     <width>1400</width>
      <height>25</height>
     </rect>
    </property>

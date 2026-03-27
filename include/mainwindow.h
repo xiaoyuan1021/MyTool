@@ -32,6 +32,9 @@
 #include "widgets/process_tab_widget.h"
 #include "widgets/judge_tab_widget.h"
 #include "widgets/barcode_tab_widget.h"
+#include "widgets/roi_list_widget.h"
+#include "widgets/detection_config_widget.h"
+#include "roi_config.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -117,6 +120,96 @@ private:
     QFutureWatcher<PipelineContext> m_pipelineWatcher;
     bool m_isProcessing = false;
 
+    // ========== 多ROI管理相关 ==========
+    
+    // ROI配置数据
+    MultiRoiConfig m_multiRoiConfig;
+    
+    // UI组件
+    std::unique_ptr<RoiListWidget> m_roiListWidget;
+    std::unique_ptr<DetectionConfigWidget> m_detectionConfigWidget;
+    
+    // ========== 多ROI管理方法 ==========
+    
+    /**
+     * @brief 初始化多ROI管理组件
+     */
+    void initMultiRoiManagement();
+    
+    /**
+     * @brief 连接多ROI管理信号
+     */
+    void connectMultiRoiSignals();
+    
+    /**
+     * @brief 更新图像显示（支持多ROI）
+     */
+    void updateImageWithMultipleRois();
+    
+    /**
+     * @brief 添加新ROI
+     * @param roiName ROI名称
+     */
+    void addNewRoi(const QString& roiName);
+    
+    /**
+     * @brief 删除ROI
+     * @param roiId ROI ID
+     */
+    void deleteRoi(const QString& roiId);
+    
+    /**
+     * @brief 选中ROI
+     * @param roiId ROI ID
+     */
+    void selectRoi(const QString& roiId);
+    
+    /**
+     * @brief 重命名ROI
+     * @param roiId ROI ID
+     * @param newName 新名称
+     */
+    void renameRoi(const QString& roiId, const QString& newName);
+    
+    /**
+     * @brief 切换ROI激活状态
+     * @param roiId ROI ID
+     * @param active 激活状态
+     */
+    void toggleRoiActive(const QString& roiId, bool active);
+    
+    /**
+     * @brief 添加检测项
+     * @param type 检测类型
+     * @param name 检测项名称
+     */
+    void addDetectionItem(DetectionType type, const QString& name);
+    
+    /**
+     * @brief 删除检测项
+     * @param itemId 检测项ID
+     */
+    void deleteDetectionItem(const QString& itemId);
+    
+    /**
+     * @brief 更新检测项配置
+     * @param itemId 检测项ID
+     */
+    void updateDetectionItem(const QString& itemId);
+    
+    /**
+     * @brief 保存多ROI配置
+     * @param filePath 文件路径
+     */
+    void saveMultiRoiConfig(const QString& filePath);
+    
+    /**
+     * @brief 加载多ROI配置
+     * @param filePath 文件路径
+     */
+    void loadMultiRoiConfig(const QString& filePath);
+
 };
+
 
 #endif // MAINWINDOW_H
