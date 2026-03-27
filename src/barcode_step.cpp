@@ -51,7 +51,6 @@ StepBarcodeRecognition::StepBarcodeRecognition(const BarcodeConfig* config)
     catch (const HException& ex)
     {
         qDebug() << "[Barcode] 一维条码模型创建异常:" << ex.ErrorMessage().Text();
-        qDebug() << "[Barcode] 错误码:" << ex.ErrorCode();
     }
     
     // 创建二维数据码模型
@@ -262,22 +261,27 @@ void StepBarcodeRecognition::run(PipelineContext& ctx)
             }
             
             HTuple decodedStrings;
+            
+            // FindBarCode标准调用方式 - 3参数版本
             HRegion symbolRegions = barcodeModel_.FindBarCode(hImg, codeType, &decodedStrings);
             
             numFound = decodedStrings.Length();
             
-            // 获取更详细的识别结果
-            HTuple resultHandles;
+            // 尝试获取质量值
+            HTuple qualityValues;
             try
             {
-                // 注意：GetBarCodeObject返回的是HObject，不是HTuple
-                // 这里我们只需要获取解码类型信息
-                resultHandles = barcodeModel_.GetBarCodeResult("all", "decoded_types");
+                if (cfg_->returnQuality)
+                {
+                    qualityValues = barcodeModel_.GetBarCodeResult("all", "quality");
+                }
             }
             catch (...)
             {
-                resultHandles = HTuple();
+                qDebug() << "[Barcode] 无法获取质量值";
             }
+            
+            qDebug() << "[Barcode] 识别到" << numFound << "个条码";
             
             for (int i = 0; i < numFound; i++)
             {
@@ -307,17 +311,11 @@ void StepBarcodeRecognition::run(PipelineContext& ctx)
                     // 尝试获取实际识别的条码类型
                     try
                     {
-                        if (resultHandles.Length() > i)
+                        // 使用GetBarCodeResult获取解码类型
+                        HTuple decodedType = barcodeModel_.GetBarCodeResult("all", "decoded_types");
+                        if (decodedType.Length() > i)
                         {
-                            HTuple decodedType = barcodeModel_.GetBarCodeResult("all", "decoded_types");
-                            if (decodedType.Length() > i)
-                            {
-                                result.type = QString(decodedType[i].S().Text());
-                            }
-                            else
-                            {
-                                result.type = "Auto";
-                            }
+                            result.type = QString(decodedType[i].S().Text());
                         }
                         else
                         {
@@ -360,27 +358,12 @@ void StepBarcodeRecognition::run(PipelineContext& ctx)
                                             input.cols * 0.5, input.rows * 0.5);
                 }
                 
-                // 获取质量评分
-                try
+                // 获取质量评分 - 使用在循环外已获取的质量值
+                if (qualityValues.Length() > i)
                 {
-                    if (cfg_->returnQuality)
-                    {
-                        HTuple qualityValues = barcodeModel_.GetBarCodeResult("all", "quality");
-                        if (qualityValues.Length() > i)
-                        {
-                            result.quality = qualityValues[i].D();
-                        }
-                        else
-                        {
-                            result.quality = -1.0;  // 表示质量不可用
-                        }
-                    }
-                    else
-                    {
-                        result.quality = -1.0;  // 表示质量不可用
-                    }
+                    result.quality = qualityValues[i].D();
                 }
-                catch (...)
+                else
                 {
                     result.quality = -1.0;  // 表示质量不可用
                 }

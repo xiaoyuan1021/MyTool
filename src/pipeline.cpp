@@ -29,7 +29,7 @@ void Pipeline::run(PipelineContext& ctx)
     for (size_t i = 0; i < steps_.size(); ++i) {
         auto& step = steps_[i];
         if (step) {
-            qDebug() << "[Pipeline] 执行步骤" << (i + 1);
+            //qDebug() << "[Pipeline] 执行步骤" << (i + 1);
             step->run(ctx);
         } else {
             qDebug() << "[Pipeline] 警告：步骤" << (i + 1) << "为空，跳过";
