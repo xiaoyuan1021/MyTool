@@ -8,7 +8,7 @@
 #include <QTimer>
 #include <QSignalBlocker>
 #include <functional>
-#include "ui_mainwindow.h"
+#include "ui_enhance_tab.h"
 
 
 namespace Ui {
