@@ -41,7 +41,6 @@ private slots:
     void onCodeTypeChanged(int index);
     void onMaxNumChanged(int value);
     void onReturnQualityChanged(bool checked);
-    void onQuietZoneChanged(bool checked);
     void handleApply();
 
 signals:

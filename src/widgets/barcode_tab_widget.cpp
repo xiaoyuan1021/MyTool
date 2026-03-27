@@ -21,8 +21,6 @@ BarcodeTabWidget::BarcodeTabWidget(PipelineManager* pipelineManager,
             this, &BarcodeTabWidget::onMaxNumChanged);
     connect(m_ui->chk_returnQuality, &QCheckBox::toggled,
             this, &BarcodeTabWidget::onReturnQualityChanged);
-    connect(m_ui->chk_quietZone, &QCheckBox::toggled,
-            this, &BarcodeTabWidget::onQuietZoneChanged);
     connect(m_ui->btn_apply, &QPushButton::clicked,
             this, &BarcodeTabWidget::handleApply);
     
@@ -58,7 +56,6 @@ BarcodeConfig BarcodeTabWidget::getBarcodeConfig() const
     
     config.maxNumSymbols = m_ui->spinBox_maxNum->value();
     config.returnQuality = m_ui->chk_returnQuality->isChecked();
-    config.quietZone = m_ui->chk_quietZone->isChecked();
     
     return config;
 }
@@ -142,12 +139,6 @@ void BarcodeTabWidget::onMaxNumChanged(int value)
 }
 
 void BarcodeTabWidget::onReturnQualityChanged(bool checked)
-{
-    Q_UNUSED(checked);
-    updatePipelineConfig();
-}
-
-void BarcodeTabWidget::onQuietZoneChanged(bool checked)
 {
     Q_UNUSED(checked);
     updatePipelineConfig();

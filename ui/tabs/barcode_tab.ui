@@ -99,22 +99,7 @@
           </item>
           <item>
            <property name="text">
-            <string>EAN-13</string>
-           </property>
-          </item>
-          <item>
-           <property name="text">
-            <string>EAN-8</string>
-           </property>
-          </item>
-          <item>
-           <property name="text">
-            <string>Code 128</string>
-           </property>
-          </item>
-          <item>
-           <property name="text">
-            <string>Code 39</string>
+            <string>条形码</string>
            </property>
           </item>
           <item>
@@ -190,16 +175,6 @@
          <widget class="QCheckBox" name="chk_returnQuality">
           <property name="text">
            <string>返回质量评分</string>
-          </property>
-          <property name="checked">
-           <bool>true</bool>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QCheckBox" name="chk_quietZone">
-          <property name="text">
-           <string>检测静区</string>
           </property>
           <property name="checked">
            <bool>true</bool>

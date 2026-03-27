@@ -1,5 +1,7 @@
 #pragma once
 
+#include <QStringList>
+
 /**
  * Pipeline相关的枚举类型定义
  * 
@@ -53,14 +55,12 @@ struct BarcodeConfig
     QStringList codeTypes = {"auto"};             // 条码类型，"auto"表示自动检测
     int maxNumSymbols = 0;                        // 最大识别数量，0表示不限制
     bool returnQuality = true;                    // 返回质量信息
-    bool quietZone = true;                        // 是否检测静区
     
     bool operator==(const BarcodeConfig& other) const
     {
         return enableBarcode == other.enableBarcode &&
                codeTypes == other.codeTypes &&
                maxNumSymbols == other.maxNumSymbols &&
-               returnQuality == other.returnQuality &&
-               quietZone == other.quietZone;
+               returnQuality == other.returnQuality;
     }
 };

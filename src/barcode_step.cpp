@@ -7,13 +7,51 @@ StepBarcodeRecognition::StepBarcodeRecognition(const BarcodeConfig* config)
     // 创建条码模型
     try
     {
-        // 使用默认构造函数，然后调用CreateBarCodeModel方法
-        barcodeModel_.CreateBarCodeModel(HTuple(), HTuple());
+        // 使用正确的参数初始化方式创建条码模型
+        // 根据HALCON文档，CreateBarCodeModel需要参数名称和值的元组
+        HTuple paramNames, paramValues;
+        
+        // 设置基础参数
+        paramNames[0] = "check_char";
+        paramValues[0] = "absent";
+        
+        paramNames[1] = "element_size_min";
+        paramValues[1] = 1.0;
+        
+        paramNames[2] = "element_size_max";
+        paramValues[2] = 100.0;
+        
+        paramNames[3] = "orientation";
+        paramValues[3] = 0;
+        
+        paramNames[4] = "orientation_tol";
+        paramValues[4] = 45;
+        
+        paramNames[5] = "meas_thresh";
+        paramValues[5] = 0.2;
+        
+        paramNames[6] = "num_scanlines";
+        paramValues[6] = 16;
+        
+        paramNames[7] = "min_identical_scanlines";
+        paramValues[7] = 2;
+        
+        // 创建条码模型
+        barcodeModel_.CreateBarCodeModel(paramNames, paramValues);
+        
+        // 额外设置参数（使用SetBarCodeParam）
+        // 注意：small_elements_robustness应该使用数值而不是字符串
+        barcodeModel_.SetBarCodeParam("small_elements_robustness", 1);
+        
+        // quiet_zone参数使用标准值
+        barcodeModel_.SetBarCodeParam("quiet_zone", "true");
+        
         qDebug() << "[Barcode] 一维条码模型创建成功";
     }
     catch (const HException& ex)
     {
         qDebug() << "[Barcode] 一维条码模型创建异常:" << ex.ErrorMessage().Text();
+        qDebug() << "[Barcode] 错误码:" << ex.ErrorCode();
     }
     
     // 创建二维数据码模型
@@ -37,9 +75,7 @@ StepBarcodeRecognition::~StepBarcodeRecognition()
 bool StepBarcodeRecognition::is2DCode(const QString& codeType) const
 {
     // 判断是否为二维数据码
-    return (codeType == "QR Code" || codeType == "qrcode" || codeType == "QR" || 
-            codeType == "QR二维码" || codeType == "Data Matrix" || codeType == "DataMatrix" || 
-            codeType == "data_matrix" || codeType == "PDF417" || codeType == "Aztec");
+    return (codeType == "QR Code" || codeType == "Data Matrix");
 }
 
 void StepBarcodeRecognition::run(PipelineContext& ctx)
@@ -72,20 +108,59 @@ void StepBarcodeRecognition::run(PipelineContext& ctx)
     
     try
     {
-        // 转换为Halcon图像
+        // 转换为灰度图像并进行预处理
         HImage hImg;
+        cv::Mat gray;
+        
         if (input.channels() == 3)
         {
-            cv::Mat gray;
             cv::cvtColor(input, gray, cv::COLOR_BGR2GRAY);
-            hImg = HImage("byte", (Hlong)gray.cols, (Hlong)gray.rows, 
-                         (void*)gray.data);
         }
         else
         {
-            hImg = HImage("byte", (Hlong)input.cols, (Hlong)input.rows, 
-                         (void*)input.data);
+            gray = input.clone();
         }
+        
+        // 检测是否需要反色：条码应该是深色在浅色背景上
+        // 计算图像平均亮度，如果整体偏亮（深色背景浅色条码），则反色
+        cv::Scalar meanBrightness = cv::mean(gray);
+        bool needsInvert = (meanBrightness[0] < 128);  // 平均亮度低于128，说明是深色背景
+        
+        if (needsInvert)
+        {
+            qDebug() << "[Barcode] 检测到深色背景，执行反色处理";
+            cv::bitwise_not(gray, gray);
+        }
+        
+        // 条码识别专用的图像预处理
+        // 条码识别需要清晰的边缘，避免过度处理
+        cv::Mat processed;
+        
+        // 方法1：直接使用灰度图（最保守的方法）
+        // 条码识别算法通常对原始图像处理效果更好
+        processed = gray.clone();
+        
+        // 可选：轻度对比度增强（仅在需要时）
+        // 如果平均亮度在合理范围内，不进行额外增强
+        if (meanBrightness[0] > 180 || meanBrightness[0] < 60)
+        {
+            // 仅在亮度极端时进行轻度调整
+            double alpha = 1.1;  // 非常保守的对比度增强
+            int beta = 0;
+            cv::Mat enhanced;
+            gray.convertTo(enhanced, -1, alpha, beta);
+            processed = enhanced;
+        }
+        
+        // 注意：条码识别不使用中值滤波，因为会模糊条码边缘
+        // HALCON的条码识别算法内部有降噪处理
+        
+        qDebug() << "[Barcode] 图像预处理完成 - 尺寸:" << processed.cols << "x" << processed.rows
+                 << "反色:" << (needsInvert ? "是" : "否")
+                 << "平均亮度:" << meanBrightness[0];
+        
+        hImg = HImage("byte", (Hlong)processed.cols, (Hlong)processed.rows, 
+                     (void*)processed.data);
         
         // 构建条码类型字符串
         QString codeTypeStr;
@@ -98,12 +173,20 @@ void StepBarcodeRecognition::run(PipelineContext& ctx)
             codeTypeStr = cfg_->codeTypes.first();
         }
         
+        // 修复：将"条形码"映射为"auto"
+        if (codeTypeStr == "条形码")
+        {
+            codeTypeStr = "auto";
+        }
+        
         // 判断是二维数据码还是一维条码
         bool use2DCode = is2DCode(codeTypeStr);
         
         // 执行条码识别
         int numFound = 0;
         ctx.barcodeResults.clear();
+        
+        qDebug() << "[Barcode] 开始识别 - 条码类型:" << codeTypeStr << "是否2D:" << use2DCode;
         
         if (use2DCode)
         {
@@ -159,25 +242,19 @@ void StepBarcodeRecognition::run(PipelineContext& ctx)
             qDebug() << "[Barcode] 使用一维条码模型识别";
             
             HTuple codeType;
-            if (codeTypeStr == "auto" || codeTypeStr == "自动检测")
+            if (codeTypeStr == "auto" || codeTypeStr == "自动检测" || codeTypeStr == "条形码")
             {
-                codeType = "auto";
-            }
-            else if (codeTypeStr == "EAN-13" || codeTypeStr == "EAN13")
-            {
-                codeType = "EAN-13";
-            }
-            else if (codeTypeStr == "EAN-8" || codeTypeStr == "EAN8")
-            {
-                codeType = "EAN-8";
-            }
-            else if (codeTypeStr == "Code 128" || codeTypeStr == "Code128")
-            {
-                codeType = "Code 128";
-            }
-            else if (codeTypeStr == "Code 39" || codeTypeStr == "Code39")
-            {
-                codeType = "Code 39";
+                // 使用常见的一维条码类型列表，提高识别效率
+                // 根据 Halcon 文档，指定具体的条码类型列表比 "auto" 更可靠
+                codeType[0] = "EAN-13";
+                codeType[1] = "EAN-8";
+                codeType[2] = "UPC-A";
+                codeType[3] = "UPC-E";
+                codeType[4] = "Code 128";
+                codeType[5] = "Code 39";
+                codeType[6] = "2/5 Interleaved";
+                codeType[7] = "Codabar";
+                qDebug() << "[Barcode] 使用自动检测模式，支持: EAN-13, EAN-8, UPC-A, UPC-E, Code 128, Code 39, 2/5 Interleaved, Codabar";
             }
             else
             {
@@ -188,6 +265,19 @@ void StepBarcodeRecognition::run(PipelineContext& ctx)
             HRegion symbolRegions = barcodeModel_.FindBarCode(hImg, codeType, &decodedStrings);
             
             numFound = decodedStrings.Length();
+            
+            // 获取更详细的识别结果
+            HTuple resultHandles;
+            try
+            {
+                // 注意：GetBarCodeObject返回的是HObject，不是HTuple
+                // 这里我们只需要获取解码类型信息
+                resultHandles = barcodeModel_.GetBarCodeResult("all", "decoded_types");
+            }
+            catch (...)
+            {
+                resultHandles = HTuple();
+            }
             
             for (int i = 0; i < numFound; i++)
             {
@@ -214,23 +304,92 @@ void StepBarcodeRecognition::run(PipelineContext& ctx)
                 // 获取条码类型
                 if (codeTypeStr == "auto" || codeTypeStr == "自动检测")
                 {
-                    result.type = "Auto";
+                    // 尝试获取实际识别的条码类型
+                    try
+                    {
+                        if (resultHandles.Length() > i)
+                        {
+                            HTuple decodedType = barcodeModel_.GetBarCodeResult("all", "decoded_types");
+                            if (decodedType.Length() > i)
+                            {
+                                result.type = QString(decodedType[i].S().Text());
+                            }
+                            else
+                            {
+                                result.type = "Auto";
+                            }
+                        }
+                        else
+                        {
+                            result.type = "Auto";
+                        }
+                    }
+                    catch (...)
+                    {
+                        result.type = "Auto";
+                    }
                 }
                 else
                 {
                     result.type = codeTypeStr;
                 }
                 
-                // 简化的位置信息
-                result.location = QRectF(input.cols * 0.25, input.rows * 0.25, 
-                                        input.cols * 0.5, input.rows * 0.5);
+                // 获取位置信息
+                try
+                {
+                    if (i < symbolRegions.CountObj())
+                    {
+                        HTuple row1, col1, row2, col2;
+                        symbolRegions.SelectObj(i + 1).SmallestRectangle1(&row1, &col1, &row2, &col2);
+                        double x = col1.D();
+                        double y = row1.D();
+                        double w = col2.D() - col1.D();
+                        double h = row2.D() - row1.D();
+                        result.location = QRectF(x, y, w, h);
+                    }
+                    else
+                    {
+                        // 使用默认位置
+                        result.location = QRectF(input.cols * 0.25, input.rows * 0.25, 
+                                                input.cols * 0.5, input.rows * 0.5);
+                    }
+                }
+                catch (...)
+                {
+                    result.location = QRectF(input.cols * 0.25, input.rows * 0.25, 
+                                            input.cols * 0.5, input.rows * 0.5);
+                }
                 
-                result.quality = 100.0;
+                // 获取质量评分
+                try
+                {
+                    if (cfg_->returnQuality)
+                    {
+                        HTuple qualityValues = barcodeModel_.GetBarCodeResult("all", "quality");
+                        if (qualityValues.Length() > i)
+                        {
+                            result.quality = qualityValues[i].D();
+                        }
+                        else
+                        {
+                            result.quality = -1.0;  // 表示质量不可用
+                        }
+                    }
+                    else
+                    {
+                        result.quality = -1.0;  // 表示质量不可用
+                    }
+                }
+                catch (...)
+                {
+                    result.quality = -1.0;  // 表示质量不可用
+                }
                 
                 ctx.barcodeResults.append(result);
                 
                 qDebug() << "[Barcode] 识别到:" << result.type 
-                         << "数据:" << result.data;
+                         << "数据:" << result.data
+                         << "质量:" << result.quality;
             }
         }
         
