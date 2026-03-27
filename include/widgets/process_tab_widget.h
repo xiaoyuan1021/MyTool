@@ -1,7 +1,6 @@
 #pragma once
 
 #include <QObject>
-#include "ui_mainwindow.h"
 #include "pipeline_manager.h"
 #include <QListWidgetItem>
 

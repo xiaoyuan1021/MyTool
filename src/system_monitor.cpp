@@ -109,6 +109,33 @@ void SystemMonitor::setupWithLogging(QLabel* cpuLabel, QLabel* memoryLabel, int 
     });
 }
 
+void SystemMonitor::setupWithStatusBar(QStatusBar* statusBar, int intervalMs)
+{
+    if (!statusBar) {
+        Logger::instance()->error("状态栏指针为空，无法设置系统监控");
+        return;
+    }
+
+    // 创建状态栏标签
+    QLabel* cpuLabel = new QLabel("CPU: 0.0%");
+    QLabel* memoryLabel = new QLabel("内存: 0 MB / 0 MB (0.0%)");
+    
+    // 设置标签样式
+    cpuLabel->setStyleSheet("QLabel { color: #333; font-size: 12px; margin-right: 15px; }");
+    memoryLabel->setStyleSheet("QLabel { color: #333; font-size: 12px; margin-right: 15px; }");
+    
+    // 添加到状态栏
+    statusBar->addPermanentWidget(cpuLabel);
+    statusBar->addPermanentWidget(memoryLabel);
+    
+    // 设置标签并启动监控
+    setLabels(cpuLabel, memoryLabel);
+    setUpdateInterval(intervalMs);
+    startMonitoring();
+
+    Logger::instance()->info("系统监控已在状态栏中启动");
+}
+
 // ========== 定时更新槽函数 ==========
 
 void SystemMonitor::updateSystemInfo()
@@ -155,9 +182,9 @@ void SystemMonitor::initPlatformResources()
     }
 
     // 添加 CPU 计数器（所有处理器的总使用率）
-    status = PdhAddCounter(
+    status = PdhAddCounterA(
         (PDH_HQUERY)m_cpuQuery,
-        L"\\Processor(_Total)\\% Processor Time",  // 计数器路径
+        "\\Processor(_Total)\\% Processor Time",  // 计数器路径
         0,
         (PDH_HCOUNTER*)&m_cpuCounter
         );

@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QTimer>
 #include <QLabel>
+#include <QStatusBar>
 
 /**
  * @brief 系统资源监控类
@@ -57,6 +58,13 @@ public:
      * @param intervalMs 更新间隔
      */
     void setupWithLogging(QLabel* cpuLabel, QLabel* memoryLabel, int intervalMs = 1000);
+
+    /**
+     * @brief 设置并启动监控（显示在状态栏）
+     * @param statusBar 状态栏控件
+     * @param intervalMs 更新间隔
+     */
+    void setupWithStatusBar(QStatusBar* statusBar, int intervalMs = 1000);
 
     // ========== 数据获取接口 ==========
 

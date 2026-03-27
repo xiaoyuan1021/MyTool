@@ -53,6 +53,7 @@ set(HEADERS
     include/system_monitor.h
     include/match_strategy.h
     include/file_manager.h
+    include/roi_item.h
     include/roi_manager.h
     include/log_page.h
     include/widgets/image_tab_widget.h

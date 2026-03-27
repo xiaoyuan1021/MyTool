@@ -18,6 +18,10 @@ MainWindow::MainWindow(QWidget *parent)
     , m_currentTabIndex(0)
 {
     ui->setupUi(this);
+    
+    // 设置窗口最大化启动
+    setWindowState(Qt::WindowMaximized);
+    showMaximized();
 
     m_processDebounceTimer =new QTimer(this);
     m_processDebounceTimer ->setSingleShot(true);
@@ -191,7 +195,8 @@ MainWindow::~MainWindow()
 
 void MainWindow::setupSystemMonitor()
 {
-    m_systemMonitor->setupWithLogging(ui->label_cpu, ui->label_memory, 1000);
+    // 系统监控信息显示在状态栏
+    m_systemMonitor->setupWithStatusBar(ui->statusbar, 1000);
 }
 
 // ========== 初始化 ==========
@@ -212,7 +217,25 @@ void MainWindow::setupUI()
 void MainWindow::setupConnections()
 {
     // ========== 手动连接按钮信号 ==========
+    connect(ui->btn_Home, &QPushButton::clicked, this, &MainWindow::on_btn_Home_clicked);
+    connect(ui->btn_Log, &QPushButton::clicked, this, &MainWindow::on_btn_Log_clicked);
+    connect(ui->btn_openImg, &QPushButton::clicked, this, &MainWindow::on_btn_openImg_clicked);
+    connect(ui->btn_saveImg, &QPushButton::clicked, this, &MainWindow::on_btn_saveImg_clicked);
+    connect(ui->btn_drawRoi, &QPushButton::clicked, this, &MainWindow::on_btn_drawRoi_clicked);
     connect(ui->btn_resetROI, &QPushButton::clicked, this, &MainWindow::on_btn_resetROI_clicked);
+    connect(ui->btn_saveConfig, &QPushButton::clicked, this, &MainWindow::on_btn_saveConfig_clicked);
+    connect(ui->btn_importConfig, &QPushButton::clicked, this, &MainWindow::on_btn_importConfig_clicked);
+    connect(ui->btn_addDetect, &QPushButton::clicked, this, [this]() {
+        // 添加检测功能（如果需要实现）
+        Logger::instance()->info("添加检测按钮被点击");
+    });
+    connect(ui->btn_deleteDetect, &QPushButton::clicked, this, [this]() {
+        // 删除检测功能（如果需要实现）
+        Logger::instance()->info("删除检测按钮被点击");
+    });
+    
+    // 连接tabWidget的currentChanged信号
+    connect(ui->tabWidget, &QTabWidget::currentChanged, this, &MainWindow::on_tabWidget_currentChanged);
     
     // ========== FileManager信号 ==========
     connect(m_fileManager, &FileManager::imageLoaded,
