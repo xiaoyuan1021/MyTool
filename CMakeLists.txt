@@ -67,7 +67,11 @@ set(HEADERS
     include/widgets/barcode_tab_widget.h
     include/widgets/roi_list_widget.h
     include/widgets/detection_config_widget.h
+    include/widgets/blob_analysis_config_widget.h
+    include/widgets/line_detection_config_widget.h
+    include/widgets/barcode_recognition_config_widget.h
     include/config_manager.h
+    include/detection_config_types.h
 )
 
 # 源文件 (SOURCES)
@@ -99,6 +103,9 @@ set(SOURCES
     src/widgets/barcode_tab_widget.cpp
     src/widgets/roi_list_widget.cpp
     src/widgets/detection_config_widget.cpp
+    src/widgets/blob_analysis_config_widget.cpp
+    src/widgets/line_detection_config_widget.cpp
+    src/widgets/barcode_recognition_config_widget.cpp
     src/config_manager.cpp
 )
 

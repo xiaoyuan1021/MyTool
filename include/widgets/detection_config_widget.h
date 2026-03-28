@@ -15,6 +15,9 @@
 #include <QTabWidget>
 #include <QStackedWidget>
 #include "roi_config.h"
+#include "widgets/blob_analysis_config_widget.h"
+#include "widgets/line_detection_config_widget.h"
+#include "widgets/barcode_recognition_config_widget.h"
 
 /**
  * @brief 检测项配置卡片组件
@@ -60,10 +63,12 @@ signals:
 private slots:
     void onEnabledChanged(int state);
     void onDeleteClicked();
+    void onConfigChanged();
 
 private:
     void initUI();
     void initConnections();
+    void createConfigWidget();
 
     DetectionItem m_item;
     
@@ -71,6 +76,12 @@ private:
     QLabel* m_typeLabel;
     QPushButton* m_deleteButton;
     QGroupBox* m_configGroup;
+    QVBoxLayout* m_configLayout;
+    
+    // 配置组件（根据类型创建）
+    BlobAnalysisConfigWidget* m_blobConfigWidget;
+    LineDetectionConfigWidget* m_lineConfigWidget;
+    BarcodeRecognitionConfigWidget* m_barcodeConfigWidget;
 };
 
 /**

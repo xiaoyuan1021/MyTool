@@ -183,6 +183,10 @@ MainWindow::MainWindow(QWidget *parent)
     connect(Logger::instance(), &Logger::logMessage,
             m_logPage.get(), &LogPage::appendLog);
 
+    // 初始化多ROI管理
+    initMultiRoiManagement();
+    connectMultiRoiSignals();
+
 }
 
 MainWindow::~MainWindow()
@@ -585,9 +589,41 @@ void MainWindow::initMultiRoiManagement()
     // 创建检测项配置组件
     m_detectionConfigWidget = std::make_unique<DetectionConfigWidget>(this);
     
-    // 将组件添加到UI
-    // 注意：这些组件应该已经通过UI文件添加到了布局中
-    // 这里我们只需要设置信号连接
+    // 将组件添加到UI布局中
+    // 找到ROI面板的布局并添加ROI列表组件
+    QVBoxLayout* roiPanelLayout = ui->widget_roiPanel->findChild<QVBoxLayout*>("verticalLayout_roiPanel");
+    if (roiPanelLayout) {
+        // 移除原有的treeWidget_roiList
+        QTreeWidget* oldTreeWidget = ui->treeWidget_roiList;
+        if (oldTreeWidget) {
+            int index = roiPanelLayout->indexOf(oldTreeWidget);
+            if (index >= 0) {
+                roiPanelLayout->removeWidget(oldTreeWidget);
+                oldTreeWidget->hide();
+            }
+        }
+        
+        // 在分割线后插入ROI列表组件
+        QFrame* separator = ui->line_separator;
+        int separatorIndex = roiPanelLayout->indexOf(separator);
+        if (separatorIndex >= 0) {
+            roiPanelLayout->insertWidget(separatorIndex + 1, m_roiListWidget.get());
+        }
+    }
+    
+    // 找到检测项滚动区域的布局并添加检测配置组件
+    QVBoxLayout* detectionListLayout = ui->scrollArea_detectionList->findChild<QVBoxLayout*>("verticalLayout_detectionList");
+    if (detectionListLayout) {
+        // 移除原有的无检测项提示
+        QLabel* oldLabel = ui->label_noDetection;
+        if (oldLabel) {
+            detectionListLayout->removeWidget(oldLabel);
+            oldLabel->hide();
+        }
+        
+        // 添加检测配置组件
+        detectionListLayout->addWidget(m_detectionConfigWidget.get());
+    }
     
     Logger::instance()->info("多ROI管理组件初始化完成");
 }

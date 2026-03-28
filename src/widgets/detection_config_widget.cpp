@@ -3,6 +3,7 @@
 #include <QDebug>
 #include <QMessageBox>
 #include <QInputDialog>
+#include <QStackedWidget>
 
 // ========== DetectionItemCard 实现 ==========
 
@@ -13,6 +14,10 @@ DetectionItemCard::DetectionItemCard(const DetectionItem& item, QWidget* parent)
     , m_typeLabel(nullptr)
     , m_deleteButton(nullptr)
     , m_configGroup(nullptr)
+    , m_configLayout(nullptr)
+    , m_blobConfigWidget(nullptr)
+    , m_lineConfigWidget(nullptr)
+    , m_barcodeConfigWidget(nullptr)
 {
     initUI();
     initConnections();
@@ -33,6 +38,30 @@ void DetectionItemCard::updateItem(const DetectionItem& item)
     
     if (m_typeLabel) {
         m_typeLabel->setText(detectionTypeToString(item.type));
+    }
+    
+    // 更新配置组件
+    switch (m_item.type) {
+        case DetectionType::Blob:
+            if (m_blobConfigWidget) {
+                m_blobConfigWidget->setConfig(m_item.blobConfig);
+            }
+            break;
+            
+        case DetectionType::Line:
+            if (m_lineConfigWidget) {
+                m_lineConfigWidget->setConfig(m_item.lineConfig);
+            }
+            break;
+            
+        case DetectionType::Barcode:
+            if (m_barcodeConfigWidget) {
+                m_barcodeConfigWidget->setConfig(m_item.barcodeConfig);
+            }
+            break;
+            
+        default:
+            break;
     }
 }
 
@@ -97,14 +126,14 @@ void DetectionItemCard::initUI()
 
     // 创建配置组
     m_configGroup = new QGroupBox("配置参数", this);
-    QVBoxLayout* configLayout = new QVBoxLayout(m_configGroup);
+    m_configLayout = new QVBoxLayout(m_configGroup);
     
-    // 添加一些示例配置控件
+    // 添加名称标签
     QLabel* nameLabel = new QLabel(QString("名称: %1").arg(m_item.itemName), this);
-    QLabel* descLabel = new QLabel(QString("描述: %1").arg(m_item.description.isEmpty() ? "无" : m_item.description), this);
+    m_configLayout->addWidget(nameLabel);
     
-    configLayout->addWidget(nameLabel);
-    configLayout->addWidget(descLabel);
+    // 根据检测类型创建对应的配置组件
+    createConfigWidget();
 
     // 添加到主布局
     mainLayout->addLayout(headerLayout);
@@ -138,10 +167,83 @@ void DetectionItemCard::initUI()
     setLayout(mainLayout);
 }
 
+void DetectionItemCard::createConfigWidget()
+{
+    // 根据检测类型创建对应的配置组件
+    switch (m_item.type) {
+        case DetectionType::Blob:
+            m_blobConfigWidget = new BlobAnalysisConfigWidget(this);
+            m_blobConfigWidget->setConfig(m_item.blobConfig);
+            m_configLayout->addWidget(m_blobConfigWidget);
+            
+            connect(m_blobConfigWidget, &BlobAnalysisConfigWidget::configChanged,
+                    this, &DetectionItemCard::onConfigChanged);
+            break;
+            
+        case DetectionType::Line:
+            m_lineConfigWidget = new LineDetectionConfigWidget(this);
+            m_lineConfigWidget->setConfig(m_item.lineConfig);
+            m_configLayout->addWidget(m_lineConfigWidget);
+            
+            connect(m_lineConfigWidget, &LineDetectionConfigWidget::configChanged,
+                    this, &DetectionItemCard::onConfigChanged);
+            break;
+            
+        case DetectionType::Barcode:
+            m_barcodeConfigWidget = new BarcodeRecognitionConfigWidget(this);
+            m_barcodeConfigWidget->setConfig(m_item.barcodeConfig);
+            m_configLayout->addWidget(m_barcodeConfigWidget);
+            
+            connect(m_barcodeConfigWidget, &BarcodeRecognitionConfigWidget::configChanged,
+                    this, &DetectionItemCard::onConfigChanged);
+            break;
+            
+        default:
+            // 对于其他类型，显示暂不支持的提示
+            QLabel* notSupportedLabel = new QLabel(
+                QString("暂不支持 %1 的详细配置").arg(detectionTypeToString(m_item.type)), this);
+            notSupportedLabel->setStyleSheet("QLabel { color: #999; font-style: italic; }");
+            m_configLayout->addWidget(notSupportedLabel);
+            break;
+    }
+}
+
+void DetectionItemCard::onConfigChanged()
+{
+    // 根据检测类型更新对应的配置
+    switch (m_item.type) {
+        case DetectionType::Blob:
+            if (m_blobConfigWidget) {
+                m_item.blobConfig = m_blobConfigWidget->getConfig();
+            }
+            break;
+            
+        case DetectionType::Line:
+            if (m_lineConfigWidget) {
+                m_item.lineConfig = m_lineConfigWidget->getConfig();
+            }
+            break;
+            
+        case DetectionType::Barcode:
+            if (m_barcodeConfigWidget) {
+                m_item.barcodeConfig = m_barcodeConfigWidget->getConfig();
+            }
+            break;
+            
+        default:
+            break;
+    }
+    
+    emit itemConfigChanged(m_item.itemId);
+}
+
 void DetectionItemCard::initConnections()
 {
-    connect(m_enabledCheckBox, &QCheckBox::stateChanged, 
-            this, &DetectionItemCard::onEnabledChanged);
+    connect(m_enabledCheckBox, &QCheckBox::checkStateChanged, 
+            this, [this](Qt::CheckState state) {
+                m_item.enabled = (state == Qt::Checked);
+                emit itemConfigChanged(m_item.itemId);
+            });
     connect(m_deleteButton, &QPushButton::clicked, 
             this, &DetectionItemCard::onDeleteClicked);
 }
@@ -474,34 +576,44 @@ QWidget* DetectionConfigWidget::createDetectionTypeConfig(DetectionType type)
     
     switch (type) {
         case DetectionType::Barcode: {
-            QLabel* label = new QLabel("条码检测配置");
-            QComboBox* formatCombo = new QComboBox();
-            formatCombo->addItems({"QR Code", "Data Matrix", "Code 128", "Code 39"});
-            layout->addWidget(label);
-            layout->addWidget(new QLabel("条码格式:"));
-            layout->addWidget(formatCombo);
+            BarcodeRecognitionConfigWidget* barcodeConfig = new BarcodeRecognitionConfigWidget(this);
+            layout->addWidget(barcodeConfig);
+            
+            // 连接配置变化信号
+            connect(barcodeConfig, &BarcodeRecognitionConfigWidget::configChanged, this, [this]() {
+                if (m_currentRoi && !m_currentRoi->detectionItems.isEmpty()) {
+                    // 更新第一个检测项的配置
+                    DetectionItem& item = m_currentRoi->detectionItems[0];
+                    // 这里需要根据实际的配置组件更新检测项
+                    emit detectionConfigChanged(item.itemId);
+                }
+            });
             break;
         }
-        case DetectionType::Shape: {
-            QLabel* label = new QLabel("形状检测配置");
-            QDoubleSpinBox* thresholdSpin = new QDoubleSpinBox();
-            thresholdSpin->setRange(0.0, 1.0);
-            thresholdSpin->setValue(0.8);
-            layout->addWidget(label);
-            layout->addWidget(new QLabel("匹配阈值:"));
-            layout->addWidget(thresholdSpin);
+        case DetectionType::Line: {
+            LineDetectionConfigWidget* lineConfig = new LineDetectionConfigWidget(this);
+            layout->addWidget(lineConfig);
+            
+            // 连接配置变化信号
+            connect(lineConfig, &LineDetectionConfigWidget::configChanged, this, [this]() {
+                if (m_currentRoi && !m_currentRoi->detectionItems.isEmpty()) {
+                    DetectionItem& item = m_currentRoi->detectionItems[0];
+                    emit detectionConfigChanged(item.itemId);
+                }
+            });
             break;
         }
-        case DetectionType::Color: {
-            QLabel* label = new QLabel("颜色检测配置");
-            QSpinBox* hueMinSpin = new QSpinBox();
-            QSpinBox* hueMaxSpin = new QSpinBox();
-            hueMinSpin->setRange(0, 180);
-            hueMaxSpin->setRange(0, 180);
-            layout->addWidget(label);
-            layout->addWidget(new QLabel("色调范围:"));
-            layout->addWidget(hueMinSpin);
-            layout->addWidget(hueMaxSpin);
+        case DetectionType::Blob: {
+            BlobAnalysisConfigWidget* blobConfig = new BlobAnalysisConfigWidget(this);
+            layout->addWidget(blobConfig);
+            
+            // 连接配置变化信号
+            connect(blobConfig, &BlobAnalysisConfigWidget::configChanged, this, [this]() {
+                if (m_currentRoi && !m_currentRoi->detectionItems.isEmpty()) {
+                    DetectionItem& item = m_currentRoi->detectionItems[0];
+                    emit detectionConfigChanged(item.itemId);
+                }
+            });
             break;
         }
         default: {

@@ -7,6 +7,7 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include "detection_config_types.h"
 
 /**
  * @brief 检测类型枚举
@@ -65,12 +66,32 @@ struct DetectionItem {
     bool enabled;               // 是否启用
     QString description;        // 描述信息
 
+    // 特定类型的配置
+    BlobAnalysisConfig blobConfig;           // Blob分析配置
+    LineDetectionConfig lineConfig;          // 直线检测配置
+    BarcodeRecognitionConfig barcodeConfig;  // 条码识别配置
+
     DetectionItem() 
         : type(DetectionType::Blob), enabled(true) {}
 
     DetectionItem(const QString& name, DetectionType t)
         : itemName(name), type(t), enabled(true) {
         itemId = QString("det_%1").arg(reinterpret_cast<quintptr>(this), 8, 16, QChar('0'));
+        
+        // 根据类型初始化对应的配置
+        switch (type) {
+            case DetectionType::Blob:
+                blobConfig = BlobAnalysisConfig();
+                break;
+            case DetectionType::Line:
+                lineConfig = LineDetectionConfig();
+                break;
+            case DetectionType::Barcode:
+                barcodeConfig = BarcodeRecognitionConfig();
+                break;
+            default:
+                break;
+        }
     }
 
     /**
@@ -90,6 +111,21 @@ struct DetectionItem {
         }
         obj["parameters"] = params;
         
+        // 根据类型保存特定配置
+        switch (type) {
+            case DetectionType::Blob:
+                obj["blobConfig"] = blobConfig.toJson();
+                break;
+            case DetectionType::Line:
+                obj["lineConfig"] = lineConfig.toJson();
+                break;
+            case DetectionType::Barcode:
+                obj["barcodeConfig"] = barcodeConfig.toJson();
+                break;
+            default:
+                break;
+        }
+        
         return obj;
     }
 
@@ -106,6 +142,27 @@ struct DetectionItem {
         QJsonObject params = obj["parameters"].toObject();
         for (auto it = params.begin(); it != params.end(); ++it) {
             parameters[it.key()] = it.value().toVariant();
+        }
+        
+        // 根据类型加载特定配置
+        switch (type) {
+            case DetectionType::Blob:
+                if (obj.contains("blobConfig")) {
+                    blobConfig.fromJson(obj["blobConfig"].toObject());
+                }
+                break;
+            case DetectionType::Line:
+                if (obj.contains("lineConfig")) {
+                    lineConfig.fromJson(obj["lineConfig"].toObject());
+                }
+                break;
+            case DetectionType::Barcode:
+                if (obj.contains("barcodeConfig")) {
+                    barcodeConfig.fromJson(obj["barcodeConfig"].toObject());
+                }
+                break;
+            default:
+                break;
         }
     }
 };
