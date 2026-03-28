@@ -176,14 +176,12 @@ MainWindow::MainWindow(QWidget *parent)
 
     // 初始化日志页面
     m_logPage = std::make_unique<LogPage>(this);
-    ui->stackedWidget_MainWindow->addWidget(m_logPage.get());
+    m_logPage->setWindowTitle("日志");
+    m_logPage->resize(800, 600);
 
     // 将 Logger 的输出连接到 LogPage
     connect(Logger::instance(), &Logger::logMessage,
             m_logPage.get(), &LogPage::appendLog);
-
-    // 确保初始显示 Home 页面
-    ui->stackedWidget_MainWindow->setCurrentIndex(0);
 
 }
 
@@ -216,23 +214,24 @@ void MainWindow::setupUI()
 
 void MainWindow::setupConnections()
 {
-    // ========== 手动连接按钮信号 ==========
-    connect(ui->btn_Home, &QPushButton::clicked, this, &MainWindow::on_btn_Home_clicked);
-    connect(ui->btn_Log, &QPushButton::clicked, this, &MainWindow::on_btn_Log_clicked);
-    connect(ui->btn_openImg, &QPushButton::clicked, this, &MainWindow::on_btn_openImg_clicked);
-    connect(ui->btn_saveImg, &QPushButton::clicked, this, &MainWindow::on_btn_saveImg_clicked);
-    connect(ui->btn_drawRoi, &QPushButton::clicked, this, &MainWindow::on_btn_drawRoi_clicked);
-    connect(ui->btn_resetROI, &QPushButton::clicked, this, &MainWindow::on_btn_resetROI_clicked);
-    connect(ui->btn_saveConfig, &QPushButton::clicked, this, &MainWindow::on_btn_saveConfig_clicked);
-    connect(ui->btn_importConfig, &QPushButton::clicked, this, &MainWindow::on_btn_importConfig_clicked);
-    connect(ui->btn_addDetect, &QPushButton::clicked, this, [this]() {
-        // 添加检测功能（如果需要实现）
-        Logger::instance()->info("添加检测按钮被点击");
-    });
-    connect(ui->btn_deleteDetect, &QPushButton::clicked, this, [this]() {
-        // 删除检测功能（如果需要实现）
-        Logger::instance()->info("删除检测按钮被点击");
-    });
+    // 按钮信号由Qt自动连接（通过on_<objectName>_<signal>命名规则）
+    // 无需手动连接以下按钮：
+    // - btn_Home
+    // - btn_Log  
+    // - btn_openImg
+    // - btn_saveImg
+    // - btn_drawRoi
+    // - btn_resetROI
+    // - btn_saveConfig
+    // - btn_importConfig
+    // connect(ui->btn_addDetect, &QPushButton::clicked, this, [this]() {
+    //     // 添加检测功能（如果需要实现）
+    //     Logger::instance()->info("添加检测按钮被点击");
+    // });
+    // connect(ui->btn_deleteDetect, &QPushButton::clicked, this, [this]() {
+    //     // 删除检测功能（如果需要实现）
+    //     Logger::instance()->info("删除检测按钮被点击");
+    // });
     
     // 连接tabWidget的currentChanged信号
     connect(ui->tabWidget, &QTabWidget::currentChanged, this, &MainWindow::on_tabWidget_currentChanged);
@@ -432,14 +431,20 @@ void MainWindow::on_tabWidget_currentChanged(int index)
 
 void MainWindow::on_btn_Log_clicked()
 {
-    ui->tabWidget->hide();
-    ui->stackedWidget_MainWindow->setCurrentIndex(1);
+    // 显示日志页面作为独立对话框
+    if (m_logPage) {
+        m_logPage->show();
+        m_logPage->raise();
+        m_logPage->activateWindow();
+    }
 }
 
 void MainWindow::on_btn_Home_clicked()
 {
-    ui->tabWidget->show();
-    ui->stackedWidget_MainWindow->setCurrentIndex(0);
+    // 如果日志页面是作为对话框显示的，隐藏它
+    if (m_logPage && m_logPage->isVisible()) {
+        m_logPage->hide();
+    }
 }
 
 void MainWindow::on_btn_saveConfig_clicked()

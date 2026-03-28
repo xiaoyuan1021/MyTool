@@ -14,8 +14,10 @@ LogPage::LogPage(QWidget* parent)
     // 设置大小策略，使其能够填充父容器
     this->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-    connect(m_ui->btn_clearLog, &QPushButton::clicked, this, &LogPage::on_btn_clearLog_clicked);
-    connect(m_ui->btn_openLog, &QPushButton::clicked, this, &LogPage::on_btn_openLog_clicked);
+    // 按钮信号由Qt自动连接（通过on_<objectName>_<signal>命名规则）
+    // 无需手动连接以下按钮：
+    // - btn_clearLog
+    // - btn_openLog
 }
 
 LogPage::~LogPage()
