@@ -1,5 +1,6 @@
 #include "log_page.h"
 #include "ui_log_page.h"
+#include "logger.h"
 #include <QDesktopServices>
 #include <QUrl>
 #include <QCoreApplication>
@@ -38,6 +39,5 @@ void LogPage::on_btn_clearLog_clicked()
 
 void LogPage::on_btn_openLog_clicked()
 {
-    QString logPath = QCoreApplication::applicationDirPath() + "/../../logs";
-    QDesktopServices::openUrl(QUrl::fromLocalFile(logPath));
+    Logger::instance()->openLogFolder(true);
 }

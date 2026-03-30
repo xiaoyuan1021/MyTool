@@ -81,9 +81,23 @@ void Logger::info(const QString &message)
     QString time =QDateTime::currentDateTime().toString("MM-dd hh:mm:ss");
     if(m_textEdit)
     {
-        QString log=QString("<span style='color:black'>%1 [info] %2</span>").arg(time,message);
-        m_textEdit->append(log);
-        m_textEdit->moveCursor(QTextCursor::End);
+        QTextCursor cursor = m_textEdit->textCursor();
+        cursor.movePosition(QTextCursor::End);
+        
+        QTextCharFormat format;
+        format.setForeground(QColor("black"));
+        cursor.setCharFormat(format);
+        
+        QString log=QString("%1 [info] %2").arg(time,message);
+        cursor.insertText(log + "\n");
+        
+        // 重置格式为默认黑色
+        QTextCharFormat resetFormat;
+        resetFormat.setForeground(QColor("black"));
+        cursor.setCharFormat(resetFormat);
+        
+        m_textEdit->setTextCursor(cursor);
+        m_textEdit->ensureCursorVisible();
     }
     QString fileLog=QString("%1 [info] %2").arg(time,message);
     writeToFile(fileLog);
@@ -95,9 +109,23 @@ void Logger::warning(const QString &message)
     QString time =QDateTime::currentDateTime().toString("MM-dd hh:mm:ss");
     if(m_textEdit)
     {
-        QString log=QString("<span style='color:orange'>%1 [warning] %2</span>").arg(time,message);
-        m_textEdit->append(log);
-        m_textEdit->moveCursor(QTextCursor::End);
+        QTextCursor cursor = m_textEdit->textCursor();
+        cursor.movePosition(QTextCursor::End);
+        
+        QTextCharFormat format;
+        format.setForeground(QColor("orange"));
+        cursor.setCharFormat(format);
+        
+        QString log=QString("%1 [warning] %2").arg(time,message);
+        cursor.insertText(log + "\n");
+        
+        // 重置格式为默认黑色
+        QTextCharFormat resetFormat;
+        resetFormat.setForeground(QColor("black"));
+        cursor.setCharFormat(resetFormat);
+        
+        m_textEdit->setTextCursor(cursor);
+        m_textEdit->ensureCursorVisible();
     }
     QString fileLog=QString("%1 [warning] %2").arg(time,message);
     writeToFile(fileLog);
@@ -109,9 +137,23 @@ void Logger::error(const QString &message)
     QString time =QDateTime::currentDateTime().toString("MM-dd hh:mm:ss");
     if(m_textEdit)
     {
-        QString log=QString("<span style='color:red'>%1 [error] %2</span>").arg(time,message);
-        m_textEdit->append(log);
-        m_textEdit->moveCursor(QTextCursor::End);
+        QTextCursor cursor = m_textEdit->textCursor();
+        cursor.movePosition(QTextCursor::End);
+        
+        QTextCharFormat format;
+        format.setForeground(QColor("red"));
+        cursor.setCharFormat(format);
+        
+        QString log=QString("%1 [error] %2").arg(time,message);
+        cursor.insertText(log + "\n");
+        
+        // 重置格式为默认黑色
+        QTextCharFormat resetFormat;
+        resetFormat.setForeground(QColor("black"));
+        cursor.setCharFormat(resetFormat);
+        
+        m_textEdit->setTextCursor(cursor);
+        m_textEdit->ensureCursorVisible();
     }
     QString fileLog=QString("%1 [error] %2").arg(time,message);
     writeToFile(fileLog);

@@ -69,9 +69,18 @@ MainWindow::MainWindow(QWidget *parent)
 
     setupSystemMonitor();
 
-    QString logPath = QCoreApplication::applicationDirPath() + "/../../logs/test.log";
+    // 设置日志文件路径（使用正确的相对路径）
+    QString logDir = QCoreApplication::applicationDirPath() + "/logs";
+    QDir dir(logDir);
+    if (!dir.exists()) {
+        dir.mkpath(".");
+    }
+    QString logPath = logDir + "/test.log";
     Logger::instance()->setLogFile(logPath);
     Logger::instance()->enableFileLog(true);
+    
+    // 将日志输出控件连接到Logger
+    Logger::instance()->setTextEdit(ui->textEdit_log);
     
     // 创建 ImageTabWidget 并添加到 tabWidget
     m_imageTabWidget = std::make_unique<ImageTabWidget>(m_pipelineManager, this);
@@ -173,15 +182,6 @@ MainWindow::MainWindow(QWidget *parent)
     m_barcodeTabWidget = std::make_unique<BarcodeTabWidget>(
         m_pipelineManager, [this]() { m_processDebounceTimer->start(); }, this);
     ui->tabWidget->addTab(m_barcodeTabWidget.get(), "条码");
-
-    // 初始化日志页面
-    m_logPage = std::make_unique<LogPage>(this);
-    m_logPage->setWindowTitle("日志");
-    m_logPage->resize(800, 600);
-
-    // 将 Logger 的输出连接到 LogPage
-    connect(Logger::instance(), &Logger::logMessage,
-            m_logPage.get(), &LogPage::appendLog);
 
 }
 
@@ -438,17 +438,10 @@ void MainWindow::on_btn_Log_clicked()
         ui->stackedWidget_main->setCurrentIndex(1); // 切换到日志页面
     }
     
-    // 将日志内容连接到UI中的textEdit_log
+    // 显示已有日志（不重新连接信号，避免断开构造函数中的连接）
     if (ui->textEdit_log) {
-        // 清空现有连接
-        disconnect(Logger::instance(), &Logger::logMessage, nullptr, nullptr);
-        
-        // 连接Logger信号到textEdit_log
-        connect(Logger::instance(), &Logger::logMessage, this, [this](const QString& message) {
-            if (ui->textEdit_log) {
-                ui->textEdit_log->append(message);
-            }
-        });
+        // 清空现有内容
+        ui->textEdit_log->clear();
         
         // 显示已有日志
         QStringList logs = Logger::instance()->getRecentLogs(100);

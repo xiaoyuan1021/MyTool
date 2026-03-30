@@ -22,7 +22,6 @@
 #include "system_monitor.h"
 #include "file_manager.h"
 #include "config_manager.h"
-#include "log_page.h"
 #include "widgets/image_tab_widget.h"
 #include "widgets/enhance_tab_widget.h"
 #include "widgets/filter_tab_widget.h"
@@ -111,7 +110,6 @@ private:
     std::unique_ptr<JudgeTabWidget> m_judgeTabWidget;
     std::unique_ptr<BarcodeTabWidget> m_barcodeTabWidget;
     
-    std::unique_ptr<LogPage> m_logPage;
     std::unique_ptr<ImageTabWidget> m_imageTabWidget;
 
     // 多线程处理相关

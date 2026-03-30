@@ -72,7 +72,7 @@
     <item>
      <widget class="QStackedWidget" name="stackedWidget_main">
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="page_home">
        <layout class="QVBoxLayout" name="verticalLayout_home">
@@ -375,7 +375,7 @@
            <item>
             <widget class="QTextEdit" name="textEdit_log">
              <property name="styleSheet">
-              <string notr="true">background-color: #1F2937; color: #F9FAFB; font-family: Consolas, Monaco, monospace; font-size: 12px; border-radius: 8px; padding: 10px;</string>
+              <string notr="true">background-color: #F3F4F6; color: #1F2937; font-family: Consolas, Monaco, monospace; font-size: 12px; border-radius: 8px; padding: 10px;</string>
              </property>
              <property name="readOnly">
               <bool>true</bool>
