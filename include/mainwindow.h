@@ -12,6 +12,7 @@
 #include <QSignalBlocker>
 #include <QtConcurrent/QtConcurrent>
 #include <QFutureWatcher>
+#include <QStandardItemModel>
 
 #include <opencv2/opencv.hpp>
 
@@ -33,6 +34,7 @@
 #include "widgets/barcode_tab_widget.h"
 #include "widgets/roi_list_widget.h"
 #include "roi_config.h"
+#include "detection_manager.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -79,6 +81,15 @@ private:
     void processAndDisplay();
     void showImage(const cv::Mat& img);
     void setDisplayModeForCurrentTab();
+    
+    // 检测项管理相关
+    void setupDetectionManager();
+    void setupTreeView();
+    void onAddDetectionClicked();
+    void onDetectionItemClicked(const QModelIndex& index);
+    void onDeleteDetectionClicked();
+    void updateTreeView();
+    void switchToTabConfig(const TabConfig& config);
 
 private:
     Ui::MainWindow *ui;
@@ -115,6 +126,14 @@ private:
     // 多线程处理相关
     QFutureWatcher<PipelineContext> m_pipelineWatcher;
     bool m_isProcessing = false;
+
+    // 检测项管理
+    DetectionManager* m_detectionManager;
+    QStandardItemModel* m_treeViewModel;
+    
+    // Tab Widget列表（用于动态切换）
+    QList<QWidget*> m_tabWidgets;
+    QStringList m_tabNames;
 
 };
 

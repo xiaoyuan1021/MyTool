@@ -7,6 +7,12 @@
 #include <QInputDialog>
 #include <QDebug>
 #include <QShortcut>
+#include <QComboBox>
+#include <QStandardItemModel>
+#include <QMenu>
+#include <QVBoxLayout>
+#include <QLabel>
+#include <QDialogButtonBox>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -182,6 +188,26 @@ MainWindow::MainWindow(QWidget *parent)
     m_barcodeTabWidget = std::make_unique<BarcodeTabWidget>(
         m_pipelineManager, [this]() { m_processDebounceTimer->start(); }, this);
     ui->tabWidget->addTab(m_barcodeTabWidget.get(), "条码");
+
+    // 初始化检测项管理器
+    setupDetectionManager();
+    
+    // 初始化TreeView
+    setupTreeView();
+    
+    // 记录所有Tab Widget和名称，用于动态切换
+    m_tabWidgets = {
+        m_imageTabWidget.get(),
+        m_enhanceTabWidget.get(),
+        m_filterTabWidget.get(),
+        m_templateTabWidget.get(),
+        m_processTabWidget.get(),
+        m_extractTabWidget.get(),
+        m_judgeTabWidget.get(),
+        m_lineDetectTabWidget.get(),
+        m_barcodeTabWidget.get()
+    };
+    m_tabNames = {"图像", "增强", "过滤", "补正", "处理", "提取", "判定", "直线", "条码"};
 
 }
 
@@ -584,5 +610,219 @@ void MainWindow::applyConfigToUI(const AppConfig& config)
 
     // 触发Pipeline更新以应用所有配置
     processAndDisplay();
+}
+
+// ========== 检测项管理 ==========
+
+void MainWindow::setupDetectionManager()
+{
+    m_detectionManager = new DetectionManager(this);
+    
+    // 连接信号
+    connect(m_detectionManager, &DetectionManager::detectionItemAdded,
+            this, [this](int id) {
+                updateTreeView();
+                Logger::instance()->info(QString("检测项已添加: ID=%1").arg(id));
+            });
+    
+    connect(m_detectionManager, &DetectionManager::detectionItemRemoved,
+            this, [this](int id) {
+                updateTreeView();
+                Logger::instance()->info(QString("检测项已删除: ID=%1").arg(id));
+            });
+    
+    connect(m_detectionManager, &DetectionManager::currentSelectionChanged,
+            this, [this](int oldId, int newId) {
+                if (newId != -1) {
+                    TabConfig config = m_detectionManager->getTabConfig(newId);
+                    switchToTabConfig(config);
+                    Logger::instance()->info(QString("切换到检测项: ID=%1").arg(newId));
+                }
+            });
+    
+    // 连接添加检测项按钮
+    connect(ui->btn_addDetection, &QPushButton::clicked,
+            this, &MainWindow::onAddDetectionClicked);
+    
+    // 连接删除检测项按钮
+    connect(ui->btn_deleteDetection, &QPushButton::clicked,
+            this, &MainWindow::onDeleteDetectionClicked);
+}
+
+void MainWindow::setupTreeView()
+{
+    m_treeViewModel = new QStandardItemModel(this);
+    m_treeViewModel->setHorizontalHeaderLabels({"检测项"});
+    
+    ui->treeView->setModel(m_treeViewModel);
+    ui->treeView->setHeaderHidden(true);
+    ui->treeView->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    
+    // 连接点击信号
+    connect(ui->treeView, &QTreeView::clicked,
+            this, &MainWindow::onDetectionItemClicked);
+}
+
+void MainWindow::onAddDetectionClicked()
+{
+    // 创建对话框
+    QDialog dialog(this);
+    dialog.setWindowTitle("添加检测项");
+    dialog.setMinimumWidth(250);
+    dialog.setWindowFlags(dialog.windowFlags() & ~Qt::WindowContextHelpButtonHint);
+    
+    // 创建布局
+    QVBoxLayout* layout = new QVBoxLayout(&dialog);
+    layout->setContentsMargins(20, 20, 20, 20);
+    layout->setSpacing(15);
+    
+    // 添加标签
+    QLabel* label = new QLabel("请选择检测项类型:", &dialog);
+    layout->addWidget(label);
+    
+    // 创建ComboBox
+    QComboBox* comboBox = new QComboBox(&dialog);
+    comboBox->addItem("Blob分析", static_cast<int>(DetectionType::Blob));
+    comboBox->addItem("直线检测", static_cast<int>(DetectionType::Line));
+    comboBox->addItem("条码识别", static_cast<int>(DetectionType::Barcode));
+    comboBox->setMinimumWidth(150);
+    layout->addWidget(comboBox);
+    
+    // 添加按钮
+    QDialogButtonBox* buttonBox = new QDialogButtonBox(
+        QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    layout->addWidget(buttonBox);
+    
+    // 连接按钮信号
+    connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    
+    // 显示对话框（自动居中）
+    if (dialog.exec() == QDialog::Accepted) {
+        int index = comboBox->currentIndex();
+        if (index >= 0) {
+            DetectionType type = static_cast<DetectionType>(comboBox->currentData().toInt());
+            
+            // 添加检测项
+            int newId = m_detectionManager->addDetectionItem(type);
+            if (newId != -1) {
+                // 自动选中新添加的检测项
+                m_detectionManager->setCurrentSelectedId(newId);
+            }
+        }
+    }
+}
+
+void MainWindow::onDetectionItemClicked(const QModelIndex& index)
+{
+    if (!index.isValid()) {
+        return;
+    }
+    
+    QStandardItem* item = m_treeViewModel->itemFromIndex(index);
+    if (!item) {
+        return;
+    }
+    
+    // 获取检测项ID（存储在UserRole中）
+    int id = item->data(Qt::UserRole).toInt();
+    
+    // 设置当前选中
+    m_detectionManager->setCurrentSelectedId(id);
+    
+    // 高亮选中的项
+    ui->treeView->setCurrentIndex(index);
+}
+
+void MainWindow::onDeleteDetectionClicked()
+{
+    int currentId = m_detectionManager->getCurrentSelectedId();
+    if (currentId == -1) {
+        QMessageBox::warning(this, "警告", "请先选择要删除的检测项");
+        return;
+    }
+    
+    DetectionItem* item = m_detectionManager->getDetectionItem(currentId);
+    if (!item) {
+        return;
+    }
+    
+    // 确认删除
+    QMessageBox::StandardButton reply = QMessageBox::question(
+        this, "确认删除",
+        QString("确定要删除检测项 \"%1\" 吗？").arg(item->itemName),
+        QMessageBox::Yes | QMessageBox::No
+    );
+    
+    if (reply == QMessageBox::Yes) {
+        m_detectionManager->removeDetectionItem(currentId);
+    }
+}
+
+void MainWindow::updateTreeView()
+{
+    m_treeViewModel->clear();
+    
+    const QList<DetectionItem>& items = m_detectionManager->getAllDetectionItems();
+    int currentId = m_detectionManager->getCurrentSelectedId();
+    
+    for (int i = 0; i < items.size(); ++i) {
+        const DetectionItem& item = items[i];
+        QStandardItem* treeItem = new QStandardItem();
+        
+        // 设置显示文本
+        QString displayText = QString("%1 [%2]").arg(item.itemName).arg(detectionTypeToString(item.type));
+        treeItem->setText(displayText);
+        
+        // 存储索引作为ID（使用索引+1作为唯一标识）
+        treeItem->setData(i + 1, Qt::UserRole);
+        
+        // 设置图标
+        switch (item.type) {
+            case DetectionType::Blob:
+                treeItem->setIcon(QIcon(":/icons/blob.png"));
+                break;
+            case DetectionType::Line:
+                treeItem->setIcon(QIcon(":/icons/line.png"));
+                break;
+            case DetectionType::Barcode:
+                treeItem->setIcon(QIcon(":/icons/barcode.png"));
+                break;
+            default:
+                break;
+        }
+        
+        m_treeViewModel->appendRow(treeItem);
+    }
+    
+    // 展开所有项
+    ui->treeView->expandAll();
+}
+
+void MainWindow::switchToTabConfig(const TabConfig& config)
+{
+    // 隐藏所有Tab
+    for (int i = 0; i < ui->tabWidget->count(); ++i) {
+        ui->tabWidget->setTabVisible(i, false);
+    }
+    
+    // 显示配置中指定的Tab
+    for (const QString& tabName : config.tabNames) {
+        for (int i = 0; i < m_tabNames.size(); ++i) {
+            if (m_tabNames[i] == tabName) {
+                ui->tabWidget->setTabVisible(i, true);
+                break;
+            }
+        }
+    }
+    
+    // 切换到第一个可见的Tab
+    for (int i = 0; i < ui->tabWidget->count(); ++i) {
+        if (ui->tabWidget->isTabVisible(i)) {
+            ui->tabWidget->setCurrentIndex(i);
+            m_currentTabIndex = i;
+            break;
+        }
+    }
 }
 
