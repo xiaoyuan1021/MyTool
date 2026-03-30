@@ -66,10 +66,6 @@ set(HEADERS
     include/widgets/judge_tab_widget.h
     include/widgets/barcode_tab_widget.h
     include/widgets/roi_list_widget.h
-    include/widgets/detection_config_widget.h
-    include/widgets/blob_analysis_config_widget.h
-    include/widgets/line_detection_config_widget.h
-    include/widgets/barcode_recognition_config_widget.h
     include/config_manager.h
     include/detection_config_types.h
 )
@@ -102,10 +98,6 @@ set(SOURCES
     src/widgets/judge_tab_widget.cpp
     src/widgets/barcode_tab_widget.cpp
     src/widgets/roi_list_widget.cpp
-    src/widgets/detection_config_widget.cpp
-    src/widgets/blob_analysis_config_widget.cpp
-    src/widgets/line_detection_config_widget.cpp
-    src/widgets/barcode_recognition_config_widget.cpp
     src/config_manager.cpp
 )
 
@@ -162,13 +154,6 @@ target_include_directories(VisionTool PRIVATE
 
 # OpenCV 库文件路径
 set(OPENCV_LIB_DIR "${OPENCV_ROOT}/lib")
-
-# 根据构建类型选择 OpenCV 库后缀
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(OPENCV_SUFFIX "")
-else()
-    set(OPENCV_SUFFIX "")
-endif()
 
 # OpenCV 库列表
 set(OPENCV_LIBS
