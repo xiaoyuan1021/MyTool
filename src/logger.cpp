@@ -126,6 +126,38 @@ void Logger::clear()
     }
 }
 
+QStringList Logger::getRecentLogs(int count) const
+{
+    QStringList logs;
+    
+    // 如果有日志文件，从文件中读取最近的日志
+    if (!m_logFilePath.isEmpty()) {
+        QFile file(m_logFilePath);
+        if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            QTextStream in(&file);
+            QStringList allLines;
+            
+            // 读取所有行
+            while (!in.atEnd()) {
+                QString line = in.readLine().trimmed();
+                if (!line.isEmpty()) {
+                    allLines.append(line);
+                }
+            }
+            file.close();
+            
+            // 获取最近的日志行
+            int startIndex = qMax(0, allLines.size() - count);
+            for (int i = startIndex; i < allLines.size(); ++i) {
+                logs.append(allLines[i]);
+            }
+        }
+    }
+    
+    // 如果没有日志文件或读取失败，返回空列表
+    return logs;
+}
+
 Logger::Logger()
     :m_textEdit(nullptr)
     ,m_logFile(nullptr)

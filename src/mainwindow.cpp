@@ -72,7 +72,7 @@ MainWindow::MainWindow(QWidget *parent)
     QString logPath = QCoreApplication::applicationDirPath() + "/../../logs/test.log";
     Logger::instance()->setLogFile(logPath);
     Logger::instance()->enableFileLog(true);
-
+    
     // 创建 ImageTabWidget 并添加到 tabWidget
     m_imageTabWidget = std::make_unique<ImageTabWidget>(m_pipelineManager, this);
     ui->tabWidget->addTab(m_imageTabWidget.get(), "图像");
@@ -188,6 +188,8 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow()
 {
     m_isDestroying = true;
+    // 先断开Logger的所有连接，防止析构时访问已删除的UI
+    disconnect(Logger::instance(), nullptr, this, nullptr);
     delete ui;
 }
 
@@ -431,19 +433,36 @@ void MainWindow::on_tabWidget_currentChanged(int index)
 
 void MainWindow::on_btn_Log_clicked()
 {
-    // 显示日志页面作为独立对话框
-    if (m_logPage) {
-        m_logPage->show();
-        m_logPage->raise();
-        m_logPage->activateWindow();
+    // 切换到日志页面（全屏显示）
+    if (ui->stackedWidget_main) {
+        ui->stackedWidget_main->setCurrentIndex(1); // 切换到日志页面
+    }
+    
+    // 将日志内容连接到UI中的textEdit_log
+    if (ui->textEdit_log) {
+        // 清空现有连接
+        disconnect(Logger::instance(), &Logger::logMessage, nullptr, nullptr);
+        
+        // 连接Logger信号到textEdit_log
+        connect(Logger::instance(), &Logger::logMessage, this, [this](const QString& message) {
+            if (ui->textEdit_log) {
+                ui->textEdit_log->append(message);
+            }
+        });
+        
+        // 显示已有日志
+        QStringList logs = Logger::instance()->getRecentLogs(100);
+        for (const QString& log : logs) {
+            ui->textEdit_log->append(log);
+        }
     }
 }
 
 void MainWindow::on_btn_Home_clicked()
 {
-    // 如果日志页面是作为对话框显示的，隐藏它
-    if (m_logPage && m_logPage->isVisible()) {
-        m_logPage->hide();
+    // 切换回主页
+    if (ui->stackedWidget_main) {
+        ui->stackedWidget_main->setCurrentIndex(0); // 切换到主页
     }
 }
 

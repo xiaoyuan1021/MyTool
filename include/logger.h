@@ -29,6 +29,7 @@ public:
     void warning(const QString & message);
     void error(const QString & message);
     void clear();
+    QStringList getRecentLogs(int count = 100) const;
 
 signals:
     void logMessage(const QString& message);

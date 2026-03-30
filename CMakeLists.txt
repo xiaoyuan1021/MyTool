@@ -3,11 +3,19 @@ cmake_minimum_required(VERSION 3.16)
 project(VisionTool LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
+
+
+# 设置构建输出目录
+set(CMAKE_BINARY_DIR "${CMAKE_SOURCE_DIR}/build/Debug")
+
+# 设置输出目录
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # 告诉 CMake 的 AUTOUIC 在哪些目录中查找 .ui 文件
 list(APPEND CMAKE_AUTOUIC_SEARCH_PATHS 
@@ -18,7 +26,7 @@ list(APPEND CMAKE_AUTOUIC_SEARCH_PATHS
 # ============================================================
 # 编译器配置 - 使用 Ninja 生成器
 # ============================================================
-# set(CMAKE_MAKE_PROGRAM "F:/IDE/Qt/Tools/Ninja/ninja.exe" CACHE PATH "Path to Ninja" FORCE)
+set(CMAKE_MAKE_PROGRAM "F:/IDE/Qt/Tools/Ninja/ninja.exe" CACHE PATH "Path to Ninja" FORCE)
 
 # ============================================================
 # 查找 Qt6 库
@@ -37,84 +45,100 @@ set(INCLUDE_DIRS
 # 源文件收集
 # ============================================================
 
-# 头文件 (HEADERS)
-set(HEADERS
-    include/halcon_algorithm.h
-    include/image_processor.h
-    include/image_utils.h
-    include/image_view.h
-    include/logger.h
-    include/mainwindow.h
-    include/pipeline.h
-    include/pipeline_manager.h
-    include/pipeline_steps.h
-    include/barcode_step.h
-    include/shape_filter_types.h
-    include/system_monitor.h
-    include/match_strategy.h
-    include/file_manager.h
-    include/roi_item.h
-    include/roi_manager.h
-    include/log_page.h
-    include/widgets/image_tab_widget.h
-    include/widgets/enhance_tab_widget.h
-    include/widgets/filter_tab_widget.h
-    include/widgets/template_tab_widget.h
-    include/widgets/line_tab_widget.h
-    include/widgets/extract_tab_widget.h
-    include/widgets/process_tab_widget.h
-    include/widgets/judge_tab_widget.h
-    include/widgets/barcode_tab_widget.h
-    include/widgets/roi_list_widget.h
-    include/config_manager.h
-    include/detection_config_types.h
+# 自动查找源文件和头文件
+file(GLOB HEADERS
+    include/*.h
+    include/widgets/*.h
 )
+
+file(GLOB SOURCES
+    src/*.cpp
+    src/widgets/*.cpp
+)
+
+file(GLOB FORMS
+    ui/*.ui
+    ui/tabs/*.ui
+)
+
+# 头文件 (HEADERS)
+# set(HEADERS
+#     include/halcon_algorithm.h
+#     include/image_processor.h
+#     include/image_utils.h
+#     include/image_view.h
+#     include/logger.h
+#     include/mainwindow.h
+#     include/pipeline.h
+#     include/pipeline_manager.h
+#     include/pipeline_steps.h
+#     include/barcode_step.h
+#     include/shape_filter_types.h
+#     include/system_monitor.h
+#     include/match_strategy.h
+#     include/file_manager.h
+#     include/roi_item.h
+#     include/roi_manager.h
+#     include/log_page.h
+#     include/widgets/image_tab_widget.h
+#     include/widgets/enhance_tab_widget.h
+#     include/widgets/filter_tab_widget.h
+#     include/widgets/template_tab_widget.h
+#     include/widgets/line_tab_widget.h
+#     include/widgets/extract_tab_widget.h
+#     include/widgets/process_tab_widget.h
+#     include/widgets/judge_tab_widget.h
+#     include/widgets/barcode_tab_widget.h
+#     include/widgets/roi_list_widget.h
+#     include/config_manager.h
+#     include/detection_config_types.h
+# )
 
 # 源文件 (SOURCES)
-set(SOURCES
-    src/match_strategy.cpp
-    src/halcon_algorithm.cpp
-    src/image_processor.cpp
-    src/image_utils.cpp
-    src/image_view.cpp
-    src/logger.cpp
-    src/main.cpp
-    src/mainwindow.cpp
-    src/pipeline.cpp
-    src/pipeline_manager.cpp
-    src/system_monitor.cpp
-    src/file_manager.cpp
-    src/roi_manager.cpp
-    src/pipeline_steps.cpp
-    src/barcode_step.cpp
-    src/log_page.cpp
-    src/widgets/image_tab_widget.cpp
-    src/widgets/enhance_tab_widget.cpp
-    src/widgets/filter_tab_widget.cpp
-    src/widgets/template_tab_widget.cpp
-    src/widgets/line_tab_widget.cpp
-    src/widgets/extract_tab_widget.cpp
-    src/widgets/process_tab_widget.cpp
-    src/widgets/judge_tab_widget.cpp
-    src/widgets/barcode_tab_widget.cpp
-    src/widgets/roi_list_widget.cpp
-    src/config_manager.cpp
-)
+# set(SOURCES
+#     src/match_strategy.cpp
+#     src/halcon_algorithm.cpp
+#     src/image_processor.cpp
+#     src/image_utils.cpp
+#     src/image_view.cpp
+#     src/logger.cpp
+#     src/main.cpp
+#     src/mainwindow.cpp
+#     src/pipeline.cpp
+#     src/pipeline_manager.cpp
+#     src/system_monitor.cpp
+#     src/file_manager.cpp
+#     src/roi_manager.cpp
+#     src/pipeline_steps.cpp
+#     src/barcode_step.cpp
+#     src/log_page.cpp
+#     src/widgets/image_tab_widget.cpp
+#     src/widgets/enhance_tab_widget.cpp
+#     src/widgets/filter_tab_widget.cpp
+#     src/widgets/template_tab_widget.cpp
+#     src/widgets/line_tab_widget.cpp
+#     src/widgets/extract_tab_widget.cpp
+#     src/widgets/process_tab_widget.cpp
+#     src/widgets/judge_tab_widget.cpp
+#     src/widgets/barcode_tab_widget.cpp
+#     src/widgets/roi_list_widget.cpp
+#     src/config_manager.cpp
+# )
 
 # UI 文件 (FORMS)
-set(FORMS
-    ui/mainwindow.ui
-    ui/log_page.ui
-    ui/tabs/image_tab.ui
-    ui/tabs/enhance_tab.ui
-    ui/tabs/filter_tab.ui
-    ui/tabs/template_tab.ui
-    ui/tabs/line_tab.ui
-    ui/tabs/extract_tab.ui
-    ui/tabs/process_tab.ui
-    ui/tabs/judge_tab.ui
-    ui/tabs/barcode_tab.ui
-)
+# set(FORMS
+#     ui/mainwindow.ui
+#     ui/log_page.ui
+#     ui/tabs/image_tab.ui
+#     ui/tabs/enhance_tab.ui
+#     ui/tabs/filter_tab.ui
+#     ui/tabs/template_tab.ui
+#     ui/tabs/line_tab.ui
+#     ui/tabs/extract_tab.ui
+#     ui/tabs/process_tab.ui
+#     ui/tabs/judge_tab.ui
+#     ui/tabs/barcode_tab.ui
+# )
 
 # 资源文件 (RESOURCES)
 set(RESOURCES

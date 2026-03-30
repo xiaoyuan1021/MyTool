@@ -12,12 +12,7 @@ LogPage::LogPage(QWidget* parent)
     m_ui->setupUi(this);
 
     // 设置大小策略，使其能够填充父容器
-    this->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-
-    // 按钮信号由Qt自动连接（通过on_<objectName>_<signal>命名规则）
-    // 无需手动连接以下按钮：
-    // - btn_clearLog
-    // - btn_openLog
+    //this->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 }
 
 LogPage::~LogPage()
