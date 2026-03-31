@@ -1,4 +1,5 @@
 #include "widgets/roi_list_widget.h"
+#include "widgets/roi_detection_config_dialog.h"
 #include "logger.h"
 #include <QDebug>
 
@@ -9,6 +10,7 @@ RoiListWidget::RoiListWidget(QWidget* parent)
     , m_addRoiButton(nullptr)
     , m_deleteRoiButton(nullptr)
     , m_drawRoiButton(nullptr)
+    , m_configDetectionButton(nullptr)
     , m_roiTreeWidget(nullptr)
 {
     initUI();
@@ -298,8 +300,12 @@ void RoiListWidget::initUI()
     m_deleteRoiButton = new QPushButton("- 删除ROI", this);
     m_deleteRoiButton->setMinimumSize(0, 30);
     
+    m_configDetectionButton = new QPushButton("配置检测项", this);
+    m_configDetectionButton->setMinimumSize(0, 30);
+    
     buttonLayout->addWidget(m_addRoiButton);
     buttonLayout->addWidget(m_deleteRoiButton);
+    buttonLayout->addWidget(m_configDetectionButton);
 
     // 创建树形控件
     m_roiTreeWidget = new QTreeWidget(this);
@@ -327,6 +333,8 @@ void RoiListWidget::initConnections()
             this, &RoiListWidget::onDeleteRoiClicked);
     connect(m_drawRoiButton, &QPushButton::clicked, 
             this, &RoiListWidget::drawRoiRequested);
+    connect(m_configDetectionButton, &QPushButton::clicked, 
+            this, &RoiListWidget::onConfigureDetectionClicked);
 
     // 连接树形控件信号
     connect(m_roiTreeWidget, &QTreeWidget::itemClicked, 
@@ -483,4 +491,14 @@ bool RoiListWidget::validateRoiName(const QString& name) const
     }
 
     return true;
+}
+
+void RoiListWidget::onConfigureDetectionClicked()
+{
+    if (m_selectedRoiId.isEmpty()) {
+        QMessageBox::information(this, "提示", "请先选择要配置检测项的ROI！");
+        return;
+    }
+
+    emit roiDetectionConfigRequested(m_selectedRoiId);
 }

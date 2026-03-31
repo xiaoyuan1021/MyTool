@@ -90,6 +90,7 @@ private:
     void onDeleteDetectionClicked();
     void updateTreeView();
     void switchToTabConfig(const TabConfig& config);
+    void onRoiDetectionConfigRequested(const QString& roiId);
 
 private:
     Ui::MainWindow *ui;
@@ -129,11 +130,19 @@ private:
 
     // 检测项管理
     DetectionManager* m_detectionManager;
-    QStandardItemModel* m_treeViewModel;
+    
+    // ROI配置管理
+    MultiRoiConfig* m_multiRoiConfig;
     
     // Tab Widget列表（用于动态切换）
     QList<QWidget*> m_tabWidgets;
     QStringList m_tabNames;
+    
+    // ROI管理相关方法
+    void refreshRoiTreeView();
+    void onRoiTreeContextMenuRequested(const QPoint& pos);
+    void onRoiTreeItemDoubleClicked(QTreeWidgetItem* item, int column);
+    void onRoiTreeItemClicked(QTreeWidgetItem* item, int column);
 
 };
 

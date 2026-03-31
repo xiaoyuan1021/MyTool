@@ -13,6 +13,8 @@
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QDialogButtonBox>
+#include <QContextMenuEvent>
+#include "roi_detection_config_dialog.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -22,6 +24,7 @@ MainWindow::MainWindow(QWidget *parent)
     , m_fileManager(new FileManager(this))
     , m_processDebounceTimer(nullptr)
     , m_currentTabIndex(0)
+    , m_multiRoiConfig(new MultiRoiConfig())
 {
     ui->setupUi(this);
     
@@ -189,10 +192,8 @@ MainWindow::MainWindow(QWidget *parent)
         m_pipelineManager, [this]() { m_processDebounceTimer->start(); }, this);
     ui->tabWidget->addTab(m_barcodeTabWidget.get(), "条码");
 
-    // 初始化检测项管理器
+    // 初始化检测项管理器和TreeView（在UI初始化之后）
     setupDetectionManager();
-    
-    // 初始化TreeView
     setupTreeView();
     
     // 记录所有Tab Widget和名称，用于动态切换
@@ -651,16 +652,34 @@ void MainWindow::setupDetectionManager()
 
 void MainWindow::setupTreeView()
 {
-    m_treeViewModel = new QStandardItemModel(this);
-    m_treeViewModel->setHorizontalHeaderLabels({"检测项"});
-    
-    ui->treeView->setModel(m_treeViewModel);
+    // 设置树形控件属性
     ui->treeView->setHeaderHidden(true);
     ui->treeView->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    ui->treeView->setContextMenuPolicy(Qt::CustomContextMenu);
     
-    // 连接点击信号
-    connect(ui->treeView, &QTreeView::clicked,
-            this, &MainWindow::onDetectionItemClicked);
+    // 连接信号
+    connect(ui->treeView, &QTreeWidget::itemClicked,
+            this, &MainWindow::onRoiTreeItemClicked);
+    connect(ui->treeView, &QTreeWidget::itemDoubleClicked,
+            this, &MainWindow::onRoiTreeItemDoubleClicked);
+    connect(ui->treeView, &QTreeWidget::customContextMenuRequested,
+            this, &MainWindow::onRoiTreeContextMenuRequested);
+    
+    // 连接绘制ROI完成信号
+    connect(m_view, &ImageView::roiSelected, this, [this](const QRectF& rect) {
+        // 创建新的ROI
+        QString roiName = QString("ROI_%1").arg(m_multiRoiConfig->size() + 1);
+        RoiConfig roi(roiName, rect);
+        m_multiRoiConfig->addRoi(roi);
+        
+        // 刷新列表
+        refreshRoiTreeView();
+        
+        Logger::instance()->info(QString("已添加ROI: %1").arg(roiName));
+    });
+    
+    // 刷新显示
+    refreshRoiTreeView();
 }
 
 void MainWindow::onAddDetectionClicked()
@@ -719,13 +738,8 @@ void MainWindow::onDetectionItemClicked(const QModelIndex& index)
         return;
     }
     
-    QStandardItem* item = m_treeViewModel->itemFromIndex(index);
-    if (!item) {
-        return;
-    }
-    
     // 获取检测项ID（存储在UserRole中）
-    int id = item->data(Qt::UserRole).toInt();
+    int id = index.data(Qt::UserRole).toInt();
     
     // 设置当前选中
     m_detectionManager->setCurrentSelectedId(id);
@@ -761,38 +775,45 @@ void MainWindow::onDeleteDetectionClicked()
 
 void MainWindow::updateTreeView()
 {
-    m_treeViewModel->clear();
+    // 清空树形控件
+    ui->treeView->clear();
     
     const QList<DetectionItem>& items = m_detectionManager->getAllDetectionItems();
     int currentId = m_detectionManager->getCurrentSelectedId();
     
-    for (int i = 0; i < items.size(); ++i) {
+    for (int i = 0; i < items.size(); ++i) 
+    {
         const DetectionItem& item = items[i];
-        QStandardItem* treeItem = new QStandardItem();
+        
+        // 创建树形节点
+        QTreeWidgetItem* treeItem = new QTreeWidgetItem(ui->treeView);
         
         // 设置显示文本
         QString displayText = QString("%1 [%2]").arg(item.itemName).arg(detectionTypeToString(item.type));
-        treeItem->setText(displayText);
+        treeItem->setText(0, displayText);
         
         // 存储索引作为ID（使用索引+1作为唯一标识）
-        treeItem->setData(i + 1, Qt::UserRole);
+        treeItem->setData(0, Qt::UserRole, i + 1);
         
         // 设置图标
         switch (item.type) {
             case DetectionType::Blob:
-                treeItem->setIcon(QIcon(":/icons/blob.png"));
+                treeItem->setIcon(0, QIcon(":/icons/blob.png"));
                 break;
             case DetectionType::Line:
-                treeItem->setIcon(QIcon(":/icons/line.png"));
+                treeItem->setIcon(0, QIcon(":/icons/line.png"));
                 break;
             case DetectionType::Barcode:
-                treeItem->setIcon(QIcon(":/icons/barcode.png"));
+                treeItem->setIcon(0, QIcon(":/icons/barcode.png"));
                 break;
             default:
                 break;
         }
         
-        m_treeViewModel->appendRow(treeItem);
+        // 如果是当前选中的项，设置高亮
+        if (i + 1 == currentId) {
+            treeItem->setSelected(true);
+        }
     }
     
     // 展开所有项
@@ -824,5 +845,173 @@ void MainWindow::switchToTabConfig(const TabConfig& config)
             break;
         }
     }
+}
+
+void MainWindow::onRoiDetectionConfigRequested(const QString& roiId)
+{
+    Q_UNUSED(roiId);
+    
+    // 获取当前所有ROI配置
+    QList<RoiConfig> rois = m_multiRoiConfig->getRois();
+    
+    // 创建并显示配置对话框
+    RoiDetectionConfigDialog dialog(rois, this);
+    
+    // 连接配置完成信号
+    connect(&dialog, &RoiDetectionConfigDialog::roisConfigured,
+            [this](const QList<RoiConfig>& newRois) {
+                // 更新所有ROI配置
+                m_multiRoiConfig->clear();
+                for (const auto& roi : newRois) {
+                    m_multiRoiConfig->addRoi(roi);
+                }
+                refreshRoiTreeView();
+                Logger::instance()->info(QString("ROI配置已更新，共 %1 个ROI").arg(newRois.size()));
+            });
+    
+    dialog.exec();
+}
+
+// ========== ROI树形视图管理 ==========
+
+void MainWindow::refreshRoiTreeView()
+{
+    ui->treeView->clear();
+    
+    const QList<RoiConfig>& rois = m_multiRoiConfig->getRois();
+    
+    for (const auto& roi : rois) {
+        // 创建ROI节点
+        QTreeWidgetItem* roiItem = new QTreeWidgetItem(ui->treeView);
+        roiItem->setText(0, QString("%1 [%2个检测项]").arg(roi.roiName).arg(roi.detectionItems.size()));
+        roiItem->setData(0, Qt::UserRole, roi.roiId);
+        roiItem->setFlags(roiItem->flags() | Qt::ItemIsSelectable | Qt::ItemIsEnabled);
+        
+        // 设置ROI图标颜色
+        QColor roiColor(roi.color);
+        roiItem->setForeground(0, QBrush(roiColor));
+        
+        // 添加检测项子节点
+        for (const auto& detection : roi.detectionItems) {
+            QTreeWidgetItem* detectionItem = new QTreeWidgetItem(roiItem);
+            detectionItem->setText(0, detection.itemName);
+            detectionItem->setData(0, Qt::UserRole, detection.itemId);
+            detectionItem->setData(0, Qt::UserRole + 1, "detection"); // 标记为检测项
+            
+            // 根据检测类型设置颜色
+            QColor detectionColor;
+            switch (detection.type) {
+                case DetectionType::Blob:
+                    detectionColor = QColor("#4CAF50");
+                    break;
+                case DetectionType::Line:
+                    detectionColor = QColor("#2196F3");
+                    break;
+                case DetectionType::Barcode:
+                    detectionColor = QColor("#FF9800");
+                    break;
+                default:
+                    detectionColor = QColor("#9E9E9E");
+                    break;
+            }
+            detectionItem->setForeground(0, QBrush(detectionColor));
+        }
+    }
+    
+    // 展开所有项
+    ui->treeView->expandAll();
+}
+
+void MainWindow::onRoiTreeItemClicked(QTreeWidgetItem* item, int column)
+{
+    Q_UNUSED(column);
+    
+    if (!item) {
+        return;
+    }
+    
+    QString roiId = item->data(0, Qt::UserRole).toString();
+    QString itemType = item->data(0, Qt::UserRole + 1).toString();
+    
+    if (itemType == "detection") {
+        // 点击的是检测项
+        Logger::instance()->info(QString("选中检测项: %1").arg(item->text(0)));
+    } else {
+        // 点击的是ROI
+        Logger::instance()->info(QString("选中ROI: %1").arg(roiId));
+    }
+}
+
+void MainWindow::onRoiTreeItemDoubleClicked(QTreeWidgetItem* item, int column)
+{
+    Q_UNUSED(column);
+    
+    if (!item) {
+        return;
+    }
+    
+    QString itemType = item->data(0, Qt::UserRole + 1).toString();
+    
+    if (itemType != "detection") {
+        // 双击ROI，打开检测项配置对话框
+        QString roiId = item->data(0, Qt::UserRole).toString();
+        onRoiDetectionConfigRequested(roiId);
+    }
+}
+
+void MainWindow::onRoiTreeContextMenuRequested(const QPoint& pos)
+{
+    QTreeWidgetItem* item = ui->treeView->itemAt(pos);
+    
+    QMenu contextMenu(this);
+    
+    if (item) {
+        QString itemType = item->data(0, Qt::UserRole + 1).toString();
+        
+        if (itemType == "detection") {
+            // 检测项右键菜单
+            QAction* deleteAction = contextMenu.addAction("删除检测项");
+            connect(deleteAction, &QAction::triggered, [this, item]() {
+                QString detectionId = item->data(0, Qt::UserRole).toString();
+                QTreeWidgetItem* parentItem = item->parent();
+                if (parentItem) {
+                    QString roiId = parentItem->data(0, Qt::UserRole).toString();
+                    RoiConfig* roi = m_multiRoiConfig->getRoi(roiId);
+                    if (roi) {
+                        roi->removeDetectionItem(detectionId);
+                        refreshRoiTreeView();
+                        Logger::instance()->info("已删除检测项");
+                    }
+                }
+            });
+        } else {
+            // ROI右键菜单
+            QAction* configAction = contextMenu.addAction("配置检测项");
+            connect(configAction, &QAction::triggered, [this, item]() {
+                QString roiId = item->data(0, Qt::UserRole).toString();
+                onRoiDetectionConfigRequested(roiId);
+            });
+            
+            QAction* deleteAction = contextMenu.addAction("删除ROI");
+            connect(deleteAction, &QAction::triggered, [this, item]() {
+                QString roiId = item->data(0, Qt::UserRole).toString();
+                if (QMessageBox::question(this, "确认删除", "确定要删除该ROI吗？") == QMessageBox::Yes) {
+                    m_multiRoiConfig->removeRoi(roiId);
+                    refreshRoiTreeView();
+                    Logger::instance()->info("已删除ROI");
+                }
+            });
+        }
+    } else {
+        // 空白区域右键菜单
+        QAction* addAction = contextMenu.addAction("添加ROI");
+        connect(addAction, &QAction::triggered, [this]() {
+            // 提示用户绘制ROI
+            Logger::instance()->info("请在图像上绘制ROI");
+            m_roiManager.enableDrawRoiMode(m_view, ui->statusbar);
+        });
+    }
+    
+    contextMenu.exec(ui->treeView->viewport()->mapToGlobal(pos));
 }
 

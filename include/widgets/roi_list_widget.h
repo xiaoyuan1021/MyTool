@@ -102,6 +102,12 @@ signals:
      */
     void drawRoiRequested();
 
+    /**
+     * @brief ROI检测项配置请求信号
+     * @param roiId ROI ID
+     */
+    void roiDetectionConfigRequested(const QString& roiId);
+
 private slots:
     // ========== 槽函数 ==========
 
@@ -135,6 +141,11 @@ private slots:
      */
     void onRoiItemDoubleClicked(QTreeWidgetItem* item, int column);
 
+    /**
+     * @brief 配置检测项按钮点击
+     */
+    void onConfigureDetectionClicked();
+
 private:
     // ========== UI组件 ==========
 
@@ -142,6 +153,7 @@ private:
     QPushButton* m_addRoiButton;        // 添加ROI按钮
     QPushButton* m_deleteRoiButton;     // 删除ROI按钮
     QPushButton* m_drawRoiButton;       // 绘制ROI按钮
+    QPushButton* m_configDetectionButton; // 配置检测项按钮
     QTreeWidget* m_roiTreeWidget;       // ROI树形控件
 
     // ========== 数据成员 ==========

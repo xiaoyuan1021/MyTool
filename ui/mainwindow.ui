@@ -219,7 +219,7 @@
                <number>5</number>
               </property>
               <item>
-               <widget class="QTreeView" name="treeView"/>
+               <widget class="QTreeWidget" name="treeView"/>
               </item>
              </layout>
             </item>
