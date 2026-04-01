@@ -11,6 +11,9 @@
 #include <QFileInfo>
 #include <QDir>
 
+#include "spdlog/spdlog.h"
+#include "spdlog/sinks/qt_sinks.h"
+
 class Logger :public QObject
 {
     Q_OBJECT
@@ -30,6 +33,7 @@ public:
     void error(const QString & message);
     void clear();
     QStringList getRecentLogs(int count = 100) const;
+    void outputLogsWithColor(const QStringList& logs);
 
 signals:
     void logMessage(const QString& message);
@@ -46,6 +50,9 @@ private:
     QTextStream * m_logStream;  //文本流对象
     bool m_fileLogEnabled;
     QString m_logFilePath;
+
+    // spdlog logger with color support
+    std::shared_ptr<spdlog::logger> m_colorLogger;
 
 };
 

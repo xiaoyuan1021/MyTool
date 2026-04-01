@@ -212,6 +212,50 @@ foreach(OPENCV_LIB ${OPENCV_LIBS})
 endforeach()
 
 # ============================================================
+# 第三方库配置 (spdlog)
+# ============================================================
+set(SPDLOG_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/spdlog")
+
+# spdlog 包含路径
+target_include_directories(VisionTool PRIVATE
+    "${SPDLOG_ROOT}/include"
+)
+
+# spdlog 库文件路径
+set(SPDLOG_LIB_DIR "${SPDLOG_ROOT}/lib")
+
+# 查找并链接 spdlog 库
+find_library(SPDLOG_LIB
+    NAMES spdlogd spdlog
+    PATHS "${SPDLOG_LIB_DIR}"
+    NO_DEFAULT_PATH
+)
+
+if(SPDLOG_LIB)
+    target_link_libraries(VisionTool PRIVATE ${SPDLOG_LIB})
+    message(STATUS "Found spdlog library: ${SPDLOG_LIB}")
+else()
+    message(WARNING "spdlog library not found at ${SPDLOG_LIB_DIR}")
+endif()
+
+# 查找并链接 fmt 库
+find_library(FMT_LIB
+    NAMES fmtd fmt
+    PATHS "${SPDLOG_LIB_DIR}"
+    NO_DEFAULT_PATH
+)
+
+if(FMT_LIB)
+    target_link_libraries(VisionTool PRIVATE ${FMT_LIB})
+    message(STATUS "Found fmt library: ${FMT_LIB}")
+else()
+    message(WARNING "fmt library not found at ${SPDLOG_LIB_DIR}")
+endif()
+
+# 添加 SPDLOG_FMT_EXTERNAL 宏定义
+target_compile_definitions(VisionTool PRIVATE SPDLOG_FMT_EXTERNAL)
+
+# ============================================================
 # 第三方库配置 (Halcon)
 # ============================================================
 set(HALCON_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/halcon")

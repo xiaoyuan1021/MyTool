@@ -33,3 +33,4 @@ Thumbs.db
 images/
 build/*
 CMakeFiles/*
+3rdparty/*

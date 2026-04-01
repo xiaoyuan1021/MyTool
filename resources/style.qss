@@ -5,8 +5,16 @@ QWidget {
     background-color: #F0F9F6;
     font-family: "Microsoft YaHei";
     font-size: 12px;
-    color: #1F3A34;
 }
+
+/* =========================
+   日志文本编辑器（白底，颜色由代码控制）
+========================= */
+/* QTextEdit#textEdit_log {
+    background-color: #FFFFFF;
+    selection-color: #10B981;
+    selection-background-color: #D1FAE5;
+} */
 
 /* =========================
    按钮

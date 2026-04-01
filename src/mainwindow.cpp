@@ -500,16 +500,13 @@ void MainWindow::on_btn_Log_clicked()
         ui->stackedWidget_main->setCurrentIndex(1); // 切换到日志页面
     }
     
-    // 显示已有日志（不重新连接信号，避免断开构造函数中的连接）
+    // 清空现有内容，让spdlog重新输出带颜色的日志
     if (ui->textEdit_log) {
-        // 清空现有内容
         ui->textEdit_log->clear();
         
-        // 显示已有日志
+        // 获取最近的日志并使用spdlog重新输出（带颜色）
         QStringList logs = Logger::instance()->getRecentLogs(100);
-        for (const QString& log : logs) {
-            ui->textEdit_log->append(log);
-        }
+        Logger::instance()->outputLogsWithColor(logs);
     }
 }
 

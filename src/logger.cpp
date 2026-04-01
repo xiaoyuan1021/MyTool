@@ -9,6 +9,38 @@ Logger* Logger::instance()
 void Logger::setTextEdit(QTextEdit *textdEdit)
 {
     m_textEdit=textdEdit;
+    
+    // 创建 spdlog qt color logger
+    if (m_textEdit) {
+        // 设置最大行数为1000，支持UTF-8
+        m_colorLogger = spdlog::qt_color_logger_mt("qt_color_logger", m_textEdit, 1000, true);
+        
+        // 自定义颜色配置
+        auto* sink = static_cast<spdlog::sinks::qt_color_sink_mt*>(m_colorLogger->sinks()[0].get());
+        
+        // 设置info颜色为黑色（或绿色）
+        QTextCharFormat infoFormat;
+        infoFormat.setForeground(Qt::black);
+        sink->set_level_color(spdlog::level::info, infoFormat);
+        
+        // 设置warning颜色为橙色
+        QTextCharFormat warnFormat;
+        warnFormat.setForeground(QColor(255, 165, 0)); // 橙色
+        sink->set_level_color(spdlog::level::warn, warnFormat);
+        
+        // 设置error颜色为红色
+        QTextCharFormat errorFormat;
+        errorFormat.setForeground(Qt::red);
+        sink->set_level_color(spdlog::level::err, errorFormat);
+        
+        // 设置critical颜色为红色
+        QTextCharFormat criticalFormat;
+        criticalFormat.setForeground(Qt::red);
+        sink->set_level_color(spdlog::level::critical, criticalFormat);
+        
+        // 设置日志格式，包含时间、级别和消息
+        m_colorLogger->set_pattern("%Y-%m-%d %H:%M:%S [%l] %v");
+    }
 }
 
 void Logger::setLogFile(const QString &filePath)
@@ -78,84 +110,54 @@ bool Logger::openLogFolder(bool selectFile)
 
 void Logger::info(const QString &message)
 {
-    QString time =QDateTime::currentDateTime().toString("MM-dd hh:mm:ss");
-    if(m_textEdit)
-    {
-        QTextCursor cursor = m_textEdit->textCursor();
-        cursor.movePosition(QTextCursor::End);
-        
-        QTextCharFormat format;
-        format.setForeground(QColor("black"));
-        cursor.setCharFormat(format);
-        
-        QString log=QString("%1 [info] %2").arg(time,message);
-        cursor.insertText(log + "\n");
-        
-        // 重置格式为默认黑色
-        QTextCharFormat resetFormat;
-        resetFormat.setForeground(QColor("black"));
-        cursor.setCharFormat(resetFormat);
-        
-        m_textEdit->setTextCursor(cursor);
-        m_textEdit->ensureCursorVisible();
+    QString time = QDateTime::currentDateTime().toString("MM-dd hh:mm:ss");
+    QString log = QString("%1 [info] %2").arg(time, message);
+    
+    // 使用spdlog输出带颜色的日志
+    if (m_colorLogger) {
+        m_colorLogger->info(message.toStdString());
+    } else if(m_textEdit) {
+        // 回退到原有实现
+        m_textEdit->append(QString("<span style=\"color:black;\">%1</span>").arg(log));
     }
-    QString fileLog=QString("%1 [info] %2").arg(time,message);
+    
+    QString fileLog = QString("%1 [info] %2").arg(time, message);
     writeToFile(fileLog);
     emit logMessage(fileLog);
 }
 
 void Logger::warning(const QString &message)
 {
-    QString time =QDateTime::currentDateTime().toString("MM-dd hh:mm:ss");
-    if(m_textEdit)
-    {
-        QTextCursor cursor = m_textEdit->textCursor();
-        cursor.movePosition(QTextCursor::End);
-        
-        QTextCharFormat format;
-        format.setForeground(QColor("orange"));
-        cursor.setCharFormat(format);
-        
-        QString log=QString("%1 [warning] %2").arg(time,message);
-        cursor.insertText(log + "\n");
-        
-        // 重置格式为默认黑色
-        QTextCharFormat resetFormat;
-        resetFormat.setForeground(QColor("black"));
-        cursor.setCharFormat(resetFormat);
-        
-        m_textEdit->setTextCursor(cursor);
-        m_textEdit->ensureCursorVisible();
+    QString time = QDateTime::currentDateTime().toString("MM-dd hh:mm:ss");
+    QString log = QString("%1 [warning] %2").arg(time, message);
+    
+    // 使用spdlog输出带颜色的日志
+    if (m_colorLogger) {
+        m_colorLogger->warn(message.toStdString());
+    } else if(m_textEdit) {
+        // 回退到原有实现
+        m_textEdit->append(QString("<span style=\"color:orange;\">%1</span>").arg(log));
     }
-    QString fileLog=QString("%1 [warning] %2").arg(time,message);
+    
+    QString fileLog = QString("%1 [warning] %2").arg(time, message);
     writeToFile(fileLog);
     emit logMessage(fileLog);
 }
 
 void Logger::error(const QString &message)
 {
-    QString time =QDateTime::currentDateTime().toString("MM-dd hh:mm:ss");
-    if(m_textEdit)
-    {
-        QTextCursor cursor = m_textEdit->textCursor();
-        cursor.movePosition(QTextCursor::End);
-        
-        QTextCharFormat format;
-        format.setForeground(QColor("red"));
-        cursor.setCharFormat(format);
-        
-        QString log=QString("%1 [error] %2").arg(time,message);
-        cursor.insertText(log + "\n");
-        
-        // 重置格式为默认黑色
-        QTextCharFormat resetFormat;
-        resetFormat.setForeground(QColor("black"));
-        cursor.setCharFormat(resetFormat);
-        
-        m_textEdit->setTextCursor(cursor);
-        m_textEdit->ensureCursorVisible();
+    QString time = QDateTime::currentDateTime().toString("MM-dd hh:mm:ss");
+    QString log = QString("%1 [error] %2").arg(time, message);
+    
+    // 使用spdlog输出带颜色的日志
+    if (m_colorLogger) {
+        m_colorLogger->error(message.toStdString());
+    } else if(m_textEdit) {
+        // 回退到原有实现
+        m_textEdit->append(QString("<span style=\"color:red;\">%1</span>").arg(log));
     }
-    QString fileLog=QString("%1 [error] %2").arg(time,message);
+    
+    QString fileLog = QString("%1 [error] %2").arg(time, message);
     writeToFile(fileLog);
     emit logMessage(fileLog);
 }
@@ -198,6 +200,48 @@ QStringList Logger::getRecentLogs(int count) const
     
     // 如果没有日志文件或读取失败，返回空列表
     return logs;
+}
+
+void Logger::outputLogsWithColor(const QStringList& logs)
+{
+    if (!m_colorLogger) {
+        return;
+    }
+    
+    // 解析每条日志并使用spdlog重新输出（带颜色）
+    for (const QString& log : logs) {
+        // 解析日志格式："%Y-%m-%d %H:%M:%S [%l] %v"
+        // 例如："2026-04-01 19:44:19 [info] 这是一条信息"
+        
+        // 查找日志级别的开始位置
+        int levelStart = log.indexOf('[');
+        int levelEnd = log.indexOf(']', levelStart);
+        
+        if (levelStart != -1 && levelEnd != -1 && levelEnd > levelStart) {
+            // 提取日志级别
+            QString levelStr = log.mid(levelStart + 1, levelEnd - levelStart - 1).toLower();
+            
+            // 提取消息（跳过级别后的空格）
+            QString message = log.mid(levelEnd + 2);
+            
+            // 根据日志级别调用相应的spdlog方法
+            if (levelStr == "info") {
+                m_colorLogger->info(message.toStdString());
+            } else if (levelStr == "warning") {
+                m_colorLogger->warn(message.toStdString());
+            } else if (levelStr == "error") {
+                m_colorLogger->error(message.toStdString());
+            } else if (levelStr == "critical") {
+                m_colorLogger->critical(message.toStdString());
+            } else {
+                // 默认使用info级别
+                m_colorLogger->info(log.toStdString());
+            }
+        } else {
+            // 如果无法解析格式，直接输出整行
+            m_colorLogger->info(log.toStdString());
+        }
+    }
 }
 
 Logger::Logger()
