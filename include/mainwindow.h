@@ -105,7 +105,6 @@ private:
     QTimer* m_processDebounceTimer;
 
     int m_currentTabIndex;
-    bool m_needsReprocess = false;
     bool m_isDestroying = false;
 
     void setupSystemMonitor();

@@ -132,25 +132,12 @@ MainWindow::MainWindow(QWidget *parent)
     QShortcut *clearMatchShortcut = new QShortcut(Qt::Key_Escape, this);
     connect(clearMatchShortcut, &QShortcut::activated, m_templateTabWidget.get(), &TemplateTabWidget::clearMatchResults);
 
-    // m_algorithmController = std::make_unique<AlgorithmTabController>(
-    //     ui, m_pipelineManager, this);
-    // connect(m_algorithmController.get(), &AlgorithmTabController::algorithmChanged,
-    //         this, &MainWindow::processAndDisplay);
-    // m_algorithmController->initialize();
-
     m_processTabWidget = std::make_unique<ProcessTabWidget>(
         m_pipelineManager, this);
     ui->tabWidget->addTab(m_processTabWidget.get(), "处理");
     connect(m_processTabWidget.get(), &ProcessTabWidget::algorithmChanged,
             this, &MainWindow::processAndDisplay);
     m_processTabWidget->initialize();
-
-    // m_extractController = std::make_unique<ExtractTabController>(
-    //     ui, m_pipelineManager, m_view, &m_roiManager, this);
-    // connect(m_extractController.get(), &ExtractTabController::extractionChanged,
-    //         this, &MainWindow::processAndDisplay);
-    // m_extractController->initialize();
-
 
     m_extractTabWidget = std::make_unique<ExtractTabWidget>(
         m_pipelineManager, m_view, &m_roiManager, this);
@@ -242,25 +229,6 @@ void MainWindow::setupUI()
 
 void MainWindow::setupConnections()
 {
-    // 按钮信号由Qt自动连接（通过on_<objectName>_<signal>命名规则）
-    // 无需手动连接以下按钮：
-    // - btn_Home
-    // - btn_Log  
-    // - btn_openImg
-    // - btn_saveImg
-    // - btn_drawRoi
-    // - btn_resetROI
-    // - btn_saveConfig
-    // - btn_importConfig
-    // connect(ui->btn_addDetect, &QPushButton::clicked, this, [this]() {
-    //     // 添加检测功能（如果需要实现）
-    //     Logger::instance()->info("添加检测按钮被点击");
-    // });
-    // connect(ui->btn_deleteDetect, &QPushButton::clicked, this, [this]() {
-    //     // 删除检测功能（如果需要实现）
-    //     Logger::instance()->info("删除检测按钮被点击");
-    // });
-    
     // 连接tabWidget的currentChanged信号
     connect(ui->tabWidget, &QTabWidget::currentChanged, this, &MainWindow::on_tabWidget_currentChanged);
     
@@ -312,9 +280,6 @@ void MainWindow::setupConnections()
                         .arg(point.y(), 0, 'f', 1)
                     );
             });
-    // connect(ui->btn_saveConfig, &QPushButton::clicked, this, &MainWindow::on_btn_saveConfig_clicked);
-    // connect(ui->btn_importConfig, &QPushButton::clicked, this, &MainWindow::on_btn_importConfig_clicked);
-
 }
 
 // ========== 核心处理 ==========
@@ -640,7 +605,7 @@ void MainWindow::applyConfigToUI(const AppConfig& config)
 {
     // 应用 ROI 配置
     if (config.roiRect.isValid()) {
-        m_roiManager.applyRoi(config.roiRect);
+        m_roiManager.setRoi(config.roiRect);
         Logger::instance()->info("已恢复 ROI 配置");
     }
 
@@ -1103,38 +1068,18 @@ void MainWindow::onRoiTreeItemClicked(QTreeWidgetItem* item, int column)
         m_currentSelectedRoiId = itemId;
         qDebug() << "[DEBUG] onRoiTreeItemClicked: ROI item clicked, m_currentSelectedRoiId =" << m_currentSelectedRoiId;
         
-        // 在图像视图中显示对应的ROI
-        RoiConfig* roi = m_multiRoiConfig->getRoi(itemId);
-        if (roi) {
-            // 清除当前绘制的ROI
-            m_view->clearRoi();
-            
-            // 重置图像缩放到原始比例
-            m_view->resetZoom();
-            
-            // 重新绘制选中的ROI
-            m_view->setImage(ImageUtils::Mat2Qimage(m_roiManager.getFullImage()));
-            
-            // 在ROI管理器中应用选中的ROI区域
-            // 将QRectF转换为cv::Rect，然后应用到ROI管理器
-            cv::Rect roiRect(
-                static_cast<int>(roi->roiRect.x()),
-                static_cast<int>(roi->roiRect.y()),
-                static_cast<int>(roi->roiRect.width()),
-                static_cast<int>(roi->roiRect.height())
-            );
-            
-            // 更新ROI管理器的当前图像
-            // 注意：applyRoi期望QRectF类型，需要转换
-            QRectF qroiRect(static_cast<qreal>(roiRect.x), 
-                           static_cast<qreal>(roiRect.y), 
-                           static_cast<qreal>(roiRect.width), 
-                           static_cast<qreal>(roiRect.height));
-            m_roiManager.applyRoi(qroiRect);
-            // 重新处理图像以显示ROI区域
-            processAndDisplay();
-            
-            Logger::instance()->info(QString("已显示ROI: %1").arg(roi->roiName));
+            // 在图像视图中显示对应的ROI
+            RoiConfig* roi = m_multiRoiConfig->getRoi(itemId);
+            if (roi) {
+                m_view->clearRoi();
+                m_view->resetZoom();
+                m_view->setImage(ImageUtils::Mat2Qimage(m_roiManager.getFullImage()));
+                
+                // 直接使用QRectF，无需转换
+                m_roiManager.setRoi(roi->roiRect);
+                
+                processAndDisplay();
+                Logger::instance()->info(QString("已显示ROI: %1").arg(roi->roiName));
         } else {
             Logger::instance()->info(QString("选中ROI: %1").arg(itemId));
         }

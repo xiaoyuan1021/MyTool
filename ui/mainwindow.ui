@@ -274,19 +274,13 @@
            </property>
            <property name="maximumSize">
             <size>
-             <width>650</width>
+             <width>800</width>
              <height>16777215</height>
             </size>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_detectionPanel">
             <item>
              <widget class="QTabWidget" name="tabWidget">
-              <property name="minimumSize">
-               <size>
-                <width>800</width>
-                <height>0</height>
-               </size>
-              </property>
               <property name="currentIndex">
                <number>-1</number>
               </property>

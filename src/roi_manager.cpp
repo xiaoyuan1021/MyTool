@@ -39,7 +39,7 @@ const cv::Mat& RoiManager::getCurrentImage() const
     return m_isRoiActive ? m_roiImage : m_fullImage;
 }
 
-bool RoiManager::applyRoi(const QRectF &roiRectF)
+bool RoiManager::setRoi(const QRectF &roiRectF)
 {
     if (m_fullImage.empty()) {
         qDebug() << "[RoiManager] 完整图像为空";
@@ -304,7 +304,7 @@ void RoiManager::enableDrawRoiMode(ImageView *view, QStatusBar *statusBar)
 
 bool RoiManager::handleRoiSelected(const QRectF &roiImgRectF, QStatusBar *statusBar)
 {
-    if (!applyRoi(roiImgRectF)) {
+    if (!setRoi(roiImgRectF)) {
         if (statusBar) {
             statusBar->showMessage("ROI应用失败", 2000);
         }

@@ -54,11 +54,11 @@ public:
     const cv::Mat &getCurrentImage() const;
 
     /**
-     * @brief 应用ROI区域（单ROI模式）
+     * @brief 设置ROI区域（单ROI模式）
      * @param roiRectF ROI矩形（图像坐标系）
-     * @return 是否应用成功
+     * @return 是否设置成功
      */
-    bool applyRoi(const QRectF &roiRectF);
+    bool setRoi(const QRectF &roiRectF);
 
     /**
      * @brief 重置ROI，恢复到完整图像（单ROI模式）
