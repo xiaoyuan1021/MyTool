@@ -65,6 +65,8 @@ private slots:
     void on_btn_saveImg_clicked();
     void on_btn_drawRoi_clicked();
     void on_btn_resetROI_clicked();
+    void on_btn_addROI_clicked();
+    void on_btn_deleteROI_clicked();
     void onRoiSelected(const QRectF &roiRect);
     void on_btn_clearLog_clicked();
     void on_btn_openLog_clicked();
@@ -143,6 +145,9 @@ private:
     void onRoiTreeContextMenuRequested(const QPoint& pos);
     void onRoiTreeItemDoubleClicked(QTreeWidgetItem* item, int column);
     void onRoiTreeItemClicked(QTreeWidgetItem* item, int column);
+    
+    // 当前选中的ROI ID
+    QString m_currentSelectedRoiId;
 
 };
 

@@ -25,9 +25,9 @@ struct TabConfig {
     static TabConfig getBlobConfig() {
         return TabConfig({
             "图像",
-            "增强", 
-            "补正",
+            "增强",
             "过滤",
+            "补正",
             "处理",
             "提取",
             "判定"
