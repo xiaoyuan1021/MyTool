@@ -7,7 +7,13 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QDateTime>
+#include <QRandomGenerator>
 #include "detection_config_types.h"
+
+// 静态计数器，用于生成唯一ID
+static int s_roiCounter = 0;
+static int s_detectionCounter = 0;
 
 /**
  * @brief 检测类型枚举
@@ -76,7 +82,8 @@ struct DetectionItem {
 
     DetectionItem(const QString& name, DetectionType t)
         : itemName(name), type(t), enabled(true) {
-        itemId = QString("det_%1").arg(reinterpret_cast<quintptr>(this), 8, 16, QChar('0'));
+        // 使用静态计数器生成唯一ID
+        itemId = QString("det_%1").arg(++s_detectionCounter, 8, 10, QChar('0'));
         
         // 根据类型初始化对应的配置
         switch (type) {
@@ -184,7 +191,8 @@ struct RoiConfig {
 
     RoiConfig(const QString& name, const QRectF& rect)
         : roiName(name), roiRect(rect), isActive(true), isSelected(false), color("#FF6B6B") {
-        roiId = QString("roi_%1").arg(reinterpret_cast<quintptr>(this), 8, 16, QChar('0'));
+        // 使用静态计数器生成唯一ID
+        roiId = QString("roi_%1").arg(++s_roiCounter, 8, 10, QChar('0'));
     }
 
     /**

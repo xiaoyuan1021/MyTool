@@ -429,6 +429,9 @@ void MainWindow::onRoiSelected(const QRectF &roiImgRectF)
         return;
     }
 
+    // 绘制完ROI后重置图像缩放，恢复到原始比例
+    m_view->resetZoom();
+
     processAndDisplay();
 }
 
@@ -600,7 +603,10 @@ void MainWindow::collectConfigFromUI(AppConfig& config)
     // 收集 ROI 配置
     if (m_roiManager.isRoiActive()) {
         cv::Rect roi = m_roiManager.getLastRoi();
-        config.roiRect = QRectF(roi.x, roi.y, roi.width, roi.height);
+        config.roiRect = QRectF(static_cast<qreal>(roi.x), 
+                               static_cast<qreal>(roi.y), 
+                               static_cast<qreal>(roi.width), 
+                               static_cast<qreal>(roi.height));
     }
 
     // 收集增强参数
@@ -751,6 +757,8 @@ void MainWindow::setupTreeView()
 
 void MainWindow::onAddDetectionClicked()
 {
+    qDebug() << "[DEBUG] onAddDetectionClicked: m_currentSelectedRoiId =" << m_currentSelectedRoiId;
+    
     // 检查是否已加载图像
     if (m_roiManager.getFullImage().empty()) {
         QMessageBox::warning(this, "警告", "请先加载一张图像");
@@ -771,9 +779,12 @@ void MainWindow::onAddDetectionClicked()
     // 获取ROI配置
     RoiConfig* roi = m_multiRoiConfig->getRoi(m_currentSelectedRoiId);
     if (!roi) {
+        qDebug() << "[DEBUG] onAddDetectionClicked: ROI not found for ID =" << m_currentSelectedRoiId;
         QMessageBox::warning(this, "警告", "未找到选中的ROI");
         return;
     }
+    
+    qDebug() << "[DEBUG] onAddDetectionClicked: Found ROI =" << roi->roiName << ", ID =" << roi->roiId;
     
     // 创建对话框
     QDialog dialog(this);
@@ -816,6 +827,8 @@ void MainWindow::onAddDetectionClicked()
             // 创建检测项
             QString typeName = detectionTypeToString(type);
             DetectionItem item(typeName, type);
+            
+            qDebug() << "[DEBUG] onAddDetectionClicked: Adding detection item to ROI =" << roi->roiName;
             
             // 添加到ROI
             roi->addDetectionItem(item);
@@ -948,9 +961,18 @@ void MainWindow::switchToTabConfig(const TabConfig& config)
 
 void MainWindow::refreshRoiTreeView()
 {
+    // 保存当前选中的ROI ID，以便刷新后恢复选中状态
+    QString previouslySelectedRoiId = m_currentSelectedRoiId;
+    
+    qDebug() << "[DEBUG] refreshRoiTreeView: previouslySelectedRoiId =" << previouslySelectedRoiId;
+    
     ui->treeView->clear();
     
     const QList<RoiConfig>& rois = m_multiRoiConfig->getRois();
+    
+    qDebug() << "[DEBUG] refreshRoiTreeView: Total ROI count =" << rois.size();
+    
+    QTreeWidgetItem* itemToSelect = nullptr;  // 要选中的项目
     
     for (const auto& roi : rois) {
         // 创建ROI节点
@@ -975,6 +997,12 @@ void MainWindow::refreshRoiTreeView()
         // 设置ROI颜色
         QColor roiColor(roi.color);
         roiItem->setForeground(0, QBrush(roiColor));
+        
+        // 记录需要选中的项目
+        if (roi.roiId == previouslySelectedRoiId) {
+            itemToSelect = roiItem;
+            qDebug() << "[DEBUG] refreshRoiTreeView: Found matching ROI to select =" << roi.roiName << ", ID =" << roi.roiId;
+        }
         
         // 添加检测项子节点（简化显示）
         for (const auto& detection : roi.detectionItems) {
@@ -1005,6 +1033,29 @@ void MainWindow::refreshRoiTreeView()
     
     // 展开所有项
     ui->treeView->expandAll();
+    
+    // 恢复选中状态
+    if (itemToSelect) {
+        // 如果之前选中的ROI还存在，恢复选中状态
+        ui->treeView->setCurrentItem(itemToSelect);
+        // 确保m_currentSelectedRoiId被正确设置
+        m_currentSelectedRoiId = itemToSelect->data(0, Qt::UserRole).toString();
+        qDebug() << "[DEBUG] refreshRoiTreeView: Restored selection to previously selected ROI, ID =" << m_currentSelectedRoiId;
+    } else if (ui->treeView->topLevelItemCount() > 0) {
+        // 如果之前选中的ROI不存在了（被删除了），选中最后一个ROI
+        QTreeWidgetItem* lastItem = ui->treeView->topLevelItem(
+            ui->treeView->topLevelItemCount() - 1
+        );
+        ui->treeView->setCurrentItem(lastItem);
+        m_currentSelectedRoiId = lastItem->data(0, Qt::UserRole).toString();
+        qDebug() << "[DEBUG] refreshRoiTreeView: Previously selected ROI not found, selected last ROI =" << m_currentSelectedRoiId;
+    } else {
+        // 没有任何ROI
+        m_currentSelectedRoiId.clear();
+        qDebug() << "[DEBUG] refreshRoiTreeView: No ROI exists, cleared selection";
+    }
+    
+    qDebug() << "[DEBUG] refreshRoiTreeView: Final m_currentSelectedRoiId =" << m_currentSelectedRoiId;
 }
 
 void MainWindow::onRoiTreeItemClicked(QTreeWidgetItem* item, int column)
@@ -1012,17 +1063,24 @@ void MainWindow::onRoiTreeItemClicked(QTreeWidgetItem* item, int column)
     Q_UNUSED(column);
     
     if (!item) {
+        qDebug() << "[DEBUG] onRoiTreeItemClicked: item is null";
         return;
     }
     
     QString itemId = item->data(0, Qt::UserRole).toString();
     QString itemType = item->data(0, Qt::UserRole + 1).toString();
     
+    qDebug() << "[DEBUG] onRoiTreeItemClicked: itemId =" << itemId << ", itemType =" << itemType;
+    qDebug() << "[DEBUG] onRoiTreeItemClicked: m_currentSelectedRoiId before update =" << m_currentSelectedRoiId;
+    
     if (itemType == "detection") {
         // 点击的是检测项，找到父ROI
         QTreeWidgetItem* parentItem = item->parent();
         if (parentItem) {
             m_currentSelectedRoiId = parentItem->data(0, Qt::UserRole).toString();
+            qDebug() << "[DEBUG] onRoiTreeItemClicked: Detection item clicked, parent ROI ID =" << m_currentSelectedRoiId;
+        } else {
+            qDebug() << "[DEBUG] onRoiTreeItemClicked: Detection item has no parent!";
         }
         
         // 获取检测项类型并切换Tab
@@ -1043,8 +1101,46 @@ void MainWindow::onRoiTreeItemClicked(QTreeWidgetItem* item, int column)
     } else {
         // 点击的是ROI
         m_currentSelectedRoiId = itemId;
-        Logger::instance()->info(QString("选中ROI: %1").arg(itemId));
+        qDebug() << "[DEBUG] onRoiTreeItemClicked: ROI item clicked, m_currentSelectedRoiId =" << m_currentSelectedRoiId;
+        
+        // 在图像视图中显示对应的ROI
+        RoiConfig* roi = m_multiRoiConfig->getRoi(itemId);
+        if (roi) {
+            // 清除当前绘制的ROI
+            m_view->clearRoi();
+            
+            // 重置图像缩放到原始比例
+            m_view->resetZoom();
+            
+            // 重新绘制选中的ROI
+            m_view->setImage(ImageUtils::Mat2Qimage(m_roiManager.getFullImage()));
+            
+            // 在ROI管理器中应用选中的ROI区域
+            // 将QRectF转换为cv::Rect，然后应用到ROI管理器
+            cv::Rect roiRect(
+                static_cast<int>(roi->roiRect.x()),
+                static_cast<int>(roi->roiRect.y()),
+                static_cast<int>(roi->roiRect.width()),
+                static_cast<int>(roi->roiRect.height())
+            );
+            
+            // 更新ROI管理器的当前图像
+            // 注意：applyRoi期望QRectF类型，需要转换
+            QRectF qroiRect(static_cast<qreal>(roiRect.x), 
+                           static_cast<qreal>(roiRect.y), 
+                           static_cast<qreal>(roiRect.width), 
+                           static_cast<qreal>(roiRect.height));
+            m_roiManager.applyRoi(qroiRect);
+            // 重新处理图像以显示ROI区域
+            processAndDisplay();
+            
+            Logger::instance()->info(QString("已显示ROI: %1").arg(roi->roiName));
+        } else {
+            Logger::instance()->info(QString("选中ROI: %1").arg(itemId));
+        }
     }
+    
+    qDebug() << "[DEBUG] onRoiTreeItemClicked: m_currentSelectedRoiId after update =" << m_currentSelectedRoiId;
 }
 
 void MainWindow::onRoiTreeItemDoubleClicked(QTreeWidgetItem* item, int column)

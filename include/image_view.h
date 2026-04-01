@@ -59,6 +59,10 @@ public:
 
     QVector<QPointF> getPolygonPoints() const;
 
+    // 重置缩放到原始比例
+    void resetZoom();
+
+
 signals:
     void pixelInfoChanged(int x, int y, const QColor &rgb, int gray);
     void roiSelected(const QRectF &roiRect); // 发出的是图像坐标系中的 ROI

@@ -708,3 +708,21 @@ void ImageView::clearReferenceLine()
         m_referenceLineItem = nullptr;
     }
 }
+
+void ImageView::resetZoom()
+{
+    if (!m_pixmapItem || m_pixmapItem->pixmap().isNull()) {
+        return;
+    }
+    
+    // 重置变换
+    resetTransform();
+    m_scaleFactor = 1.0;
+    
+    // 重新适应视图
+    if (this->width() > 0 && this->height() > 0) {
+        fitInView(m_pixmapItem, Qt::KeepAspectRatio);
+        QTransform t = transform();
+        m_scaleFactor = t.m11();
+    }
+}
