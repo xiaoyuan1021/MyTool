@@ -3,7 +3,7 @@
 #include "image_utils.h"
 #include <QCoreApplication>
 
-match_strategy::match_strategy() {}
+MatchStrategy::MatchStrategy() {}
 
 ShapeMatchStrategy::ShapeMatchStrategy()
     :m_hasTemplate(false)
@@ -164,7 +164,7 @@ QVector<MatchResult> ShapeMatchStrategy::findMatches(const Mat &searchImage, dou
     }
     try
     {
-        HImage searchHImage =ImageUtils::Mat2HImage(searchImage);
+        HImage searchHImage =ImageUtils::matToHImage(searchImage);
         HTuple row, column, angle, score;
         m_model.FindShapeModel(searchHImage,
                                0,
@@ -211,7 +211,7 @@ Mat ShapeMatchStrategy::drawMatches(const Mat &searchImage, const QVector<MatchR
         cv::cvtColor(result, result, cv::COLOR_GRAY2BGR);
     }
 
-    QImage qImg = ImageUtils::Mat2Qimage(result);
+    QImage qImg = ImageUtils::matToQImage(result);
 
     QPainter painter(&qImg);
     painter.setRenderHint(QPainter::Antialiasing, true);
@@ -247,7 +247,7 @@ Mat ShapeMatchStrategy::drawMatches(const Mat &searchImage, const QVector<MatchR
         painter.drawText(QPointF(matches[i].column + 20, matches[i].row - 20), info);
     }
     painter.end();
-    cv::Mat results = ImageUtils::Qimage2Mat(qImg, true);
+    cv::Mat results = ImageUtils::qImageToMat(qImg, true);
     return results;
 }
 
@@ -259,7 +259,7 @@ HImage ShapeMatchStrategy::createTemplateRegion(const Mat &image, const QVector<
 
     if (polygon.size() < 3) {
         Logger::instance()->error("[Shape] 多边形顶点数不足");
-        return ImageUtils::Mat2HImage(image);
+        return ImageUtils::matToHImage(image);
     }
 
     // 打印多边形坐标
@@ -282,7 +282,7 @@ HImage ShapeMatchStrategy::createTemplateRegion(const Mat &image, const QVector<
 
     if (boundingRect.width <= 0 || boundingRect.height <= 0) {
         Logger::instance()->error("[Shape] 外接矩形无效");
-        return ImageUtils::Mat2HImage(image);
+        return ImageUtils::matToHImage(image);
     }
 
     Logger::instance()->info(QString("[Shape] 外接矩形: x=%1, y=%2, w=%3, h=%4")
@@ -291,7 +291,7 @@ HImage ShapeMatchStrategy::createTemplateRegion(const Mat &image, const QVector<
 
     // 提取矩形 ROI
     cv::Mat roi = image(boundingRect).clone();
-    HImage result = ImageUtils::Mat2HImage(roi);
+    HImage result = ImageUtils::matToHImage(roi);
 
     Logger::instance()->info(QString("[Shape] 提取的 ROI 大小: %1x%2").arg(roi.cols).arg(roi.rows));
 
@@ -457,7 +457,7 @@ QVector<MatchResult> NCCMatchStrategy::findMatches(const cv::Mat& searchImage,
 
     try {
         // 1️⃣ 转换搜索图像
-        HImage searchHImage = ImageUtils::Mat2HImage(searchImage);
+        HImage searchHImage = ImageUtils::matToHImage(searchImage);
 
         // 2️⃣ 查找模板
         HTuple row, column, angle, score;
@@ -511,7 +511,7 @@ cv::Mat NCCMatchStrategy::drawMatches(const cv::Mat& searchImage,
     if (displayImage.channels() == 1) {
         cv::cvtColor(displayImage, displayImage, cv::COLOR_GRAY2BGR);
     }
-    QImage qImage = ImageUtils::Mat2Qimage(displayImage);
+    QImage qImage = ImageUtils::matToQImage(displayImage);
 
     // ✅ 2. 使用 QPainter 绘制
     QPainter painter(&qImage);
@@ -582,7 +582,7 @@ cv::Mat NCCMatchStrategy::drawMatches(const cv::Mat& searchImage,
     painter.end();
 
     // ✅ 3. QImage -> Mat
-    cv::Mat result = ImageUtils::Qimage2Mat(qImage, true);
+    cv::Mat result = ImageUtils::qImageToMat(qImage, true);
     return result;
 }
 
@@ -590,7 +590,7 @@ HImage NCCMatchStrategy::createTemplateRegion(const cv::Mat& image,
                                               const QVector<QPointF>& polygon)
 {
     // 1️⃣ 转换为 HImage
-    HImage hImage = ImageUtils::Mat2HImage(image);
+    HImage hImage = ImageUtils::matToHImage(image);
 
     // 2️⃣ 创建多边形 Region
     HTuple rows, cols;

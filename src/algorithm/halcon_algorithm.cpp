@@ -69,10 +69,10 @@ HalconCpp::HRegion HalconAlgorithm::execute(const HalconCpp::HRegion& region, co
     }
 
     case HalconAlgoType::Union:
-        return Union(region);
+        return union1(region);
 
     case HalconAlgoType::Connection:
-        return Connection(region);
+        return connection(region);
 
     case HalconAlgoType::FillUp:
         return fillUpHoles(region);
@@ -137,12 +137,12 @@ HalconCpp::HRegion HalconAlgorithm::erodeRectangle(const HalconCpp::HRegion &reg
     return region.ErosionRectangle1(width, height);
 }
 
-HalconCpp::HRegion HalconAlgorithm::Union(const HalconCpp::HRegion &region)
+HalconCpp::HRegion HalconAlgorithm::union1(const HalconCpp::HRegion &region)
 {
     return region.Union1();
 }
 
-HalconCpp::HRegion HalconAlgorithm::Connection(const HalconCpp::HRegion &region)
+HalconCpp::HRegion HalconAlgorithm::connection(const HalconCpp::HRegion &region)
 {
     return region.Connection();
 }
@@ -168,7 +168,7 @@ HalconCpp::HRegion HalconAlgorithm::selectShapeArea(const HalconCpp::HRegion &re
     }
     catch (const HException& ex)
     {
-        qDebug() << "SelectShape error:" << ex.ErrorMessage().Text();
+        Logger::instance()->error(QString("SelectShape error: %1").arg(ex.ErrorMessage().Text()));
         return region;
     }
 }

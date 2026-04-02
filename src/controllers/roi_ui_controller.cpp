@@ -150,7 +150,7 @@ void RoiUiController::onSwitchRoiClicked()
         m_roiManager.resetRoi();
         m_view->clearRoi();
         m_view->resetZoom();
-        m_view->setImage(ImageUtils::Mat2Qimage(m_roiManager.getFullImage()));
+        m_view->setImage(ImageUtils::matToQImage(m_roiManager.getFullImage()));
         Logger::instance()->info("已切换到原图模式");
     } else {
         // 当前是原图模式，切换到ROI模式
@@ -193,13 +193,9 @@ void RoiUiController::refreshRoiTreeView()
     // 保存当前选中的ROI ID，以便刷新后恢复选中状态
     QString previouslySelectedRoiId = m_currentSelectedRoiId;
     
-    qDebug() << "[DEBUG] refreshRoiTreeView: previouslySelectedRoiId =" << previouslySelectedRoiId;
-    
     m_treeView->clear();
     
     const QList<RoiConfig>& rois = m_multiRoiConfig->getRois();
-    
-    qDebug() << "[DEBUG] refreshRoiTreeView: Total ROI count =" << rois.size();
     
     QTreeWidgetItem* itemToSelect = nullptr;  // 要选中的项目
     
@@ -230,7 +226,6 @@ void RoiUiController::refreshRoiTreeView()
         // 记录需要选中的项目
         if (roi.roiId == previouslySelectedRoiId) {
             itemToSelect = roiItem;
-            qDebug() << "[DEBUG] refreshRoiTreeView: Found matching ROI to select =" << roi.roiName << ", ID =" << roi.roiId;
         }
         
         // 添加检测项子节点（简化显示）
@@ -269,7 +264,6 @@ void RoiUiController::refreshRoiTreeView()
         m_treeView->setCurrentItem(itemToSelect);
         // 确保m_currentSelectedRoiId被正确设置
         m_currentSelectedRoiId = itemToSelect->data(0, Qt::UserRole).toString();
-        qDebug() << "[DEBUG] refreshRoiTreeView: Restored selection to previously selected ROI, ID =" << m_currentSelectedRoiId;
     } else if (m_treeView->topLevelItemCount() > 0) {
         // 如果之前选中的ROI不存在了（被删除了），选中最后一个ROI
         QTreeWidgetItem* lastItem = m_treeView->topLevelItem(
@@ -277,14 +271,10 @@ void RoiUiController::refreshRoiTreeView()
         );
         m_treeView->setCurrentItem(lastItem);
         m_currentSelectedRoiId = lastItem->data(0, Qt::UserRole).toString();
-        qDebug() << "[DEBUG] refreshRoiTreeView: Previously selected ROI not found, selected last ROI =" << m_currentSelectedRoiId;
     } else {
         // 没有任何ROI
         m_currentSelectedRoiId.clear();
-        qDebug() << "[DEBUG] refreshRoiTreeView: No ROI exists, cleared selection";
     }
-    
-    qDebug() << "[DEBUG] refreshRoiTreeView: Final m_currentSelectedRoiId =" << m_currentSelectedRoiId;
 }
 
 void RoiUiController::onRoiTreeItemClicked(QTreeWidgetItem* item, int column)
@@ -292,34 +282,26 @@ void RoiUiController::onRoiTreeItemClicked(QTreeWidgetItem* item, int column)
     Q_UNUSED(column);
     
     if (!item) {
-        qDebug() << "[DEBUG] onRoiTreeItemClicked: item is null";
         return;
     }
     
     QString itemId = item->data(0, Qt::UserRole).toString();
     QString itemType = item->data(0, Qt::UserRole + 1).toString();
     
-    qDebug() << "[DEBUG] onRoiTreeItemClicked: itemId =" << itemId << ", itemType =" << itemType;
-    qDebug() << "[DEBUG] onRoiTreeItemClicked: m_currentSelectedRoiId before update =" << m_currentSelectedRoiId;
-    
     if (itemType == "detection") {
         // 点击的是检测项，找到父ROI
         QTreeWidgetItem* parentItem = item->parent();
         if (parentItem) {
             m_currentSelectedRoiId = parentItem->data(0, Qt::UserRole).toString();
-            qDebug() << "[DEBUG] onRoiTreeItemClicked: Detection item clicked, parent ROI ID =" << m_currentSelectedRoiId;
             
             // 发出检测项选中信号，用于触发Tab切换
             emit detectionItemSelected(m_currentSelectedRoiId, itemId);
-        } else {
-            qDebug() << "[DEBUG] onRoiTreeItemClicked: Detection item has no parent!";
         }
         
         Logger::instance()->info(QString("选中检测项: %1").arg(item->text(0)));
     } else {
         // 点击的是ROI - 只更新选中状态，不重新缩放图像
         m_currentSelectedRoiId = itemId;
-        qDebug() << "[DEBUG] onRoiTreeItemClicked: ROI item clicked, m_currentSelectedRoiId =" << m_currentSelectedRoiId;
         
         // 在图像视图中显示对应的ROI（不重置缩放）
         RoiConfig* roi = m_multiRoiConfig->getRoi(itemId);
@@ -334,8 +316,6 @@ void RoiUiController::onRoiTreeItemClicked(QTreeWidgetItem* item, int column)
             Logger::instance()->info(QString("选中ROI: %1").arg(itemId));
         }
     }
-    
-    qDebug() << "[DEBUG] onRoiTreeItemClicked: m_currentSelectedRoiId after update =" << m_currentSelectedRoiId;
 }
 
 void RoiUiController::onRoiTreeItemDoubleClicked(QTreeWidgetItem* item, int column)

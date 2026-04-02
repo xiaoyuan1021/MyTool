@@ -39,8 +39,8 @@ public:
     HalconCpp::HRegion erodeCircle(const HalconCpp::HRegion& region, double radius);
     HalconCpp::HRegion erodeRectangle(const HalconCpp::HRegion& region, Hlong width, Hlong height);
     //联合连通
-    HalconCpp::HRegion Union(const HalconCpp::HRegion& region);
-    HalconCpp::HRegion Connection(const HalconCpp::HRegion& region);
+    HalconCpp::HRegion union1(const HalconCpp::HRegion& region);
+    HalconCpp::HRegion connection(const HalconCpp::HRegion& region);
     //填充孔洞
     HalconCpp::HRegion fillUpHoles(const HalconCpp::HRegion& region);
     //形状变换

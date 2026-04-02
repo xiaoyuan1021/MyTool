@@ -182,10 +182,10 @@ private:
     // 只在0度进行匹配
 };
 
-class match_strategy
+class MatchStrategy
 {
 public:
-    match_strategy();
+    MatchStrategy();
 };
 
 #endif // MATCH_STRATEGY_H

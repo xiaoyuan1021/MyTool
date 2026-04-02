@@ -401,7 +401,7 @@ void MainWindow::setDisplayModeForCurrentTab()
 
 void MainWindow::showImage(const cv::Mat &img)
 {
-    QImage qimg = ImageUtils::Mat2Qimage(img);
+    QImage qimg = ImageUtils::matToQImage(img);
     m_view->setImage(qimg);
 }
 
@@ -543,7 +543,7 @@ void MainWindow::on_btn_switchROI_clicked()
         m_roiManager.resetRoi();
         m_view->clearRoi();
         m_view->resetZoom();
-        m_view->setImage(ImageUtils::Mat2Qimage(m_roiManager.getFullImage()));
+        m_view->setImage(ImageUtils::matToQImage(m_roiManager.getFullImage()));
         Logger::instance()->info("已切换到原图模式");
     } else {
         // 当前是原图模式，切换到ROI模式
