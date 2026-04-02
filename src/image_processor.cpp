@@ -2,20 +2,20 @@
 
 using namespace HalconCpp;
 
-imageprocessor::imageprocessor() {}
+ImageProcessor::ImageProcessor() {}
 
-Mat imageprocessor::convertColorSpace(const Mat &src, const QString &mode)
+cv::Mat ImageProcessor::convertColorSpace(const cv::Mat &src, const QString &mode)
 {
     if(src.empty()) return src;
 
-    Mat displayMat;
+    cv::Mat displayMat;
     if(mode=="Gray Mode")
     {
-        cvtColor(src,displayMat,COLOR_BGR2GRAY);
+        cv::cvtColor(src,displayMat,cv::COLOR_BGR2GRAY);
     }
     else if(mode=="HSV Mode")
     {
-        cvtColor(src,displayMat,COLOR_BGR2HSV);
+        cv::cvtColor(src,displayMat,cv::COLOR_BGR2HSV);
     }
     else if(mode=="RGB Mode")
     {
@@ -24,7 +24,7 @@ Mat imageprocessor::convertColorSpace(const Mat &src, const QString &mode)
     return displayMat;
 }
 
-Mat imageprocessor::executeAlgorithmQueue(const Mat &src, const QVector<AlgorithmStep> &queue)
+cv::Mat ImageProcessor::executeAlgorithmQueue(const cv::Mat &src, const QVector<AlgorithmStep> &queue)
 {
     if(src.empty()) return src;
 
@@ -44,9 +44,9 @@ Mat imageprocessor::executeAlgorithmQueue(const Mat &src, const QVector<Algorith
         return src;  // 没有要执行的步骤，直接返回原图
     }
 
-    Mat gray;
+    cv::Mat gray;
     if(src.channels() == 3) {
-        cvtColor(src, gray, COLOR_BGR2GRAY);
+        cv::cvtColor(src, gray, cv::COLOR_BGR2GRAY);
     } else if(src.channels() == 1) {
         gray = src;  // 已经是灰度图
     } else {
@@ -86,7 +86,7 @@ Mat imageprocessor::executeAlgorithmQueue(const Mat &src, const QVector<Algorith
                         .arg(executedSteps);
 
         // ✅ 优化4：最后统一转回Mat（只转一次）
-        Mat result = ImageUtils::HRegionToMat(currentRegion, gray.cols, gray.rows);
+        cv::Mat result = ImageUtils::HRegionToMat(currentRegion, gray.cols, gray.rows);
 
         if(result.empty()) {
             qDebug() << "[executeAlgorithmQueue] 警告：结果为空，返回输入灰度图";
@@ -111,21 +111,21 @@ Mat imageprocessor::executeAlgorithmQueue(const Mat &src, const QVector<Algorith
 
 }
 
-Mat imageprocessor::adjustParameter(const Mat &src, int brightness, double contrast, double gamma,double sharpen)
+cv::Mat ImageProcessor::adjustParameter(const cv::Mat &src, int brightness, double contrast, double gamma,double sharpen)
 {
     //CV_Assert(gamma>0);
-    Mat dst;
+    cv::Mat dst;
     if(src.empty()) return src;
     src.convertTo(dst,-1,contrast,brightness);
 
-    Mat lut(1,256,CV_8U);
+    cv::Mat lut(1,256,CV_8U);
     for(int i=0;i<256;i++)
         lut.at<uchar>(i)=saturate_cast<uchar>(pow(i/255.0,gamma)*255.0);
     LUT(dst,lut,dst);
     if(sharpen>0.0)
     {
-        Mat blur;
-        GaussianBlur(dst,blur,Size(0,0),1.0);
+        cv::Mat blur;
+        cv::GaussianBlur(dst,blur,cv::Size(0,0),1.0);
         // dst = dst + sharpen * (dst - blur)
         addWeighted(dst, 1.0 + sharpen,
                     blur, -sharpen,
@@ -134,7 +134,7 @@ Mat imageprocessor::adjustParameter(const Mat &src, int brightness, double contr
     return dst;
 }
 
-Mat imageprocessor::filterRGB(const Mat &src, int rLow, int rHigh, int gLow, int gHigh, int bLow, int bHigh)
+cv::Mat ImageProcessor::filterRGB(const cv::Mat &src, int rLow, int rHigh, int gLow, int gHigh, int bLow, int bHigh)
 {
     if(src.empty())
     {
@@ -168,7 +168,7 @@ Mat imageprocessor::filterRGB(const Mat &src, int rLow, int rHigh, int gLow, int
     return mask;
 }
 
-Mat imageprocessor::filterHSV(const Mat &src, int hLow, int hHigh, int sLow, int sHigh, int vLow, int vHigh)
+cv::Mat ImageProcessor::filterHSV(const cv::Mat &src, int hLow, int hHigh, int sLow, int sHigh, int vLow, int vHigh)
 {
     if(src.empty())
     {

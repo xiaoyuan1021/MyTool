@@ -23,12 +23,12 @@ private:
 class StepEnhance:public IPipelineStep
 {
 public:
-    StepEnhance(const PipelineConfig* cfg,imageprocessor* proc) : cfg_(cfg), proc_(proc) {}
+    StepEnhance(const PipelineConfig* cfg, ImageProcessor* proc) : cfg_(cfg), proc_(proc) {}
 
     void run(PipelineContext& ctx) override;
 private:
     const PipelineConfig* cfg_ = nullptr;
-    imageprocessor* proc_=nullptr;
+    ImageProcessor* proc_ = nullptr;
 };
 
 // 3) 灰度过滤
@@ -47,12 +47,12 @@ private:
 class StepAlgorithmQueue : public IPipelineStep
 {
 public:
-    StepAlgorithmQueue(imageprocessor* proc, const QVector<AlgorithmStep>* queue)
+    StepAlgorithmQueue(ImageProcessor* proc, const QVector<AlgorithmStep>* queue)
         : m_processor(proc), m_algorithmQueue(queue) {}
 
     void run(PipelineContext& ctx) override;
 private:
-    imageprocessor* m_processor = nullptr;
+    ImageProcessor* m_processor = nullptr;
     const QVector<AlgorithmStep>* m_algorithmQueue = nullptr;
 };
 
@@ -78,13 +78,13 @@ private:
 class StepColorFilter : public IPipelineStep
 {
 public:
-    StepColorFilter(const PipelineConfig* cfg, imageprocessor* proc)
+    StepColorFilter(const PipelineConfig* cfg, ImageProcessor* proc)
         : m_cfg(cfg), m_processor(proc) {}
 
     void run(PipelineContext& ctx) override;
 private:
     const PipelineConfig* m_cfg;
-    imageprocessor* m_processor;
+    ImageProcessor* m_processor;
 };
 
 // 直线检测

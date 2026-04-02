@@ -136,7 +136,7 @@ private:
     QVector<AlgorithmStep> m_algorithmQueue;
 
     // 图像处理器
-    std::unique_ptr<imageprocessor> m_processor;
+    std::unique_ptr<ImageProcessor> m_processor;
 
     // 最后执行结果
     PipelineContext m_lastContext;

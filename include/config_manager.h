@@ -4,9 +4,9 @@
 #include <QRect>
 #include <QJsonObject>
 #include <QJsonDocument>
-#include <image_processor.h>
-#include <roi_manager.h>
-#include <shape_filter_types.h>
+#include "image_processor.h"
+#include "roi_manager.h"
+#include "shape_filter_types.h"
 struct AppConfig
 {
     // ROI 配置

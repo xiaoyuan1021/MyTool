@@ -4,7 +4,7 @@
 
 PipelineManager::PipelineManager(QObject* parent)
     : QObject(parent)
-    , m_processor(std::make_unique<imageprocessor>())
+    , m_processor(std::make_unique<ImageProcessor>())
 {
     m_config.resetEnhancement();
     initPipeline();

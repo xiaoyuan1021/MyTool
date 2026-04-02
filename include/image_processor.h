@@ -1,5 +1,4 @@
-#ifndef IMAGE_PROCESSOR_H
-#define IMAGE_PROCESSOR_H
+#pragma once
 
 #include <QString>
 #include <QMap>
@@ -15,9 +14,6 @@
 
 #include "image_utils.h"
 #include "halcon_algorithm.h"
-
-
-using namespace cv;
 
 // Halcon算法类型枚举
 enum class HalconAlgoType
@@ -47,16 +43,16 @@ struct AlgorithmStep
     QString description;            // 算法说明
 };
 
-class imageprocessor
+class ImageProcessor
 {
 public:
-    imageprocessor();
+    ImageProcessor();
 
-    Mat convertColorSpace(const Mat&src,const QString& mode);
+    cv::Mat convertColorSpace(const cv::Mat&src,const QString& mode);
 
-    Mat executeAlgorithmQueue(const Mat&src,const QVector<AlgorithmStep>&queue);
+    cv::Mat executeAlgorithmQueue(const cv::Mat&src,const QVector<AlgorithmStep>&queue);
 
-    Mat adjustParameter(const Mat &src, int brightness, double contrast,double gamma,double sharpen);
+    cv::Mat adjustParameter(const cv::Mat &src, int brightness, double contrast,double gamma,double sharpen);
 
     cv::Mat filterRGB(const cv::Mat& src,
                       int rLow, int rHigh,
@@ -69,4 +65,3 @@ public:
 
 };
 
-#endif // IMAGE_PROCESSOR_H
