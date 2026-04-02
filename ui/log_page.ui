@@ -6,52 +6,109 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>448</width>
-    <height>471</height>
+    <width>800</width>
+    <height>600</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Form</string>
+   <string>系统日志</string>
   </property>
-  <widget class="QPushButton" name="btn_openLog">
-   <property name="geometry">
-    <rect>
-     <x>240</x>
-     <y>30</y>
-     <width>151</width>
-     <height>28</height>
-    </rect>
+  <layout class="QVBoxLayout" name="verticalLayout_main">
+   <property name="spacing">
+    <number>10</number>
    </property>
-   <property name="text">
-    <string>打开日志所在文件夹</string>
+   <property name="leftMargin">
+    <number>20</number>
    </property>
-  </widget>
-  <widget class="QPushButton" name="btn_clearLog">
-   <property name="geometry">
-    <rect>
-     <x>40</x>
-     <y>30</y>
-     <width>93</width>
-     <height>28</height>
-    </rect>
+   <property name="topMargin">
+    <number>20</number>
    </property>
-   <property name="text">
-    <string>清空日志</string>
+   <property name="rightMargin">
+    <number>20</number>
    </property>
-  </widget>
-  <widget class="QTextEdit" name="textEdit_log">
-   <property name="geometry">
-    <rect>
-     <x>10</x>
-     <y>70</y>
-     <width>421</width>
-     <height>361</height>
-    </rect>
+   <property name="bottomMargin">
+    <number>20</number>
    </property>
-   <property name="readOnly">
-    <bool>true</bool>
-   </property>
-  </widget>
+   <item>
+    <widget class="QLabel" name="label_title">
+     <property name="styleSheet">
+      <string notr="true">font-size: 24px; font-weight: bold; color: #10B981; margin-bottom: 10px;</string>
+     </property>
+     <property name="text">
+      <string>系统日志</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_buttons">
+     <property name="spacing">
+      <number>10</number>
+     </property>
+     <item>
+      <widget class="QPushButton" name="btn_home">
+       <property name="minimumSize">
+        <size>
+         <width>80</width>
+         <height>32</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>返回主页</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btn_clearLog">
+       <property name="minimumSize">
+        <size>
+         <width>100</width>
+         <height>32</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>清空日志</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btn_openLog">
+       <property name="minimumSize">
+        <size>
+         <width>160</width>
+         <height>32</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>打开日志所在文件夹</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QTextEdit" name="textEdit_log">
+     <property name="styleSheet">
+      <string notr="true">background-color: #F3F4F6; font-family: Consolas, Monaco, monospace; font-size: 12px; border-radius: 8px; padding: 10px;</string>
+     </property>
+     <property name="readOnly">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+  </layout>
  </widget>
  <resources/>
  <connections/>

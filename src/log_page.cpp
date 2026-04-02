@@ -12,14 +12,32 @@ LogPage::LogPage(QWidget* parent)
 {
     m_ui->setupUi(this);
 
-    // 设置大小策略，使其能够填充父容器
-    //this->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    // 连接按钮信号
+    connect(m_ui->btn_clearLog, &QPushButton::clicked, this, &LogPage::on_btn_clearLog_clicked);
+    connect(m_ui->btn_openLog, &QPushButton::clicked, this, &LogPage::on_btn_openLog_clicked);
+    connect(m_ui->btn_home, &QPushButton::clicked, this, &LogPage::on_btn_home_clicked);
 }
 
 LogPage::~LogPage()
 {
     // m_ui 的所有权由 Qt 管理，不需要手动 delete
     m_ui = nullptr;
+}
+
+void LogPage::initialize()
+{
+    // 将日志输出控件连接到Logger
+    Logger::instance()->setTextEdit(m_ui->textEdit_log);
+}
+
+void LogPage::refreshLogs()
+{
+    // 清空现有内容，让spdlog重新输出带颜色的日志
+    m_ui->textEdit_log->clear();
+    
+    // 获取最近的日志并使用spdlog重新输出（带颜色）
+    QStringList logs = Logger::instance()->getRecentLogs(100);
+    Logger::instance()->outputLogsWithColor(logs);
 }
 
 void LogPage::appendLog(const QString& message)
@@ -29,7 +47,8 @@ void LogPage::appendLog(const QString& message)
 
 void LogPage::clearLog()
 {
-    m_ui->textEdit_log->clear();
+    Logger::instance()->clear();
+    Logger::instance()->info("日志已清空");
 }
 
 void LogPage::on_btn_clearLog_clicked()
@@ -40,4 +59,9 @@ void LogPage::on_btn_clearLog_clicked()
 void LogPage::on_btn_openLog_clicked()
 {
     Logger::instance()->openLogFolder(true);
+}
+
+void LogPage::on_btn_home_clicked()
+{
+    emit requestGoHome();
 }

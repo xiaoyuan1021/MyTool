@@ -87,8 +87,13 @@ MainWindow::MainWindow(QWidget *parent)
     Logger::instance()->setLogFile(logPath);
     Logger::instance()->enableFileLog(true);
     
-    // 将日志输出控件连接到Logger
-    Logger::instance()->setTextEdit(ui->textEdit_log);
+    // 初始化日志页面
+    ui->page_log->initialize();
+    
+    // 连接日志页面的返回主页信号
+    connect(ui->page_log, &LogPage::requestGoHome, this, [this]() {
+        ui->stackedWidget_main->setCurrentIndex(0);
+    });
     
     // 创建 ImageTabWidget 并添加到 tabWidget
     m_imageTabWidget = std::make_unique<ImageTabWidget>(m_pipelineManager, this);
@@ -504,18 +509,6 @@ void MainWindow::on_btn_switchROI_clicked()
     }
 }
 
-//清空当前日志
-void MainWindow::on_btn_clearLog_clicked()
-{
-    Logger::instance()->clear();
-    Logger::instance()->info("日志已清空");
-}
-
-void MainWindow::on_btn_openLog_clicked()
-{
-    Logger::instance()->openLogFolder(true);
-}
-
 void MainWindow::on_tabWidget_currentChanged(int index)
 {
     // 防止程序关闭时访问已销毁的UI对象
@@ -536,14 +529,8 @@ void MainWindow::on_btn_Log_clicked()
         ui->stackedWidget_main->setCurrentIndex(1); // 切换到日志页面
     }
     
-    // 清空现有内容，让spdlog重新输出带颜色的日志
-    if (ui->textEdit_log) {
-        ui->textEdit_log->clear();
-        
-        // 获取最近的日志并使用spdlog重新输出（带颜色）
-        QStringList logs = Logger::instance()->getRecentLogs(100);
-        Logger::instance()->outputLogsWithColor(logs);
-    }
+    // 刷新日志显示（带颜色）
+    ui->page_log->refreshLogs();
 }
 
 void MainWindow::on_btn_Home_clicked()
@@ -1151,9 +1138,6 @@ void MainWindow::onRoiTreeItemDoubleClicked(QTreeWidgetItem* item, int column)
     if (!item) {
         return;
     }
-    
-    // 双击暂不实现任何功能
-    // 用户可以后续根据需要添加
 }
 
 void MainWindow::onRoiTreeContextMenuRequested(const QPoint& pos)

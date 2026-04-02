@@ -35,6 +35,7 @@
 #include "widgets/roi_list_widget.h"
 #include "roi_config.h"
 #include "detection_manager.h"
+#include "log_page.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -69,8 +70,6 @@ private slots:
     void on_btn_deleteROI_clicked();
     void on_btn_switchROI_clicked();
     void onRoiSelected(const QRectF &roiRect);
-    void on_btn_clearLog_clicked();
-    void on_btn_openLog_clicked();
     void on_tabWidget_currentChanged(int index);
     void on_btn_Log_clicked();
     void on_btn_Home_clicked();
