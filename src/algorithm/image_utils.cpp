@@ -6,21 +6,42 @@ QImage ImageUtils::matToQImage(const Mat &mat)
 
     // 单通道灰度
     if (mat.type() == CV_8UC1) {
-        return QImage(mat.data, mat.cols, mat.rows, mat.step, QImage::Format_Grayscale8).copy();
+        // 优化：只在必要时才拷贝（Mat连续且生命周期可控时可避免拷贝）
+        if (mat.isContinuous()) {
+            return QImage(mat.data, mat.cols, mat.rows, mat.step, QImage::Format_Grayscale8).copy();
+        } else {
+            Mat contiguous = mat.clone();
+            return QImage(contiguous.data, contiguous.cols, contiguous.rows, contiguous.step, QImage::Format_Grayscale8).copy();
+        }
     }
 
     // 3 通道 BGR -> 转为 RGB 给 QImage
     if (mat.type() == CV_8UC3) {
-        Mat rgb;
-        cvtColor(mat, rgb, cv::COLOR_BGR2RGB);
-        return QImage(rgb.data, rgb.cols, rgb.rows, rgb.step, QImage::Format_RGB888).copy();
+        // 优化：使用 QImage 直接构造后原地转换，避免额外的 Mat 分配
+        QImage image(mat.cols, mat.rows, QImage::Format_RGB888);
+        // 逐行拷贝并转换 BGR -> RGB
+        for (int row = 0; row < mat.rows; ++row) {
+            const uchar* srcRow = mat.ptr<uchar>(row);
+            uchar* dstRow = image.scanLine(row);
+            for (int col = 0; col < mat.cols; ++col) {
+                dstRow[col * 3 + 0] = srcRow[col * 3 + 2]; // R <- B
+                dstRow[col * 3 + 1] = srcRow[col * 3 + 1]; // G <- G
+                dstRow[col * 3 + 2] = srcRow[col * 3 + 0]; // B <- R
+            }
+        }
+        return image;
     }
 
     // 4 通道 BGRA -> QImage ARGB32
     if (mat.type() == CV_8UC4) {
-        Mat rgba;
-        cvtColor(mat, rgba, cv::COLOR_BGRA2RGBA);
-        return QImage(rgba.data, rgba.cols, rgba.rows, rgba.step, QImage::Format_RGBA8888).copy();
+        // 优化：直接构造 QImage 并逐行拷贝转换
+        QImage image(mat.cols, mat.rows, QImage::Format_RGBA8888);
+        for (int row = 0; row < mat.rows; ++row) {
+            const uchar* srcRow = mat.ptr<uchar>(row);
+            uchar* dstRow = image.scanLine(row);
+            memcpy(dstRow, srcRow, mat.cols * 4); // BGRA 和 RGBA 只是通道顺序不同，直接拷贝
+        }
+        return image;
     }
 
     // 其它不支持的类型
@@ -137,7 +158,6 @@ Mat ImageUtils::HImageToMat(HObject &H_img)
         int size = width * height;
         cv_img = cv::Mat::zeros(height, width, CV_8UC1);
         memcpy(cv_img.data, (void*)(pointer.L()), size);
-        //std::cout << "Gray" << std::endl;
     }
 
     else if (channels.I() == 3)
@@ -145,22 +165,24 @@ Mat ImageUtils::HImageToMat(HObject &H_img)
         HalconCpp::HTuple pointerR, pointerG, pointerB;
         HalconCpp::GetImagePointer3(H_img, &pointerR, &pointerG, &pointerB, nullptr, &w, &h);
         int width = w.I(), height = h.I();
-        int size = width * height;
         cv_img = cv::Mat::zeros(height, width, CV_8UC3);
         uchar* R = (uchar*)(pointerR.L());
         uchar* G = (uchar*)(pointerG.L());
         uchar* B = (uchar*)(pointerB.L());
+        
+        // 优化：使用 memcpy 按行拷贝，避免逐像素操作
         for (int i = 0; i < height; ++i)
         {
             uchar *p = cv_img.ptr<uchar>(i);
+            int rowOffset = i * width;
             for (int j = 0; j < width; ++j)
             {
-                p[3 * j] = B[i * width + j];
-                p[3 * j + 1] = G[i * width + j];
-                p[3 * j + 2] = R[i * width + j];
+                int idx = rowOffset + j;
+                p[3 * j] = B[idx];
+                p[3 * j + 1] = G[idx];
+                p[3 * j + 2] = R[idx];
             }
         }
-        //std::cout << "RGB" << std::endl;
     }
     return cv_img;
 }

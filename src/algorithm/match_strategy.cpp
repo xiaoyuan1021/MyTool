@@ -677,68 +677,90 @@ QVector<MatchResult> OpenCVMatchStrategy::findMatches(const cv::Mat& searchImage
 
     try {
         // 1️⃣ 确保图像和模板通道数一致
-        cv::Mat searchGray = searchImage.clone();
-        cv::Mat templateGray = m_templateImage.clone();
-
-        if (searchGray.channels() == 3) {
-            cv::cvtColor(searchGray, searchGray, cv::COLOR_BGR2GRAY);
+        cv::Mat searchGray, templateGray;
+        
+        if (searchImage.channels() == 3) {
+            cv::cvtColor(searchImage, searchGray, cv::COLOR_BGR2GRAY);
+        } else {
+            searchGray = searchImage;
         }
-        if (templateGray.channels() == 3) {
-            cv::cvtColor(templateGray, templateGray, cv::COLOR_BGR2GRAY);
+        
+        if (m_templateImage.channels() == 3) {
+            cv::cvtColor(m_templateImage, templateGray, cv::COLOR_BGR2GRAY);
+        } else {
+            templateGray = m_templateImage;
         }
 
         // 2️⃣ 执行模板匹配
         cv::Mat matchResult;
         cv::matchTemplate(searchGray, templateGray, matchResult, m_matchMethod);
 
-        // 3️⃣ 查找多个匹配点
-        // OpenCV的matchTemplate返回整个相似度图，需要手动查找峰值
-
+        // 3️⃣ 查找多个匹配点 - 优化实现
         // 对于TM_SQDIFF和TM_SQDIFF_NORMED，值越小越好
         bool isInverted = (m_matchMethod == cv::TM_SQDIFF ||
                            m_matchMethod == cv::TM_SQDIFF_NORMED);
 
-        // 归一化到[0,1]
-        cv::Mat normalizedResult;
+        // 优化：使用阈值筛选代替循环查找
+        // 计算阈值
+        double threshold = minScore;
         if (m_matchMethod == cv::TM_CCOEFF ||
             m_matchMethod == cv::TM_CCORR ||
             m_matchMethod == cv::TM_SQDIFF) {
-            cv::normalize(matchResult, normalizedResult, 0, 1, cv::NORM_MINMAX);
-        } else {
-            normalizedResult = matchResult.clone();
+            // 对于非归一化方法，需要先归一化
+            cv::normalize(matchResult, matchResult, 0, 1, cv::NORM_MINMAX);
         }
+        
+        // 创建二值化掩码
+        cv::Mat mask;
+        if (isInverted) {
+            cv::threshold(matchResult, mask, 1.0 - threshold, 255, cv::THRESH_BINARY_INV);
+        } else {
+            cv::threshold(matchResult, mask, threshold, 255, cv::THRESH_BINARY);
+        }
+        mask.convertTo(mask, CV_8U);
 
-        // 查找多个局部极值点
-        int foundCount = 0;
-        cv::Mat mask = cv::Mat::ones(normalizedResult.size(), CV_8U) * 255;
-
-        for (int i = 0; i < maxMatches && foundCount < maxMatches; ++i)
-        {
-            double minVal, maxVal;
-            cv::Point minLoc, maxLoc;
-            cv::minMaxLoc(normalizedResult, &minVal, &maxVal, &minLoc, &maxLoc, mask);
-
-            cv::Point matchLoc = isInverted ? minLoc : maxLoc;
-            double score = isInverted ? (1.0 - minVal) : maxVal;
-
-            // 检查分数是否满足阈值
-            if (score < minScore) {
-                break;
+        // 查找所有满足条件的点
+        std::vector<cv::Point> locations;
+        cv::findNonZero(mask, locations);
+        
+        // 按分数排序（从高到低）
+        std::vector<std::pair<double, cv::Point>> scoredLocations;
+        for (const auto& loc : locations) {
+            double score = matchResult.at<float>(loc);
+            if (isInverted) {
+                score = 1.0 - score;
             }
-
+            scoredLocations.push_back({score, loc});
+        }
+        
+        // 降序排序
+        std::sort(scoredLocations.begin(), scoredLocations.end(),
+                  [](const auto& a, const auto& b) { return a.first > b.first; });
+        
+        // 非极大值抑制（NMS）
+        int maskRadius = (std::max)(templateGray.cols, templateGray.rows) / 2;
+        cv::Mat nmsMask = cv::Mat::ones(matchResult.size(), CV_8U) * 255;
+        
+        int foundCount = 0;
+        for (const auto& [score, loc] : scoredLocations) {
+            if (foundCount >= maxMatches) break;
+            if (score < minScore) break;
+            
+            // 检查是否被NMS抑制
+            if (nmsMask.at<uchar>(loc) == 0) continue;
+            
             // 添加匹配结果
             MatchResult match;
-            match.column = matchLoc.x + templateGray.cols / 2.0;
-            match.row = matchLoc.y + templateGray.rows / 2.0;
+            match.column = loc.x + templateGray.cols / 2.0;
+            match.row = loc.y + templateGray.rows / 2.0;
             match.angle = 0.0;  // OpenCV标准模板匹配不支持旋转
             match.score = score;
             results.append(match);
-
+            
             foundCount++;
-
-            // 屏蔽已找到的区域（避免重复检测）
-            int maskRadius = (std::max)(templateGray.cols, templateGray.rows) / 2;
-            cv::circle(mask, matchLoc, maskRadius, cv::Scalar(0), -1);
+            
+            // NMS：屏蔽已找到的区域
+            cv::circle(nmsMask, loc, maskRadius, cv::Scalar(0), -1);
         }
 
         Logger::instance()->info(

@@ -207,62 +207,50 @@ QVector<RegionFeature> HalconAlgorithm::analyzeRegionsInPolygon(
         HalconCpp::HRegion allRegions = ImageUtils::MatToHRegion(processedImage);
         HalconCpp::HRegion connectedRegions = allRegions.Connection();
 
-        // ========== 4. 统计连通域数量 ==========
-        HalconCpp::HTuple totalNum;
-        CountObj(connectedRegions, &totalNum);
-        int totalCount = totalNum[0].I();
+        // ========== 4. 使用批量操作：先与多边形求交集 ==========
+        // 关键优化：先对所有连通域与多边形求交集，然后批量筛选有交集的区域
+        HalconCpp::HRegion intersectedRegions = connectedRegions.Intersection(polygonRegion);
+        
+        // 使用 SelectShape 批量筛选面积大于0的区域（即与多边形有交集的区域）
+        HalconCpp::HRegion validRegions = intersectedRegions.SelectShape("area", "and", 0.01, 99999999.0);
+        
+        // 统计有效区域数量
+        HalconCpp::HTuple validNum;
+        CountObj(validRegions, &validNum);
+        int validCount = validNum[0].I();
 
-        if (totalCount == 0) {
-            Logger::instance()->warning("图像中没有找到任何目标");
+        if (validCount == 0) {
+            Logger::instance()->warning("ROI区域内没有找到目标");
             return results;
         }
 
-        // ========== 5. 遍历每个连通域,筛选与多边形有交集的 ==========
-        for (int i = 1; i <= totalCount; ++i) {
-            HalconCpp::HRegion singleRegion;
-            HalconCpp::SelectObj(connectedRegions, &singleRegion, i);
+        // ========== 5. 批量计算特征 ==========
+        // 使用 AreaCenter 批量计算面积和中心点
+        HalconCpp::HTuple areas, centerRows, centerCols;
+        areas = validRegions.AreaCenter(&centerRows, &centerCols);
+        
+        // 使用 Circularity 批量计算圆度
+        HalconCpp::HTuple circularities;
+        circularities = validRegions.Circularity();
+        
+        // 使用 SmallestRectangle1 批量计算外接矩形
+        HalconCpp::HTuple row1s, col1s, row2s, col2s;
+        validRegions.SmallestRectangle1(&row1s, &col1s, &row2s, &col2s);
 
-            // ✅ 关键修改:计算与多边形的交集
-            HalconCpp::HRegion intersection = singleRegion.Intersection(polygonRegion);
-
-            // 检查交集面积
-            HalconCpp::HTuple intersectionArea;
-            intersectionArea = intersection.Area();
-
-            // 如果交集面积为0,说明不在ROI内
-            if (intersectionArea.Length() == 0 || intersectionArea[0].D() <= 0.0) {
-                continue;
-            }
-
-            // ========== 6. 计算特征 ==========
+        // ========== 6. 构建结果 ==========
+        for (int i = 0; i < validCount; ++i) {
             RegionFeature feature;
-            feature.index = i;
-
-            // 计算面积和中心点
-            HalconCpp::HTuple area, centerRow, centerCol;
-            area = singleRegion.AreaCenter(&centerRow, &centerCol);
-            feature.area = area[0].D();
-            feature.centerX = centerCol[0].D();
-            feature.centerY = centerRow[0].D();
-
-            // 计算圆度
-            HalconCpp::HTuple circularity;
-            circularity = singleRegion.Circularity();
-            feature.circularity = circularity[0].D();
-
-            // 计算外接矩形(宽度、高度)
-            HalconCpp::HTuple row1, col1, row2, col2;
-            singleRegion.SmallestRectangle1(&row1, &col1, &row2, &col2);
-            feature.width = col2[0].D() - col1[0].D();
-            feature.height = row2[0].D() - row1[0].D();
-
-            // 添加到结果列表
+            feature.index = i + 1;
+            feature.area = areas[i].D();
+            feature.centerX = centerCols[i].D();
+            feature.centerY = centerRows[i].D();
+            feature.circularity = circularities[i].D();
+            feature.width = col2s[i].D() - col1s[i].D();
+            feature.height = row2s[i].D() - row1s[i].D();
             results.append(feature);
         }
 
-        if (results.isEmpty()) {
-            Logger::instance()->warning("ROI区域内没有找到目标");
-        }
+        Logger::instance()->info(QString("找到 %1 个目标").arg(validCount));
 
     }
     catch (const HException& ex)
