@@ -6,6 +6,8 @@
 #include <QObject>
 #include <QSlider>
 #include <QSpinBox>
+#include <QString>
+#include <QCryptographicHash>
 
 /**
  * Pipeline管理器 - 负责Pipeline的创建、配置和执行
@@ -124,6 +126,12 @@ private:
     // 重建Pipeline（当步骤变化时）
     void rebuildPipeline();
 
+    // 计算配置哈希值
+    QString calculateConfigHash(const cv::Mat& inputImage) const;
+
+    // 检查缓存是否有效
+    bool isCacheValid(const cv::Mat& inputImage) const;
+
 
 private:
     // 配置
@@ -143,4 +151,12 @@ private:
 
     DisplayConfig::Mode m_displayMode = DisplayConfig::Mode::MaskGreenWhite;
     float m_overlayAlpha = 0.3f;
+
+    // ========== 结果缓存 ==========
+    // 上次配置的哈希值
+    QString m_lastConfigHash;
+    // 缓存的处理结果
+    PipelineContext m_cachedContext;
+    // 上次处理的图像哈希值
+    QString m_lastImageHash;
 };
