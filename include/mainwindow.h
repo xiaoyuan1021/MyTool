@@ -36,6 +36,9 @@
 #include "roi_config.h"
 #include "detection_manager.h"
 #include "log_page.h"
+#include "controllers/roi_ui_controller.h"
+#include "controllers/detection_ui_controller.h"
+#include "controllers/config_controller.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -129,9 +132,6 @@ private:
     QFutureWatcher<PipelineContext> m_pipelineWatcher;
     bool m_isProcessing = false;
 
-    // 检测项管理
-    DetectionManager* m_detectionManager;
-    
     // ROI配置管理
     MultiRoiConfig* m_multiRoiConfig;
     
@@ -139,14 +139,10 @@ private:
     QList<QWidget*> m_tabWidgets;
     QStringList m_tabNames;
     
-    // ROI管理相关方法
-    void refreshRoiTreeView();
-    void onRoiTreeContextMenuRequested(const QPoint& pos);
-    void onRoiTreeItemDoubleClicked(QTreeWidgetItem* item, int column);
-    void onRoiTreeItemClicked(QTreeWidgetItem* item, int column);
-    
-    // 当前选中的ROI ID
-    QString m_currentSelectedRoiId;
+    // Controller对象
+    RoiUiController* m_roiUiController;
+    DetectionUiController* m_detectionUiController;
+    ConfigController* m_configController;
 
 };
 

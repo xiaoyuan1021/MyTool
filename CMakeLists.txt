@@ -39,6 +39,7 @@ find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 set(INCLUDE_DIRS
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/include/widgets
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/controllers
 )
 
 # ============================================================
@@ -49,11 +50,13 @@ set(INCLUDE_DIRS
 file(GLOB HEADERS
     include/*.h
     include/widgets/*.h
+    include/controllers/*.h
 )
 
 file(GLOB SOURCES
     src/*.cpp
     src/widgets/*.cpp
+    src/controllers/*.cpp
 )
 
 file(GLOB FORMS
