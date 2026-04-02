@@ -3,6 +3,13 @@
 #include "image_utils.h"
 #include <QCoreApplication>
 
+// 静态缓存存储
+static QCache<TemplateCacheKey, HShapeModel> s_shapeModelCache;
+static QCache<TemplateCacheKey, HNCCModel> s_nccModelCache;
+static QCache<TemplateCacheKey, cv::Mat> s_templateImageCache;
+static QMutex s_templateCacheMutex;
+static bool s_templateCacheEnabled = true;
+
 MatchStrategy::MatchStrategy() {}
 
 ShapeMatchStrategy::ShapeMatchStrategy()
@@ -25,6 +32,42 @@ bool ShapeMatchStrategy::createTemplate(const Mat &fullImage, const QVector<QPoi
     {
         Logger::instance()->error("[Shape] 创建模板失败：多边形顶点数不足");
         return false;
+    }
+
+    // 检查缓存是否启用
+    if (s_templateCacheEnabled) {
+        QMutexLocker locker(&s_templateCacheMutex);
+        TemplateCacheKey cacheKey(fullImage, pologonPoints, params);
+        
+        // 检查是否有缓存的模型
+        HShapeModel* cachedModel = s_shapeModelCache.object(cacheKey);
+        cv::Mat* cachedTemplateImage = s_templateImageCache.object(cacheKey);
+        
+        if (cachedModel && cachedTemplateImage) {
+            // 使用缓存的模型和模板图像
+            m_model = *cachedModel;
+            m_templateImage = cachedTemplateImage->clone();
+            
+            // 恢复其他必要参数
+            std::vector<cv::Point> cvPolygon;
+            for(const QPointF& pt : pologonPoints) {
+                cvPolygon.push_back(cv::Point(pt.x(), pt.y()));
+            }
+            cv::Rect boundingRect = cv::boundingRect(cvPolygon);
+            
+            m_roiOffsetX = boundingRect.x;
+            m_roiOffsetY = boundingRect.y;
+            m_templateWidth = boundingRect.width;
+            m_templateHeight = boundingRect.height;
+            
+            m_polygonPoints = pologonPoints;
+            extractTemplateContour(pologonPoints);
+            m_hasTemplate = true;
+            
+            Logger::instance()->info(QString("[Shape] 使用缓存模板成功 (区域: %1x%2, 顶点: %3)")
+                                         .arg(boundingRect.width).arg(boundingRect.height).arg(pologonPoints.size()));
+            return true;
+        }
     }
 
     // 检查多边形是否足够大
@@ -133,6 +176,21 @@ bool ShapeMatchStrategy::createTemplate(const Mat &fullImage, const QVector<QPoi
         m_polygonPoints = pologonPoints;
         extractTemplateContour(pologonPoints);
         m_hasTemplate = true;
+        
+        // 将结果存入缓存
+        if (s_templateCacheEnabled) {
+            QMutexLocker locker(&s_templateCacheMutex);
+            TemplateCacheKey cacheKey(fullImage, pologonPoints, params);
+            
+            // 缓存模型（需要复制）
+            HShapeModel* modelCache = new HShapeModel(m_model);
+            s_shapeModelCache.insert(cacheKey, modelCache);
+            
+            // 缓存模板图像
+            cv::Mat* templateImageCache = new cv::Mat(m_templateImage.clone());
+            s_templateImageCache.insert(cacheKey, templateImageCache);
+        }
+        
         Logger::instance()->info(
             QString("✅ [Shape] 模板创建成功 (区域: %1x%2, 顶点: %3)")
                 .arg(boundingRect.width)

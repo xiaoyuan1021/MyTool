@@ -7,26 +7,15 @@
 #include <QPainter>
 #include <QColor>
 #include <QPolygonF>
+#include <QCache>
+#include <QMutex>
 #include "opencv2/opencv.hpp"
 #include "HalconCpp.h"
 
 using namespace cv;
 using namespace HalconCpp;
 
-struct MatchResult
-{
-    double row;
-    double column;
-    double angle;
-    double score;
-
-    QString toString() const
-    {
-        return QString("位置(%1, %2), 角度%3 ,分数 %4")
-            .arg(column).arg(row).arg(angle).arg(score);
-    }
-};
-
+// 先定义TemplateParams，因为TemplateCacheKey需要使用它
 struct TemplateParams
 {
     QVector<QPointF> polygonPoints;
@@ -42,6 +31,65 @@ struct TemplateParams
     int nccLevels;
     //opencv
     int matchMethod;
+};
+
+// 模板缓存键值生成器
+struct TemplateCacheKey {
+    size_t imageHash;
+    QVector<QPointF> polygon;
+    TemplateParams params;
+    
+    TemplateCacheKey(const cv::Mat& image, const QVector<QPointF>& poly, const TemplateParams& p) 
+        : polygon(poly), params(p) {
+        // 使用图像数据指针和尺寸生成哈希
+        imageHash = std::hash<const void*>{}(image.data) ^ 
+                   (image.type() << 1) ^ 
+                   (image.rows << 2) ^ 
+                   (image.cols << 3);
+        
+        // 为多边形生成哈希
+        for (const QPointF& pt : poly) {
+            imageHash ^= (std::hash<int>{}(static_cast<int>(pt.x())) << 4) ^
+                        (std::hash<int>{}(static_cast<int>(pt.y())) << 5);
+        }
+        
+        // 为参数生成哈希
+        imageHash ^= (params.numLevels << 6) ^
+                    (static_cast<int>(params.angleStart) << 7) ^
+                    (static_cast<int>(params.angleExtent) << 8);
+    }
+    
+    bool operator==(const TemplateCacheKey& other) const {
+        return imageHash == other.imageHash && 
+               polygon == other.polygon &&
+               params.numLevels == other.params.numLevels &&
+               params.angleStart == other.params.angleStart &&
+               params.angleExtent == other.params.angleExtent;
+    }
+};
+
+// 为TemplateCacheKey提供哈希函数
+namespace std {
+    template<>
+    struct hash<TemplateCacheKey> {
+        size_t operator()(const TemplateCacheKey& key) const {
+            return key.imageHash;
+        }
+    };
+}
+
+struct MatchResult
+{
+    double row;
+    double column;
+    double angle;
+    double score;
+
+    QString toString() const
+    {
+        return QString("位置(%1, %2), 角度%3 ,分数 %4")
+            .arg(column).arg(row).arg(angle).arg(score);
+    }
 };
 
 class IMatchStrategy

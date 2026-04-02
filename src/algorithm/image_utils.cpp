@@ -1,22 +1,40 @@
 #include "image_utils.h"
 
+// 静态成员变量初始化
+QCache<MatCacheKey, QImage> ImageUtils::s_qimageCache;
+QCache<MatCacheKey, HImage> ImageUtils::s_himageCache;
+QCache<MatCacheKey, HRegion> ImageUtils::s_hregionCache;
+bool ImageUtils::s_cacheEnabled = true;
+QMutex ImageUtils::s_cacheMutex;
+
 QImage ImageUtils::matToQImage(const Mat &mat)
 {
     if (mat.empty()) return QImage();
+
+    // 检查缓存是否启用
+    if (s_cacheEnabled) {
+        QMutexLocker locker(&s_cacheMutex);
+        MatCacheKey key(mat);
+        QImage* cached = s_qimageCache.object(key);
+        if (cached) {
+            return *cached;
+        }
+    }
+
+    QImage result;
 
     // 单通道灰度
     if (mat.type() == CV_8UC1) {
         // 优化：只在必要时才拷贝（Mat连续且生命周期可控时可避免拷贝）
         if (mat.isContinuous()) {
-            return QImage(mat.data, mat.cols, mat.rows, mat.step, QImage::Format_Grayscale8).copy();
+            result = QImage(mat.data, mat.cols, mat.rows, mat.step, QImage::Format_Grayscale8).copy();
         } else {
             Mat contiguous = mat.clone();
-            return QImage(contiguous.data, contiguous.cols, contiguous.rows, contiguous.step, QImage::Format_Grayscale8).copy();
+            result = QImage(contiguous.data, contiguous.cols, contiguous.rows, contiguous.step, QImage::Format_Grayscale8).copy();
         }
     }
-
     // 3 通道 BGR -> 转为 RGB 给 QImage
-    if (mat.type() == CV_8UC3) {
+    else if (mat.type() == CV_8UC3) {
         // 优化：使用 QImage 直接构造后原地转换，避免额外的 Mat 分配
         QImage image(mat.cols, mat.rows, QImage::Format_RGB888);
         // 逐行拷贝并转换 BGR -> RGB
@@ -29,11 +47,10 @@ QImage ImageUtils::matToQImage(const Mat &mat)
                 dstRow[col * 3 + 2] = srcRow[col * 3 + 0]; // B <- R
             }
         }
-        return image;
+        result = image;
     }
-
     // 4 通道 BGRA -> QImage ARGB32
-    if (mat.type() == CV_8UC4) {
+    else if (mat.type() == CV_8UC4) {
         // 优化：直接构造 QImage 并逐行拷贝转换
         QImage image(mat.cols, mat.rows, QImage::Format_RGBA8888);
         for (int row = 0; row < mat.rows; ++row) {
@@ -41,12 +58,23 @@ QImage ImageUtils::matToQImage(const Mat &mat)
             uchar* dstRow = image.scanLine(row);
             memcpy(dstRow, srcRow, mat.cols * 4); // BGRA 和 RGBA 只是通道顺序不同，直接拷贝
         }
-        return image;
+        result = image;
+    }
+    else {
+        // 其它不支持的类型
+        qDebug() << "Unsupported Mat type in matToQImage(): " << mat.type();
+        return QImage();
     }
 
-    // 其它不支持的类型
-    qDebug() << "Unsupported Mat type in matToQImage(): " << mat.type();
-    return QImage();
+    // 将结果存入缓存
+    if (s_cacheEnabled && !result.isNull()) {
+        QMutexLocker locker(&s_cacheMutex);
+        MatCacheKey key(mat);
+        QImage* cacheItem = new QImage(result);
+        s_qimageCache.insert(key, cacheItem);
+    }
+
+    return result;
 }
 
 Mat ImageUtils::qImageToMat(const QImage &image, bool clone)
@@ -317,6 +345,16 @@ HImage ImageUtils::matToHImage(const cv::Mat& mat)
         throw std::runtime_error("matToHImage: 输入图像为空");
     }
 
+    // 检查缓存是否启用
+    if (s_cacheEnabled) {
+        QMutexLocker locker(&s_cacheMutex);
+        MatCacheKey key(mat);
+        HImage* cached = s_himageCache.object(key);
+        if (cached) {
+            return *cached;
+        }
+    }
+
     cv::Mat grayMat;
 
     // 1️⃣ 转换为灰度图
@@ -349,6 +387,40 @@ HImage ImageUtils::matToHImage(const cv::Mat& mat)
             );
     }
 
+    // 将结果存入缓存
+    if (s_cacheEnabled) {
+        QMutexLocker locker(&s_cacheMutex);
+        MatCacheKey key(mat);
+        HImage* cacheItem = new HImage(hImage);
+        s_himageCache.insert(key, cacheItem);
+    }
+
     return hImage;
+}
+
+// 缓存管理函数实现
+void ImageUtils::clearCache()
+{
+    QMutexLocker locker(&s_cacheMutex);
+    s_qimageCache.clear();
+    s_himageCache.clear();
+    s_hregionCache.clear();
+}
+
+void ImageUtils::setCacheEnabled(bool enabled)
+{
+    QMutexLocker locker(&s_cacheMutex);
+    s_cacheEnabled = enabled;
+    if (!enabled) {
+        s_qimageCache.clear();
+        s_himageCache.clear();
+        s_hregionCache.clear();
+    }
+}
+
+bool ImageUtils::isCacheEnabled()
+{
+    QMutexLocker locker(&s_cacheMutex);
+    return s_cacheEnabled;
 }
 
