@@ -38,6 +38,11 @@ find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 # ============================================================
 set(INCLUDE_DIRS
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/core
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/algorithm
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/config
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/data
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/ui
     ${CMAKE_CURRENT_SOURCE_DIR}/include/widgets
     ${CMAKE_CURRENT_SOURCE_DIR}/include/controllers
 )
@@ -49,6 +54,11 @@ set(INCLUDE_DIRS
 # 自动查找源文件和头文件
 file(GLOB HEADERS
     include/*.h
+    include/core/*.h
+    include/algorithm/*.h
+    include/config/*.h
+    include/data/*.h
+    include/ui/*.h
     include/widgets/*.h
     include/controllers/*.h
 )
