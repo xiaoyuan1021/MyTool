@@ -146,6 +146,7 @@ void StepBarcodeRecognition::run(PipelineContext& ctx)
         
         // 判断是二维数据码还是一维条码
         bool use2DCode = is2DCode(codeTypeStr);
+        bool isAutoDetect = (codeTypeStr == "auto" || codeTypeStr == "自动检测");
         
         // 执行条码识别
         int numFound = 0;
@@ -153,7 +154,151 @@ void StepBarcodeRecognition::run(PipelineContext& ctx)
         
         //qDebug() << "[Barcode] 开始识别 - 条码类型:" << codeTypeStr << "是否2D:" << use2DCode;
         
-        if (use2DCode)
+        // 自动检测模式：先尝试二维识别，再尝试一维识别
+        if (isAutoDetect)
+        {
+            qDebug() << "[Barcode] 使用自动检测模式，先尝试QR Code识别";
+            
+            // 先尝试二维数据码识别（QR Code）
+            try
+            {
+                HTuple resultHandles, decodedStrings;
+                HXLDCont symbolXLDs = dataCodeModel_.FindDataCode2d(hImg, HTuple(), HTuple(), 
+                                                                   &resultHandles, &decodedStrings);
+                
+                int num2D = decodedStrings.Length();
+                
+                for (int i = 0; i < num2D; i++)
+                {
+                    BarcodeResult result;
+                    
+                    try
+                    {
+                        HTuple strTuple = decodedStrings[i];
+                        result.data = QString(strTuple.S().Text());
+                    }
+                    catch (...)
+                    {
+                        result.data = "Decode Error";
+                    }
+                    
+                    result.type = "QR Code";
+                    result.location = QRectF(input.cols * 0.25, input.rows * 0.25, 
+                                            input.cols * 0.5, input.rows * 0.5);
+                    result.quality = 100.0;
+                    
+                    ctx.barcodeResults.append(result);
+                    numFound++;
+                    
+                    qDebug() << "[Barcode] 自动检测识别到QR Code:" << result.data;
+                }
+            }
+            catch (const HException& ex)
+            {
+                qDebug() << "[Barcode] QR Code识别异常:" << ex.ErrorMessage().Text();
+            }
+            
+            // 如果没有识别到QR Code，再尝试一维条码识别
+            if (numFound == 0)
+            {
+                qDebug() << "[Barcode] 未识别到QR Code，尝试一维条码识别";
+                
+                try
+                {
+                    HTuple codeType;
+                    codeType[0] = "EAN-13";
+                    codeType[1] = "EAN-8";
+                    codeType[2] = "UPC-A";
+                    codeType[3] = "UPC-E";
+                    codeType[4] = "Code 128";
+                    codeType[5] = "Code 39";
+                    codeType[6] = "2/5 Interleaved";
+                    codeType[7] = "Codabar";
+                    
+                    HTuple decodedStrings;
+                    HRegion symbolRegions = barcodeModel_.FindBarCode(hImg, codeType, &decodedStrings);
+                    
+                    int num1D = decodedStrings.Length();
+                    
+                    for (int i = 0; i < num1D; i++)
+                    {
+                        BarcodeResult result;
+                        
+                        try
+                        {
+                            HTuple strTuple = decodedStrings[i];
+                            result.data = QString(strTuple.S().Text());
+                        }
+                        catch (...)
+                        {
+                            try
+                            {
+                                result.data = QString::number(decodedStrings[i].D());
+                            }
+                            catch (...)
+                            {
+                                result.data = "Decode Error";
+                            }
+                        }
+                        
+                        // 获取实际识别的条码类型
+                        try
+                        {
+                            HTuple decodedType = barcodeModel_.GetBarCodeResult("all", "decoded_types");
+                            if (decodedType.Length() > i)
+                            {
+                                result.type = QString(decodedType[i].S().Text());
+                            }
+                            else
+                            {
+                                result.type = "1D Barcode";
+                            }
+                        }
+                        catch (...)
+                        {
+                            result.type = "1D Barcode";
+                        }
+                        
+                        // 获取位置信息
+                        try
+                        {
+                            if (i < symbolRegions.CountObj())
+                            {
+                                HTuple row1, col1, row2, col2;
+                                symbolRegions.SelectObj(i + 1).SmallestRectangle1(&row1, &col1, &row2, &col2);
+                                double x = col1.D();
+                                double y = row1.D();
+                                double w = col2.D() - col1.D();
+                                double h = row2.D() - row1.D();
+                                result.location = QRectF(x, y, w, h);
+                            }
+                            else
+                            {
+                                result.location = QRectF(input.cols * 0.25, input.rows * 0.25, 
+                                                        input.cols * 0.5, input.rows * 0.5);
+                            }
+                        }
+                        catch (...)
+                        {
+                            result.location = QRectF(input.cols * 0.25, input.rows * 0.25, 
+                                                    input.cols * 0.5, input.rows * 0.5);
+                        }
+                        
+                        result.quality = -1.0;
+                        
+                        ctx.barcodeResults.append(result);
+                        numFound++;
+                        
+                        qDebug() << "[Barcode] 自动检测识别到一维条码:" << result.type << "数据:" << result.data;
+                    }
+                }
+                catch (const HException& ex)
+                {
+                    qDebug() << "[Barcode] 一维条码识别异常:" << ex.ErrorMessage().Text();
+                }
+            }
+        }
+        else if (use2DCode)
         {
             // 使用二维数据码模型
             //qDebug() << "[Barcode] 使用二维数据码模型识别";
