@@ -315,11 +315,11 @@ QTreeWidget::branch {
 }
 
 QTreeWidget::branch:has-children:closed {
-    image: url(:/icons/branch-closed.png);
+    image: url(:/icons/branch_closed.png);
 }
 
 QTreeWidget::branch:open:has-children {
-    image: url(:/icons/branch-open.png);
+    image: url(:/icons/branch_open.png);
 }
 
 QTreeWidget::indicator {

@@ -589,8 +589,7 @@ void MainWindow::on_btn_Log_clicked()
         ui->stackedWidget_main->setCurrentIndex(1); // 切换到日志页面
     }
     
-    // 刷新日志显示（带颜色）
-    ui->page_log->refreshLogs();
+    // 不再清空日志，让Logger自动追加新日志到QTextEdit
 }
 
 void MainWindow::on_btn_Home_clicked()

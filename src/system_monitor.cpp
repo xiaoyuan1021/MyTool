@@ -117,12 +117,16 @@ void SystemMonitor::setupWithStatusBar(QStatusBar* statusBar, int intervalMs)
     }
 
     // 创建状态栏标签
-    QLabel* cpuLabel = new QLabel("CPU: 0.0%");
-    QLabel* memoryLabel = new QLabel("内存: 0 MB / 0 MB (0.0%)");
+    QLabel* cpuLabel = new QLabel();
+    QLabel* memoryLabel = new QLabel();
     
-    // 设置标签样式
+    // 设置标签样式，确保支持富文本显示
     cpuLabel->setStyleSheet("QLabel { color: #333; font-size: 12px; margin-right: 15px; }");
     memoryLabel->setStyleSheet("QLabel { color: #333; font-size: 12px; margin-right: 15px; }");
+    
+    // 设置文本格式为富文本
+    cpuLabel->setTextFormat(Qt::RichText);
+    memoryLabel->setTextFormat(Qt::RichText);
     
     // 添加到状态栏
     statusBar->addPermanentWidget(cpuLabel);
@@ -148,17 +152,20 @@ void SystemMonitor::updateSystemInfo()
 
     // 3️⃣ 更新 UI 显示
     if (m_cpuLabel) {
-        m_cpuLabel->setText(QString("CPU: %1%").arg(m_cpuUsage, 0, 'f', 1));
+        m_cpuLabel->setText(
+            QString("<img src=':/icons/CPU.png' width='16' height='16' style='vertical-align: middle;'> CPU: %1%")
+                .arg(m_cpuUsage, 0, 'f', 1)
+        );
     }
 
     if (m_memoryLabel) {
         // 显示格式：内存: 1234 MB / 8192 MB (15.1%)
         m_memoryLabel->setText(
-            QString("内存: %1 MB / %2 MB (%3%)")
+            QString("<img src=':/icons/memory.png' width='16' height='16' style='vertical-align: middle;'> 内存: %1 MB / %2 MB (%3%)")
                 .arg(m_usedMemoryMB, 0, 'f', 0)
                 .arg(m_totalMemoryMB, 0, 'f', 0)
                 .arg(m_memoryUsage, 0, 'f', 1)
-            );
+        );
     }
 
     // 4️⃣ 发送信号

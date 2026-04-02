@@ -12,10 +12,7 @@ LogPage::LogPage(QWidget* parent)
 {
     m_ui->setupUi(this);
 
-    // 连接按钮信号
-    connect(m_ui->btn_clearLog, &QPushButton::clicked, this, &LogPage::on_btn_clearLog_clicked);
-    connect(m_ui->btn_openLog, &QPushButton::clicked, this, &LogPage::on_btn_openLog_clicked);
-    connect(m_ui->btn_home, &QPushButton::clicked, this, &LogPage::on_btn_home_clicked);
+    // Qt会自动连接on_<objectName>_<signalName>命名的槽函数，无需手动连接
 }
 
 LogPage::~LogPage()
@@ -32,12 +29,8 @@ void LogPage::initialize()
 
 void LogPage::refreshLogs()
 {
-    // 清空现有内容，让spdlog重新输出带颜色的日志
+    // 只清空日志显示，不加载旧日志
     m_ui->textEdit_log->clear();
-    
-    // 获取最近的日志并使用spdlog重新输出（带颜色）
-    QStringList logs = Logger::instance()->getRecentLogs(100);
-    Logger::instance()->outputLogsWithColor(logs);
 }
 
 void LogPage::appendLog(const QString& message)
