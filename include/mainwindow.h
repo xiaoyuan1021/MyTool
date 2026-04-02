@@ -67,6 +67,7 @@ private slots:
     void on_btn_resetROI_clicked();
     void on_btn_addROI_clicked();
     void on_btn_deleteROI_clicked();
+    void on_btn_switchROI_clicked();
     void onRoiSelected(const QRectF &roiRect);
     void on_btn_clearLog_clicked();
     void on_btn_openLog_clicked();

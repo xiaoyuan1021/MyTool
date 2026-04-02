@@ -468,6 +468,42 @@ void MainWindow::on_btn_deleteROI_clicked()
     }
 }
 
+void MainWindow::on_btn_switchROI_clicked()
+{
+    if (m_roiManager.getFullImage().empty()) {
+        QMessageBox::warning(this, "警告", "请先加载一张图像");
+        return;
+    }
+    
+    if (m_roiManager.isRoiActive()) {
+        // 当前是ROI模式，切换到原图模式
+        m_roiManager.resetRoi();
+        m_view->clearRoi();
+        m_view->resetZoom();
+        m_view->setImage(ImageUtils::Mat2Qimage(m_roiManager.getFullImage()));
+        Logger::instance()->info("已切换到原图模式");
+    } else {
+        // 当前是原图模式，切换到ROI模式
+        // 检查是否有选中的ROI
+        if (m_currentSelectedRoiId.isEmpty()) {
+            QMessageBox::warning(this, "警告", "请先在左侧列表中选择一个ROI");
+            return;
+        }
+        
+        RoiConfig* roi = m_multiRoiConfig->getRoi(m_currentSelectedRoiId);
+        if (!roi) {
+            QMessageBox::warning(this, "警告", "未找到选中的ROI");
+            return;
+        }
+        
+        // 切换到ROI模式
+        m_view->clearRoi();
+        m_roiManager.setRoi(roi->roiRect);
+        processAndDisplay();
+        Logger::instance()->info(QString("已切换到ROI模式: %1").arg(roi->roiName));
+    }
+}
+
 //清空当前日志
 void MainWindow::on_btn_clearLog_clicked()
 {
