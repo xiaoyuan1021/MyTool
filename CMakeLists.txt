@@ -9,8 +9,10 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
 
-# 设置构建输出目录
-set(CMAKE_BINARY_DIR "${CMAKE_SOURCE_DIR}/build/Debug")
+# 设置构建输出目录 (仅在未指定时设置默认值)
+if(NOT CMAKE_BINARY_DIR)
+    set(CMAKE_BINARY_DIR "${CMAKE_SOURCE_DIR}/build/Debug")
+endif()
 
 # 设置输出目录
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -65,6 +67,10 @@ file(GLOB HEADERS
 
 file(GLOB SOURCES
     src/*.cpp
+    src/core/*.cpp
+    src/algorithm/*.cpp
+    src/config/*.cpp
+    src/ui/*.cpp
     src/widgets/*.cpp
     src/controllers/*.cpp
 )
