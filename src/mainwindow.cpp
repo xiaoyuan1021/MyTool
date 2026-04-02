@@ -208,6 +208,11 @@ MainWindow::MainWindow(QWidget *parent)
     // 设置Controller的Tab名称列表
     m_detectionUiController->setTabNames(m_tabNames);
     
+    // 初始隐藏所有Tab，等待检测项选中时再显示对应的Tab
+    for (int i = 0; i < ui->tabWidget->count(); ++i) {
+        ui->tabWidget->setTabVisible(i, false);
+    }
+    
     // 设置ConfigController的Tab Widget
     m_configController->setTabWidgets(
         m_enhanceTabWidget.get(),
@@ -220,8 +225,6 @@ MainWindow::MainWindow(QWidget *parent)
     // 初始化ROI UI Controller的TreeView
     m_roiUiController->setupTreeView(ui->treeView);
     
-    // 初始化检测项管理器
-    m_detectionUiController->setupDetectionManager();
     
     // 连接Controller信号
     connect(m_roiUiController, &RoiUiController::roiChanged, this, &MainWindow::processAndDisplay);

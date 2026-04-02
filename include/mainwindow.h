@@ -34,7 +34,6 @@
 #include "widgets/barcode_tab_widget.h"
 #include "widgets/roi_list_widget.h"
 #include "roi_config.h"
-#include "detection_manager.h"
 #include "log_page.h"
 #include "controllers/roi_ui_controller.h"
 #include "controllers/detection_ui_controller.h"

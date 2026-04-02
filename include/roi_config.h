@@ -12,18 +12,6 @@
 #include "detection_config_types.h"
 
 /**
- * @brief 生成唯一ID
- * @param prefix 前缀（如 "roi" 或 "det"）
- * @return 唯一ID字符串
- */
-inline QString generateUniqueId(const QString& prefix) {
-    return QString("%1_%2_%3")
-        .arg(prefix)
-        .arg(QDateTime::currentMSecsSinceEpoch())
-        .arg(QRandomGenerator::global()->bounded(10000));
-}
-
-/**
  * @brief 检测类型枚举
  */
 enum class DetectionType {
@@ -67,6 +55,84 @@ inline DetectionType stringToDetectionType(const QString& str) {
     if (str == "圆形检测") return DetectionType::Circle;
     if (str == "Blob分析") return DetectionType::Blob;
     return DetectionType::Blob; // 默认值
+}
+
+/**
+ * @brief Tab配置结构
+ * 定义每种检测类型需要显示的Tab列表
+ */
+struct TabConfig {
+    QStringList tabNames;      // Tab名称列表
+    QList<int> tabIndices;     // Tab索引列表（动态维护）
+    
+    TabConfig() {}
+    
+    TabConfig(const QStringList& names) : tabNames(names) {}
+    
+    /**
+     * @brief 获取Blob分析的Tab配置
+     */
+    static TabConfig getBlobConfig() {
+        return TabConfig({
+            "图像",
+            "增强",
+            "过滤",
+            "补正",
+            "处理",
+            "提取",
+            "判定"
+        });
+    }
+    
+    /**
+     * @brief 获取直线检测的Tab配置
+     */
+    static TabConfig getLineConfig() {
+        return TabConfig({
+            "图像",
+            "增强",
+            "直线"
+        });
+    }
+    
+    /**
+     * @brief 获取条码识别的Tab配置
+     */
+    static TabConfig getBarcodeConfig() {
+        return TabConfig({
+            "图像",
+            "增强",
+            "条码"
+        });
+    }
+    
+    /**
+     * @brief 根据检测类型获取Tab配置
+     */
+    static TabConfig getConfigForType(DetectionType type) {
+        switch (type) {
+            case DetectionType::Blob:
+                return getBlobConfig();
+            case DetectionType::Line:
+                return getLineConfig();
+            case DetectionType::Barcode:
+                return getBarcodeConfig();
+            default:
+                return TabConfig();
+        }
+    }
+};
+
+/**
+ * @brief 生成唯一ID
+ * @param prefix 前缀（如 "roi" 或 "det"）
+ * @return 唯一ID字符串
+ */
+inline QString generateUniqueId(const QString& prefix) {
+    return QString("%1_%2_%3")
+        .arg(prefix)
+        .arg(QDateTime::currentMSecsSinceEpoch())
+        .arg(QRandomGenerator::global()->bounded(10000));
 }
 
 /**

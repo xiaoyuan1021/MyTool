@@ -15,42 +15,12 @@ DetectionUiController::DetectionUiController(
     QObject* parent)
     : QObject(parent)
     , m_multiRoiConfig(multiRoiConfig)
-    , m_detectionManager(nullptr)
     , m_tabWidget(tabWidget)
 {
 }
 
 DetectionUiController::~DetectionUiController()
 {
-}
-
-void DetectionUiController::setupDetectionManager()
-{
-    m_detectionManager = new DetectionManager(this);
-    
-    // 连接信号
-    connect(m_detectionManager, &DetectionManager::detectionItemAdded,
-            this, [this](int id) {
-                updateTreeView();
-                emit detectionChanged();
-                Logger::instance()->info(QString("检测项已添加: ID=%1").arg(id));
-            });
-    
-    connect(m_detectionManager, &DetectionManager::detectionItemRemoved,
-            this, [this](int id) {
-                updateTreeView();
-                emit detectionChanged();
-                Logger::instance()->info(QString("检测项已删除: ID=%1").arg(id));
-            });
-    
-    connect(m_detectionManager, &DetectionManager::currentSelectionChanged,
-            this, [this](int oldId, int newId) {
-                if (newId != -1) {
-                    TabConfig config = m_detectionManager->getTabConfig(newId);
-                    switchToTabConfig(config);
-                    Logger::instance()->info(QString("切换到检测项: ID=%1").arg(newId));
-                }
-            });
 }
 
 void DetectionUiController::onAddDetectionClicked(const QString& roiId)
@@ -120,9 +90,6 @@ void DetectionUiController::onAddDetectionClicked(const QString& roiId)
             // 添加到ROI
             roi->addDetectionItem(item);
             
-            // 刷新树形视图
-            updateTreeView();
-            
             emit detectionChanged();
             
             Logger::instance()->info(QString("已为ROI %1 添加检测项: %2").arg(roi->roiName).arg(typeName));
@@ -134,19 +101,6 @@ void DetectionUiController::onDeleteDetectionClicked()
 {
     // 这个方法需要在主窗口中调用，传入当前选中的检测项
     // 暂时留空，由主窗口直接处理
-}
-
-void DetectionUiController::onDetectionItemClicked(const QModelIndex& index)
-{
-    if (!index.isValid()) {
-        return;
-    }
-    
-    // 获取检测项ID（存储在UserRole中）
-    int id = index.data(Qt::UserRole).toInt();
-    
-    // 设置当前选中
-    m_detectionManager->setCurrentSelectedId(id);
 }
 
 void DetectionUiController::switchToTabConfig(const TabConfig& config)
@@ -177,8 +131,3 @@ void DetectionUiController::switchToTabConfig(const TabConfig& config)
     }
 }
 
-void DetectionUiController::updateTreeView()
-{
-    // 这个方法需要访问主窗口的treeView
-    // 暂时留空，由主窗口直接调用RoiUiController的refreshRoiTreeView
-}
