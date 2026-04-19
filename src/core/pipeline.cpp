@@ -120,12 +120,13 @@ cv::Mat PipelineContext::getFinalDisplay() const
         return srcBgr;
 
     case Mode::MaskGreenWhite:
-        // 优先显示 processed，其次 mask
-        if (!processed.empty()) {
-            return convertToGreenWhite(processed);
-        }
+        // 优先显示 mask（过滤结果），其次 processed
+        // 灰度过滤等场景下mask是主要结果，应该优先显示
         if (!mask.empty()) {
             return convertToGreenWhite(mask);
+        }
+        if (!processed.empty()) {
+            return convertToGreenWhite(processed);
         }
         return srcBgr;
 

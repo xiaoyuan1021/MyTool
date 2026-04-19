@@ -380,7 +380,21 @@ void MainWindow::setDisplayModeForCurrentTab()
     case 1: // 增强Tab
     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Enhanced); break;
     case 2: // 过滤Tab
-    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite); break;
+    {
+        // 根据当前过滤模式选择显示方式
+        const PipelineConfig& cfg = m_pipelineManager->getConfig();
+        if (cfg.currentFilterMode == PipelineConfig::FilterMode::None)
+        {
+            // None模式显示原图
+            m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original);
+        }
+        else
+        {
+            // Gray/RGB/HSV模式显示mask
+            m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite);
+        }
+        break;
+    }
     case 3: // 补正Tab
     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original); break;
     case 4: // 处理Tab

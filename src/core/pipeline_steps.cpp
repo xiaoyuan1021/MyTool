@@ -51,8 +51,10 @@ void StepEnhance::run(PipelineContext& ctx)
 
 void StepGrayFilter::run(PipelineContext& ctx)
 {
+    // 如果不是灰度过滤模式，释放mask并返回
     if (cfg_->currentFilterMode != ImageFilterMode::Gray)
     {
+        ctx.mask.release();
         return;
     }
 
@@ -64,6 +66,7 @@ void StepGrayFilter::run(PipelineContext& ctx)
 
     if (ctx.enhanced.empty())
     {
+        ctx.mask.release();
         return;
     }
 
@@ -82,21 +85,17 @@ void StepGrayFilter::run(PipelineContext& ctx)
             gray = gray.clone();
         }
 
-        HImage hImg("byte", (Hlong)gray.cols, (Hlong)gray.rows, (void*)gray.data);
-        HRegion region = hImg.Threshold(
-            (double)cfg_->grayLow,
-            (double)cfg_->grayHigh
-            );
-
-        ctx.mask = ImageUtils::HRegionToMat(region, gray.cols, gray.rows);
+        // 使用OpenCV的inRange替代Halcon的Threshold
+        // 灰度范围 [grayLow, grayHigh] 内的像素设为255（白色/目标），其余为0（黑色/背景）
+        cv::inRange(gray, cv::Scalar(cfg_->grayLow), cv::Scalar(cfg_->grayHigh), ctx.mask);
 
         ctx.reason = QString("灰度过滤: 范围[%1,%2]")
                          .arg(cfg_->grayLow)
                          .arg(cfg_->grayHigh);
     }
-    catch (const HalconCpp::HException& ex)
+    catch (const cv::Exception& ex)
     {
-        qDebug() << "Halcon Threshold error:" << ex.ErrorMessage().Text();
+        qDebug() << "OpenCV灰度过滤错误:" << ex.what();
         ctx.mask.release();
     }
 }
@@ -271,13 +270,21 @@ cv::Mat StepShapeFilter::applyFilterOr(const cv::Mat& regions, const ShapeFilter
 
 void StepColorFilter::run(PipelineContext& ctx) 
     {
+        // 如果是灰度过滤模式，不处理（让StepGrayFilter处理mask）
+        if (m_cfg->currentFilterMode == ImageFilterMode::Gray) {
+            return;
+        }
+        
+        // 如果不是颜色过滤模式（RGB/HSV），释放mask并返回
         if (m_cfg->currentFilterMode != ImageFilterMode::RGB &&
             m_cfg->currentFilterMode != ImageFilterMode::HSV) {
-            return;  // 不是颜色过滤模式，直接返回
+            ctx.mask.release();
+            return;
         }
 
         if (!m_cfg->enableColorFilter) {
-            return;  // 未启用，直接返回
+            ctx.mask.release();
+            return;
         }
 
         cv::Mat input = ctx.enhanced.empty() ? ctx.srcBgr : ctx.enhanced;
