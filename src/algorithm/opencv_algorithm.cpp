@@ -1,0 +1,394 @@
+#include "opencv_algorithm.h"
+#include "logger.h"
+
+OpenCVAlgorithm::OpenCVAlgorithm() {}
+
+// =============== 辅助函数 ===============
+
+cv::Mat OpenCVAlgorithm::createCircleKernel(int radius)
+{
+    int ksize = 2 * radius + 1;
+    return cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(ksize, ksize));
+}
+
+double OpenCVAlgorithm::calculateCircularity(const std::vector<cv::Point>& contour)
+{
+    if (contour.size() < 3) return 0.0;
+    
+    double area = cv::contourArea(contour);
+    double perimeter = cv::arcLength(contour, true);
+    
+    if (perimeter <= 0) return 0.0;
+    
+    // 圆形度公式：4π * 面积 / 周长²
+    return 4.0 * CV_PI * area / (perimeter * perimeter);
+}
+
+// =============== 形态学操作 ===============
+
+cv::Mat OpenCVAlgorithm::openingCircle(const cv::Mat& region, double radius)
+{
+    if (radius < 0 || region.empty()) return region.clone();
+    
+    int kernelRadius = static_cast<int>(std::round(radius));
+    cv::Mat kernel = createCircleKernel(kernelRadius);
+    cv::Mat result;
+    cv::morphologyEx(region, result, cv::MORPH_OPEN, kernel);
+    return result;
+}
+
+cv::Mat OpenCVAlgorithm::openingRectangle(const cv::Mat& region, int width, int height)
+{
+    if (width < 0 || height < 0 || region.empty()) return region.clone();
+    
+    cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(width, height));
+    cv::Mat result;
+    cv::morphologyEx(region, result, cv::MORPH_OPEN, kernel);
+    return result;
+}
+
+cv::Mat OpenCVAlgorithm::closingCircle(const cv::Mat& region, double radius)
+{
+    if (radius < 0 || region.empty()) return region.clone();
+    
+    int kernelRadius = static_cast<int>(std::round(radius));
+    cv::Mat kernel = createCircleKernel(kernelRadius);
+    cv::Mat result;
+    cv::morphologyEx(region, result, cv::MORPH_CLOSE, kernel);
+    return result;
+}
+
+cv::Mat OpenCVAlgorithm::closingRectangle(const cv::Mat& region, int width, int height)
+{
+    if (width < 0 || height < 0 || region.empty()) return region.clone();
+    
+    cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(width, height));
+    cv::Mat result;
+    cv::morphologyEx(region, result, cv::MORPH_CLOSE, kernel);
+    return result;
+}
+
+cv::Mat OpenCVAlgorithm::dilateCircle(const cv::Mat& region, double radius)
+{
+    if (radius < 0 || region.empty()) return region.clone();
+    
+    int kernelRadius = static_cast<int>(std::round(radius));
+    cv::Mat kernel = createCircleKernel(kernelRadius);
+    cv::Mat result;
+    cv::dilate(region, result, kernel);
+    return result;
+}
+
+cv::Mat OpenCVAlgorithm::dilateRectangle(const cv::Mat& region, int width, int height)
+{
+    if (width < 0 || height < 0 || region.empty()) return region.clone();
+    
+    cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(width, height));
+    cv::Mat result;
+    cv::dilate(region, result, kernel);
+    return result;
+}
+
+cv::Mat OpenCVAlgorithm::erodeCircle(const cv::Mat& region, double radius)
+{
+    if (radius < 0 || region.empty()) return region.clone();
+    
+    int kernelRadius = static_cast<int>(std::round(radius));
+    cv::Mat kernel = createCircleKernel(kernelRadius);
+    cv::Mat result;
+    cv::erode(region, result, kernel);
+    return result;
+}
+
+cv::Mat OpenCVAlgorithm::erodeRectangle(const cv::Mat& region, int width, int height)
+{
+    if (width < 0 || height < 0 || region.empty()) return region.clone();
+    
+    cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(width, height));
+    cv::Mat result;
+    cv::erode(region, result, kernel);
+    return result;
+}
+
+// =============== 连通域操作 ===============
+
+cv::Mat OpenCVAlgorithm::connection(const cv::Mat& region)
+{
+    if (region.empty()) return region.clone();
+    
+    cv::Mat binary;
+    if (region.channels() == 3) {
+        cv::cvtColor(region, binary, cv::COLOR_BGR2GRAY);
+    } else {
+        binary = region.clone();
+    }
+    
+    // 确保是二值图像
+    if (binary.type() != CV_8UC1) {
+        binary.convertTo(binary, CV_8UC1);
+    }
+    
+    cv::Mat labels;
+    cv::connectedComponents(binary, labels, 8);
+    
+    // 将标签转换为可视化图像（每个连通域不同灰度值）
+    cv::Mat result;
+    labels.convertTo(result, CV_8UC1);
+    
+    return result;
+}
+
+cv::Mat OpenCVAlgorithm::union1(const cv::Mat& region)
+{
+    if (region.empty()) return region.clone();
+    
+    // 将所有非零区域合并为一个整体
+    cv::Mat binary;
+    if (region.channels() == 3) {
+        cv::cvtColor(region, binary, cv::COLOR_BGR2GRAY);
+    } else {
+        binary = region.clone();
+    }
+    
+    cv::Mat result;
+    cv::threshold(binary, result, 0, 255, cv::THRESH_BINARY);
+    return result;
+}
+
+// =============== 填充操作 ===============
+
+cv::Mat OpenCVAlgorithm::fillUpHoles(const cv::Mat& region)
+{
+    if (region.empty()) return region.clone();
+    
+    cv::Mat binary;
+    if (region.channels() == 3) {
+        cv::cvtColor(region, binary, cv::COLOR_BGR2GRAY);
+    } else {
+        binary = region.clone();
+    }
+    
+    // 确保是二值图像
+    cv::threshold(binary, binary, 127, 255, cv::THRESH_BINARY);
+    
+    // 使用floodFill填充孔洞
+    cv::Mat filled = binary.clone();
+    cv::floodFill(filled, cv::Point(0, 0), cv::Scalar(255));
+    
+    // 反转填充后的图像
+    cv::Mat inverted;
+    cv::bitwise_not(filled, inverted);
+    
+    // 原图和反转图的并集就是填充孔洞后的结果
+    cv::Mat result;
+    cv::bitwise_or(binary, inverted, result);
+    
+    return result;
+}
+
+// =============== 形状变换 ===============
+
+cv::Mat OpenCVAlgorithm::shapeTrans(const cv::Mat& region, ShapeTransType type)
+{
+    if (region.empty()) return region.clone();
+    
+    cv::Mat binary;
+    if (region.channels() == 3) {
+        cv::cvtColor(region, binary, cv::COLOR_BGR2GRAY);
+    } else {
+        binary = region.clone();
+    }
+    
+    // 确保是二值图像
+    cv::threshold(binary, binary, 127, 255, cv::THRESH_BINARY);
+    
+    std::vector<std::vector<cv::Point>> contours;
+    cv::findContours(binary, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    
+    if (contours.empty()) return region.clone();
+    
+    cv::Mat result = cv::Mat::zeros(binary.size(), CV_8UC1);
+    
+    // 合并所有轮廓
+    std::vector<cv::Point> allPoints;
+    for (const auto& contour : contours) {
+        allPoints.insert(allPoints.end(), contour.begin(), contour.end());
+    }
+    
+    switch (type) {
+        case ShapeTransType::Convex: {
+            std::vector<cv::Point> hull;
+            cv::convexHull(allPoints, hull);
+            std::vector<std::vector<cv::Point>> hullContours = {hull};
+            cv::drawContours(result, hullContours, 0, cv::Scalar(255), cv::FILLED);
+            break;
+        }
+        case ShapeTransType::Rectangle1: {
+            cv::Rect rect = cv::boundingRect(allPoints);
+            cv::rectangle(result, rect, cv::Scalar(255), cv::FILLED);
+            break;
+        }
+        case ShapeTransType::Rectangle2: {
+            cv::RotatedRect rotRect = cv::minAreaRect(allPoints);
+            cv::Point2f vertices[4];
+            rotRect.points(vertices);
+            std::vector<cv::Point> pts;
+            for (int i = 0; i < 4; ++i) {
+                pts.push_back(cv::Point(vertices[i].x, vertices[i].y));
+            }
+            std::vector<std::vector<cv::Point>> polyContours = {pts};
+            cv::drawContours(result, polyContours, 0, cv::Scalar(255), cv::FILLED);
+            break;
+        }
+        case ShapeTransType::OuterCircle: {
+            cv::Point2f center;
+            float radius;
+            cv::minEnclosingCircle(allPoints, center, radius);
+            cv::circle(result, center, static_cast<int>(radius), cv::Scalar(255), cv::FILLED);
+            break;
+        }
+        case ShapeTransType::Ellipse: {
+            if (allPoints.size() >= 5) {
+                cv::RotatedRect ellipse = cv::fitEllipse(allPoints);
+                cv::ellipse(result, ellipse, cv::Scalar(255), cv::FILLED);
+            }
+            break;
+        }
+        case ShapeTransType::InnerCircle: {
+            // 最大内接圆：使用距离变换
+            cv::Mat dist;
+            cv::distanceTransform(binary, dist, cv::DIST_L2, cv::DIST_MASK_5);
+            double maxVal;
+            cv::Point maxLoc;
+            cv::minMaxLoc(dist, nullptr, &maxVal, nullptr, &maxLoc);
+            cv::circle(result, maxLoc, static_cast<int>(maxVal), cv::Scalar(255), cv::FILLED);
+            break;
+        }
+    }
+    
+    return result;
+}
+
+// =============== 区域筛选 ===============
+
+cv::Mat OpenCVAlgorithm::selectShapeArea(const cv::Mat& region, double minArea, double maxArea)
+{
+    if (minArea < 0 || maxArea < minArea || region.empty()) return region.clone();
+    
+    cv::Mat binary;
+    if (region.channels() == 3) {
+        cv::cvtColor(region, binary, cv::COLOR_BGR2GRAY);
+    } else {
+        binary = region.clone();
+    }
+    
+    cv::threshold(binary, binary, 127, 255, cv::THRESH_BINARY);
+    
+    std::vector<std::vector<cv::Point>> contours;
+    cv::findContours(binary, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    
+    cv::Mat result = cv::Mat::zeros(binary.size(), CV_8UC1);
+    
+    for (const auto& contour : contours) {
+        double area = cv::contourArea(contour);
+        if (area >= minArea && area <= maxArea) {
+            cv::drawContours(result, std::vector<std::vector<cv::Point>>{contour}, 
+                           0, cv::Scalar(255), cv::FILLED);
+        }
+    }
+    
+    return result;
+}
+
+// =============== 区域分析 ===============
+
+QVector<OpenCVAlgorithm::RegionFeature> OpenCVAlgorithm::analyzeRegionsInPolygon(
+    const QVector<QPointF>& polygon,
+    const cv::Mat& processedImage)
+{
+    QVector<RegionFeature> results;
+    
+    if (polygon.size() < 3) {
+        Logger::instance()->warning("顶点数量不足，至少需要3个点");
+        return results;
+    }
+    
+    if (processedImage.empty()) {
+        Logger::instance()->error("处理后的图像为空");
+        return results;
+    }
+    
+    try {
+        // 1. 创建多边形掩码
+        std::vector<cv::Point> cvPolygon;
+        for (const QPointF& pt : polygon) {
+            cvPolygon.push_back(cv::Point(static_cast<int>(pt.x()), static_cast<int>(pt.y())));
+        }
+        
+        cv::Mat polygonMask = cv::Mat::zeros(processedImage.size(), CV_8UC1);
+        cv::fillPoly(polygonMask, std::vector<std::vector<cv::Point>>{cvPolygon}, cv::Scalar(255));
+        
+        // 2. 准备二值图像
+        cv::Mat binary;
+        if (processedImage.channels() == 3) {
+            cv::cvtColor(processedImage, binary, cv::COLOR_BGR2GRAY);
+        } else {
+            binary = processedImage.clone();
+        }
+        cv::threshold(binary, binary, 127, 255, cv::THRESH_BINARY);
+        
+        // 3. 与多边形求交集
+        cv::Mat masked;
+        cv::bitwise_and(binary, polygonMask, masked);
+        
+        // 4. 连通域分析
+        cv::Mat labels, stats, centroids;
+        int numLabels = cv::connectedComponentsWithStats(masked, labels, stats, centroids, 8);
+        
+        if (numLabels <= 1) {
+            Logger::instance()->warning("ROI区域内没有找到目标");
+            return results;
+        }
+        
+        // 5. 遍历连通域（跳过背景标签0）
+        for (int i = 1; i < numLabels; ++i) {
+            double area = stats.at<int>(i, cv::CC_STAT_AREA);
+            if (area < 0.01) continue; // 跳过太小的区域
+            
+            double cx = centroids.at<double>(i, 0);
+            double cy = centroids.at<double>(i, 1);
+            int x = stats.at<int>(i, cv::CC_STAT_LEFT);
+            int y = stats.at<int>(i, cv::CC_STAT_TOP);
+            int w = stats.at<int>(i, cv::CC_STAT_WIDTH);
+            int h = stats.at<int>(i, cv::CC_STAT_HEIGHT);
+            
+            // 计算圆形度
+            cv::Mat regionMask = (labels == i);
+            std::vector<std::vector<cv::Point>> regionContours;
+            cv::findContours(regionMask, regionContours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+            
+            double circularity = 0.0;
+            if (!regionContours.empty()) {
+                circularity = calculateCircularity(regionContours[0]);
+            }
+            
+            RegionFeature feature;
+            feature.index = i;
+            feature.area = area;
+            feature.centerX = cx;
+            feature.centerY = cy;
+            feature.circularity = circularity;
+            feature.width = w;
+            feature.height = h;
+            
+            results.append(feature);
+        }
+        
+        Logger::instance()->info(QString("找到 %1 个目标").arg(results.size()));
+        
+    } catch (const cv::Exception& ex) {
+        Logger::instance()->error(QString("OpenCV计算错误: %1").arg(ex.what()));
+    }
+    
+    return results;
+}
