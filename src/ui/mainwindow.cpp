@@ -71,8 +71,17 @@ MainWindow::MainWindow(QWidget *parent)
                     m_barcodeTabWidget->updateResultsTable(result.barcodeResults);
                     m_barcodeTabWidget->updateStatus(result.barcodeStatus);
                 }
+                
                 // 恢复状态栏
                 ui->statusbar->showMessage("处理完成", 2000);
+                
+                // 检查是否有pending的处理请求（避免滑条快速拖动时丢失处理）
+                if (m_hasPendingProcess) {
+                    qDebug() << "检测到pending处理请求，重新触发processAndDisplay";
+                    m_hasPendingProcess = false;
+                    // 使用单次定时器确保UI更新完成后再处理
+                    QTimer::singleShot(50, this, &MainWindow::processAndDisplay);
+                }
             });
 
     setupUI();
@@ -345,8 +354,9 @@ void MainWindow::setupConnections()
 
 void MainWindow::processAndDisplay()
 {
-    // 如果正在处理，跳过本次请求（避免堆积）
+    // 如果正在处理，设置pending标志，稍后自动重新触发
     if (m_isProcessing) {
+        m_hasPendingProcess = true;
         return;
     }
 
@@ -361,6 +371,7 @@ void MainWindow::processAndDisplay()
 
     // ========== 使用QtConcurrent在后台线程执行Pipeline ==========
     m_isProcessing = true;
+    m_hasPendingProcess = false;
     ui->statusbar->showMessage("正在处理...");
 
     QFuture<PipelineContext> future = QtConcurrent::run(

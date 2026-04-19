@@ -665,11 +665,11 @@ cv::Mat OpenCVAlgorithm::convertToGreenWhite(const cv::Mat& mask)
         cv::Vec3b* rp = result.ptr<cv::Vec3b>(y);
         for (int x = 0; x < m.cols; ++x)
         {
-            if (mp[x] == 0)  // 目标区域（黑色）
+            if (mp[x] != 0)  // 在灰度范围内（白色 - 目标区域）
             {
                 rp[x] = cv::Vec3b(0, 255, 0);  // 绿色
             }
-            else  // 背景区域（白色）
+            else  // 不在灰度范围内（黑色 - 背景区域）
             {
                 rp[x] = cv::Vec3b(255, 255, 255);  // 白色
             }

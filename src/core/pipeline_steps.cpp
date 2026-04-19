@@ -86,7 +86,7 @@ void StepGrayFilter::run(PipelineContext& ctx)
         }
 
         // 使用OpenCV的inRange替代Halcon的Threshold
-        // 灰度范围 [grayLow, grayHigh] 内的像素设为255（白色/目标），其余为0（黑色/背景）
+        // 灰度范围 [grayLow, grayHigh] 内的像素设为255（绿色/目标），其余为0（白色/背景）
         cv::inRange(gray, cv::Scalar(cfg_->grayLow), cv::Scalar(cfg_->grayHigh), ctx.mask);
 
         ctx.reason = QString("灰度过滤: 范围[%1,%2]")

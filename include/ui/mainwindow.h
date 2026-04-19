@@ -130,6 +130,7 @@ private:
     // 多线程处理相关
     QFutureWatcher<PipelineContext> m_pipelineWatcher;
     bool m_isProcessing = false;
+    bool m_hasPendingProcess = false;
 
     // ROI配置管理
     MultiRoiConfig* m_multiRoiConfig;
