@@ -1,7 +1,6 @@
 #include "pipeline_manager.h"
 #include "barcode_step.h"
 #include <QDebug>
-#include <QCryptographicHash>
 #include <algorithm>
 
 PipelineManager::PipelineManager(QObject* parent)
@@ -116,18 +115,6 @@ PipelineContext PipelineManager::execute(const cv::Mat& inputImage)
         return PipelineContext();
     }
 
-    // ✅ 检查缓存是否有效
-    if (isCacheValid(inputImage))
-    {
-        qDebug() << "[PipelineManager] 使用缓存结果，跳过Pipeline执行";
-        // 更新 lastContext 为缓存结果
-        m_lastContext = m_cachedContext;
-        // 发出完成信号
-        emit pipelineFinished("Pipeline执行完成（使用缓存）");
-        // 返回缓存的副本
-        return m_cachedContext;
-    }
-
     // ✅ 显式释放所有Mat
     m_lastContext.srcBgr.release();
     m_lastContext.channelImg.release();
@@ -146,11 +133,6 @@ PipelineContext PipelineManager::execute(const cv::Mat& inputImage)
 
     // 执行Pipeline
     m_pipeline.run(m_lastContext);
-
-    // ✅ 更新缓存
-    m_cachedContext = m_lastContext;
-    m_lastConfigHash = calculateConfigHash(inputImage);
-    m_lastImageHash = calculateConfigHash(inputImage);
 
     // 发出完成信号
     QString message = m_lastContext.reason.isEmpty()
@@ -189,143 +171,6 @@ void PipelineManager::rebuildPipeline()
     // 目前的设计中，算法队列是引用传递，所以不需要重建
     // 但保留这个接口以备将来扩展
     qDebug() << "[PipelineManager] Pipeline重建（当前为引用传递，无需重建）";
-}
-
-// ========== 缓存相关方法 ==========
-
-QString PipelineManager::calculateConfigHash(const cv::Mat& inputImage) const
-{
-    QByteArray hashData;
-
-    // 1. 图像数据哈希（采样关键像素，避免全图哈希的开销）
-    if (!inputImage.empty())
-    {
-        // 采样图像的关键点：四个角和中心
-        int rows = inputImage.rows;
-        int cols = inputImage.cols;
-        
-        // 添加图像尺寸
-        hashData.append(reinterpret_cast<const char*>(&rows), sizeof(int));
-        hashData.append(reinterpret_cast<const char*>(&cols), sizeof(int));
-        
-        // 采样5个关键点的像素值
-        if (rows > 0 && cols > 0)
-        {
-            // 左上角
-            const uchar* topLeft = inputImage.ptr<uchar>(0);
-            hashData.append(reinterpret_cast<const char*>(topLeft), (std::min)(cols, 10));
-            
-            // 右上角
-            const uchar* topRight = inputImage.ptr<uchar>(0) + (cols - 1) * inputImage.channels();
-            hashData.append(reinterpret_cast<const char*>(topRight), (std::min)(cols, 10));
-
-            // 中心
-            int centerY = rows / 2;
-            int centerX = cols / 2;
-            const uchar* center = inputImage.ptr<uchar>(centerY) + centerX * inputImage.channels();
-            hashData.append(reinterpret_cast<const char*>(center), (std::min)(cols, 10));
-            
-            // 左下角
-            const uchar* bottomLeft = inputImage.ptr<uchar>(rows - 1);
-            hashData.append(reinterpret_cast<const char*>(bottomLeft), (std::min)(cols, 10));
-
-            // 右下角
-            const uchar* bottomRight = inputImage.ptr<uchar>(rows - 1) + (cols - 1) * inputImage.channels();
-            hashData.append(reinterpret_cast<const char*>(bottomRight), (std::min)(cols, 10));
-        }
-    }
-
-    // 2. 通道模式
-    int channelValue = static_cast<int>(m_config.channel);
-    hashData.append(reinterpret_cast<const char*>(&channelValue), sizeof(int));
-
-    // 3. 增强参数
-    int brightnessValue = m_config.brightness;
-    hashData.append(reinterpret_cast<const char*>(&brightnessValue), sizeof(int));
-    double contrastValue = m_config.contrast;
-    hashData.append(reinterpret_cast<const char*>(&contrastValue), sizeof(double));
-    double gammaValue = m_config.gamma;
-    hashData.append(reinterpret_cast<const char*>(&gammaValue), sizeof(double));
-    double sharpenValue = m_config.sharpen;
-    hashData.append(reinterpret_cast<const char*>(&sharpenValue), sizeof(double));
-
-    // 4. 灰度过滤参数
-    int enableGrayFilterValue = static_cast<int>(m_config.enableGrayFilter);
-    hashData.append(reinterpret_cast<const char*>(&enableGrayFilterValue), sizeof(int));
-    int grayLowValue = m_config.grayLow;
-    hashData.append(reinterpret_cast<const char*>(&grayLowValue), sizeof(int));
-    int grayHighValue = m_config.grayHigh;
-    hashData.append(reinterpret_cast<const char*>(&grayHighValue), sizeof(int));
-
-    // 5. 颜色过滤参数
-    int enableColorFilterValue = static_cast<int>(m_config.enableColorFilter);
-    hashData.append(reinterpret_cast<const char*>(&enableColorFilterValue), sizeof(int));
-    int colorFilterModeValue = static_cast<int>(m_config.colorFilterMode);
-    hashData.append(reinterpret_cast<const char*>(&colorFilterModeValue), sizeof(int));
-    int rLowValue = m_config.rLow;
-    hashData.append(reinterpret_cast<const char*>(&rLowValue), sizeof(int));
-    int rHighValue = m_config.rHigh;
-    hashData.append(reinterpret_cast<const char*>(&rHighValue), sizeof(int));
-    int gLowValue = m_config.gLow;
-    hashData.append(reinterpret_cast<const char*>(&gLowValue), sizeof(int));
-    int gHighValue = m_config.gHigh;
-    hashData.append(reinterpret_cast<const char*>(&gHighValue), sizeof(int));
-    int bLowValue = m_config.bLow;
-    hashData.append(reinterpret_cast<const char*>(&bLowValue), sizeof(int));
-    int bHighValue = m_config.bHigh;
-    hashData.append(reinterpret_cast<const char*>(&bHighValue), sizeof(int));
-    int hLowValue = m_config.hLow;
-    hashData.append(reinterpret_cast<const char*>(&hLowValue), sizeof(int));
-    int hHighValue = m_config.hHigh;
-    hashData.append(reinterpret_cast<const char*>(&hHighValue), sizeof(int));
-    int sLowValue = m_config.sLow;
-    hashData.append(reinterpret_cast<const char*>(&sLowValue), sizeof(int));
-    int sHighValue = m_config.sHigh;
-    hashData.append(reinterpret_cast<const char*>(&sHighValue), sizeof(int));
-    int vLowValue = m_config.vLow;
-    hashData.append(reinterpret_cast<const char*>(&vLowValue), sizeof(int));
-    int vHighValue = m_config.vHigh;
-    hashData.append(reinterpret_cast<const char*>(&vHighValue), sizeof(int));
-
-    // 6. 算法队列
-    int algorithmQueueSize = static_cast<int>(m_algorithmQueue.size());
-    hashData.append(reinterpret_cast<const char*>(&algorithmQueueSize), sizeof(int));
-    for (const auto& step : m_algorithmQueue)
-    {
-        // step.type 是 QString 类型，需要转换为字节数组
-        hashData.append(step.type.toUtf8());
-        // 添加参数
-        int paramsSize = static_cast<int>(step.params.size());
-        hashData.append(reinterpret_cast<const char*>(&paramsSize), sizeof(int));
-        for (const auto& param : step.params)
-        {
-            hashData.append(reinterpret_cast<const char*>(&param), sizeof(double));
-        }
-    }
-
-    // 7. 显示模式
-    int displayModeValue = static_cast<int>(m_displayMode);
-    hashData.append(reinterpret_cast<const char*>(&displayModeValue), sizeof(int));
-
-    // 8. 计算哈希
-    QCryptographicHash hash(QCryptographicHash::Md5);
-    hash.addData(hashData);
-    return hash.result().toHex();
-}
-
-bool PipelineManager::isCacheValid(const cv::Mat& inputImage) const
-{
-    // 如果缓存为空，无效
-    if (m_lastConfigHash.isEmpty())
-    {
-        return false;
-    }
-
-    // 计算当前配置哈希
-    QString currentHash = calculateConfigHash(inputImage);
-
-    // 比较哈希值
-    return currentHash == m_lastConfigHash;
 }
 
 void PipelineManager::setChannelMode(PipelineConfig::Channel channel)
@@ -421,13 +266,7 @@ void PipelineManager::resetPipeline()
     m_overlayAlpha = 0.3f;
     //qDebug() << "[PipelineManager]   - 显示模式已重置";
 
-    // 6️⃣ 清空缓存
-    m_lastConfigHash.clear();
-    m_lastImageHash.clear();
-    m_cachedContext = PipelineContext();
-    //qDebug() << "[PipelineManager]   - 缓存已清空";
-
-    // 7️⃣ 重新初始化Pipeline
+    // 6️⃣ 重新初始化Pipeline
     initPipeline();
     //qDebug() << "[PipelineManager]   - Pipeline已重新初始化";
 

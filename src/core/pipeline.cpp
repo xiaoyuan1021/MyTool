@@ -123,10 +123,10 @@ cv::Mat PipelineContext::getFinalDisplay() const
         // 优先显示 mask（过滤结果），其次 processed
         // 灰度过滤等场景下mask是主要结果，应该优先显示
         if (!mask.empty()) {
-            return convertToGreenWhite(mask);
+            return OpenCVAlgorithm::convertToGreenWhite(mask);
         }
         if (!processed.empty()) {
-            return convertToGreenWhite(processed);
+            return OpenCVAlgorithm::convertToGreenWhite(processed);
         }
         return srcBgr;
 
@@ -139,7 +139,7 @@ cv::Mat PipelineContext::getFinalDisplay() const
     case Mode::Processed:
         if (!processed.empty()) {
             if (processed.channels() == 1) {
-                return convertToGreenWhite(processed);
+                return OpenCVAlgorithm::convertToGreenWhite(processed);
             }
             return processed;
         }
@@ -154,39 +154,6 @@ cv::Mat PipelineContext::getFinalDisplay() const
     }
 }
 
-cv::Mat PipelineContext::convertToGreenWhite(const cv::Mat &mask) const
-{
-    if (mask.empty()) return cv::Mat();
-
-    cv::Mat m;
-    if (mask.type() != CV_8U) {
-        mask.convertTo(m, CV_8U);
-    } else {
-        m = mask;
-    }
-
-    cv::Mat result(m.rows, m.cols, CV_8UC3);
-
-    for (int y = 0; y < m.rows; y++)
-    {
-        const uchar* mp = m.ptr<uchar>(y);
-        cv::Vec3b* rp = result.ptr<cv::Vec3b>(y);
-        for (int x = 0; x < m.cols; ++x)
-        {
-            if (mp[x] == 0)  // 目标区域
-            {
-                rp[x] = cv::Vec3b(0, 255, 0);  // 绿色
-            }
-            else
-            {
-                rp[x] = cv::Vec3b(255, 255, 255);  // 白色
-            }
-        }
-    }
-
-    
-    return result;
-}
 
 cv::Mat PipelineContext::overlayMaskOnImage(const cv::Mat &bgr, const cv::Mat &mask) const
 {

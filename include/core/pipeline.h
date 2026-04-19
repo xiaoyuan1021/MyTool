@@ -11,6 +11,7 @@
 #include "pipeline_types.h"
 #include "region_feature.h"
 #include "display_config.h"
+#include "algorithm/opencv_algorithm.h"
 
 /**
  * 条码识别结果
@@ -154,7 +155,6 @@ struct PipelineContext
     cv::Mat getFinalDisplay() const;
 
 private:
-    cv::Mat convertToGreenWhite(const cv::Mat& mask) const;
     cv::Mat overlayMaskOnImage(const cv::Mat& bgr,const cv::Mat& mask) const;
 };
 
