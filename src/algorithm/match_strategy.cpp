@@ -5,14 +5,16 @@
 
 MatchStrategy::MatchStrategy() {}
 
-ShapeMatchStrategy::ShapeMatchStrategy()
-    :m_hasTemplate(false)
-    ,m_modelRow(0)
-    ,m_modelCol(0)
-{
+// ShapeMatchStrategy::ShapeMatchStrategy()
+//     :m_hasTemplate(false)
+//     ,m_modelRow(0)
+//     ,m_modelCol(0)
+// {
 
-}
+// }
 
+// ⚠️ 已注释：Halcon 形状模板匹配（依赖 Halcon 库）
+/*
 bool ShapeMatchStrategy::createTemplate(const Mat &fullImage, const QVector<QPointF>& pologonPoints, const TemplateParams &params)
 {
     if (fullImage.empty())
@@ -149,7 +151,10 @@ bool ShapeMatchStrategy::createTemplate(const Mat &fullImage, const QVector<QPoi
         return false;
     }
 }
+*/
 
+// ⚠️ 已注释：Halcon 形状模板匹配（依赖 Halcon 库）
+/*
 QVector<MatchResult> ShapeMatchStrategy::findMatches(const Mat &searchImage, double minScore, int maxMatches, double greediness)
 {
     QVector<MatchResult> result;
@@ -200,7 +205,10 @@ QVector<MatchResult> ShapeMatchStrategy::findMatches(const Mat &searchImage, dou
         return result;
     }
 }
+*/
 
+// ⚠️ 已注释：Halcon 形状模板匹配（依赖 Halcon 库）
+/*
 Mat ShapeMatchStrategy::drawMatches(const Mat &searchImage, const QVector<MatchResult> &matches) const
 {
     if (searchImage.empty() || matches.isEmpty()) {
@@ -251,7 +259,10 @@ Mat ShapeMatchStrategy::drawMatches(const Mat &searchImage, const QVector<MatchR
     cv::Mat results = ImageUtils::qImageToMat(qImg, true);
     return results;
 }
+*/
 
+// ⚠️ 已注释：Halcon 形状模板匹配相关函数（依赖 Halcon 库）
+/*
 HImage ShapeMatchStrategy::createTemplateRegion(const Mat &image, const QVector<QPointF> &polygon)
 {
     // 诊断：输入图像大小
@@ -298,90 +309,93 @@ HImage ShapeMatchStrategy::createTemplateRegion(const Mat &image, const QVector<
 
     return result;
 }
+*/
 
-void ShapeMatchStrategy::extractTemplateContour(const QVector<QPointF> &polygon)
-{
-    try {
-        m_templateRows.Clear();
-        m_templateCols.Clear();
+// void ShapeMatchStrategy::extractTemplateContour(const QVector<QPointF> &polygon)
+// {
+    // try {
+    //     m_templateRows.Clear();
+    //     m_templateCols.Clear();
 
-        // 计算模板中心
-        double templateCenterRow = m_roiOffsetY + m_templateHeight / 2.0;
-        double templateCenterCol = m_roiOffsetX + m_templateWidth / 2.0;
+    //     // 计算模板中心
+    //     double templateCenterRow = m_roiOffsetY + m_templateHeight / 2.0;
+    //     double templateCenterCol = m_roiOffsetX + m_templateWidth / 2.0;
 
-        // 存储相对于模板中心的偏移，而不是绝对坐标
-        // 这样在 drawSingleMatch 中就可以直接旋转和平移，无需复杂的坐标转换
-        for (const QPointF& pt : polygon) {
-            double offsetRow = pt.y() - templateCenterRow;
-            double offsetCol = pt.x() - templateCenterCol;
-            m_templateRows.Append(offsetRow);
-            m_templateCols.Append(offsetCol);
-        }
+    //     // 存储相对于模板中心的偏移，而不是绝对坐标
+    //     // 这样在 drawSingleMatch 中就可以直接旋转和平移，无需复杂的坐标转换
+    //     for (const QPointF& pt : polygon) {
+    //         double offsetRow = pt.y() - templateCenterRow;
+    //         double offsetCol = pt.x() - templateCenterCol;
+    //         m_templateRows.Append(offsetRow);
+    //         m_templateCols.Append(offsetCol);
+    //     }
 
-        Logger::instance()->info(QString("[Shape] 提取模板轮廓成功，轮廓点数: %1 (相对于模板中心)").arg(m_templateRows.Length()));
+    //     Logger::instance()->info(QString("[Shape] 提取模板轮廓成功，轮廓点数: %1 (相对于模板中心)").arg(m_templateRows.Length()));
 
-    } catch (const HException& ex) {
-        Logger::instance()->warning(
-            QString("[Shape] 提取模板轮廓失败: %1").arg(ex.ErrorMessage().Text())
-            );
-    }
-}
+    // } catch (const HException& ex) {
+    //     Logger::instance()->warning(
+    //         QString("[Shape] 提取模板轮廓失败: %1").arg(ex.ErrorMessage().Text())
+    //         );
+    // }
+//}
 
-void ShapeMatchStrategy::drawSingleMatch(QPainter &painter, const MatchResult &match, const QColor &color) const
-{
-    try {
-        if (m_templateRows.Length() < 3) {
-            Logger::instance()->warning(QString("[Shape] drawSingleMatch: 轮廓点不足 (%1)").arg(m_templateRows.Length()));
-            return;
-        }
+//void ShapeMatchStrategy::drawSingleMatch(QPainter &painter, const MatchResult &match, const QColor &color) const
+//{
+    // try {
+    //     if (m_templateRows.Length() < 3) {
+    //         Logger::instance()->warning(QString("[Shape] drawSingleMatch: 轮廓点不足 (%1)").arg(m_templateRows.Length()));
+    //         return;
+    //     }
 
-        HTuple homMat2D;
-        HomMat2dIdentity(&homMat2D);
-        HomMat2dRotate(homMat2D, match.angle * 0.0174533, 0, 0, &homMat2D);
-        HomMat2dTranslate(homMat2D, match.row, match.column, &homMat2D);
+    //     HTuple homMat2D;
+    //     HomMat2dIdentity(&homMat2D);
+    //     HomMat2dRotate(homMat2D, match.angle * 0.0174533, 0, 0, &homMat2D);
+    //     HomMat2dTranslate(homMat2D, match.row, match.column, &homMat2D);
 
-        HTuple transformedRows, transformedCols;
-        AffineTransPoint2d(homMat2D,
-                           m_templateRows,
-                           m_templateCols,
-                           &transformedRows,
-                           &transformedCols);
+    //     HTuple transformedRows, transformedCols;
+    //     AffineTransPoint2d(homMat2D,
+    //                        m_templateRows,
+    //                        m_templateCols,
+    //                        &transformedRows,
+    //                        &transformedCols);
 
-        QPolygonF polygon;
-        for (int i = 0; i < transformedRows.Length(); ++i)
-        {
-            polygon<<QPointF(transformedCols[i].D(), transformedRows[i].D());
-        }
+    //     QPolygonF polygon;
+    //     for (int i = 0; i < transformedRows.Length(); ++i)
+    //     {
+    //         polygon<<QPointF(transformedCols[i].D(), transformedRows[i].D());
+    //     }
 
-        if (polygon.size() >= 3)
-        {
-            QColor fillColor = color;
-            fillColor.setAlpha(100);
-            painter.setBrush(fillColor);
-            painter.setPen(Qt::NoPen);
-            painter.drawPolygon(polygon);
+    //     if (polygon.size() >= 3)
+    //     {
+    //         QColor fillColor = color;
+    //         fillColor.setAlpha(100);
+    //         painter.setBrush(fillColor);
+    //         painter.setPen(Qt::NoPen);
+    //         painter.drawPolygon(polygon);
 
-            painter.setBrush(Qt::NoBrush);
-            painter.setPen(QPen(color, 3));
-            painter.drawPolygon(polygon);
-        }
+    //         painter.setBrush(Qt::NoBrush);
+    //         painter.setPen(QPen(color, 3));
+    //         painter.drawPolygon(polygon);
+    //     }
 
-    }
-    catch (const HException& ex)
-    {
-        Logger::instance()->warning(
-            QString("[Shape] 绘制匹配轮廓失败: %1").arg(ex.ErrorMessage().Text())
-            );
-    }
-}
+    // }
+    // catch (const HException& ex)
+    // {
+    //     Logger::instance()->warning(
+    //         QString("[Shape] 绘制匹配轮廓失败: %1").arg(ex.ErrorMessage().Text())
+    //         );
+    // }
+//}
 
-NCCMatchStrategy::NCCMatchStrategy()
-    : m_hasTemplate(false)
-    , m_templateWidth(0)
-    , m_templateHeight(0)
-{
-}
+// NCCMatchStrategy::NCCMatchStrategy()
+//     : m_hasTemplate(false)
+//     , m_templateWidth(0)
+//     , m_templateHeight(0)
+// {
+// }
 
+// ⚠️ 已注释：Halcon NCC模板匹配（依赖 Halcon 库）
+/*
 bool NCCMatchStrategy::createTemplate(const cv::Mat& fullImage,
                                       const QVector<QPointF>& polygon,
                                       const TemplateParams& params)
@@ -438,7 +452,10 @@ bool NCCMatchStrategy::createTemplate(const cv::Mat& fullImage,
         return false;
     }
 }
+*/
 
+// ⚠️ 已注释：Halcon NCC模板匹配（依赖 Halcon 库）
+/*
 QVector<MatchResult> NCCMatchStrategy::findMatches(const cv::Mat& searchImage,
                                                    double minScore,
                                                    int maxMatches,
@@ -499,7 +516,10 @@ QVector<MatchResult> NCCMatchStrategy::findMatches(const cv::Mat& searchImage,
 
     return results;
 }
+*/
 
+// ⚠️ 已注释：Halcon NCC模板匹配（依赖 Halcon 库）
+/*
 cv::Mat NCCMatchStrategy::drawMatches(const cv::Mat& searchImage,
                                       const QVector<MatchResult>& matches) const
 {
@@ -586,7 +606,10 @@ cv::Mat NCCMatchStrategy::drawMatches(const cv::Mat& searchImage,
     cv::Mat result = ImageUtils::qImageToMat(qImage, true);
     return result;
 }
+*/
 
+// ⚠️ 已注释：Halcon NCC模板匹配（依赖 Halcon 库）
+/*
 HImage NCCMatchStrategy::createTemplateRegion(const cv::Mat& image,
                                               const QVector<QPointF>& polygon)
 {
@@ -606,6 +629,7 @@ HImage NCCMatchStrategy::createTemplateRegion(const cv::Mat& image,
     // 3️⃣ 裁剪图像
     return hImage.ReduceDomain(polygonRegion);
 }
+*/
 
 
 OpenCVMatchStrategy::OpenCVMatchStrategy()

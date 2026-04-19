@@ -8,10 +8,13 @@
 #include <QColor>
 #include <QPolygonF>
 #include "opencv2/opencv.hpp"
-#include "HalconCpp.h"
+// ⚠️ 已注释：不再需要 Halcon 头文件
+// #include "HalconCpp.h"
 
-using namespace cv;
-using namespace HalconCpp;
+// 修复ACCESS_MASK冲突：不使用using namespace cv
+// using namespace cv;
+// ⚠️ 已注释：不再需要 Halcon 命名空间
+// using namespace HalconCpp;
 
 // 先定义TemplateParams
 struct TemplateParams
@@ -63,6 +66,8 @@ public:
     virtual bool hasTemplate() const= 0;
 };
 
+// ⚠️ 已注释：Halcon 形状模板匹配（依赖 Halcon 库）
+/*
 class ShapeMatchStrategy :public IMatchStrategy
 {
 public:
@@ -109,7 +114,10 @@ private:
                          const MatchResult& match,
                          const QColor& color) const;
 };
+*/
 
+// ⚠️ 已注释：Halcon NCC 模板匹配（依赖 Halcon 库）
+/*
 // ========== Halcon NCC Model 策略 ==========
 class NCCMatchStrategy : public IMatchStrategy
 {
@@ -145,6 +153,7 @@ private:
     HImage createTemplateRegion(const cv::Mat& image,
                                 const QVector<QPointF>& polygon);
 };
+*/
 
 // ========== OpenCV Template Matching 策略 ==========
 class OpenCVMatchStrategy : public IMatchStrategy

@@ -1,6 +1,8 @@
 #include "image_utils.h"
+// ⚠️ 已注释：不再需要 Halcon 头文件
+// #include <HalconCpp.h>
 
-QImage ImageUtils::matToQImage(const Mat &mat)
+QImage ImageUtils::matToQImage(const cv::Mat &mat)
 {
     if (mat.empty()) return QImage();
 
@@ -12,7 +14,7 @@ QImage ImageUtils::matToQImage(const Mat &mat)
         if (mat.isContinuous()) {
             result = QImage(mat.data, mat.cols, mat.rows, mat.step, QImage::Format_Grayscale8).copy();
         } else {
-            Mat contiguous = mat.clone();
+            cv::Mat contiguous = mat.clone();
             result = QImage(contiguous.data, contiguous.cols, contiguous.rows, contiguous.step, QImage::Format_Grayscale8).copy();
         }
     }
@@ -52,7 +54,7 @@ QImage ImageUtils::matToQImage(const Mat &mat)
     return result;
 }
 
-Mat ImageUtils::qImageToMat(const QImage &image, bool clone)
+cv::Mat ImageUtils::qImageToMat(const QImage &image, bool clone)
 {
     if (image.isNull())
         return cv::Mat();
@@ -111,14 +113,14 @@ Mat ImageUtils::qImageToMat(const QImage &image, bool clone)
 }
 
 
-Mat ImageUtils::makeStructElement(int ksize)
+cv::Mat ImageUtils::makeStructElement(int ksize)
 {
-    return getStructuringElement(MORPH_ELLIPSE,
+    return cv::getStructuringElement(cv::MORPH_ELLIPSE,
                                  cv::Size(2*ksize+1, 2*ksize+1),
                                  cv::Point(ksize, ksize));
 }
 
-QRect ImageUtils::mapLabelToImage(const QRect &rect, const Mat &img, QLabel *label)
+QRect ImageUtils::mapLabelToImage(const QRect &rect, const cv::Mat &img, QLabel *label)
 {
     if(img.empty() || label==nullptr) return QRect();
 
@@ -145,6 +147,8 @@ QRect ImageUtils::mapLabelToImage(const QRect &rect, const Mat &img, QLabel *lab
     return QRect(x,y,w,h);
 }
 
+// ⚠️ 已注释：Halcon 转换函数（不再需要）
+/*
 Mat ImageUtils::HImageToMat(HObject &H_img)
 {
     cv::Mat cv_img;
@@ -189,7 +193,10 @@ Mat ImageUtils::HImageToMat(HObject &H_img)
     }
     return cv_img;
 }
+*/
 
+// ⚠️ 已注释：Halcon 转换函数（不再需要）
+/*
 Mat ImageUtils::HObjectToMat(const HalconCpp::HObject& region, int width, int height)
 {
     try {
@@ -213,8 +220,11 @@ Mat ImageUtils::HObjectToMat(const HalconCpp::HObject& region, int width, int he
         return cv::Mat::zeros(height, width, CV_8UC1);
     }
 }
+*/
 
 
+// ⚠️ 已注释：Halcon 转换函数（不再需要）
+/*
 HalconCpp::HRegion ImageUtils::MatToHRegion(const cv::Mat &binary)
 {
     using namespace HalconCpp;
@@ -253,7 +263,10 @@ HalconCpp::HRegion ImageUtils::MatToHRegion(const cv::Mat &binary)
     // Threshold 选择 [1, 255] 范围（取反后的非零值区域 = 原mask中的0值区域）
     return hImg.Threshold(1.0, 255.0);
 }
+*/
 
+// ⚠️ 已注释：Halcon 转换函数（不再需要）
+/*
 Mat ImageUtils::HRegionToMat(const HRegion &region, int width, int height)
 {
     // 检查输入参数
@@ -312,8 +325,11 @@ Mat ImageUtils::HRegionToMat(const HRegion &region, int width, int height)
         return cv::Mat::zeros(height, width, CV_8UC1);
     }
 }
+*/
 
 
+// ⚠️ 已注释：Halcon 转换函数（不再需要）
+/*
 HImage ImageUtils::matToHImage(const cv::Mat& mat)
 {
     if (mat.empty()) {
@@ -354,4 +370,5 @@ HImage ImageUtils::matToHImage(const cv::Mat& mat)
 
     return hImage;
 }
+*/
 

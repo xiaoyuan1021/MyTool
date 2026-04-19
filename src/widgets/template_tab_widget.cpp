@@ -54,8 +54,8 @@ void TemplateTabWidget::initialize()
 
 void TemplateTabWidget::initializeStrategies()
 {
-    m_strategies[MatchType::ShapeModel] = std::make_shared<ShapeMatchStrategy>();
-    m_strategies[MatchType::NCCModel] = std::make_shared<NCCMatchStrategy>();
+    // m_strategies[MatchType::ShapeModel] = std::make_shared<ShapeMatchStrategy>();
+    // m_strategies[MatchType::NCCModel] = std::make_shared<NCCMatchStrategy>();
     m_strategies[MatchType::OpenCVTM] = std::make_shared<OpenCVMatchStrategy>();
     m_currentStrategy = m_strategies[m_currentType];
 }

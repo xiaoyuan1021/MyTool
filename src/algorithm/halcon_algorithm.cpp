@@ -157,107 +157,107 @@ HalconCpp::HRegion HalconAlgorithm::shapeTrans(const HalconCpp::HRegion &region,
     return region.ShapeTrans(type);
 }
 
-HalconCpp::HRegion HalconAlgorithm::selectShapeArea(const HalconCpp::HRegion &region, double minArea, double maxArea)
-{
-    if(minArea < 0.0 || maxArea < minArea) return region;
+// HalconCpp::HRegion HalconAlgorithm::selectShapeArea(const HalconCpp::HRegion &region, double minArea, double maxArea)
+// {
+//     if(minArea < 0.0 || maxArea < minArea) return region;
 
-    try
-    {
-        HalconCpp::HRegion connectedRegions = region.Connection();
-        return connectedRegions.SelectShape("area", "and", minArea, maxArea);
-    }
-    catch (const HException& ex)
-    {
-        Logger::instance()->error(QString("SelectShape error: %1").arg(ex.ErrorMessage().Text()));
-        return region;
-    }
-}
+//     try
+//     {
+//         HalconCpp::HRegion connectedRegions = region.Connection();
+//         return connectedRegions.SelectShape("area", "and", minArea, maxArea);
+//     }
+//     catch (const HException& ex)
+//     {
+//         Logger::instance()->error(QString("SelectShape error: %1").arg(ex.ErrorMessage().Text()));
+//         return region;
+//     }
+// }
 
 
-QVector<RegionFeature> HalconAlgorithm::analyzeRegionsInPolygon(
-    const QVector<QPointF>& polygon,
-    const cv::Mat& processedImage)
-{
-    QVector<RegionFeature> results;
+// QVector<RegionFeature> HalconAlgorithm::analyzeRegionsInPolygon(
+//     const QVector<QPointF>& polygon,
+//     const cv::Mat& processedImage)
+// {
+//     QVector<RegionFeature> results;
 
-    // ========== 1. 参数检查 ==========
-    if (polygon.size() < 3) {
-        Logger::instance()->warning("顶点数量不足,至少需要3个点");
-        return results;
-    }
+//     // ========== 1. 参数检查 ==========
+//     if (polygon.size() < 3) {
+//         Logger::instance()->warning("顶点数量不足,至少需要3个点");
+//         return results;
+//     }
 
-    if (processedImage.empty()) {
-        Logger::instance()->error("处理后的图像为空");
-        return results;
-    }
+//     if (processedImage.empty()) {
+//         Logger::instance()->error("处理后的图像为空");
+//         return results;
+//     }
 
-    try {
-        // ========== 2. 创建 Halcon 多边形区域 ==========
-        HalconCpp::HTuple rows, cols;
-        for (const QPointF& pt : polygon) {
-            rows.Append(pt.y());
-            cols.Append(pt.x());
-        }
+//     try {
+//         // ========== 2. 创建 Halcon 多边形区域 ==========
+//         HalconCpp::HTuple rows, cols;
+//         for (const QPointF& pt : polygon) {
+//             rows.Append(pt.y());
+//             cols.Append(pt.x());
+//         }
 
-        // 创建多边形区域
-        HalconCpp::HRegion polygonRegion;
-        polygonRegion.GenRegionPolygon(rows, cols);
+//         // 创建多边形区域
+//         HalconCpp::HRegion polygonRegion;
+//         polygonRegion.GenRegionPolygon(rows, cols);
 
-        // ========== 3. 转成 HRegion 并做连通域分析 ==========
-        HalconCpp::HRegion allRegions = ImageUtils::MatToHRegion(processedImage);
-        HalconCpp::HRegion connectedRegions = allRegions.Connection();
+//         // ========== 3. 转成 HRegion 并做连通域分析 ==========
+//         HalconCpp::HRegion allRegions = ImageUtils::MatToHRegion(processedImage);
+//         HalconCpp::HRegion connectedRegions = allRegions.Connection();
 
-        // ========== 4. 使用批量操作：先与多边形求交集 ==========
-        // 关键优化：先对所有连通域与多边形求交集，然后批量筛选有交集的区域
-        HalconCpp::HRegion intersectedRegions = connectedRegions.Intersection(polygonRegion);
+//         // ========== 4. 使用批量操作：先与多边形求交集 ==========
+//         // 关键优化：先对所有连通域与多边形求交集，然后批量筛选有交集的区域
+//         HalconCpp::HRegion intersectedRegions = connectedRegions.Intersection(polygonRegion);
         
-        // 使用 SelectShape 批量筛选面积大于0的区域（即与多边形有交集的区域）
-        HalconCpp::HRegion validRegions = intersectedRegions.SelectShape("area", "and", 0.01, 99999999.0);
+//         // 使用 SelectShape 批量筛选面积大于0的区域（即与多边形有交集的区域）
+//         HalconCpp::HRegion validRegions = intersectedRegions.SelectShape("area", "and", 0.01, 99999999.0);
         
-        // 统计有效区域数量
-        HalconCpp::HTuple validNum;
-        CountObj(validRegions, &validNum);
-        int validCount = validNum[0].I();
+//         // 统计有效区域数量
+//         HalconCpp::HTuple validNum;
+//         CountObj(validRegions, &validNum);
+//         int validCount = validNum[0].I();
 
-        if (validCount == 0) {
-            Logger::instance()->warning("ROI区域内没有找到目标");
-            return results;
-        }
+//         if (validCount == 0) {
+//             Logger::instance()->warning("ROI区域内没有找到目标");
+//             return results;
+//         }
 
-        // ========== 5. 批量计算特征 ==========
-        // 使用 AreaCenter 批量计算面积和中心点
-        HalconCpp::HTuple areas, centerRows, centerCols;
-        areas = validRegions.AreaCenter(&centerRows, &centerCols);
+//         // ========== 5. 批量计算特征 ==========
+//         // 使用 AreaCenter 批量计算面积和中心点
+//         HalconCpp::HTuple areas, centerRows, centerCols;
+//         areas = validRegions.AreaCenter(&centerRows, &centerCols);
         
-        // 使用 Circularity 批量计算圆度
-        HalconCpp::HTuple circularities;
-        circularities = validRegions.Circularity();
+//         // 使用 Circularity 批量计算圆度
+//         HalconCpp::HTuple circularities;
+//         circularities = validRegions.Circularity();
         
-        // 使用 SmallestRectangle1 批量计算外接矩形
-        HalconCpp::HTuple row1s, col1s, row2s, col2s;
-        validRegions.SmallestRectangle1(&row1s, &col1s, &row2s, &col2s);
+//         // 使用 SmallestRectangle1 批量计算外接矩形
+//         HalconCpp::HTuple row1s, col1s, row2s, col2s;
+//         validRegions.SmallestRectangle1(&row1s, &col1s, &row2s, &col2s);
 
-        // ========== 6. 构建结果 ==========
-        for (int i = 0; i < validCount; ++i) {
-            RegionFeature feature;
-            feature.index = i + 1;
-            feature.area = areas[i].D();
-            feature.centerX = centerCols[i].D();
-            feature.centerY = centerRows[i].D();
-            feature.circularity = circularities[i].D();
-            feature.width = col2s[i].D() - col1s[i].D();
-            feature.height = row2s[i].D() - row1s[i].D();
-            results.append(feature);
-        }
+//         // ========== 6. 构建结果 ==========
+//         for (int i = 0; i < validCount; ++i) {
+//             RegionFeature feature;
+//             feature.index = i + 1;
+//             feature.area = areas[i].D();
+//             feature.centerX = centerCols[i].D();
+//             feature.centerY = centerRows[i].D();
+//             feature.circularity = circularities[i].D();
+//             feature.width = col2s[i].D() - col1s[i].D();
+//             feature.height = row2s[i].D() - row1s[i].D();
+//             results.append(feature);
+//         }
 
-        Logger::instance()->info(QString("找到 %1 个目标").arg(validCount));
+//         Logger::instance()->info(QString("找到 %1 个目标").arg(validCount));
 
-    }
-    catch (const HException& ex)
-    {
-        Logger::instance()->error(
-            QString("Halcon计算错误: %1").arg(ex.ErrorMessage().Text())
-            );
-    }
-    return results;
-}
+//     }
+//     catch (const HalconCpp::HException& ex)
+//     {
+//         Logger::instance()->error(
+//             QString("Halcon计算错误: %1").arg(ex.ErrorMessage().Text())
+//             );
+//     }
+//     return results;
+// }

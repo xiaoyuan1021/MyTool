@@ -206,18 +206,18 @@ void ExtractTabWidget::calculateRegionFeatures(const QVector<QPointF>& points)
 
     cv::Mat processedImg = ctx.processed.empty() ? ctx.mask : ctx.processed;
     HalconAlgorithm analyzer;
-    QVector<RegionFeature> features = analyzer.analyzeRegionsInPolygon(points, processedImg);
+    // QVector<RegionFeature> features = analyzer.analyzeRegionsInPolygon(points, processedImg);
 
-    if (features.isEmpty()) return;
+    // if (features.isEmpty()) return;
 
-    Logger::instance()->info("========== ROI 区域特征分析 ==========");
-    Logger::instance()->info(QString("找到 %1 个连通域").arg(features.size()));
-    Logger::instance()->info("-----------------------------------");
+    // Logger::instance()->info("========== ROI 区域特征分析 ==========");
+    // Logger::instance()->info(QString("找到 %1 个连通域").arg(features.size()));
+    // Logger::instance()->info("-----------------------------------");
 
-    for (const auto& feature : features) {
-        Logger::instance()->info(feature.toString());
-    }
-    Logger::instance()->info("======================================");
+    // for (const auto& feature : features) {
+    //     Logger::instance()->info(feature.toString());
+    // }
+    // Logger::instance()->info("======================================");
 }
 
 void ExtractTabWidget::updateFilterListWidget()

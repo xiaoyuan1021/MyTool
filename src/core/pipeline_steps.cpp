@@ -383,9 +383,9 @@ static void EDdrawing(const cv::Mat& src, cv::Ptr<cv::ximgproc::EdgeDrawing> ed,
         }
 }
 
-/**
- * 使用Halcon的EdgesSubPix算子检测亚像素边缘
- */
+// ⚠️ 已注释：Halcon EdgesSubPix 亚像素边缘检测功能
+// 该功能依赖 Halcon 库，已使用 OpenCV 方案替代
+/*
 static void detectLinesEdgesSubPix(const cv::Mat& src, const PipelineConfig* cfg, std::vector<cv::Vec4f>& lines)
 {
     try {
@@ -473,6 +473,7 @@ static void detectLinesEdgesSubPix(const cv::Mat& src, const PipelineConfig* cfg
         qDebug() << "[EdgesSubPix] Halcon错误:" << ex.ErrorMessage().Text();
     }
 }
+*/
 
 void StepLineDetect::run(PipelineContext &ctx) 
     {
@@ -504,7 +505,8 @@ void StepLineDetect::run(PipelineContext &ctx)
         }
         else if (cfg_->lineDetectAlgorithm == 3)
         {
-            detectLinesEdgesSubPix(src, cfg_, lines);
+            // ⚠️ EdgesSubPix 功能已禁用（依赖 Halcon）
+            qDebug() << "[LineDetect] EdgesSubPix 算法已禁用，请选择其他算法";
         }
 
         // 绘制直线到lineDetect
@@ -698,7 +700,8 @@ void StepReferenceLineFilter::run(PipelineContext& ctx)
     } else if (cfg_->lineDetectAlgorithm == 2) {
         detectLinesEDlines(maskedGray, allLines);
     } else if (cfg_->lineDetectAlgorithm == 3) {
-        detectLinesEdgesSubPix(maskedGray, cfg_, allLines);
+        // ⚠️ EdgesSubPix 功能已禁用（依赖 Halcon）
+        qDebug() << "[ReferenceLineFilter] EdgesSubPix 算法已禁用，请选择其他算法";
     }
     
     // 计算参考线角度

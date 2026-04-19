@@ -48,10 +48,10 @@ public:
 
     HalconCpp::HRegion selectShapeArea(const HalconCpp::HRegion& region, double minArea, double maxArea);
 
-    QVector<RegionFeature> analyzeRegionsInPolygon(
-        const QVector<QPointF>& polygon,
-        const cv::Mat& processedImage
-        );
+    // QVector<RegionFeature> analyzeRegionsInPolygon(
+    //     const QVector<QPointF>& polygon,
+    //     const cv::Mat& processedImage
+    //     );
 
 };
 

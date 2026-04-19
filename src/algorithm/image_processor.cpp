@@ -1,6 +1,7 @@
 #include "image_processor.h"
 
-using namespace HalconCpp;
+// ⚠️ 已注释：不再使用 HalconCpp 命名空间
+// using namespace HalconCpp;
 
 ImageProcessor::ImageProcessor() {}
 
@@ -28,6 +29,12 @@ cv::Mat ImageProcessor::executeAlgorithmQueue(const cv::Mat &src, const QVector<
 {
     if(src.empty()) return src;
 
+    // ⚠️ 已注释：Halcon 算法执行（依赖 Halcon 库）
+    // 目前直接返回原图
+    qDebug() << "[executeAlgorithmQueue] Halcon 算法已禁用，返回原图";
+    return src;
+
+    /*
     bool hasValidStep =false;
     for(const auto & step : queue)
     {
@@ -106,9 +113,7 @@ cv::Mat ImageProcessor::executeAlgorithmQueue(const cv::Mat &src, const QVector<
         qDebug() << "[executeAlgorithmQueue] 未知异常";
         return gray;
     }
-
-
-
+    */
 }
 
 cv::Mat ImageProcessor::adjustParameter(const cv::Mat &src, int brightness, double contrast, double gamma,double sharpen)
@@ -120,14 +125,14 @@ cv::Mat ImageProcessor::adjustParameter(const cv::Mat &src, int brightness, doub
 
     cv::Mat lut(1,256,CV_8U);
     for(int i=0;i<256;i++)
-        lut.at<uchar>(i)=saturate_cast<uchar>(pow(i/255.0,gamma)*255.0);
-    LUT(dst,lut,dst);
+        lut.at<uchar>(i)=cv::saturate_cast<uchar>(pow(i/255.0,gamma)*255.0);
+    cv::LUT(dst,lut,dst);
     if(sharpen>0.0)
     {
         cv::Mat blur;
         cv::GaussianBlur(dst,blur,cv::Size(0,0),1.0);
         // dst = dst + sharpen * (dst - blur)
-        addWeighted(dst, 1.0 + sharpen,
+        cv::addWeighted(dst, 1.0 + sharpen,
                     blur, -sharpen,
                     0, dst);
     }
