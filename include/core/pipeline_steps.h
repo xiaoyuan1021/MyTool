@@ -3,10 +3,7 @@
 #include "pipeline.h"
 #include "image_processor.h"
 #include "shape_filter_types.h"
-#include <HalconCpp.h>
 #include <opencv2/ximgproc.hpp>
-
-using namespace HalconCpp;
 
 // 1) 颜色通道
 class StepColorChannel:public IPipelineStep
@@ -64,11 +61,11 @@ public:
 
     void run(PipelineContext& ctx) override;
 private:
-    HRegion applyFilter(const HRegion& regions, const ShapeFilterConfig& config);
+    cv::Mat applyFilter(const cv::Mat& regions, const ShapeFilterConfig& config);
     
-    HRegion applyFilterAnd(const HRegion& regions, const ShapeFilterConfig& config);
+    cv::Mat applyFilterAnd(const cv::Mat& regions, const ShapeFilterConfig& config);
     
-    HRegion applyFilterOr(const HRegion& regions, const ShapeFilterConfig& config);
+    cv::Mat applyFilterOr(const cv::Mat& regions, const ShapeFilterConfig& config);
 
 private:
     const PipelineConfig* m_cfg = nullptr;

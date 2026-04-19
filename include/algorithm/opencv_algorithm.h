@@ -89,10 +89,44 @@ public:
         const cv::Mat& processedImage
     );
 
+    // ========== 区域特征计算 ==========
+
+    // 计算区域面积
+    static double calculateArea(const cv::Mat& region);
+    
+    // 计算区域圆度
+    static double calculateRegionCircularity(const cv::Mat& region);
+    
+    // 计算区域周长
+    static double calculatePerimeter(const cv::Mat& region);
+    
+    // 计算单个区域的完整特征
+    static RegionFeature calculateRegionFeature(const cv::Mat& region, int index = 1);
+    
+    // ========== 新增特征计算函数 ==========
+    
+    // 计算紧凑度 (4π*面积/周长²)
+    static double calculateCompactness(const std::vector<cv::Point>& contour);
+    
+    // 计算凸性 (面积/凸包面积)
+    static double calculateConvexity(const std::vector<cv::Point>& contour);
+    
+    // 计算矩形度 (面积/最小外接矩形面积)
+    static double calculateRectangularity(const std::vector<cv::Point>& contour);
+    
+    // 按特征筛选连通域
+    static cv::Mat selectShapeByFeature(const cv::Mat& region, const QString& featureName,
+                                        double minValue, double maxValue);
+
+    // ========== 图像转换 ==========
+
+    // 将mask转换为绿白图像（目标区域为绿色，背景为白色）
+    static cv::Mat convertToGreenWhite(const cv::Mat& mask);
+
 private:
     // 创建圆形结构元素
     static cv::Mat createCircleKernel(int radius);
     
-    // 计算圆形度
+    // 计算圆形度（基于轮廓）
     static double calculateCircularity(const std::vector<cv::Point>& contour);
 };

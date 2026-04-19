@@ -392,3 +392,289 @@ QVector<OpenCVAlgorithm::RegionFeature> OpenCVAlgorithm::analyzeRegionsInPolygon
     
     return results;
 }
+
+// =============== 区域特征计算 ===============
+
+double OpenCVAlgorithm::calculateArea(const cv::Mat& region)
+{
+    if (region.empty()) return 0.0;
+    
+    cv::Mat binary;
+    if (region.channels() == 3) {
+        cv::cvtColor(region, binary, cv::COLOR_BGR2GRAY);
+    } else {
+        binary = region.clone();
+    }
+    
+    cv::threshold(binary, binary, 127, 255, cv::THRESH_BINARY);
+    
+    // 统计非零像素数量作为面积
+    return static_cast<double>(cv::countNonZero(binary));
+}
+
+double OpenCVAlgorithm::calculateRegionCircularity(const cv::Mat& region)
+{
+    if (region.empty()) return 0.0;
+    
+    cv::Mat binary;
+    if (region.channels() == 3) {
+        cv::cvtColor(region, binary, cv::COLOR_BGR2GRAY);
+    } else {
+        binary = region.clone();
+    }
+    
+    cv::threshold(binary, binary, 127, 255, cv::THRESH_BINARY);
+    
+    std::vector<std::vector<cv::Point>> contours;
+    cv::findContours(binary, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    
+    if (contours.empty()) return 0.0;
+    
+    // 如果有多个轮廓，合并后计算
+    if (contours.size() == 1) {
+        return calculateCircularity(contours[0]);
+    }
+    
+    // 合并所有轮廓
+    std::vector<cv::Point> allPoints;
+    for (const auto& contour : contours) {
+        allPoints.insert(allPoints.end(), contour.begin(), contour.end());
+    }
+    
+    return calculateCircularity(allPoints);
+}
+
+double OpenCVAlgorithm::calculatePerimeter(const cv::Mat& region)
+{
+    if (region.empty()) return 0.0;
+    
+    cv::Mat binary;
+    if (region.channels() == 3) {
+        cv::cvtColor(region, binary, cv::COLOR_BGR2GRAY);
+    } else {
+        binary = region.clone();
+    }
+    
+    cv::threshold(binary, binary, 127, 255, cv::THRESH_BINARY);
+    
+    std::vector<std::vector<cv::Point>> contours;
+    cv::findContours(binary, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    
+    if (contours.empty()) return 0.0;
+    
+    double totalPerimeter = 0.0;
+    for (const auto& contour : contours) {
+        totalPerimeter += cv::arcLength(contour, true);
+    }
+    
+    return totalPerimeter;
+}
+
+OpenCVAlgorithm::RegionFeature OpenCVAlgorithm::calculateRegionFeature(const cv::Mat& region, int index)
+{
+    RegionFeature feature;
+    feature.index = index;
+    feature.area = 0.0;
+    feature.centerX = 0.0;
+    feature.centerY = 0.0;
+    feature.circularity = 0.0;
+    feature.width = 0.0;
+    feature.height = 0.0;
+    
+    if (region.empty()) return feature;
+    
+    cv::Mat binary;
+    if (region.channels() == 3) {
+        cv::cvtColor(region, binary, cv::COLOR_BGR2GRAY);
+    } else {
+        binary = region.clone();
+    }
+    
+    cv::threshold(binary, binary, 127, 255, cv::THRESH_BINARY);
+    
+    // 计算面积
+    feature.area = cv::countNonZero(binary);
+    
+    // 计算中心点（使用矩）
+    cv::Moments m = cv::moments(binary, true);
+    if (m.m00 > 0) {
+        feature.centerX = m.m10 / m.m00;
+        feature.centerY = m.m01 / m.m00;
+    }
+    
+    // 计算外接矩形
+    cv::Rect bbox = cv::boundingRect(binary);
+    feature.width = bbox.width;
+    feature.height = bbox.height;
+    
+    // 计算圆度
+    std::vector<std::vector<cv::Point>> contours;
+    cv::findContours(binary, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    
+    if (!contours.empty()) {
+        // 合并所有轮廓
+        std::vector<cv::Point> allPoints;
+        for (const auto& contour : contours) {
+            allPoints.insert(allPoints.end(), contour.begin(), contour.end());
+        }
+        feature.circularity = calculateCircularity(allPoints);
+    }
+    
+    return feature;
+}
+
+// =============== 新增特征计算函数 ===============
+
+double OpenCVAlgorithm::calculateCompactness(const std::vector<cv::Point>& contour)
+{
+    if (contour.size() < 3) return 0.0;
+    
+    double area = cv::contourArea(contour);
+    double perimeter = cv::arcLength(contour, true);
+    
+    if (perimeter <= 0) return 0.0;
+    
+    // 紧凑度公式：4π * 面积 / 周长²（与圆形度相同）
+    return 4.0 * CV_PI * area / (perimeter * perimeter);
+}
+
+double OpenCVAlgorithm::calculateConvexity(const std::vector<cv::Point>& contour)
+{
+    if (contour.size() < 3) return 0.0;
+    
+    double area = cv::contourArea(contour);
+    if (area <= 0) return 0.0;
+    
+    // 计算凸包
+    std::vector<cv::Point> hull;
+    cv::convexHull(contour, hull);
+    
+    double hullArea = cv::contourArea(hull);
+    if (hullArea <= 0) return 0.0;
+    
+    // 凸性 = 面积 / 凸包面积
+    return area / hullArea;
+}
+
+double OpenCVAlgorithm::calculateRectangularity(const std::vector<cv::Point>& contour)
+{
+    if (contour.size() < 3) return 0.0;
+    
+    double area = cv::contourArea(contour);
+    if (area <= 0) return 0.0;
+    
+    // 计算最小外接矩形
+    cv::RotatedRect rotRect = cv::minAreaRect(contour);
+    double rectArea = rotRect.size.width * rotRect.size.height;
+    
+    if (rectArea <= 0) return 0.0;
+    
+    // 矩形度 = 面积 / 最小外接矩形面积
+    return area / rectArea;
+}
+
+cv::Mat OpenCVAlgorithm::selectShapeByFeature(const cv::Mat& region, const QString& featureName,
+                                               double minValue, double maxValue)
+{
+    if (region.empty()) return region.clone();
+    
+    cv::Mat binary;
+    if (region.channels() == 3) {
+        cv::cvtColor(region, binary, cv::COLOR_BGR2GRAY);
+    } else {
+        binary = region.clone();
+    }
+    
+    cv::threshold(binary, binary, 127, 255, cv::THRESH_BINARY);
+    
+    // 连通域分析
+    cv::Mat labels, stats, centroids;
+    int numLabels = cv::connectedComponentsWithStats(binary, labels, stats, centroids, 8);
+    
+    cv::Mat result = cv::Mat::zeros(binary.size(), CV_8UC1);
+    
+    for (int i = 1; i < numLabels; ++i) {
+        // 提取当前连通域
+        cv::Mat regionMask = (labels == i);
+        
+        // 获取轮廓
+        std::vector<std::vector<cv::Point>> contours;
+        cv::findContours(regionMask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+        
+        if (contours.empty()) continue;
+        
+        const auto& contour = contours[0];
+        double featureValue = 0.0;
+        
+        // 根据特征类型计算值
+        if (featureName == "area") {
+            featureValue = cv::contourArea(contour);
+        } else if (featureName == "circularity") {
+            featureValue = calculateCircularity(contour);
+        } else if (featureName == "compactness") {
+            featureValue = calculateCompactness(contour);
+        } else if (featureName == "convexity") {
+            featureValue = calculateConvexity(contour);
+        } else if (featureName == "width") {
+            cv::Rect bbox = cv::boundingRect(contour);
+            featureValue = bbox.width;
+        } else if (featureName == "height") {
+            cv::Rect bbox = cv::boundingRect(contour);
+            featureValue = bbox.height;
+        } else if (featureName == "anisometry") {
+            // 矩形度/各向异性 - 使用最小外接矩形的长宽比
+            cv::RotatedRect rotRect = cv::minAreaRect(contour);
+            double w = rotRect.size.width;
+            double h = rotRect.size.height;
+            if (w > 0 && h > 0) {
+                featureValue = (std::max)(w, h) / (std::min)(w, h);
+            }
+        }
+        
+        // 判断特征值是否在范围内
+        if (featureValue >= minValue && featureValue <= maxValue) {
+            cv::drawContours(result, std::vector<std::vector<cv::Point>>{contour}, 
+                           0, cv::Scalar(255), cv::FILLED);
+        }
+    }
+    
+    return result;
+}
+
+// =============== 图像转换 ===============
+
+cv::Mat OpenCVAlgorithm::convertToGreenWhite(const cv::Mat& mask)
+{
+    if (mask.empty()) return cv::Mat();
+    
+    cv::Mat m;
+    if (mask.type() != CV_8U) {
+        mask.convertTo(m, CV_8U);
+    } else {
+        m = mask.clone();
+    }
+    
+    // 确保是二值图像
+    cv::threshold(m, m, 127, 255, cv::THRESH_BINARY);
+    
+    cv::Mat result(m.rows, m.cols, CV_8UC3);
+    
+    for (int y = 0; y < m.rows; y++)
+    {
+        const uchar* mp = m.ptr<uchar>(y);
+        cv::Vec3b* rp = result.ptr<cv::Vec3b>(y);
+        for (int x = 0; x < m.cols; ++x)
+        {
+            if (mp[x] == 0)  // 目标区域（黑色）
+            {
+                rp[x] = cv::Vec3b(0, 255, 0);  // 绿色
+            }
+            else  // 背景区域（白色）
+            {
+                rp[x] = cv::Vec3b(255, 255, 255);  // 白色
+            }
+        }
+    }
+    
+    return result;
+}

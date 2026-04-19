@@ -1,8 +1,8 @@
 #include "pipeline_steps.h"
+#include "opencv_algorithm.h"
 #include <opencv2/line_descriptor.hpp>
 #include <cmath>
 #include <algorithm>
-#include <HalconCpp.h>
 
 void StepColorChannel::run(PipelineContext &ctx)
 {
@@ -156,49 +156,50 @@ void StepShapeFilter::run(PipelineContext& ctx)
         }
 
         try {
-            HRegion inputRegion = ImageUtils::MatToHRegion(ctx.processed);
-            HRegion connectedRegions = inputRegion.Connection();
+            // 使用OpenCV进行连通域分析
+            cv::Mat binary;
+            if (ctx.processed.channels() == 3) {
+                cv::cvtColor(ctx.processed, binary, cv::COLOR_BGR2GRAY);
+            } else {
+                binary = ctx.processed.clone();
+            }
+            cv::threshold(binary, binary, 127, 255, cv::THRESH_BINARY);
 
-            HTuple numBefore;
-            HalconCpp::CountObj(connectedRegions, &numBefore);
+            cv::Mat labels, stats, centroids;
+            int numBefore = cv::connectedComponentsWithStats(binary, labels, stats, centroids, 8) - 1; // 减去背景
 
             qDebug() << "========== 形状筛选 ==========";
             qDebug() << "筛选模式:" << getFilterModeName(filter.mode);
-            qDebug() << "筛选前区域数量:" << numBefore[0].I();
+            qDebug() << "筛选前区域数量:" << numBefore;
 
-            HRegion filteredRegion = applyFilter(connectedRegions, filter);
+            // 应用筛选
+            cv::Mat filteredRegion = applyFilter(binary, filter);
 
-            HRegion connectedResult = filteredRegion.Connection();
-            HTuple numAfter;
-            HalconCpp::CountObj(connectedResult, &numAfter);
+            // 统计筛选后的区域数量
+            cv::Mat filteredLabels, filteredStats, filteredCentroids;
+            int numAfter = cv::connectedComponentsWithStats(filteredRegion, filteredLabels, filteredStats, filteredCentroids, 8) - 1;
 
-            qDebug() << "筛选后区域数量:" << numAfter[0].I();
+            qDebug() << "筛选后区域数量:" << numAfter;
             qDebug() << "==============================";
 
-            ctx.currentRegions=numAfter[0].I();
+            ctx.currentRegions = numAfter;
 
-            cv::Mat resultMat = ImageUtils::HRegionToMat(
-                filteredRegion,
-                ctx.processed.cols,
-                ctx.processed.rows
-                );
-
-            if (!resultMat.empty()) {
-                ctx.processed = resultMat;
+            if (!filteredRegion.empty()) {
+                ctx.processed = filteredRegion;
                 ctx.reason = QString("形状筛选: %1, 保留 %2/%3 个区域")
                                  .arg(filter.toString())
-                                 .arg((int)numAfter[0].I())
-                                 .arg((int)numBefore[0].I());
+                                 .arg(numAfter)
+                                 .arg(numBefore);
             }
         }
-        catch (const HalconCpp::HException& ex)
+        catch (const cv::Exception& ex)
         {
-            qDebug() << "[ShapeFilter] Halcon错误:" << ex.ErrorMessage().Text();
+            qDebug() << "[ShapeFilter] OpenCV错误:" << ex.what();
             ctx.reason = "形状筛选失败";
         }
     }
 
-HRegion StepShapeFilter::applyFilter(const HRegion& regions, const ShapeFilterConfig& config)
+cv::Mat StepShapeFilter::applyFilter(const cv::Mat& regions, const ShapeFilterConfig& config)
     {
         if (config.mode == ShapeFilterLogicMode::And) {
             return applyFilterAnd(regions, config);
@@ -207,9 +208,9 @@ HRegion StepShapeFilter::applyFilter(const HRegion& regions, const ShapeFilterCo
         }
     }
 
-HRegion StepShapeFilter::applyFilterAnd(const HRegion& regions, const ShapeFilterConfig& config)
+cv::Mat StepShapeFilter::applyFilterAnd(const cv::Mat& regions, const ShapeFilterConfig& config)
     {
-        HRegion result = regions;
+        cv::Mat result = regions.clone();
 
         for (const auto& cond : config.conditions)
         {
@@ -217,24 +218,26 @@ HRegion StepShapeFilter::applyFilterAnd(const HRegion& regions, const ShapeFilte
 
             qDebug() << QString("  应用条件: %1").arg(cond.toString());
 
-            result = result.SelectShape(
-                getFeatureName(cond.feature),
-                "and",
+            // 使用OpenCV的selectShapeByFeature函数
+            result = OpenCVAlgorithm::selectShapeByFeature(
+                result,
+                QString(getFeatureName(cond.feature)),
                 cond.minValue,
                 cond.maxValue
-                );
+            );
 
-            HTuple count;
-            HalconCpp::CountObj(result, &count);
-            qDebug() << QString("    剩余区域: %1").arg((int)count[0].I());
+            // 统计剩余区域数量
+            cv::Mat labels, stats, centroids;
+            int count = cv::connectedComponentsWithStats(result, labels, stats, centroids, 8) - 1;
+            qDebug() << QString("    剩余区域: %1").arg(count);
         }
 
         return result;
     }
 
-HRegion StepShapeFilter::applyFilterOr(const HRegion& regions, const ShapeFilterConfig& config)
+cv::Mat StepShapeFilter::applyFilterOr(const cv::Mat& regions, const ShapeFilterConfig& config)
     {
-        HRegion result;
+        cv::Mat result = cv::Mat::zeros(regions.size(), CV_8UC1);
         bool hasResult = false;
 
         for (const auto& cond : config.conditions)
@@ -243,26 +246,27 @@ HRegion StepShapeFilter::applyFilterOr(const HRegion& regions, const ShapeFilter
 
             qDebug() << QString("  应用条件: %1").arg(cond.toString());
 
-            HRegion singleResult = regions.SelectShape(
-                getFeatureName(cond.feature),
-                "and",
+            cv::Mat singleResult = OpenCVAlgorithm::selectShapeByFeature(
+                regions,
+                QString(getFeatureName(cond.feature)),
                 cond.minValue,
                 cond.maxValue
-                );
+            );
 
-            HTuple count;
-            HalconCpp::CountObj(singleResult, &count);
-            qDebug() << QString("    该条件匹配区域: %1").arg((int)count[0].I());
+            // 统计该条件匹配的区域数量
+            cv::Mat labels, stats, centroids;
+            int count = cv::connectedComponentsWithStats(singleResult, labels, stats, centroids, 8) - 1;
+            qDebug() << QString("    该条件匹配区域: %1").arg(count);
 
             if (!hasResult) {
                 result = singleResult;
                 hasResult = true;
             } else {
-                result = result.Union2(singleResult);
+                cv::bitwise_or(result, singleResult, result);
             }
         }
 
-        return hasResult ? result : HRegion();
+        return hasResult ? result : cv::Mat();
     }
 
 void StepColorFilter::run(PipelineContext& ctx) 
