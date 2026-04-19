@@ -10,10 +10,8 @@
 #include <QDir>
 
 #include <opencv2/opencv.hpp>
-#include <HalconCpp.h>
 
 #include "image_utils.h"
-#include "halcon_algorithm.h"
 
 // Halcon算法类型枚举
 enum class HalconAlgoType

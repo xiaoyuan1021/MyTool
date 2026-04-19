@@ -8,10 +8,39 @@
  * OpenCV算法类 - 纯OpenCV实现的图像处理算法
  * 替代HalconAlgorithm，解决版权问题，支持嵌入式平台
  */
+
+// 前向声明
+struct AlgorithmStep;
+
+/**
+ * OpenCV算法类型枚举（与HalconAlgoType对应）
+ */
+enum class OpenCVAlgoType
+{
+    OpeningCircle,      // 圆形开运算
+    OpeningRect,        // 矩形开运算
+    ClosingCircle,      // 圆形闭运算
+    ClosingRect,        // 矩形闭运算
+    DilationCircle,     // 圆形膨胀
+    DilationRect,       // 矩形膨胀
+    ErosionCircle,      // 圆形腐蚀
+    ErosionRect,        // 矩形腐蚀
+    Union,              // 联合
+    Connection,         // 连通域
+    FillUp,             // 填充孔洞
+    ShapeTrans,         // 形状变换
+    SelectShapeArea     // 面积筛选
+};
+
 class OpenCVAlgorithm
 {
 public:
     OpenCVAlgorithm();
+
+    // ========== 核心调度方法 ==========
+
+    // 根据AlgorithmStep执行对应算法
+    static cv::Mat execute(const cv::Mat& region, const AlgorithmStep& step);
 
     // ========== 形态学操作 ==========
 

@@ -1,7 +1,115 @@
 #include "opencv_algorithm.h"
+#include "image_processor.h"
 #include "logger.h"
 
 OpenCVAlgorithm::OpenCVAlgorithm() {}
+
+// =============== 核心调度方法 ===============
+
+cv::Mat OpenCVAlgorithm::execute(const cv::Mat& region, const AlgorithmStep& step)
+{
+    HalconAlgoType algoType = static_cast<HalconAlgoType>(
+        step.params["HalconAlgoType"].toInt()
+    );
+
+    switch(algoType)
+    {
+    case HalconAlgoType::OpeningCircle:
+    {
+        double radius = step.params.value("radius", 3.5).toDouble();
+        return openingCircle(region, radius);
+    }
+
+    case HalconAlgoType::OpeningRect:
+    {
+        int width = step.params.value("width", 5).toInt();
+        int height = step.params.value("height", 5).toInt();
+        return openingRectangle(region, width, height);
+    }
+
+    case HalconAlgoType::ClosingCircle:
+    {
+        double radius = step.params.value("radius", 3.5).toDouble();
+        return closingCircle(region, radius);
+    }
+
+    case HalconAlgoType::ClosingRect:
+    {
+        int width = step.params.value("width", 5).toInt();
+        int height = step.params.value("height", 5).toInt();
+        return closingRectangle(region, width, height);
+    }
+
+    case HalconAlgoType::DilationCircle:
+    {
+        double radius = step.params.value("radius", 3.5).toDouble();
+        return dilateCircle(region, radius);
+    }
+
+    case HalconAlgoType::DilationRect:
+    {
+        int width = step.params.value("width", 5).toInt();
+        int height = step.params.value("height", 5).toInt();
+        return dilateRectangle(region, width, height);
+    }
+
+    case HalconAlgoType::ErosionCircle:
+    {
+        double radius = step.params.value("radius", 3.5).toDouble();
+        return erodeCircle(region, radius);
+    }
+
+    case HalconAlgoType::ErosionRect:
+    {
+        int width = step.params.value("width", 5).toInt();
+        int height = step.params.value("height", 5).toInt();
+        return erodeRectangle(region, width, height);
+    }
+
+    case HalconAlgoType::Union:
+        return union1(region);
+
+    case HalconAlgoType::Connection:
+        return connection(region);
+
+    case HalconAlgoType::FillUp:
+        return fillUpHoles(region);
+
+    case HalconAlgoType::ShapeTrans:
+    {
+        QString transType = step.params.value("shapeType", "convex").toString();
+        
+        // 将字符串类型转换为ShapeTransType
+        ShapeTransType shapeType = ShapeTransType::Convex;
+        if (transType == "convex" || transType == "凸包") {
+            shapeType = ShapeTransType::Convex;
+        } else if (transType == "rectangle1" || transType == "最小外接矩形") {
+            shapeType = ShapeTransType::Rectangle1;
+        } else if (transType == "rectangle2" || transType == "旋转外接矩形") {
+            shapeType = ShapeTransType::Rectangle2;
+        } else if (transType == "inner_circle" || transType == "最大内接圆") {
+            shapeType = ShapeTransType::InnerCircle;
+        } else if (transType == "outer_circle" || transType == "最小外接圆") {
+            shapeType = ShapeTransType::OuterCircle;
+        } else if (transType == "ellipse" || transType == "椭圆") {
+            shapeType = ShapeTransType::Ellipse;
+        }
+        
+        return shapeTrans(region, shapeType);
+    }
+
+    case HalconAlgoType::SelectShapeArea:
+    {
+        double minArea = step.params.value("minArea", 0.0).toDouble();
+        double maxArea = step.params.value("maxArea", 99999999.0).toDouble();
+        return selectShapeArea(region, minArea, maxArea);
+    }
+
+    default:
+        Logger::instance()->warning(QString("未知的算法类型: %1").arg(static_cast<int>(algoType)));
+        return region.clone(); // 未知类型，保持不变
+    }
+}
 
 // =============== 辅助函数 ===============
 

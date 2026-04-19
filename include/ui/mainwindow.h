@@ -18,7 +18,6 @@
 
 #include "image_view.h"
 #include "image_utils.h"
-#include "halcon_algorithm.h"
 #include "pipeline_manager.h"
 #include "system_monitor.h"
 #include "file_manager.h"

@@ -1,4 +1,5 @@
 #include "image_processor.h"
+#include "opencv_algorithm.h"
 
 // ⚠️ 已注释：不再使用 HalconCpp 命名空间
 // using namespace HalconCpp;
@@ -29,18 +30,13 @@ cv::Mat ImageProcessor::executeAlgorithmQueue(const cv::Mat &src, const QVector<
 {
     if(src.empty()) return src;
 
-    // ⚠️ 已注释：Halcon 算法执行（依赖 Halcon 库）
-    // 目前直接返回原图
-    qDebug() << "[executeAlgorithmQueue] Halcon 算法已禁用，返回原图";
-    return src;
-
-    /*
-    bool hasValidStep =false;
+    // 检查是否有有效的算法步骤
+    bool hasValidStep = false;
     for(const auto & step : queue)
     {
-        if(step.enabled && step.type =="HalconAlgorithm")
+        if(step.enabled && step.type == "HalconAlgorithm")
         {
-            hasValidStep =true;
+            hasValidStep = true;
             break;
         }
     }
@@ -51,21 +47,20 @@ cv::Mat ImageProcessor::executeAlgorithmQueue(const cv::Mat &src, const QVector<
         return src;  // 没有要执行的步骤，直接返回原图
     }
 
+    // 转换为灰度图
     cv::Mat gray;
     if(src.channels() == 3) {
         cv::cvtColor(src, gray, cv::COLOR_BGR2GRAY);
     } else if(src.channels() == 1) {
-        gray = src;  // 已经是灰度图
+        gray = src.clone();  // 已经是灰度图
     } else {
         qDebug() << "[executeAlgorithmQueue] 不支持的通道数:" << src.channels();
         return src;
     }
 
     try {
-        // ✅ 优化3：在HRegion域操作，避免反复转换
-        HRegion currentRegion = ImageUtils::MatToHRegion(gray);
-
-        HalconAlgorithm halconAlgo;
+        // ✅ 使用OpenCV算法替代Halcon
+        cv::Mat currentMat = gray.clone();
         int executedSteps = 0;
 
         for(const auto& step : queue)
@@ -84,28 +79,21 @@ cv::Mat ImageProcessor::executeAlgorithmQueue(const cv::Mat &src, const QVector<
             //                 .arg(executedSteps + 1)
             //                 .arg(step.name);
 
-            // ✅ 直接在HRegion上链式操作（不创建临时Mat）
-            currentRegion = halconAlgo.execute(currentRegion, step);
+            // ✅ 直接在cv::Mat上使用OpenCV算法
+            currentMat = OpenCVAlgorithm::execute(currentMat, step);
             executedSteps++;
         }
 
         qDebug() << QString("[executeAlgorithmQueue] 完成，共执行 %1 个步骤")
                         .arg(executedSteps);
 
-        // ✅ 优化4：最后统一转回Mat（只转一次）
-        cv::Mat result = ImageUtils::HRegionToMat(currentRegion, gray.cols, gray.rows);
-
-        if(result.empty()) {
+        if(currentMat.empty()) {
             qDebug() << "[executeAlgorithmQueue] 警告：结果为空，返回输入灰度图";
             return gray;
         }
 
-        return result;
+        return currentMat;
 
-    } catch (const HalconCpp::HException& ex) {
-        qDebug() << "[executeAlgorithmQueue] Halcon异常:" << ex.ErrorMessage().Text();
-        qDebug() << "  错误代码:" << ex.ErrorCode();
-        return gray;  // 出错时返回灰度图
     } catch (const cv::Exception& ex) {
         qDebug() << "[executeAlgorithmQueue] OpenCV异常:" << ex.what();
         return gray;
@@ -113,7 +101,6 @@ cv::Mat ImageProcessor::executeAlgorithmQueue(const cv::Mat &src, const QVector<
         qDebug() << "[executeAlgorithmQueue] 未知异常";
         return gray;
     }
-    */
 }
 
 cv::Mat ImageProcessor::adjustParameter(const cv::Mat &src, int brightness, double contrast, double gamma,double sharpen)

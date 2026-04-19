@@ -3,7 +3,6 @@
 #include <QWidget>
 #include "pipeline_manager.h"
 #include "image_view.h"
-#include "halcon_algorithm.h"
 #include <QListWidgetItem>
 
 namespace Ui

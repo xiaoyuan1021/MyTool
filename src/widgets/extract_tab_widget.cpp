@@ -205,7 +205,7 @@ void ExtractTabWidget::calculateRegionFeatures(const QVector<QPointF>& points)
     }
 
     cv::Mat processedImg = ctx.processed.empty() ? ctx.mask : ctx.processed;
-    HalconAlgorithm analyzer;
+    //HalconAlgorithm analyzer;
     // QVector<RegionFeature> features = analyzer.analyzeRegionsInPolygon(points, processedImg);
 
     // if (features.isEmpty()) return;
