@@ -13,24 +13,6 @@
 
 #include "image_utils.h"
 
-// Halcon算法类型枚举
-enum class HalconAlgoType
-{
-    OpeningCircle,      // 圆形开运算
-    OpeningRect,        // 矩形开运算
-    ClosingCircle,      // 圆形闭运算
-    ClosingRect,        // 矩形闭运算
-    DilationCircle,     // 圆形膨胀
-    DilationRect,       // 矩形膨胀
-    ErosionCircle,      // 圆形腐蚀
-    ErosionRect,        // 矩形腐蚀
-    Union,              // 联合
-    Connection,         // 连通域
-    FillUp,             // 填充孔洞
-    ShapeTrans,         // 形状变换
-    SelectShapeArea     // 面积筛选
-};
-
 
 struct AlgorithmStep
 {

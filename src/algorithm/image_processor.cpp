@@ -31,7 +31,7 @@ cv::Mat ImageProcessor::executeAlgorithmQueue(const cv::Mat &src, const QVector<
     bool hasValidStep = false;
     for(const auto & step : queue)
     {
-        if(step.enabled && step.type == "HalconAlgorithm")
+        if(step.enabled && step.type == "OpenCVAlgorithm")
         {
             hasValidStep = true;
             break;
@@ -67,8 +67,8 @@ cv::Mat ImageProcessor::executeAlgorithmQueue(const cv::Mat &src, const QVector<
                 continue;
             }
 
-            if(step.type != "HalconAlgorithm") {
-                qDebug() << QString("  跳过非Halcon步骤: %1").arg(step.name);
+            if(step.type != "OpenCVAlgorithm") {
+                qDebug() << QString("  跳过非OpenCV步骤: %1").arg(step.name);
                 continue;
             }
 

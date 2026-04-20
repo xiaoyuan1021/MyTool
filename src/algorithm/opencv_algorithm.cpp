@@ -8,74 +8,74 @@ OpenCVAlgorithm::OpenCVAlgorithm() {}
 
 cv::Mat OpenCVAlgorithm::execute(const cv::Mat& region, const AlgorithmStep& step)
 {
-    HalconAlgoType algoType = static_cast<HalconAlgoType>(
-        step.params["HalconAlgoType"].toInt()
+    OpenCVAlgoType algoType = static_cast<OpenCVAlgoType>(
+        step.params["OpenCVAlgoType"].toInt()
     );
 
     switch(algoType)
     {
-    case HalconAlgoType::OpeningCircle:
+    case OpenCVAlgoType::OpeningCircle:
     {
         double radius = step.params.value("radius", 3.5).toDouble();
         return openingCircle(region, radius);
     }
 
-    case HalconAlgoType::OpeningRect:
+    case OpenCVAlgoType::OpeningRect:
     {
         int width = step.params.value("width", 5).toInt();
         int height = step.params.value("height", 5).toInt();
         return openingRectangle(region, width, height);
     }
 
-    case HalconAlgoType::ClosingCircle:
+    case OpenCVAlgoType::ClosingCircle:
     {
         double radius = step.params.value("radius", 3.5).toDouble();
         return closingCircle(region, radius);
     }
 
-    case HalconAlgoType::ClosingRect:
+    case OpenCVAlgoType::ClosingRect:
     {
         int width = step.params.value("width", 5).toInt();
         int height = step.params.value("height", 5).toInt();
         return closingRectangle(region, width, height);
     }
 
-    case HalconAlgoType::DilationCircle:
+    case OpenCVAlgoType::DilationCircle:
     {
         double radius = step.params.value("radius", 3.5).toDouble();
         return dilateCircle(region, radius);
     }
 
-    case HalconAlgoType::DilationRect:
+    case OpenCVAlgoType::DilationRect:
     {
         int width = step.params.value("width", 5).toInt();
         int height = step.params.value("height", 5).toInt();
         return dilateRectangle(region, width, height);
     }
 
-    case HalconAlgoType::ErosionCircle:
+    case OpenCVAlgoType::ErosionCircle:
     {
         double radius = step.params.value("radius", 3.5).toDouble();
         return erodeCircle(region, radius);
     }
 
-    case HalconAlgoType::ErosionRect:
+    case OpenCVAlgoType::ErosionRect:
     {
         int width = step.params.value("width", 5).toInt();
         int height = step.params.value("height", 5).toInt();
         return erodeRectangle(region, width, height);
     }
 
-    case HalconAlgoType::Union:
+    case OpenCVAlgoType::Union:
         return union1(region);
 
-    case HalconAlgoType::Connection:
+    case OpenCVAlgoType::Connection:
         return connection(region);
 
-    case HalconAlgoType::FillUp:
+    case OpenCVAlgoType::FillUp:
         return fillUpHoles(region);
 
-    case HalconAlgoType::ShapeTrans:
+    case OpenCVAlgoType::ShapeTrans:
     {
         QString transType = step.params.value("shapeType", "convex").toString();
         
@@ -98,7 +98,7 @@ cv::Mat OpenCVAlgorithm::execute(const cv::Mat& region, const AlgorithmStep& ste
         return shapeTrans(region, shapeType);
     }
 
-    case HalconAlgoType::SelectShapeArea:
+    case OpenCVAlgoType::SelectShapeArea:
     {
         double minArea = step.params.value("minArea", 0.0).toDouble();
         double maxArea = step.params.value("maxArea", 99999999.0).toDouble();

@@ -1,32 +1,32 @@
 {
     "algorithms": [
         {
-            "description": "Halcon图像处理算法",
+            "description": "OpenCV图像处理算法",
             "enabled": true,
             "name": "联合",
             "params": {
-                "HalconAlgoType": 8
+                "OpenCVAlgoType": 8
             },
-            "type": "HalconAlgorithm"
+            "type": "OpenCVAlgorithm"
         },
         {
-            "description": "Halcon图像处理算法",
+            "description": "OpenCV图像处理算法",
             "enabled": true,
             "name": "圆形开运算",
             "params": {
-                "HalconAlgoType": 0,
+                "OpenCVAlgoType": 0,
                 "radius": 1
             },
-            "type": "HalconAlgorithm"
+            "type": "OpenCVAlgorithm"
         },
         {
-            "description": "Halcon图像处理算法",
+            "description": "OpenCV图像处理算法",
             "enabled": true,
             "name": "连通",
             "params": {
-                "HalconAlgoType": 9
+                "OpenCVAlgoType": 9
             },
-            "type": "HalconAlgorithm"
+            "type": "OpenCVAlgorithm"
         }
     ],
     "enhance": {

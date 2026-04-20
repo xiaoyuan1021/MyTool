@@ -13,7 +13,7 @@
 struct AlgorithmStep;
 
 /**
- * OpenCV算法类型枚举（与HalconAlgoType对应）
+ * OpenCV算法类型枚举
  */
 enum class OpenCVAlgoType
 {

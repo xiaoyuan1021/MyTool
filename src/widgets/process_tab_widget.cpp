@@ -51,10 +51,10 @@ void ProcessTabWidget::addAlgorithm()
     AlgorithmStep step;
     int index = m_ui->comboBox_selectAlgorithm->currentIndex();
     step.name = m_ui->comboBox_selectAlgorithm->currentText();
-    step.type = "HalconAlgorithm";
+    step.type = "OpenCVAlgorithm";
     step.enabled = true;
-    step.description = "Halcon图像处理算法";
-    step.params["HalconAlgoType"] = index;
+    step.description = "OpenCV图像处理算法";
+    step.params["OpenCVAlgoType"] = index;
 
     switch(index) {
     case 0: case 2: case 4: case 6:
@@ -174,7 +174,7 @@ void ProcessTabWidget::saveCurrentEdit()
     }
 
     AlgorithmStep step = queue[m_editingAlgorithmIndex];
-    int algoType = step.params["HalconAlgoType"].toInt();
+    int algoType = step.params["OpenCVAlgoType"].toInt();
 
     switch(algoType) {
     case 0: case 2: case 4: case 6:
@@ -202,7 +202,7 @@ void ProcessTabWidget::loadAlgorithmParameters(int index)
     if (index < 0 || index >= queue.size()) return;
 
     const AlgorithmStep& step = queue[index];
-    int algoType = step.params["HalconAlgoType"].toInt();
+    int algoType = step.params["OpenCVAlgoType"].toInt();
 
     switch(algoType) {
     case 0: case 2: case 4: case 6:
