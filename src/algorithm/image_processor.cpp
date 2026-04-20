@@ -1,9 +1,6 @@
 #include "image_processor.h"
 #include "opencv_algorithm.h"
 
-// ⚠️ 已注释：不再使用 HalconCpp 命名空间
-// using namespace HalconCpp;
-
 ImageProcessor::ImageProcessor() {}
 
 cv::Mat ImageProcessor::convertColorSpace(const cv::Mat &src, const QString &mode)

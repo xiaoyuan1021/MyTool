@@ -2,15 +2,8 @@
 #define IMAGE_UTILS_H
 
 #include <opencv2/opencv.hpp>
-// ⚠️ 已注释：不再需要 Halcon 头文件
-// #include <HalconCpp.h>
 #include <QImage>
 #include <QLabel>
-
-// 修复ACCESS_MASK冲突：不使用using namespace cv
-// using namespace cv;
-// ⚠️ 已注释：不再需要 Halcon 命名空间
-// using namespace HalconCpp;
 
 class ImageUtils
 {
