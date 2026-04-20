@@ -2,13 +2,11 @@
 #define BARCODE_STEP_H
 
 #include "pipeline.h"
-#include <HalconCpp.h>
-
-using namespace HalconCpp;
+#include "zxing_barcode_reader.h"
 
 /**
  * 条码识别步骤类
- * 使用Halcon API进行条码识别
+ * 使用ZXing库进行条码识别，支持QR Code、Data Matrix、EAN-13
  */
 class StepBarcodeRecognition : public IPipelineStep
 {
@@ -20,10 +18,10 @@ public:
 
 private:
     const BarcodeConfig* cfg_;
-    HBarCode barcodeModel_;      // Halcon一维条码模型
-    HDataCode2D dataCodeModel_;  // Halcon二维数据码模型（用于QR Code等）
+    ZXingBarcodeReader reader_;  // ZXing条码读取器
     
     bool is2DCode(const QString& codeType) const;
+    QString convertBarcodeType(const QString& zxingType) const;
 };
 
 #endif // BARCODE_STEP_H

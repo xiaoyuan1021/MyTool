@@ -18,7 +18,7 @@
     <rect>
      <x>20</x>
      <y>80</y>
-     <width>441</width>
+     <width>451</width>
      <height>201</height>
     </rect>
    </property>
@@ -60,16 +60,6 @@
       </item>
       <item>
        <widget class="QComboBox" name="comboBox_matchType">
-        <item>
-         <property name="text">
-          <string>ShapeModel</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>NCC Model</string>
-         </property>
-        </item>
         <item>
          <property name="text">
           <string>Opencv Model</string>

@@ -13,20 +13,12 @@ TemplateTabWidget::TemplateTabWidget(ImageView* view,
     , m_view(view)
     , m_roiManager(roiManager)
     , m_parent(parent)
-    , m_currentType(MatchType::ShapeModel)
+    , m_currentType(MatchType::OpenCVTM)
 {
     m_ui->setupUi(this);
 
     // 初始化默认参数
-    m_defaultParams.numLevels = 0;
-    m_defaultParams.angleStart = -10.0;
-    m_defaultParams.angleExtent = 20.0;
-    m_defaultParams.angleStep = 1.0;
-    m_defaultParams.optimization = "auto";
-    m_defaultParams.metric = "use_polarity";
-    m_defaultParams.nccLevels = 0;
     m_defaultParams.matchMethod = cv::TM_CCOEFF_NORMED;
-    m_defaultParams.greediness = 0.7;
 }
 
 TemplateTabWidget::~TemplateTabWidget()
@@ -54,8 +46,6 @@ void TemplateTabWidget::initialize()
 
 void TemplateTabWidget::initializeStrategies()
 {
-    // m_strategies[MatchType::ShapeModel] = std::make_shared<ShapeMatchStrategy>();
-    // m_strategies[MatchType::NCCModel] = std::make_shared<NCCMatchStrategy>();
     m_strategies[MatchType::OpenCVTM] = std::make_shared<OpenCVMatchStrategy>();
     m_currentStrategy = m_strategies[m_currentType];
 }
@@ -228,12 +218,8 @@ void TemplateTabWidget::clearMatchResults()
 void TemplateTabWidget::onMatchTypeChanged(int index)
 {
     Q_UNUSED(index);
-    QString typeName = m_ui->comboBox_matchType->currentText();
-    MatchType type = (typeName == "NCC Model") ? MatchType::NCCModel :
-                     (typeName == "Opencv Model") ? MatchType::OpenCVTM : MatchType::ShapeModel;
-
-    setMatchType(type);
-    //m_ui->statusbar->showMessage(QString("当前匹配算法: %1").arg(typeName), 2000);
+    // 目前只支持 OpenCV 模板匹配
+    setMatchType(MatchType::OpenCVTM);
 }
 
 void TemplateTabWidget::updateUIState(bool hasTemplate)

@@ -34,3 +34,4 @@ images/
 build/*
 CMakeFiles/*
 3rdparty/*
+build_zxing/*

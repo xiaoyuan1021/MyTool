@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 
 project(VisionTool LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
@@ -52,8 +52,6 @@ set(INCLUDE_DIRS
 # ============================================================
 # 源文件收集
 # ============================================================
-
-# 自动查找源文件和头文件
 file(GLOB HEADERS
     include/*.h
     include/core/*.h
@@ -247,6 +245,20 @@ if(MSVC)
         $<$<CONFIG:Debug>:/DEBUG>
     )
 endif()
+
+# =========================
+# ZXing
+# =========================
+
+set(ZXING_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/zxing")
+
+target_include_directories(VisionTool PRIVATE
+    "${ZXING_ROOT}/include"
+)
+
+target_link_libraries(VisionTool PRIVATE
+    "${ZXING_ROOT}/lib/ZXing.lib"
+)
 
 # ============================================================
 # 编译输出配置

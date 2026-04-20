@@ -8,28 +8,11 @@
 #include <QColor>
 #include <QPolygonF>
 #include "opencv2/opencv.hpp"
-// ⚠️ 已注释：不再需要 Halcon 头文件
-// #include "HalconCpp.h"
-
-// 修复ACCESS_MASK冲突：不使用using namespace cv
-// using namespace cv;
-// ⚠️ 已注释：不再需要 Halcon 命名空间
-// using namespace HalconCpp;
 
 // 先定义TemplateParams
 struct TemplateParams
 {
     QVector<QPointF> polygonPoints;
-    //shape model
-    int numLevels;
-    double angleStart;
-    double angleExtent;
-    double angleStep;
-    double greediness;
-    QString optimization;
-    QString metric;
-    //NCC
-    int nccLevels;
     //opencv
     int matchMethod;
 };
@@ -65,95 +48,6 @@ public:
     virtual QString getStrategyName() const =0;
     virtual bool hasTemplate() const= 0;
 };
-
-// ⚠️ 已注释：Halcon 形状模板匹配（依赖 Halcon 库）
-/*
-class ShapeMatchStrategy :public IMatchStrategy
-{
-public:
-    ShapeMatchStrategy();
-    ~ShapeMatchStrategy() override = default;
-
-    bool createTemplate(const cv::Mat& fullImage,
-                       const QVector<QPointF>& pologonPoints,
-                       const TemplateParams& params) override;
-    QVector<MatchResult> findMatches(const cv::Mat& searchImage,
-                                     double minScore = 0.5,
-                                     int maxMatches = 1,
-                                     double greediness = 0.5) override;
-    cv::Mat drawMatches(const cv::Mat& searchImage,
-                        const QVector<MatchResult>& matches) const override;
-
-    cv::Mat getTemplateImage() const override {return m_templateImage; }
-    QString getStrategyName() const override {return "Shape Model"; }
-    bool hasTemplate() const override {return m_hasTemplate;}
-
-private:
-
-    HShapeModel m_model;
-    cv::Mat m_templateImage;
-    QVector<QPointF> m_polygonPoints;
-    bool m_hasTemplate;
-
-    HRegion m_templateContour;
-    HTuple m_templateRows;
-    HTuple m_templateCols;
-    double m_modelRow;
-    double m_modelCol;
-
-    // ROI 偏移量（用于坐标转换）
-    int m_roiOffsetX = 0;
-    int m_roiOffsetY = 0;
-    int m_templateWidth = 0;
-    int m_templateHeight = 0;
-
-    HImage createTemplateRegion(const cv::Mat& image,
-                                const QVector<QPointF>& polygon);
-    void extractTemplateContour(const QVector<QPointF>& polygon);
-    void drawSingleMatch(QPainter& painter,
-                         const MatchResult& match,
-                         const QColor& color) const;
-};
-*/
-
-// ⚠️ 已注释：Halcon NCC 模板匹配（依赖 Halcon 库）
-/*
-// ========== Halcon NCC Model 策略 ==========
-class NCCMatchStrategy : public IMatchStrategy
-{
-public:
-    NCCMatchStrategy();
-    ~NCCMatchStrategy() override = default;
-
-    bool createTemplate(const cv::Mat& fullImage,
-                        const QVector<QPointF>& pologonPoints,
-                        const TemplateParams& params) override;
-
-    QVector<MatchResult> findMatches(const cv::Mat& searchImage,
-                                     double minScore,
-                                     int maxMatches,
-                                     double greediness) override;
-
-    cv::Mat drawMatches(const cv::Mat& searchImage,
-                        const QVector<MatchResult>& matches) const override;
-
-    cv::Mat getTemplateImage() const override { return m_templateImage; }
-    QString getStrategyName() const override { return "NCC Model"; }
-    bool hasTemplate() const override { return m_hasTemplate; }
-
-private:
-    HNCCModel m_model;
-    cv::Mat m_templateImage;
-    QVector<QPointF> m_polygonPoints;
-    bool m_hasTemplate;
-
-    int m_templateWidth;
-    int m_templateHeight;
-
-    HImage createTemplateRegion(const cv::Mat& image,
-                                const QVector<QPointF>& polygon);
-};
-*/
 
 // ========== OpenCV Template Matching 策略 ==========
 class OpenCVMatchStrategy : public IMatchStrategy

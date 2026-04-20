@@ -765,8 +765,8 @@ void StepReferenceLineFilter::run(PipelineContext& ctx)
                      .arg(cfg_->distanceThreshold);
     
     // 设置匹配结果到上下文
-    ctx.matchedLineCount = matchedLines.size();
-    ctx.totalLineCount = allLines.size();
+    ctx.matchedLineCount = static_cast<int>(matchedLines.size());
+    ctx.totalLineCount = static_cast<int>(allLines.size());
     
     qDebug() << "[ReferenceLineFilter]" << ctx.reason;
 }

@@ -5,7 +5,7 @@
 #include <QMap>
 #include <memory>
 #include <opencv2/opencv.hpp>
-#include "match_strategy.h"
+#include "../algorithm/match_strategy.h"
 
 namespace Ui 
 {
@@ -17,8 +17,6 @@ class RoiManager;
 
 enum class MatchType 
 {
-    ShapeModel,
-    NCCModel,
     OpenCVTM
 };
 
