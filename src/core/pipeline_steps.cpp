@@ -144,7 +144,10 @@ void StepAlgorithmQueue::run(PipelineContext& ctx)
 
 void StepShapeFilter::run(PipelineContext& ctx)
     {
-        if (!m_cfg || ctx.processed.empty()) {
+        // ✅ 修改后：优先使用processed，因为算法队列的结果存储在processed中
+        cv::Mat inputMat = !ctx.processed.empty() ? ctx.processed : ctx.mask;
+        
+        if (!m_cfg || inputMat.empty()) {
             return;
         }
 
@@ -157,10 +160,10 @@ void StepShapeFilter::run(PipelineContext& ctx)
         try {
             // 使用OpenCV进行连通域分析
             cv::Mat binary;
-            if (ctx.processed.channels() == 3) {
-                cv::cvtColor(ctx.processed, binary, cv::COLOR_BGR2GRAY);
+            if (inputMat.channels() == 3) {
+                cv::cvtColor(inputMat, binary, cv::COLOR_BGR2GRAY);
             } else {
-                binary = ctx.processed.clone();
+                binary = inputMat.clone();
             }
             cv::threshold(binary, binary, 127, 255, cv::THRESH_BINARY);
 

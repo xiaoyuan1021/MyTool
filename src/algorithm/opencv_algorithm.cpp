@@ -235,13 +235,18 @@ cv::Mat OpenCVAlgorithm::connection(const cv::Mat& region)
     if (binary.type() != CV_8UC1) {
         binary.convertTo(binary, CV_8UC1);
     }
+    cv::threshold(binary, binary, 127, 255, cv::THRESH_BINARY);
     
     cv::Mat labels;
     cv::connectedComponents(binary, labels, 8);
     
-    // 将标签转换为可视化图像（每个连通域不同灰度值）
-    cv::Mat result;
-    labels.convertTo(result, CV_8UC1);
+    // ✅ 正确：生成二值图像，每个连通域为255，背景为0
+    cv::Mat result = cv::Mat::zeros(binary.size(), CV_8UC1);
+    
+    // 跳过背景标签0，从1开始
+    for (int i = 1; i < cv::connectedComponents(binary, labels, 8); ++i) {
+        result.setTo(cv::Scalar(255), labels == i);
+    }
     
     return result;
 }

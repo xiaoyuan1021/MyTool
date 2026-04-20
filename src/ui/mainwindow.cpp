@@ -411,7 +411,8 @@ void MainWindow::setDisplayModeForCurrentTab()
     case 4: // 处理Tab
     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Processed); break;
     case 5: // 提取Tab
-    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite); break;
+    // ✅ 修改后：使用Processed模式，显示算法处理结果
+    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Processed); break;
 
     case 6: // 判定Tab
     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskOverlay); break;

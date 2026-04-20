@@ -130,7 +130,11 @@ void ExtractTabWidget::addFilter()
     if (!m_ui || !m_pipeline) return;
 
     const PipelineContext& ctx = m_pipeline->getLastContext();
-    if (ctx.processed.empty()) {
+    
+    // ✅ 修改后（优先使用processed，因为处理Tab的结果存储在processed中）
+    cv::Mat inputMat = !ctx.processed.empty() ? ctx.processed : ctx.mask;
+    
+    if (inputMat.empty()) {
         QMessageBox::warning(this, "提示", "请先执行算法处理!");
         return;
     }
@@ -204,7 +208,7 @@ void ExtractTabWidget::calculateRegionFeatures(const QVector<QPointF>& points)
         return;
     }
 
-    cv::Mat processedImg = ctx.processed.empty() ? ctx.mask : ctx.processed;
+    cv::Mat processedImg = !ctx.processed.empty() ? ctx.processed : ctx.mask;
     //HalconAlgorithm analyzer;
     // QVector<RegionFeature> features = analyzer.analyzeRegionsInPolygon(points, processedImg);
 
