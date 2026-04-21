@@ -3,10 +3,10 @@
 #include <opencv2/opencv.hpp>
 #include <QVector>
 #include <QPointF>
+#include "../data/region_feature.h"
 
 /**
  * OpenCV算法类 - 纯OpenCV实现的图像处理算法
- * 替代HalconAlgorithm，解决版权问题，支持嵌入式平台
  */
 
 // 前向声明
@@ -100,17 +100,6 @@ public:
 
     // 按面积筛选连通域
     static cv::Mat selectShapeArea(const cv::Mat& region, double minArea, double maxArea);
-
-    // 区域特征结构体
-    struct RegionFeature {
-        int index;
-        double area;
-        double centerX;
-        double centerY;
-        double circularity;
-        double width;
-        double height;
-    };
 
     // 分析多边形区域内的连通域
     static QVector<RegionFeature> analyzeRegionsInPolygon(

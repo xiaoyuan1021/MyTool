@@ -17,12 +17,6 @@ public:
     static cv::Mat makeStructElement(int ksize);
     static QRect mapLabelToImage(const QRect& rect,const cv::Mat& img,QLabel* label);
     
-    // ⚠️ 已注释：Halcon 转换函数（不再需要）
-    // static Mat HImageToMat(HalconCpp::HObject &H_img);
-    // static Mat HObjectToMat(const HalconCpp::HObject& hObj, int width, int height);
-    // static HRegion MatToHRegion(const cv::Mat& binary);
-    // static Mat HRegionToMat(const HRegion& region, int width, int height);
-    // static HImage matToHImage(const cv::Mat& mat);
 };
 
 #endif // IMAGE_UTILS_H

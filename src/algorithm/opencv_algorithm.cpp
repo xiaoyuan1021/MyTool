@@ -415,7 +415,7 @@ cv::Mat OpenCVAlgorithm::selectShapeArea(const cv::Mat& region, double minArea, 
 
 // =============== 区域分析 ===============
 
-QVector<OpenCVAlgorithm::RegionFeature> OpenCVAlgorithm::analyzeRegionsInPolygon(
+QVector<RegionFeature> OpenCVAlgorithm::analyzeRegionsInPolygon(
     const QVector<QPointF>& polygon,
     const cv::Mat& processedImage)
 {
@@ -583,7 +583,7 @@ double OpenCVAlgorithm::calculatePerimeter(const cv::Mat& region)
     return totalPerimeter;
 }
 
-OpenCVAlgorithm::RegionFeature OpenCVAlgorithm::calculateRegionFeature(const cv::Mat& region, int index)
+RegionFeature OpenCVAlgorithm::calculateRegionFeature(const cv::Mat& region, int index)
 {
     RegionFeature feature;
     feature.index = index;

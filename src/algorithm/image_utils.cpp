@@ -1,6 +1,4 @@
 #include "image_utils.h"
-// ⚠️ 已注释：不再需要 Halcon 头文件
-// #include <HalconCpp.h>
 
 QImage ImageUtils::matToQImage(const cv::Mat &mat)
 {

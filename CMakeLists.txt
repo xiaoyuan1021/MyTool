@@ -193,39 +193,20 @@ endif()
 # 添加 SPDLOG_FMT_EXTERNAL 宏定义
 target_compile_definitions(VisionTool PRIVATE SPDLOG_FMT_EXTERNAL)
 
-# ============================================================
-# 第三方库配置 (Halcon)
-# ============================================================
-set(HALCON_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/halcon")
+# =========================
+# ZXing
+# =========================
 
-# Halcon 包含路径
+set(ZXING_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/zxing")
+
 target_include_directories(VisionTool PRIVATE
-    "${HALCON_ROOT}/include"
-    "${HALCON_ROOT}/include/halconcpp"
+    "${ZXING_ROOT}/include"
 )
 
-# Halcon 库文件路径
-set(HALCON_LIB_DIR "${HALCON_ROOT}/lib")
-
-# 查找并链接 Halcon 库
-find_library(HALCON_CPP_LIB
-    NAMES halconcppxl halconcpp
-    PATHS "${HALCON_LIB_DIR}"
-    NO_DEFAULT_PATH
+target_link_libraries(VisionTool PRIVATE
+    "${ZXING_ROOT}/lib/ZXing.lib"
 )
 
-find_library(HALCON_LIB
-    NAMES halconxl halcon
-    PATHS "${HALCON_LIB_DIR}"
-    NO_DEFAULT_PATH
-)
-
-if(HALCON_CPP_LIB AND HALCON_LIB)
-    target_link_libraries(VisionTool PRIVATE ${HALCON_CPP_LIB} ${HALCON_LIB})
-    message(STATUS "Found Halcon libraries")
-else()
-    message(WARNING "Halcon libraries not found at ${HALCON_LIB_DIR}")
-endif()
 
 # ============================================================
 # 编译器特定选项 (MSVC)
@@ -246,19 +227,6 @@ if(MSVC)
     )
 endif()
 
-# =========================
-# ZXing
-# =========================
-
-set(ZXING_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/zxing")
-
-target_include_directories(VisionTool PRIVATE
-    "${ZXING_ROOT}/include"
-)
-
-target_link_libraries(VisionTool PRIVATE
-    "${ZXING_ROOT}/lib/ZXing.lib"
-)
 
 # ============================================================
 # 编译输出配置
