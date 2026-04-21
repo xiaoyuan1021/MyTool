@@ -31,6 +31,7 @@
 #include "widgets/process_tab_widget.h"
 #include "widgets/judge_tab_widget.h"
 #include "widgets/barcode_tab_widget.h"
+#include "widgets/video_tab_widget.h"
 #include "widgets/roi_list_widget.h"
 #include "roi_config.h"
 #include "log_page.h"
@@ -64,6 +65,7 @@ public:
 
 private slots:
     void on_btn_openImg_clicked();
+    void on_btn_openVideo_clicked();
     void on_btn_saveImg_clicked();
     void on_btn_drawRoi_clicked();
     void on_btn_resetROI_clicked();
@@ -125,6 +127,7 @@ private:
     std::unique_ptr<BarcodeTabWidget> m_barcodeTabWidget;
     
     std::unique_ptr<ImageTabWidget> m_imageTabWidget;
+    std::unique_ptr<VideoTabWidget> m_videoTabWidget;
 
     // 多线程处理相关
     QFutureWatcher<PipelineContext> m_pipelineWatcher;

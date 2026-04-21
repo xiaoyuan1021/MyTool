@@ -22,7 +22,8 @@ enum class DetectionType {
     Template,       // 模板匹配
     Line,           // 直线检测
     Circle,         // 圆形检测
-    Blob            // Blob分析
+    Blob,           // Blob分析
+    VideoSource     // 视频源
 };
 
 /**
@@ -38,6 +39,7 @@ inline QString detectionTypeToString(DetectionType type) {
         case DetectionType::Line: return "直线检测";
         case DetectionType::Circle: return "圆形检测";
         case DetectionType::Blob: return "Blob分析";
+        case DetectionType::VideoSource: return "视频源";
         default: return "未知类型";
     }
 }
@@ -54,6 +56,7 @@ inline DetectionType stringToDetectionType(const QString& str) {
     if (str == "直线检测") return DetectionType::Line;
     if (str == "圆形检测") return DetectionType::Circle;
     if (str == "Blob分析") return DetectionType::Blob;
+    if (str == "视频源") return DetectionType::VideoSource;
     return DetectionType::Blob; // 默认值
 }
 
@@ -107,6 +110,21 @@ struct TabConfig {
     }
     
     /**
+     * @brief 获取视频源的Tab配置
+     */
+    static TabConfig getVideoConfig() {
+        return TabConfig({
+            "图像",
+            "视频",
+            "增强",
+            "过滤",
+            "处理",
+            "提取",
+            "判定"
+        });
+    }
+    
+    /**
      * @brief 根据检测类型获取Tab配置
      */
     static TabConfig getConfigForType(DetectionType type) {
@@ -117,6 +135,8 @@ struct TabConfig {
                 return getLineConfig();
             case DetectionType::Barcode:
                 return getBarcodeConfig();
+            case DetectionType::VideoSource:
+                return getVideoConfig();
             default:
                 return TabConfig();
         }
@@ -150,6 +170,7 @@ struct DetectionItem {
     BlobAnalysisConfig blobConfig;           // Blob分析配置
     LineDetectionConfig lineConfig;          // 直线检测配置
     BarcodeRecognitionConfig barcodeConfig;  // 条码识别配置
+    VideoSourceConfig videoConfig;           // 视频源配置
 
     DetectionItem() 
         : type(DetectionType::Blob), enabled(true) {}
@@ -169,6 +190,9 @@ struct DetectionItem {
                 break;
             case DetectionType::Barcode:
                 barcodeConfig = BarcodeRecognitionConfig();
+                break;
+            case DetectionType::VideoSource:
+                videoConfig = VideoSourceConfig();
                 break;
             default:
                 break;
@@ -202,6 +226,9 @@ struct DetectionItem {
                 break;
             case DetectionType::Barcode:
                 obj["barcodeConfig"] = barcodeConfig.toJson();
+                break;
+            case DetectionType::VideoSource:
+                obj["videoConfig"] = videoConfig.toJson();
                 break;
             default:
                 break;
@@ -240,6 +267,11 @@ struct DetectionItem {
             case DetectionType::Barcode:
                 if (obj.contains("barcodeConfig")) {
                     barcodeConfig.fromJson(obj["barcodeConfig"].toObject());
+                }
+                break;
+            case DetectionType::VideoSource:
+                if (obj.contains("videoConfig")) {
+                    videoConfig.fromJson(obj["videoConfig"].toObject());
                 }
                 break;
             default:

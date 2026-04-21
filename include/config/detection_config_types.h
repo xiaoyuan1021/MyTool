@@ -125,6 +125,72 @@ struct BlobAnalysisConfig {
 };
 
 /**
+ * @brief 视频源配置参数
+ */
+struct VideoSourceConfig {
+    // 视频源参数
+    QString videoSourceType = "file";  // 视频源类型: "file" (文件) 或 "camera" (相机)
+    QString videoFilePath = "";        // 视频文件路径
+    int cameraIndex = 0;               // 相机索引
+    
+    // 播放控制参数
+    bool autoPlay = true;              // 自动播放
+    double playbackSpeed = 1.0;        // 播放速度 (0.5 ~ 2.0)
+    
+    // 图像处理参数
+    int brightness = 0;                // 亮度 (-100 ~ 100)
+    int contrast = 100;                // 对比度 (0 ~ 200)
+    int gamma = 100;                   // 伽马值 (10 ~ 300)
+    int sharpen = 100;                 // 锐化 (0 ~ 200)
+    
+    // 帧处理参数
+    bool enableFrameSkipping = false;  // 是否启用帧跳跃
+    int frameSkipInterval = 1;         // 帧跳跃间隔
+    bool enableFrameBlur = false;      // 是否启用去噪
+    int blurKernelSize = 3;            // 模糊核大小
+    
+    /**
+     * @brief 转换为JSON对象
+     */
+    QJsonObject toJson() const {
+        QJsonObject obj;
+        obj["videoSourceType"] = videoSourceType;
+        obj["videoFilePath"] = videoFilePath;
+        obj["cameraIndex"] = cameraIndex;
+        obj["autoPlay"] = autoPlay;
+        obj["playbackSpeed"] = playbackSpeed;
+        obj["brightness"] = brightness;
+        obj["contrast"] = contrast;
+        obj["gamma"] = gamma;
+        obj["sharpen"] = sharpen;
+        obj["enableFrameSkipping"] = enableFrameSkipping;
+        obj["frameSkipInterval"] = frameSkipInterval;
+        obj["enableFrameBlur"] = enableFrameBlur;
+        obj["blurKernelSize"] = blurKernelSize;
+        return obj;
+    }
+    
+    /**
+     * @brief 从JSON对象加载
+     */
+    void fromJson(const QJsonObject& obj) {
+        videoSourceType = obj["videoSourceType"].toString("file");
+        videoFilePath = obj["videoFilePath"].toString();
+        cameraIndex = obj["cameraIndex"].toInt(0);
+        autoPlay = obj["autoPlay"].toBool(true);
+        playbackSpeed = obj["playbackSpeed"].toDouble(1.0);
+        brightness = obj["brightness"].toInt(0);
+        contrast = obj["contrast"].toInt(100);
+        gamma = obj["gamma"].toInt(100);
+        sharpen = obj["sharpen"].toInt(100);
+        enableFrameSkipping = obj["enableFrameSkipping"].toBool(false);
+        frameSkipInterval = obj["frameSkipInterval"].toInt(1);
+        enableFrameBlur = obj["enableFrameBlur"].toBool(false);
+        blurKernelSize = obj["blurKernelSize"].toInt(3);
+    }
+};
+
+/**
  * @brief 直线检测配置参数
  */
 struct LineDetectionConfig {

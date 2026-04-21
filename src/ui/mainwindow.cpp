@@ -119,6 +119,22 @@ MainWindow::MainWindow(QWidget *parent)
                 
             });
 
+    // 创建 VideoTabWidget 并添加到 tabWidget
+    m_videoTabWidget = std::make_unique<VideoTabWidget>(this);
+    ui->tabWidget->addTab(m_videoTabWidget.get(), "视频");
+    connect(m_videoTabWidget.get(), &VideoTabWidget::videoFrameReady,
+            this, [this](const cv::Mat& frame) {
+                // 直接处理视频帧
+                if (!frame.empty()) {
+                    // 设置ROI管理器的当前图像为视频帧
+                    m_roiManager.setFullImage(frame);
+                    m_view->clearRoi();
+                    
+                    // 立即处理和显示
+                    processAndDisplay();
+                }
+            });
+
     m_enhanceTabWidget = std::make_unique<EnhanceTabWidget>(
     m_pipelineManager, this);
     ui->tabWidget->addTab(m_enhanceTabWidget.get(), "增强");
@@ -198,6 +214,7 @@ MainWindow::MainWindow(QWidget *parent)
     // 记录所有Tab Widget和名称，用于动态切换
     m_tabWidgets = {
         m_imageTabWidget.get(),
+        m_videoTabWidget.get(),
         m_enhanceTabWidget.get(),
         m_filterTabWidget.get(),
         m_templateTabWidget.get(),
@@ -207,7 +224,7 @@ MainWindow::MainWindow(QWidget *parent)
         m_lineDetectTabWidget.get(),
         m_barcodeTabWidget.get()
     };
-    m_tabNames = {"图像", "增强", "过滤", "补正", "处理", "提取", "判定", "直线", "条码"};
+    m_tabNames = {"图像", "视频", "增强", "过滤", "补正", "处理", "提取", "判定", "直线", "条码"};
     
     // 初始化Controller对象
     m_roiUiController = new RoiUiController(m_multiRoiConfig, m_roiManager, m_view, ui->statusbar, this);
@@ -388,9 +405,11 @@ void MainWindow::setDisplayModeForCurrentTab()
     {
     case 0: // 图像Tab
     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Channel); break;
-    case 1: // 增强Tab
+    case 1: // 视频Tab
+    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Channel); break;
+    case 2: // 增强Tab
     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Enhanced); break;
-    case 2: // 过滤Tab
+    case 3: // 过滤Tab
     {
         // 根据当前过滤模式选择显示方式
         const PipelineConfig& cfg = m_pipelineManager->getConfig();
@@ -406,20 +425,20 @@ void MainWindow::setDisplayModeForCurrentTab()
         }
         break;
     }
-    case 3: // 补正Tab
+    case 4: // 补正Tab
     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original); break;
-    case 4: // 处理Tab
+    case 5: // 处理Tab
     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Processed); break;
-    case 5: // 提取Tab
+    case 6: // 提取Tab
     // ✅ 修改后：使用Processed模式，显示算法处理结果
     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Processed); break;
 
-    case 6: // 判定Tab
+    case 7: // 判定Tab
     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskOverlay); break;
     
-    case 7: // 直线检测Tab
+    case 8: // 直线检测Tab
     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::LineDetect); break;
-    case 8: // 条码Tab
+    case 9: // 条码Tab
     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original); break;
     default: m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original); break;
     }
@@ -454,6 +473,37 @@ void MainWindow::on_btn_openImg_clicked()
 
     m_fileManager->readImageFile(fileName);
     disconnect(conn);
+}
+
+void MainWindow::on_btn_openVideo_clicked()
+{
+    // 切换到视频Tab
+    if (m_videoTabWidget) {
+        // 使用视频管理器打开视频文件
+        VideoManager* videoManager = m_videoTabWidget->getVideoManager();
+        if (videoManager) {
+            // 打开视频文件选择对话框
+            QString filePath = QFileDialog::getOpenFileName(
+                this,
+                "选择视频文件",
+                "",
+                "视频文件 (*.mp4 *.avi *.mov *.mkv *.wmv);;所有文件 (*.*)"
+            );
+
+            if (!filePath.isEmpty()) {
+                // 使用视频管理器打开文件
+                if (videoManager->openFile(filePath)) {
+                    // 切换到视频Tab
+                    int videoTabIndex = ui->tabWidget->indexOf(m_videoTabWidget.get());
+                    if (videoTabIndex >= 0) {
+                        ui->tabWidget->setCurrentIndex(videoTabIndex);
+                    }
+                    
+                    Logger::instance()->info(QString("打开视频: %1").arg(filePath));
+                }
+            }
+        }
+    }
 }
 
 void MainWindow::on_btn_saveImg_clicked()
