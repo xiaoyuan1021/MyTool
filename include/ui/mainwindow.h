@@ -146,6 +146,16 @@ private:
     DetectionUiController* m_detectionUiController;
     ConfigController* m_configController;
 
+    // 图片管理相关
+    void setupImageList();
+    void updateImageList();
+    void onImageAdded(const QString& imageId);
+    void onImageRemoved(const QString& imageId);
+    void onCurrentImageChanged(const QString& imageId);
+    void onAddImageClicked();
+    void onRemoveImageClicked();
+    void onImageListSelectionChanged();
+
 };
 
 

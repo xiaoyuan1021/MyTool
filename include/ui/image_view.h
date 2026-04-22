@@ -61,6 +61,9 @@ public:
 
     // 重置缩放到原始比例
     void resetZoom();
+    
+    // 清空显示
+    void clear();
 
 
 signals:

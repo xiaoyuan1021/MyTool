@@ -310,12 +310,23 @@ void MainWindow::setupUI()
         QString style = QLatin1String(file.readAll());
         qApp->setStyleSheet(style);
     }
+    
+    // 初始化图片列表
+    setupImageList();
 }
 
 void MainWindow::setupConnections()
 {
     // 连接tabWidget的currentChanged信号
     connect(ui->tabWidget, &QTabWidget::currentChanged, this, &MainWindow::on_tabWidget_currentChanged);
+    
+    // ========== 图片管理信号 ==========
+    connect(&m_roiManager, &RoiManager::imageAdded,
+            this, &MainWindow::onImageAdded);
+    connect(&m_roiManager, &RoiManager::imageRemoved,
+            this, &MainWindow::onImageRemoved);
+    connect(&m_roiManager, &RoiManager::currentImageChanged,
+            this, &MainWindow::onCurrentImageChanged);
     
     // ========== FileManager信号 ==========
     connect(m_fileManager, &FileManager::imageLoaded,
@@ -787,6 +798,177 @@ void MainWindow::onDeleteDetectionClicked()
     } else {
         // 选中的是ROI，提示用户选择检测项
         QMessageBox::warning(this, "警告", "请先选择要删除的检测项");
+    }
+}
+
+// ========== 图片管理相关方法实现 ==========
+
+void MainWindow::setupImageList()
+{
+    // 连接图片列表UI信号（图片管理信号已在构造函数中连接）
+    connect(ui->btn_addImage, &QPushButton::clicked,
+            this, &MainWindow::onAddImageClicked);
+    connect(ui->btn_removeImage, &QPushButton::clicked,
+            this, &MainWindow::onRemoveImageClicked);
+    connect(ui->listWidget_images, &QListWidget::itemSelectionChanged,
+            this, &MainWindow::onImageListSelectionChanged);
+    
+    // 更新图片列表显示
+    updateImageList();
+}
+
+void MainWindow::updateImageList()
+{
+    ui->listWidget_images->clear();
+    
+    QStringList imageIds = m_roiManager.getImageIds();
+    for (const QString& imageId : imageIds) {
+        QString imageName = m_roiManager.getImageName(imageId);
+        QListWidgetItem* item = new QListWidgetItem(imageName);
+        item->setData(Qt::UserRole, imageId);
+        
+        // 如果是当前图片，设置为选中状态
+        if (imageId == m_roiManager.getCurrentImageId()) {
+            item->setSelected(true);
+        }
+        
+        ui->listWidget_images->addItem(item);
+    }
+}
+
+void MainWindow::onImageAdded(const QString& imageId)
+{
+    QString imageName = m_roiManager.getImageName(imageId);
+    QListWidgetItem* item = new QListWidgetItem(imageName);
+    item->setData(Qt::UserRole, imageId);
+    ui->listWidget_images->addItem(item);
+    
+    Logger::instance()->info(QString("图片已添加到列表: %1").arg(imageName));
+}
+
+void MainWindow::onImageRemoved(const QString& imageId)
+{
+    // 查找并删除对应的列表项
+    for (int i = 0; i < ui->listWidget_images->count(); ++i) {
+        QListWidgetItem* item = ui->listWidget_images->item(i);
+        if (item->data(Qt::UserRole).toString() == imageId) {
+            delete item;
+            break;
+        }
+    }
+    
+    Logger::instance()->info("图片已从列表中移除");
+}
+
+void MainWindow::onCurrentImageChanged(const QString& imageId)
+{
+    // 更新列表选中状态
+    for (int i = 0; i < ui->listWidget_images->count(); ++i) {
+        QListWidgetItem* item = ui->listWidget_images->item(i);
+        bool isSelected = (item->data(Qt::UserRole).toString() == imageId);
+        item->setSelected(isSelected);
+    }
+    
+    // 获取当前图片并显示
+    const cv::Mat& currentImage = m_roiManager.getFullImage();
+    if (!currentImage.empty()) {
+        showImage(currentImage);
+        
+        // 恢复缩放状态
+        double scaleFactor;
+        QRectF viewRect;
+        if (m_roiManager.getZoomState(imageId, scaleFactor, viewRect)) {
+            // 应用保存的缩放状态
+            QTransform transform;
+            transform.scale(scaleFactor, scaleFactor);
+            m_view->setTransform(transform);
+            m_view->ensureVisible(viewRect);
+        }
+        
+        processAndDisplay();
+    }
+    
+    Logger::instance()->info(QString("已切换到图片: %1").arg(imageId));
+}
+
+void MainWindow::onAddImageClicked()
+{
+    // 打开文件对话框选择图片
+    QString fileName = m_fileManager->selectImageFile("");
+    if (fileName.isEmpty()) {
+        return;
+    }
+    
+    // 加载图片
+    cv::Mat img = cv::imread(fileName.toStdString());
+    if (img.empty()) {
+        QMessageBox::warning(this, "错误", "无法加载图片文件");
+        return;
+    }
+    
+    // 添加到图片管理器
+    QFileInfo fileInfo(fileName);
+    QString imageName = fileInfo.completeBaseName();
+    QString imageId = m_roiManager.addImage(img, imageName);
+    
+    if (!imageId.isEmpty()) {
+        // 切换到新添加的图片
+        m_roiManager.switchToImage(imageId);
+        
+        // 更新UI
+        const cv::Mat& currentImage = m_roiManager.getFullImage();
+        if (!currentImage.empty()) {
+            showImage(currentImage);
+            processAndDisplay();
+        }
+    }
+}
+
+void MainWindow::onRemoveImageClicked()
+{
+    QString currentImageId = m_roiManager.getCurrentImageId();
+    if (currentImageId.isEmpty()) {
+        QMessageBox::information(this, "提示", "没有可删除的图片");
+        return;
+    }
+    
+    // 确认删除
+    QString imageName = m_roiManager.getImageName(currentImageId);
+    int ret = QMessageBox::question(this, "确认删除",
+                                   QString("确定要删除图片 '%1' 吗？").arg(imageName),
+                                   QMessageBox::Yes | QMessageBox::No);
+    
+    if (ret == QMessageBox::Yes) {
+        m_roiManager.removeImage(currentImageId);
+        
+        // 如果还有图片，显示第一张
+        QStringList imageIds = m_roiManager.getImageIds();
+        if (!imageIds.isEmpty()) {
+            m_roiManager.switchToImage(imageIds.first());
+        } else {
+            // 没有图片了，清空显示
+            m_view->clear();
+        }
+    }
+}
+
+void MainWindow::onImageListSelectionChanged()
+{
+    QListWidgetItem* currentItem = ui->listWidget_images->currentItem();
+    if (!currentItem) {
+        return;
+    }
+    
+    QString imageId = currentItem->data(Qt::UserRole).toString();
+    if (!imageId.isEmpty() && imageId != m_roiManager.getCurrentImageId()) {
+        // 保存当前图片的缩放状态
+        QTransform currentTransform = m_view->transform();
+        double scaleFactor = currentTransform.m11(); // 获取X轴缩放因子
+        QRectF viewRect = m_view->viewport()->rect();
+        m_roiManager.saveZoomState(scaleFactor, viewRect);
+        
+        // 切换到新图片
+        m_roiManager.switchToImage(imageId);
     }
 }
 

@@ -5,7 +5,7 @@
 #include <QString>
 #include <QMap>
 #include <QVector>
-#include "roi_item.h"
+#include "../data/roi_item.h"
 
 // 前向声明
 class ImageView;
@@ -21,21 +21,23 @@ class QStatusBar;
  * - 支持多ROI模式（新增）
  * - 管理ROI与检测配置的关联
  */
-class RoiManager
+class RoiManager : public QObject
 {
+    Q_OBJECT
+
 public:
-    RoiManager() = default;
+    RoiManager(QObject* parent = nullptr);
 
     // ==================== 图像管理 ====================
 
     /**
-     * @brief 设置完整图像
+     * @brief 设置完整图像（当前图片）
      * @param img 完整的图像数据
      */
     void setFullImage(const cv::Mat &img);
 
     /**
-     * @brief 获取完整图像
+     * @brief 获取完整图像（当前图片）
      * @return 完整图像的引用
      */
     const cv::Mat &getFullImage() const;
@@ -44,6 +46,55 @@ public:
      * @brief 清空所有数据
      */
     void clear();
+
+    // ==================== 多图片管理 ====================
+
+    /**
+     * @brief 添加图片
+     * @param img 图像数据
+     * @param name 图片名称
+     * @return 图片ID，失败返回空字符串
+     */
+    QString addImage(const cv::Mat &img, const QString &name);
+
+    /**
+     * @brief 切换到指定图片
+     * @param imageId 图片ID
+     * @return 是否切换成功
+     */
+    bool switchToImage(const QString &imageId);
+
+    /**
+     * @brief 移除图片
+     * @param imageId 图片ID
+     * @return 是否移除成功
+     */
+    bool removeImage(const QString &imageId);
+
+    /**
+     * @brief 获取当前图片ID
+     * @return 当前图片ID
+     */
+    QString getCurrentImageId() const;
+
+    /**
+     * @brief 获取所有图片ID
+     * @return 图片ID列表
+     */
+    QStringList getImageIds() const;
+
+    /**
+     * @brief 获取图片名称
+     * @param imageId 图片ID
+     * @return 图片名称，如果图片不存在返回空字符串
+     */
+    QString getImageName(const QString &imageId) const;
+
+    /**
+     * @brief 获取图片数量
+     * @return 图片数量
+     */
+    int imageCount() const;
 
     // ==================== 单ROI模式（向后兼容） ====================
 
@@ -219,23 +270,68 @@ public:
      */
     void resetRoiWithUI(ImageView *view, QStatusBar *statusBar);
 
+    // ==================== 缩放状态管理方法 ====================
+
+    /**
+     * @brief 保存当前图片的缩放状态
+     * @param scaleFactor 缩放因子
+     * @param viewRect 视图矩形
+     */
+    void saveZoomState(double scaleFactor, const QRectF& viewRect);
+
+    /**
+     * @brief 获取指定图片的缩放状态
+     * @param imageId 图片ID
+     * @param scaleFactor 输出参数：缩放因子
+     * @param viewRect 输出参数：视图矩形
+     * @return 是否存在缩放状态
+     */
+    bool getZoomState(const QString& imageId, double& scaleFactor, QRectF& viewRect) const;
+
+    /**
+     * @brief 清除指定图片的缩放状态
+     * @param imageId 图片ID
+     */
+    void clearZoomState(const QString& imageId);
+
+signals:
+    // 多图片管理信号
+    void imageAdded(const QString& imageId);
+    void imageRemoved(const QString& imageId);
+    void currentImageChanged(const QString& imageId);
+
 private:
-    // 图像数据
-    cv::Mat m_fullImage;      // 完整图像
-    cv::Mat m_roiImage;       // ROI裁剪后的图像（单ROI模式兼容）
+    // 多图片数据结构
+    struct ImageRois {
+        cv::Mat image;              // 图像数据
+        QString name;               // 图片名称
+        QMap<QString, RoiItem> rois;  // 该图片的ROI列表
+        QString selectedRoiId;      // 该图片选中的ROI
+        int roiCounter;             // ROI计数器
+        
+        // 单ROI模式数据
+        bool isRoiActive;
+        cv::Rect lastRoi;
+        cv::Mat roiImage;
+        
+        // 缩放状态数据
+        double scaleFactor;         // 缩放因子
+        QRectF viewRect;            // 视图矩形
+    };
 
-    // 单ROI模式数据（向后兼容）
-    bool m_isRoiActive = false; // ROI激活状态
-    cv::Rect m_lastRoi;       // 最后应用的ROI矩形
-
-    // 多ROI模式数据
-    QMap<QString, RoiItem> m_rois;  // ROI映射表（ID -> RoiItem）
-    QString m_selectedRoiId;        // 当前选中的ROI ID
-    int m_roiCounter = 0;           // ROI计数器（用于生成默认名称）
+    QMap<QString, ImageRois> m_imageRoisMap;  // 图片ID -> ROIs
+    QString m_currentImageId;                  // 当前图片ID
+    int m_imageCounter;                        // 图片计数器
 
     /**
      * @brief 生成默认ROI名称
      * @return 默认名称
      */
-    QString generateDefaultName();
+    QString generateDefaultRoiName();
+    
+    /**
+     * @brief 生成默认图片名称
+     * @return 默认名称
+     */
+    QString generateDefaultImageName();
 };

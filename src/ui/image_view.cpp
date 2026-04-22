@@ -726,3 +726,29 @@ void ImageView::resetZoom()
         m_scaleFactor = t.m11();
     }
 }
+
+void ImageView::clear()
+{
+    // 清空 pixmap
+    m_pixmapItem->setPixmap(QPixmap());
+    m_pixmapItem->setPos(0, 0);
+    
+    // 清空场景
+    m_scene->setSceneRect(0, 0, 0, 0);
+    
+    // 清理 ROI
+    clearRoi();
+    
+    // 清理多边形
+    clearPolygon();
+    
+    // 清理矩形
+    clearRectangleDrawing();
+    
+    // 清理参考线
+    clearReferenceLine();
+    
+    // 重置缩放
+    resetTransform();
+    m_scaleFactor = 1.0;
+}

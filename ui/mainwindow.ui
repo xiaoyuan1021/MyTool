@@ -247,22 +247,64 @@
               </item>
              </layout>
             </item>
-            <item>
-             <layout class="QHBoxLayout" name="horizontalLayout_row4">
-              <property name="spacing">
-               <number>5</number>
-              </property>
-              <item>
-               <widget class="QTreeWidget" name="treeView">
-                <column>
+             <item>
+              <layout class="QVBoxLayout" name="verticalLayout_imageList">
+               <property name="spacing">
+                <number>5</number>
+               </property>
+               <item>
+                <widget class="QLabel" name="label_imageList">
                  <property name="text">
-                  <string notr="true">1</string>
+                  <string>图片列表</string>
                  </property>
-                </column>
-               </widget>
-              </item>
-             </layout>
-            </item>
+                </widget>
+               </item>
+               <item>
+                <widget class="QListWidget" name="listWidget_images">
+                 <property name="maximumSize">
+                  <size>
+                   <width>16777215</width>
+                   <height>100</height>
+                  </size>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <layout class="QHBoxLayout" name="horizontalLayout_imageButtons">
+                 <item>
+                  <widget class="QPushButton" name="btn_addImage">
+                   <property name="text">
+                    <string>添加图片</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QPushButton" name="btn_removeImage">
+                   <property name="text">
+                    <string>删除图片</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+              </layout>
+             </item>
+             <item>
+              <layout class="QHBoxLayout" name="horizontalLayout_row4">
+               <property name="spacing">
+                <number>5</number>
+               </property>
+               <item>
+                <widget class="QTreeWidget" name="treeView">
+                 <column>
+                  <property name="text">
+                   <string notr="true">1</string>
+                  </property>
+                 </column>
+                </widget>
+               </item>
+              </layout>
+             </item>
            </layout>
           </widget>
           <widget class="QWidget" name="widget_imagePanel">
