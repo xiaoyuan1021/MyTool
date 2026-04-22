@@ -16,12 +16,8 @@
  */
 enum class DetectionType {
     Barcode,        // 条码检测
-    Shape,          // 形状检测
-    Color,          // 颜色检测
-    Texture,        // 纹理检测
     Template,       // 模板匹配
     Line,           // 直线检测
-    Circle,         // 圆形检测
     Blob,           // Blob分析
     VideoSource     // 视频源
 };
@@ -32,12 +28,8 @@ enum class DetectionType {
 inline QString detectionTypeToString(DetectionType type) {
     switch (type) {
         case DetectionType::Barcode: return "条码检测";
-        case DetectionType::Shape: return "形状检测";
-        case DetectionType::Color: return "颜色检测";
-        case DetectionType::Texture: return "纹理检测";
         case DetectionType::Template: return "模板匹配";
         case DetectionType::Line: return "直线检测";
-        case DetectionType::Circle: return "圆形检测";
         case DetectionType::Blob: return "Blob分析";
         case DetectionType::VideoSource: return "视频源";
         default: return "未知类型";
@@ -49,12 +41,8 @@ inline QString detectionTypeToString(DetectionType type) {
  */
 inline DetectionType stringToDetectionType(const QString& str) {
     if (str == "条码检测") return DetectionType::Barcode;
-    if (str == "形状检测") return DetectionType::Shape;
-    if (str == "颜色检测") return DetectionType::Color;
-    if (str == "纹理检测") return DetectionType::Texture;
     if (str == "模板匹配") return DetectionType::Template;
     if (str == "直线检测") return DetectionType::Line;
-    if (str == "圆形检测") return DetectionType::Circle;
     if (str == "Blob分析") return DetectionType::Blob;
     if (str == "视频源") return DetectionType::VideoSource;
     return DetectionType::Blob; // 默认值

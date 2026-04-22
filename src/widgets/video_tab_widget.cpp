@@ -33,11 +33,17 @@ VideoTabWidget::VideoTabWidget(QWidget* parent)
 
 VideoTabWidget::~VideoTabWidget()
 {
+    // 先停止视频播放，避免在析构过程中继续处理帧
+    if (m_videoManager) {
+        m_videoManager->stop();
+    }
     delete m_ui;
 }
 
 void VideoTabWidget::on_btn_openFile_clicked()
 {
+    Logger::instance()->info(QString("========== 视频文件选择对话框 =========="));
+    
     QString filePath = QFileDialog::getOpenFileName(
         this,
         "选择视频文件",
@@ -46,11 +52,21 @@ void VideoTabWidget::on_btn_openFile_clicked()
     );
 
     if (filePath.isEmpty()) {
+        Logger::instance()->info("用户取消了文件选择");
         return;
     }
 
+    Logger::instance()->info(QString("用户选择的视频文件: %1").arg(filePath));
+    
+    // 获取文件信息
+    QFileInfo fileInfo(filePath);
+    Logger::instance()->info(QString("文件大小: %1 字节").arg(fileInfo.size()));
+    
     if (m_videoManager->openFile(filePath)) {
-        m_ui->label_status->setText(QString("已加载: %1").arg(QFileInfo(filePath).fileName()));
+        m_ui->label_status->setText(QString("已加载: %1").arg(fileInfo.fileName()));
+        Logger::instance()->info(QString("视频打开成功: %1").arg(fileInfo.fileName()));
+    } else {
+        Logger::instance()->error(QString("视频打开失败: %1").arg(fileInfo.fileName()));
     }
 }
 

@@ -477,11 +477,17 @@ void MainWindow::on_btn_openImg_clicked()
 
 void MainWindow::on_btn_openVideo_clicked()
 {
+    Logger::instance()->info(QString("========== 主窗口视频打开流程 =========="));
+    
     // 切换到视频Tab
     if (m_videoTabWidget) {
+        Logger::instance()->info("视频Tab组件存在");
+        
         // 使用视频管理器打开视频文件
         VideoManager* videoManager = m_videoTabWidget->getVideoManager();
         if (videoManager) {
+            Logger::instance()->info("视频管理器获取成功");
+            
             // 打开视频文件选择对话框
             QString filePath = QFileDialog::getOpenFileName(
                 this,
@@ -491,19 +497,40 @@ void MainWindow::on_btn_openVideo_clicked()
             );
 
             if (!filePath.isEmpty()) {
+                Logger::instance()->info(QString("用户选择视频文件: %1").arg(filePath));
+                
+                // 获取文件信息
+                QFileInfo fileInfo(filePath);
+                Logger::instance()->info(QString("文件大小: %1 字节").arg(fileInfo.size()));
+                
                 // 使用视频管理器打开文件
                 if (videoManager->openFile(filePath)) {
+                    Logger::instance()->info("视频管理器打开文件成功");
+                    
                     // 切换到视频Tab
                     int videoTabIndex = ui->tabWidget->indexOf(m_videoTabWidget.get());
                     if (videoTabIndex >= 0) {
                         ui->tabWidget->setCurrentIndex(videoTabIndex);
+                        Logger::instance()->info(QString("已切换到视频Tab (索引: %1)").arg(videoTabIndex));
+                    } else {
+                        Logger::instance()->warning("未找到视频Tab的索引");
                     }
                     
-                    Logger::instance()->info(QString("打开视频: %1").arg(filePath));
+                    Logger::instance()->info(QString("打开视频成功: %1").arg(filePath));
+                } else {
+                    Logger::instance()->error(QString("视频管理器打开文件失败: %1").arg(filePath));
                 }
+            } else {
+                Logger::instance()->info("用户取消了文件选择");
             }
+        } else {
+            Logger::instance()->error("无法获取视频管理器");
         }
+    } else {
+        Logger::instance()->error("视频Tab组件不存在");
     }
+    
+    Logger::instance()->info(QString("========== 主窗口视频打开流程结束 =========="));
 }
 
 void MainWindow::on_btn_saveImg_clicked()

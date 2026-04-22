@@ -17,27 +17,59 @@ VideoManager::VideoManager(QObject* parent)
 
 VideoManager::~VideoManager()
 {
-    close();
+    // 先停止定时器，避免在析构过程中触发超时
+    if (m_timer) {
+        m_timer->stop();
+    }
+    
+    // 释放视频捕获对象，但不发出信号
+    if (m_videoCapture.isOpened()) {
+        m_videoCapture.release();
+    }
 }
 
 bool VideoManager::openFile(const QString& filePath)
 {
+    Logger::instance()->info(QString("========== 视频打开调试信息 =========="));
+    Logger::instance()->info(QString("尝试打开视频文件: %1").arg(filePath));
+    
     // 检查文件是否存在
     QFileInfo fileInfo(filePath);
+    Logger::instance()->info(QString("文件信息检查:"));
+    Logger::instance()->info(QString("  - 文件路径: %1").arg(filePath));
+    Logger::instance()->info(QString("  - 文件存在: %1").arg(fileInfo.exists() ? "是" : "否"));
+    Logger::instance()->info(QString("  - 是普通文件: %1").arg(fileInfo.isFile() ? "是" : "否"));
+    Logger::instance()->info(QString("  - 文件大小: %1 字节").arg(fileInfo.size()));
+    Logger::instance()->info(QString("  - 文件权限: %1").arg(fileInfo.isReadable() ? "可读" : "不可读"));
+    
     if (!fileInfo.exists() || !fileInfo.isFile()) {
-        Logger::instance()->error(QString("视频文件不存在: %1").arg(filePath));
-        emit errorOccurred(QString("视频文件不存在: %1").arg(filePath));
+        Logger::instance()->error(QString("视频文件不存在或不是普通文件: %1").arg(filePath));
+        emit errorOccurred(QString("视频文件不存在或不是普通文件: %1").arg(filePath));
+        Logger::instance()->info(QString("========== 视频打开失败 =========="));
         return false;
     }
 
     // 先关闭当前视频
     close();
 
-    // 打开视频文件
-    m_videoCapture.open(filePath.toStdString());
+    // 尝试打开视频文件
+    Logger::instance()->info(QString("调用OpenCV打开视频文件..."));
+    std::string stdPath = filePath.toLocal8Bit().constData();
+    Logger::instance()->info(QString("转换后的标准路径: %1").arg(QString::fromLocal8Bit(stdPath.c_str())));
+    
+    m_videoCapture.open(stdPath);
+    
+    Logger::instance()->info(QString("OpenCV打开结果: %1").arg(m_videoCapture.isOpened() ? "成功" : "失败"));
+    
     if (!m_videoCapture.isOpened()) {
         Logger::instance()->error(QString("无法打开视频文件: %1").arg(filePath));
+        Logger::instance()->info(QString("可能的原因:"));
+        Logger::instance()->info(QString("  1. 文件格式不支持"));
+        Logger::instance()->info(QString("  2. 缺少视频编解码器"));
+        Logger::instance()->info(QString("  3. 文件损坏"));
+        Logger::instance()->info(QString("  4. 路径包含中文或特殊字符"));
         emit errorOccurred(QString("无法打开视频文件: %1").arg(filePath));
+        Logger::instance()->info(QString("========== 视频打开失败 =========="));
         return false;
     }
 
