@@ -2,6 +2,10 @@
 #include "logger.h"
 #include "image_utils.h"
 #include <QCoreApplication>
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
 
 MatchStrategy::MatchStrategy() {}
 
@@ -257,4 +261,100 @@ cv::Mat OpenCVMatchStrategy::extractTemplateROI(const cv::Mat& image,
     // 如果需要多边形掩码，可以使用cv::fillPoly
 
     return roi;
+}
+
+bool OpenCVMatchStrategy::saveTemplate(const QString& imagePath, const QString& jsonPath) const
+{
+    if (!m_hasTemplate || m_templateImage.empty()) {
+        Logger::instance()->error("没有可用的模板数据");
+        return false;
+    }
+
+    try {
+        // 保存模板图像
+        if (!cv::imwrite(imagePath.toStdString(), m_templateImage)) {
+            Logger::instance()->error("保存模板图像失败: " + imagePath);
+            return false;
+        }
+
+        // 保存多边形点坐标到JSON
+        QJsonArray pointsArray;
+        for (const QPointF& point : m_polygonPoints) {
+            QJsonArray pointArray;
+            pointArray.append(point.x());
+            pointArray.append(point.y());
+            pointsArray.append(pointArray);
+        }
+
+        QJsonObject json;
+        json["polygonPoints"] = pointsArray;
+        json["matchMethod"] = m_matchMethod;
+
+        QFile file(jsonPath);
+        if (!file.open(QIODevice::WriteOnly)) {
+            Logger::instance()->error("保存模板参数文件失败: " + jsonPath);
+            return false;
+        }
+
+        QJsonDocument doc(json);
+        file.write(doc.toJson());
+        file.close();
+
+        Logger::instance()->info("模板保存成功: " + imagePath);
+        return true;
+
+    } catch (const cv::Exception& ex) {
+        Logger::instance()->error("保存模板失败: " + QString(ex.what()));
+        return false;
+    }
+}
+
+bool OpenCVMatchStrategy::loadTemplate(const QString& imagePath, const QString& jsonPath)
+{
+    try {
+        // 加载模板图像
+        m_templateImage = cv::imread(imagePath.toStdString());
+        if (m_templateImage.empty()) {
+            Logger::instance()->error("加载模板图像失败: " + imagePath);
+            return false;
+        }
+
+        // 加载多边形点坐标
+        QFile file(jsonPath);
+        if (!file.open(QIODevice::ReadOnly)) {
+            Logger::instance()->error("加载模板参数文件失败: " + jsonPath);
+            return false;
+        }
+
+        QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+        file.close();
+
+        if (!doc.isObject()) {
+            Logger::instance()->error("模板参数文件格式错误: " + jsonPath);
+            return false;
+        }
+
+        QJsonObject json = doc.object();
+        
+        // 读取多边形点
+        m_polygonPoints.clear();
+        QJsonArray pointsArray = json["polygonPoints"].toArray();
+        for (int i = 0; i < pointsArray.size(); ++i) {
+            QJsonArray pointArray = pointsArray[i].toArray();
+            if (pointArray.size() == 2) {
+                m_polygonPoints.append(QPointF(pointArray[0].toDouble(), pointArray[1].toDouble()));
+            }
+        }
+
+        // 读取匹配方法
+        m_matchMethod = json["matchMethod"].toInt(cv::TM_CCOEFF_NORMED);
+
+        m_hasTemplate = true;
+        Logger::instance()->info("模板加载成功: " + imagePath);
+        return true;
+
+    } catch (const cv::Exception& ex) {
+        Logger::instance()->error("加载模板失败: " + QString(ex.what()));
+        return false;
+    }
 }

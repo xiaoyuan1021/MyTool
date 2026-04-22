@@ -46,6 +46,8 @@ public slots:
     void clearTemplateDrawing();
     void createTemplate();
     void findTemplate();
+    void saveTemplate();
+    void loadTemplate();
     //void clearAllTemplates();
     void clearMatchResults();
     void onMatchTypeChanged(int index);

@@ -4,6 +4,7 @@
 #include "logger.h"
 #include <QMessageBox>
 #include <QInputDialog>
+#include <QFileDialog>
 
 TemplateTabWidget::TemplateTabWidget(ImageView* view,
                                      RoiManager* roiManager,
@@ -39,6 +40,8 @@ void TemplateTabWidget::initialize()
     connect(m_ui->btn_clearTemplate, &QPushButton::clicked, this, &TemplateTabWidget::clearTemplateDrawing);
     connect(m_ui->btn_creatTemplate, &QPushButton::clicked, this, &TemplateTabWidget::createTemplate);
     connect(m_ui->btn_findTemplate, &QPushButton::clicked, this, &TemplateTabWidget::findTemplate);
+    connect(m_ui->btn_saveTemplate, &QPushButton::clicked, this, &TemplateTabWidget::saveTemplate);
+    connect(m_ui->btn_loadTemplate, &QPushButton::clicked, this, &TemplateTabWidget::loadTemplate);
     //connect(m_ui->btn_clearAllTemplates, &QPushButton::clicked, this, &TemplateTabWidget::clearAllTemplates);
     connect(m_ui->comboBox_matchType, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &TemplateTabWidget::onMatchTypeChanged);
@@ -212,6 +215,59 @@ void TemplateTabWidget::clearMatchResults()
     if (!m_roiManager->getCurrentImage().empty()) {
         emit imageToShow(m_roiManager->getCurrentImage());
         Logger::instance()->info("已清除匹配结果");
+    }
+}
+
+void TemplateTabWidget::saveTemplate()
+{
+    if (!hasTemplate()) {
+        QMessageBox::warning(m_parent, "提示", "请先创建模板！");
+        return;
+    }
+
+    // 选择保存位置
+    QString imagePath = QFileDialog::getSaveFileName(m_parent, "保存模板图像", "", "PNG Images (*.png)");
+    if (imagePath.isEmpty()) {
+        return;
+    }
+
+    // 生成对应的JSON文件路径
+    QString jsonPath = imagePath;
+    jsonPath.replace(".png", ".json");
+
+    // 调用策略保存模板
+    if (m_currentStrategy->saveTemplate(imagePath, jsonPath)) {
+        QMessageBox::information(m_parent, "成功", "模板保存成功！");
+    } else {
+        QMessageBox::warning(m_parent, "失败", "模板保存失败，请查看日志");
+    }
+}
+
+void TemplateTabWidget::loadTemplate()
+{
+    // 选择要加载的模板图像
+    QString imagePath = QFileDialog::getOpenFileName(m_parent, "选择模板图像", "", "PNG Images (*.png)");
+    if (imagePath.isEmpty()) {
+        return;
+    }
+
+    // 生成对应的JSON文件路径
+    QString jsonPath = imagePath;
+    jsonPath.replace(".png", ".json");
+
+    // 检查JSON文件是否存在
+    QFile jsonFile(jsonPath);
+    if (!jsonFile.exists()) {
+        QMessageBox::warning(m_parent, "提示", "找不到对应的模板参数文件！");
+        return;
+    }
+
+    // 调用策略加载模板
+    if (m_currentStrategy->loadTemplate(imagePath, jsonPath)) {
+        updateUIState(true);
+        QMessageBox::information(m_parent, "成功", "模板加载成功！");
+    } else {
+        QMessageBox::warning(m_parent, "失败", "模板加载失败，请查看日志");
     }
 }
 
