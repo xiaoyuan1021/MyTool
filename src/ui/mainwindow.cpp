@@ -477,13 +477,7 @@ void MainWindow::on_btn_openImg_clicked()
         return;
     }
 
-    QMetaObject::Connection conn = connect(m_fileManager, &FileManager::imageLoaded,
-            this, [this](const cv::Mat&) {
-                processAndDisplay();
-            });
-
     m_fileManager->readImageFile(fileName);
-    disconnect(conn);
 }
 
 void MainWindow::on_btn_openVideo_clicked()
@@ -884,8 +878,6 @@ void MainWindow::onCurrentImageChanged(const QString& imageId)
             m_view->setTransform(transform);
             m_view->ensureVisible(viewRect);
         }
-        
-        processAndDisplay();
     }
     
     Logger::instance()->info(QString("已切换到图片: %1").arg(imageId));
@@ -919,7 +911,6 @@ void MainWindow::onAddImageClicked()
         const cv::Mat& currentImage = m_roiManager.getFullImage();
         if (!currentImage.empty()) {
             showImage(currentImage);
-            processAndDisplay();
         }
     }
 }
