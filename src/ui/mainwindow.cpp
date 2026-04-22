@@ -89,8 +89,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     setupSystemMonitor();
 
-    // 设置日志文件路径（使用正确的相对路径）
-    QString logDir = QCoreApplication::applicationDirPath() + "/logs";
+    // 设置日志文件路径（使用项目根目录）
+    QString logDir = PROJECT_ROOT_DIR "/logs";
     QDir dir(logDir);
     if (!dir.exists()) {
         dir.mkpath(".");

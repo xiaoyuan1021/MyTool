@@ -96,6 +96,9 @@ add_executable(VisionTool
 # 设置包含路径
 target_include_directories(VisionTool PRIVATE ${INCLUDE_DIRS})
 
+# 定义项目根目录宏，供代码使用
+target_compile_definitions(VisionTool PRIVATE PROJECT_ROOT_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+
 # 链接 Qt 库
 target_link_libraries(VisionTool PRIVATE
     Qt6::Core
