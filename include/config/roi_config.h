@@ -19,7 +19,8 @@ enum class DetectionType {
     Template,       // 模板匹配
     Line,           // 直线检测
     Blob,           // Blob分析
-    VideoSource     // 视频源
+    VideoSource,     // 视频源
+    ObjectDetection  // 目标检测
 };
 
 /**
@@ -32,6 +33,7 @@ inline QString detectionTypeToString(DetectionType type) {
         case DetectionType::Line: return "直线检测";
         case DetectionType::Blob: return "Blob分析";
         case DetectionType::VideoSource: return "视频源";
+        case DetectionType::ObjectDetection: return "目标检测";
         default: return "未知类型";
     }
 }
@@ -45,6 +47,7 @@ inline DetectionType stringToDetectionType(const QString& str) {
     if (str == "直线检测") return DetectionType::Line;
     if (str == "Blob分析") return DetectionType::Blob;
     if (str == "视频源") return DetectionType::VideoSource;
+    if (str == "目标检测") return DetectionType::ObjectDetection;
     return DetectionType::Blob; // 默认值
 }
 
@@ -115,6 +118,19 @@ struct TabConfig {
     /**
      * @brief 根据检测类型获取Tab配置
      */
+    /**
+     * @brief 获取目标检测的Tab配置
+     */
+    static TabConfig getObjectDetectionConfig() {
+        return TabConfig({
+            "图像",
+            "目标检测"
+        });
+    }
+    
+    /**
+     * @brief 根据检测类型获取Tab配置
+     */
     static TabConfig getConfigForType(DetectionType type) {
         switch (type) {
             case DetectionType::Blob:
@@ -125,6 +141,8 @@ struct TabConfig {
                 return getBarcodeConfig();
             case DetectionType::VideoSource:
                 return getVideoConfig();
+            case DetectionType::ObjectDetection:
+                return getObjectDetectionConfig();
             default:
                 return TabConfig();
         }
@@ -155,10 +173,11 @@ struct DetectionItem {
     QString description;        // 描述信息
 
     // 特定类型的配置
-    BlobAnalysisConfig blobConfig;           // Blob分析配置
-    LineDetectionConfig lineConfig;          // 直线检测配置
-    BarcodeRecognitionConfig barcodeConfig;  // 条码识别配置
-    VideoSourceConfig videoConfig;           // 视频源配置
+    BlobAnalysisConfig blobConfig;               // Blob分析配置
+    LineDetectionConfig lineConfig;              // 直线检测配置
+    BarcodeRecognitionConfig barcodeConfig;      // 条码识别配置
+    VideoSourceConfig videoConfig;               // 视频源配置
+    ObjectDetectionConfig objectDetectionConfig; // 目标检测配置
 
     DetectionItem() 
         : type(DetectionType::Blob), enabled(true) {}
@@ -181,6 +200,9 @@ struct DetectionItem {
                 break;
             case DetectionType::VideoSource:
                 videoConfig = VideoSourceConfig();
+                break;
+            case DetectionType::ObjectDetection:
+                objectDetectionConfig = ObjectDetectionConfig();
                 break;
             default:
                 break;
@@ -217,6 +239,9 @@ struct DetectionItem {
                 break;
             case DetectionType::VideoSource:
                 obj["videoConfig"] = videoConfig.toJson();
+                break;
+            case DetectionType::ObjectDetection:
+                obj["objectDetectionConfig"] = objectDetectionConfig.toJson();
                 break;
             default:
                 break;
@@ -260,6 +285,11 @@ struct DetectionItem {
             case DetectionType::VideoSource:
                 if (obj.contains("videoConfig")) {
                     videoConfig.fromJson(obj["videoConfig"].toObject());
+                }
+                break;
+            case DetectionType::ObjectDetection:
+                if (obj.contains("objectDetectionConfig")) {
+                    objectDetectionConfig.fromJson(obj["objectDetectionConfig"].toObject());
                 }
                 break;
             default:

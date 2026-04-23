@@ -211,6 +211,11 @@ MainWindow::MainWindow(QWidget *parent)
         m_pipelineManager, [this]() { m_processDebounceTimer->start(); }, this);
     ui->tabWidget->addTab(m_barcodeTabWidget.get(), "条码");
 
+    // 创建目标检测Tab并添加到tabWidget
+    m_objectDetectionTabWidget = std::make_unique<ObjectDetectionTabWidget>(
+        m_pipelineManager, this);
+    ui->tabWidget->addTab(m_objectDetectionTabWidget.get(), "目标检测");
+
     // 记录所有Tab Widget和名称，用于动态切换
     m_tabWidgets = {
         m_imageTabWidget.get(),
@@ -222,9 +227,10 @@ MainWindow::MainWindow(QWidget *parent)
         m_extractTabWidget.get(),
         m_judgeTabWidget.get(),
         m_lineDetectTabWidget.get(),
-        m_barcodeTabWidget.get()
+        m_barcodeTabWidget.get(),
+        m_objectDetectionTabWidget.get()
     };
-    m_tabNames = {"图像", "视频", "增强", "过滤", "补正", "处理", "提取", "判定", "直线", "条码"};
+    m_tabNames = {"图像", "视频", "增强", "过滤", "补正", "处理", "提取", "判定", "直线", "条码", "目标检测"};
     
     // 初始化Controller对象
     m_roiUiController = new RoiUiController(m_multiRoiConfig, m_roiManager, m_view, ui->statusbar, this);

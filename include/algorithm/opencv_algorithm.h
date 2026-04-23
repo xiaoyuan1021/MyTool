@@ -121,7 +121,7 @@ public:
     // 计算单个区域的完整特征
     static RegionFeature calculateRegionFeature(const cv::Mat& region, int index = 1);
     
-    // ========== 新增特征计算函数 ==========
+    // ========== 特征计算函数 ==========
     
     // 计算紧凑度 (4π*面积/周长²)
     static double calculateCompactness(const std::vector<cv::Point>& contour);

@@ -32,6 +32,7 @@
 #include "widgets/judge_tab_widget.h"
 #include "widgets/barcode_tab_widget.h"
 #include "widgets/video_tab_widget.h"
+#include "widgets/object_detection_tab_widget.h"
 #include "widgets/roi_list_widget.h"
 #include "roi_config.h"
 #include "log_page.h"
@@ -125,6 +126,7 @@ private:
     std::unique_ptr<ProcessTabWidget> m_processTabWidget;
     std::unique_ptr<JudgeTabWidget> m_judgeTabWidget;
     std::unique_ptr<BarcodeTabWidget> m_barcodeTabWidget;
+    std::unique_ptr<ObjectDetectionTabWidget> m_objectDetectionTabWidget;
     
     std::unique_ptr<ImageTabWidget> m_imageTabWidget;
     std::unique_ptr<VideoTabWidget> m_videoTabWidget;
