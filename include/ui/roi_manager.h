@@ -271,6 +271,20 @@ public:
      */
     void resetRoiWithUI(ImageView *view, QStatusBar *statusBar);
 
+    // ==================== 全量配置导出/导入 ====================
+
+    /**
+     * @brief 导出所有图片的ROI配置为JSON
+     * @return JSON文档
+     */
+    QJsonDocument exportAllConfigsToJson() const;
+
+    /**
+     * @brief 从JSON导入所有图片的ROI配置
+     * @param doc JSON文档
+     */
+    void importAllConfigsFromJson(const QJsonDocument& doc);
+
     // ==================== 缩放状态管理方法 ====================
 
     /**

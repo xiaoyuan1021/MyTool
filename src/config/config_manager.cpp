@@ -75,6 +75,18 @@ QJsonObject AppConfig::toJson() const
     }
     json["algorithms"] = algorithmArray;
 
+    // 多图片ROI配置
+    json["currentImageId"] = currentImageId;
+    QJsonObject multiRoiObj;
+    for (auto it = multiRoiConfigs.constBegin(); it != multiRoiConfigs.constEnd(); ++it) {
+        QJsonArray roiConfigsArray;
+        for (const auto& config : it.value()) {
+            roiConfigsArray.append(config.toJson());
+        }
+        multiRoiObj[it.key()] = roiConfigsArray;
+    }
+    json["multiRoiConfigs"] = multiRoiObj;
+
     return json;
 }
 
@@ -161,6 +173,25 @@ void AppConfig::fromJson(const QJsonObject& json)
                 step.params[it.key()] = it.value().toVariant();
             }
             algorithmQueue.append(step);
+        }
+    }
+
+    // 多图片ROI配置
+    if (json.contains("currentImageId")) {
+        currentImageId = json["currentImageId"].toString();
+    }
+    if (json.contains("multiRoiConfigs")) {
+        multiRoiConfigs.clear();
+        QJsonObject multiRoiObj = json["multiRoiConfigs"].toObject();
+        for (auto it = multiRoiObj.begin(); it != multiRoiObj.end(); ++it) {
+            QList<RoiConfig> configs;
+            QJsonArray configsArray = it.value().toArray();
+            for (const auto& val : configsArray) {
+                RoiConfig config;
+                config.fromJson(val.toObject());
+                configs.append(config);
+            }
+            multiRoiConfigs[it.key()] = configs;
         }
     }
 }

@@ -90,7 +90,7 @@ void ConfigController::loadConfig(QWidget* parentWidget)
 
 void ConfigController::collectConfigFromUI(AppConfig& config)
 {
-    // 收集 ROI 配置
+    // 收集 ROI 配置（单ROI模式，向后兼容）
     if (m_roiManager.isRoiActive()) {
         cv::Rect roi = m_roiManager.getLastRoi();
         config.roiRect = QRectF(
@@ -99,6 +99,32 @@ void ConfigController::collectConfigFromUI(AppConfig& config)
             static_cast<qreal>(roi.width), 
             static_cast<qreal>(roi.height)
         );
+    }
+    
+    // 收集多图片ROI配置
+    config.currentImageId = m_roiManager.getCurrentImageId();
+    const QStringList imageIds = m_roiManager.getImageIds();
+    for (const QString& imageId : imageIds) {
+        // 临时切换到该图片获取其配置
+        // 但这里我们不需要切换，因为RoiManager内部已经按图片ID存储了配置
+    }
+    // 直接从RoiManager导出所有配置
+    QJsonDocument allConfigsDoc = m_roiManager.exportAllConfigsToJson();
+    QJsonObject allConfigsObj = allConfigsDoc.object();
+    if (allConfigsObj.contains("images")) {
+        QJsonObject imagesObj = allConfigsObj["images"].toObject();
+        for (auto it = imagesObj.begin(); it != imagesObj.end(); ++it) {
+            QString imageId = it.key();
+            QJsonObject imageObj = it.value().toObject();
+            QList<RoiConfig> configs;
+            QJsonArray configsArray = imageObj["roiConfigs"].toArray();
+            for (const auto& val : configsArray) {
+                RoiConfig cfg;
+                cfg.fromJson(val.toObject());
+                configs.append(cfg);
+            }
+            config.multiRoiConfigs[imageId] = configs;
+        }
     }
     
     // 收集增强参数
@@ -140,10 +166,34 @@ void ConfigController::collectConfigFromUI(AppConfig& config)
 
 void ConfigController::applyConfigToUI(const AppConfig& config)
 {
-    // 应用 ROI 配置
+    // 应用 ROI 配置（单ROI模式，向后兼容）
     if (config.roiRect.isValid()) {
         m_roiManager.setRoi(config.roiRect);
         Logger::instance()->info("已恢复 ROI 配置");
+    }
+    
+    // 应用多图片ROI配置
+    if (!config.multiRoiConfigs.isEmpty()) {
+        // 构建JSON文档用于导入
+        QJsonObject root;
+        root["version"] = "1.0";
+        root["currentImageId"] = config.currentImageId;
+        
+        QJsonObject imagesObj;
+        for (auto it = config.multiRoiConfigs.constBegin(); it != config.multiRoiConfigs.constEnd(); ++it) {
+            QJsonObject imageObj;
+            QJsonArray configsArray;
+            for (const auto& cfg : it.value()) {
+                configsArray.append(cfg.toJson());
+            }
+            imageObj["roiConfigs"] = configsArray;
+            imageObj["selectedRoiId"] = "";
+            imagesObj[it.key()] = imageObj;
+        }
+        root["images"] = imagesObj;
+        
+        m_roiManager.importAllConfigsFromJson(QJsonDocument(root));
+        Logger::instance()->info(QString("已恢复多图片ROI配置，共%1张图片").arg(config.multiRoiConfigs.size()));
     }
     
     // 应用增强参数

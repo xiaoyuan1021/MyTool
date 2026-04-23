@@ -692,6 +692,73 @@ void RoiManager::addRoiConfig(const RoiConfig& config)
     emit roiConfigChanged();
 }
 
+// ==================== 全量配置导出/导入 ====================
+
+QJsonDocument RoiManager::exportAllConfigsToJson() const
+{
+    QJsonObject root;
+    root["version"] = "1.0";
+    root["currentImageId"] = m_currentImageId;
+
+    QJsonObject imagesObj;
+    for (auto it = m_imageRoisMap.constBegin(); it != m_imageRoisMap.constEnd(); ++it) {
+        QJsonObject imageObj;
+        imageObj["name"] = it.value().name;
+
+        QJsonArray configsArray;
+        for (const auto& config : it.value().roiConfigs) {
+            configsArray.append(config.toJson());
+        }
+        imageObj["roiConfigs"] = configsArray;
+        imageObj["selectedRoiId"] = it.value().selectedRoiId;
+
+        imagesObj[it.key()] = imageObj;
+    }
+    root["images"] = imagesObj;
+
+    return QJsonDocument(root);
+}
+
+void RoiManager::importAllConfigsFromJson(const QJsonDocument& doc)
+{
+    QJsonObject root = doc.object();
+
+    if (root.contains("images")) {
+        QJsonObject imagesObj = root["images"].toObject();
+        for (auto it = imagesObj.begin(); it != imagesObj.end(); ++it) {
+            QString imageId = it.key();
+            QJsonObject imageObj = it.value().toObject();
+
+            // 如果该图片在内存中已存在，恢复其ROI配置
+            if (m_imageRoisMap.contains(imageId)) {
+                ImageRois& imageRois = m_imageRoisMap[imageId];
+                imageRois.roiConfigs.clear();
+
+                QJsonArray configsArray = imageObj["roiConfigs"].toArray();
+                for (const auto& val : configsArray) {
+                    RoiConfig config;
+                    config.fromJson(val.toObject());
+                    imageRois.roiConfigs.append(config);
+                }
+                imageRois.selectedRoiId = imageObj["selectedRoiId"].toString();
+
+                Logger::instance()->info(QString("[RoiManager] 已恢复图片ROI配置: imageId=%1, count=%2")
+                                             .arg(imageId).arg(imageRois.roiConfigs.size()));
+            }
+        }
+    }
+
+    // 恢复当前图片ID
+    if (root.contains("currentImageId")) {
+        QString savedImageId = root["currentImageId"].toString();
+        if (m_imageRoisMap.contains(savedImageId)) {
+            switchToImage(savedImageId);
+        }
+    }
+
+    emit roiConfigChanged();
+}
+
 bool RoiManager::removeRoiConfig(const QString& roiId)
 {
     auto it = m_imageRoisMap.find(m_currentImageId);

@@ -12,17 +12,21 @@
 #include <QMessageBox>
 #include <QInputDialog>
 #include "roi_config.h"
-#include "ui/roi_manager.h"
 
 /**
- * @brief ROI列表管理组件
+ * @brief ROI列表管理组件（纯UI组件，不直接依赖RoiManager）
  * 
  * 功能：
  * 1. 显示ROI列表（树形结构）
- * 2. 支持添加/删除ROI
+ * 2. 支持添加/删除ROI（通过信号请求）
  * 3. 支持ROI选中和高亮
  * 4. 支持右键菜单操作
  * 5. 显示每个ROI的检测项数量
+ * 
+ * 设计原则：
+ * - 本组件不直接操作RoiManager
+ * - 所有数据操作通过信号请求，由外部（Controller）处理
+ * - 数据通过setRoiData()方法从外部同步
  */
 class RoiListWidget : public QWidget
 {
@@ -35,10 +39,29 @@ public:
     // ========== 数据管理接口 ==========
 
     /**
-     * @brief 设置ROI管理器引用
-     * @param roiManager ROI管理器引用
+     * @brief 设置ROI数据（从外部同步）
+     * @param rois ROI配置列表
      */
-    void setRoiManager(RoiManager& roiManager);
+    void setRoiData(const QList<RoiConfig>& rois);
+
+    /**
+     * @brief 添加单个ROI到显示列表
+     * @param roi ROI配置
+     */
+    void addRoi(const RoiConfig& roi);
+
+    /**
+     * @brief 从显示列表移除ROI
+     * @param roiId ROI ID
+     */
+    void removeRoi(const QString& roiId);
+
+    /**
+     * @brief 更新单个ROI的显示
+     * @param roiId ROI ID
+     * @param roi 新的ROI配置
+     */
+    void updateRoi(const QString& roiId, const RoiConfig& roi);
 
     /**
      * @brief 刷新ROI列表显示
@@ -56,12 +79,6 @@ public:
      * @return ROI ID，如果没有选中返回空字符串
      */
     QString getSelectedRoiId() const;
-
-    /**
-     * @brief 获取当前选中的ROI配置
-     * @return ROI配置指针，如果没有选中返回nullptr
-     */
-    RoiConfig* getSelectedRoi();
 
 signals:
     // ========== 信号 ==========
@@ -159,7 +176,7 @@ private:
 
     // ========== 数据成员 ==========
 
-    RoiManager* m_roiManager;           // ROI管理器（非拥有）
+    QList<RoiConfig> m_roiData;         // ROI数据缓存（从外部同步）
     QString m_selectedRoiId;            // 当前选中的ROI ID
 
     // ========== 初始化函数 ==========

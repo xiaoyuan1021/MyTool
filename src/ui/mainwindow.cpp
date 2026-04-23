@@ -204,6 +204,12 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_imageListManager, &ImageListManager::imageDisplayRequested, this, &MainWindow::showImage);
     connect(m_imageListManager, &ImageListManager::processRequested, this, &MainWindow::processAndDisplay);
 
+    // 连接图片切换信号：当切换图片时，自动同步ROI配置到UI
+    connect(&m_roiManager, &RoiManager::currentImageChanged, this, [this](const QString& imageId) {
+        Q_UNUSED(imageId);
+        m_roiUiController->syncRoiConfigsToWidget();
+    });
+
     // 连接检测项选中信号到Tab切换逻辑
     connect(m_roiUiController, &RoiUiController::detectionItemSelected, 
             this, [this](const QString& roiId, const QString& detectionId) {
@@ -479,136 +485,31 @@ void MainWindow::on_btn_drawRoi_clicked()
 
 void MainWindow::on_btn_resetROI_clicked()
 {
-    m_roiManager.resetRoiWithUI(m_view, ui->statusbar);
-    processAndDisplay();  // 立即更新显示
+    m_roiUiController->onResetRoiClicked();
+    processAndDisplay();
 }
 
 void MainWindow::onRoiSelected(const QRectF &roiImgRectF)
 {
-    if (!m_roiManager.handleRoiSelected(roiImgRectF, ui->statusbar)) {
-        return;
-    }
-
-    // 绘制完ROI后重置图像缩放，恢复到原始比例
-    m_view->resetZoom();
-
+    m_roiUiController->handleRoiSelectedComplete(roiImgRectF);
     processAndDisplay();
 }
 
 void MainWindow::on_btn_addROI_clicked()
 {
-    // 检查是否已加载图像
-    if (m_roiManager.getFullImage().empty()) {
-        QMessageBox::warning(this, "警告", "请先加载一张图像");
-        return;
-    }
-    
-    // 提示用户绘制ROI
-    Logger::instance()->info("请在图像上绘制新的ROI");
-    m_roiManager.enableDrawRoiMode(m_view, ui->statusbar);
+    m_roiUiController->onAddRoiClicked();
 }
 
 void MainWindow::on_btn_deleteROI_clicked()
 {
-    // 委托给RoiUiController处理
-    // 这里需要通过Controller的公共方法来处理删除
-    // 暂时保留原有的删除逻辑，但使用Controller的刷新方法
-    
-    // 检查是否有选中的ROI
-    QTreeWidgetItem* currentItem = ui->treeView->currentItem();
-    if (!currentItem) {
-        QMessageBox::warning(this, "警告", "请先选择要删除的ROI");
-        return;
-    }
-    
-    // 获取ROI ID
-    QString roiId = currentItem->data(0, Qt::UserRole).toString();
-    QString itemType = currentItem->data(0, Qt::UserRole + 1).toString();
-    
-    // 如果选中的是检测项，需要找到其父ROI
-    if (itemType == "detection") {
-        QTreeWidgetItem* parentItem = currentItem->parent();
-        if (parentItem) {
-            roiId = parentItem->data(0, Qt::UserRole).toString();
-        } else {
-            QMessageBox::warning(this, "警告", "请先选择要删除的ROI");
-            return;
-        }
-    }
-    
-    // 获取ROI配置
-    RoiConfig* roi = m_roiManager.getRoiConfig(roiId);
-    if (!roi) {
-        QMessageBox::warning(this, "警告", "未找到选中的ROI");
-        return;
-    }
-    
-    // 确认删除
-    QMessageBox::StandardButton reply = QMessageBox::question(
-        this, "确认删除",
-        QString("确定要删除ROI \"%1\" 及其所有检测项吗？").arg(roi->roiName),
-        QMessageBox::Yes | QMessageBox::No
-    );
-    
-    if (reply == QMessageBox::Yes) {
-        // 删除ROI
-        m_roiManager.removeRoiConfig(roiId);
-        
-        // 使用Controller刷新树形视图
-        m_roiUiController->refreshRoiTreeView();
-        
-        // 重置ROI管理器
-        m_roiManager.resetRoiWithUI(m_view, ui->statusbar);
-        
-        // 重新处理图像
-        processAndDisplay();
-        
-        Logger::instance()->info(QString("已删除ROI: %1").arg(roi->roiName));
-    }
+    m_roiUiController->onDeleteRoiClicked();
+    processAndDisplay();
 }
 
 void MainWindow::on_btn_switchROI_clicked()
 {
-    if (m_roiManager.getFullImage().empty()) {
-        QMessageBox::warning(this, "警告", "请先加载一张图像");
-        return;
-    }
-    
-    if (m_roiManager.isRoiActive()) {
-        // 当前是ROI模式，切换到原图模式
-        // 先保存当前ROI的PipelineConfig
-        m_roiUiController->saveCurrentRoiPipelineConfig();
-        
-        m_roiManager.resetRoi();
-        m_view->clearRoi();
-        m_view->resetZoom();
-        m_view->setImage(ImageUtils::matToQImage(m_roiManager.getFullImage()));
-        Logger::instance()->info("已切换到原图模式");
-    } else {
-        // 当前是原图模式，切换到ROI模式
-        // 使用Controller获取当前选中的ROI ID
-        QString currentRoiId = m_roiUiController->getCurrentSelectedRoiId();
-        
-        if (currentRoiId.isEmpty()) {
-            QMessageBox::warning(this, "警告", "请先在左侧列表中选择一个ROI");
-            return;
-        }
-        
-        RoiConfig* roi = m_roiManager.getRoiConfig(currentRoiId);
-        if (!roi) {
-            QMessageBox::warning(this, "警告", "未找到选中的ROI");
-            return;
-        }
-        
-        // 加载该ROI的PipelineConfig到PipelineManager
-        m_roiUiController->loadRoiPipelineConfig(currentRoiId);
-        
-        // 切换到ROI模式
-        m_view->clearRoi();
-        m_roiManager.setRoi(roi->roiRect);
-        processAndDisplay();
-        Logger::instance()->info(QString("已切换到ROI模式: %1").arg(roi->roiName));
-    }
+    m_roiUiController->onSwitchRoiClicked();
+    processAndDisplay();
 }
 
 void MainWindow::on_tabWidget_currentChanged(int index)
@@ -676,7 +577,7 @@ void MainWindow::applyConfigToUI(const AppConfig& config)
     // 保留为空方法以避免编译错误
 }
 
-// ========== 检测项管理已移至Controller ==========
+// ========== 检测项管理已委托给Controller ==========
 
 void MainWindow::onDeleteDetectionClicked()
 {
@@ -697,31 +598,7 @@ void MainWindow::onDeleteDetectionClicked()
         
         if (parentItem) {
             QString roiId = parentItem->data(0, Qt::UserRole).toString();
-            RoiConfig* roi = m_roiManager.getRoiConfig(roiId);
-            
-            if (roi) {
-                // 查找检测项名称用于确认提示
-                QString detectionName;
-                for (const auto& detection : roi->detectionItems) {
-                    if (detection.itemId == detectionId) {
-                        detectionName = detection.itemName;
-                        break;
-                    }
-                }
-                
-                // 确认删除
-                QMessageBox::StandardButton reply = QMessageBox::question(
-                    this, "确认删除",
-                    QString("确定要删除检测项 \"%1\" 吗？").arg(detectionName.isEmpty() ? detectionId : detectionName),
-                    QMessageBox::Yes | QMessageBox::No
-                );
-                
-                if (reply == QMessageBox::Yes) {
-                    roi->removeDetectionItem(detectionId);
-                    m_roiUiController->refreshRoiTreeView();
-                    Logger::instance()->info(QString("已删除检测项: %1").arg(detectionName.isEmpty() ? detectionId : detectionName));
-                }
-            }
+            m_roiUiController->deleteDetectionItem(roiId, detectionId);
         }
     } else {
         // 选中的是ROI，提示用户选择检测项

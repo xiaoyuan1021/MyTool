@@ -5,7 +5,6 @@
 
 RoiListWidget::RoiListWidget(QWidget* parent)
     : QWidget(parent)
-    , m_roiManager(nullptr)
     , m_titleLabel(nullptr)
     , m_addRoiButton(nullptr)
     , m_deleteRoiButton(nullptr)
@@ -26,10 +25,52 @@ RoiListWidget::~RoiListWidget()
 
 // ========== 数据管理接口 ==========
 
-void RoiListWidget::setRoiManager(RoiManager& roiManager)
+void RoiListWidget::setRoiData(const QList<RoiConfig>& rois)
 {
-    m_roiManager = &roiManager;
+    m_roiData = rois;
     refreshRoiList();
+}
+
+void RoiListWidget::addRoi(const RoiConfig& roi)
+{
+    m_roiData.append(roi);
+    QTreeWidgetItem* item = createRoiTreeWidgetItem(roi);
+    m_roiTreeWidget->addTopLevelItem(item);
+    m_roiTreeWidget->expandAll();
+}
+
+void RoiListWidget::removeRoi(const QString& roiId)
+{
+    for (int i = 0; i < m_roiData.size(); ++i) {
+        if (m_roiData[i].roiId == roiId) {
+            m_roiData.removeAt(i);
+            break;
+        }
+    }
+    
+    QTreeWidgetItem* item = findRoiItem(roiId);
+    if (item) {
+        delete item;
+    }
+    
+    if (m_selectedRoiId == roiId) {
+        m_selectedRoiId.clear();
+    }
+}
+
+void RoiListWidget::updateRoi(const QString& roiId, const RoiConfig& roi)
+{
+    for (int i = 0; i < m_roiData.size(); ++i) {
+        if (m_roiData[i].roiId == roiId) {
+            m_roiData[i] = roi;
+            break;
+        }
+    }
+    
+    QTreeWidgetItem* item = findRoiItem(roiId);
+    if (item) {
+        updateRoiTreeWidgetItem(item, roi);
+    }
 }
 
 void RoiListWidget::refreshRoiList()
@@ -41,7 +82,7 @@ void RoiListWidget::refreshRoiList()
     // 清空现有项目
     m_roiTreeWidget->clear();
 
-    if (!m_roiManager || m_roiManager->getRoiConfigs().isEmpty()) {
+    if (m_roiData.isEmpty()) {
         // 如果没有ROI，显示提示信息
         QTreeWidgetItem* emptyItem = new QTreeWidgetItem(m_roiTreeWidget);
         emptyItem->setText(0, "暂无ROI");
@@ -51,7 +92,7 @@ void RoiListWidget::refreshRoiList()
     }
 
     // 添加ROI项目
-    for (const auto& roi : m_roiManager->getRoiConfigs()) {
+    for (const auto& roi : m_roiData) {
         QTreeWidgetItem* item = createRoiTreeWidgetItem(roi);
         m_roiTreeWidget->addTopLevelItem(item);
         
@@ -78,15 +119,6 @@ void RoiListWidget::selectRoi(const QString& roiId)
 QString RoiListWidget::getSelectedRoiId() const
 {
     return m_selectedRoiId;
-}
-
-RoiConfig* RoiListWidget::getSelectedRoi()
-{
-    if (!m_roiManager || m_selectedRoiId.isEmpty()) {
-        return nullptr;
-    }
-
-    return m_roiManager->getRoiConfig(m_selectedRoiId);
 }
 
 // ========== 私有槽函数 ==========
@@ -124,9 +156,15 @@ void RoiListWidget::onDeleteRoiClicked()
         return;
     }
 
-    // 获取ROI名称用于确认提示
-    RoiConfig* roi = getSelectedRoi();
-    QString roiName = roi ? roi->roiName : m_selectedRoiId;
+    // 获取ROI名称用于确认提示（从本地缓存）
+    QString roiName;
+    for (const auto& roi : m_roiData) {
+        if (roi.roiId == m_selectedRoiId) {
+            roiName = roi.roiName;
+            break;
+        }
+    }
+    if (roiName.isEmpty()) roiName = m_selectedRoiId;
 
     // 确认删除
     QMessageBox::StandardButton reply = QMessageBox::question(this,
@@ -178,6 +216,16 @@ void RoiListWidget::onRoiContextMenuRequested(const QPoint& pos)
         emit roiSelectionChanged(roiId);
     }
 
+    // 查找ROI名称（从本地缓存）
+    QString roiName;
+    for (const auto& roi : m_roiData) {
+        if (roi.roiId == roiId) {
+            roiName = roi.roiName;
+            break;
+        }
+    }
+    if (roiName.isEmpty()) roiName = roiId;
+
     // 创建右键菜单
     QMenu contextMenu(this);
     
@@ -187,19 +235,16 @@ void RoiListWidget::onRoiContextMenuRequested(const QPoint& pos)
     QAction* deleteAction = contextMenu.addAction("删除");
 
     // 连接动作
-    connect(renameAction, &QAction::triggered, [this, roiId]() {
-        RoiConfig* roi = m_roiManager->getRoiConfig(roiId);
-        if (!roi) return;
-
+    connect(renameAction, &QAction::triggered, [this, roiId, roiName]() {
         bool ok;
         QString newName = QInputDialog::getText(this, 
             "重命名ROI", 
             "请输入新名称:", 
             QLineEdit::Normal, 
-            roi->roiName, 
+            roiName, 
             &ok);
 
-        if (ok && !newName.isEmpty() && newName != roi->roiName) {
+        if (ok && !newName.isEmpty() && newName != roiName) {
             if (validateRoiName(newName)) {
                 emit roiRenameRequested(roiId, newName);
             } else {
@@ -209,16 +254,16 @@ void RoiListWidget::onRoiContextMenuRequested(const QPoint& pos)
     });
 
     connect(toggleActiveAction, &QAction::triggered, [this, roiId]() {
-        RoiConfig* roi = m_roiManager->getRoiConfig(roiId);
-        if (roi) {
-            emit roiActiveChanged(roiId, !roi->isActive);
+        // 查找ROI的激活状态
+        for (const auto& roi : m_roiData) {
+            if (roi.roiId == roiId) {
+                emit roiActiveChanged(roiId, !roi.isActive);
+                break;
+            }
         }
     });
 
-    connect(deleteAction, &QAction::triggered, [this, roiId]() {
-        RoiConfig* roi = m_roiManager->getRoiConfig(roiId);
-        QString roiName = roi ? roi->roiName : roiId;
-
+    connect(deleteAction, &QAction::triggered, [this, roiId, roiName]() {
         QMessageBox::StandardButton reply = QMessageBox::question(this,
             "确认删除",
             QString("确定要删除ROI \"%1\" 吗？").arg(roiName),
@@ -247,19 +292,26 @@ void RoiListWidget::onRoiItemDoubleClicked(QTreeWidgetItem* item, int column)
         return;
     }
 
-    // 双击时触发重命名
-    RoiConfig* roi = m_roiManager->getRoiConfig(roiId);
-    if (!roi) return;
+    // 查找ROI名称（从本地缓存）
+    QString roiName;
+    for (const auto& roi : m_roiData) {
+        if (roi.roiId == roiId) {
+            roiName = roi.roiName;
+            break;
+        }
+    }
+    if (roiName.isEmpty()) return;
 
+    // 双击时触发重命名
     bool ok;
     QString newName = QInputDialog::getText(this, 
         "重命名ROI", 
         "请输入新名称:", 
         QLineEdit::Normal, 
-        roi->roiName, 
+        roiName, 
         &ok);
 
-    if (ok && !newName.isEmpty() && newName != roi->roiName) {
+    if (ok && !newName.isEmpty() && newName != roiName) {
         if (validateRoiName(newName)) {
             emit roiRenameRequested(roiId, newName);
         } else {
@@ -450,12 +502,8 @@ void RoiListWidget::updateSelection(const QString& roiId)
 
 QString RoiListWidget::generateNewRoiName() const
 {
-    if (!m_roiManager) {
-        return "ROI_1";
-    }
-
     int maxIndex = 0;
-    for (const auto& roi : m_roiManager->getRoiConfigs()) {
+    for (const auto& roi : m_roiData) {
         QString name = roi.roiName;
         if (name.startsWith("ROI_")) {
             bool ok;
@@ -481,12 +529,10 @@ bool RoiListWidget::validateRoiName(const QString& name) const
         return false;
     }
 
-    // 检查名称是否已存在
-    if (m_roiManager) {
-        for (const auto& roi : m_roiManager->getRoiConfigs()) {
-            if (roi.roiName == name) {
-                return false;
-            }
+    // 检查名称是否已存在（从本地缓存）
+    for (const auto& roi : m_roiData) {
+        if (roi.roiName == name) {
+            return false;
         }
     }
 

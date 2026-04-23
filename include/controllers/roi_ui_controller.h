@@ -15,6 +15,9 @@
 #include "image_view.h"
 #include "pipeline_manager.h"
 
+// 前向声明
+class RoiListWidget;
+
 QT_BEGIN_NAMESPACE
 class QStatusBar;
 QT_END_NAMESPACE
@@ -51,6 +54,13 @@ public:
     void onDeleteRoiClicked();
     void onSwitchRoiClicked();
     void onRoiSelected(const QRectF& roiRect);
+    
+    // ROI操作方法（供MainWindow委托调用）
+    void handleRoiSelectedComplete(const QRectF& roiImgRectF);
+    QString addRoiWithName(const QString& roiName);
+    bool renameRoi(const QString& roiId, const QString& newName);
+    bool toggleRoiActive(const QString& roiId);
+    void deleteDetectionItem(const QString& roiId, const QString& detectionId);
 
     // ROI树形视图管理
     void refreshRoiTreeView();
@@ -67,6 +77,15 @@ public:
     // 加载指定ROI的PipelineConfig到PipelineManager
     void loadRoiPipelineConfig(const QString& roiId);
     
+    // 设置RoiListWidget并建立信号连接
+    void setupRoiListWidget(RoiListWidget* roiListWidget);
+
+    // 同步当前图片的ROI配置到RoiListWidget（图片切换时调用）
+    void syncRoiConfigsToWidget();
+
+    // 获取RoiManager引用
+    RoiManager& getRoiManager() { return m_roiManager; }
+
 signals:
     // ROI变更信号（用于通知主窗口更新显示）
     void roiChanged();
@@ -76,6 +95,23 @@ signals:
     
     // ROI切换信号（通知MainWindow刷新EnhanceTabWidget的UI）
     void roiPipelineConfigChanged(const PipelineConfig& config);
+    
+    // 检测项删除信号
+    void detectionItemDeleted(const QString& roiId, const QString& detectionId);
+    
+    // ROI重命名信号
+    void roiRenamed(const QString& roiId, const QString& newName);
+    
+    // ROI激活状态变化信号
+    void roiActiveToggled(const QString& roiId, bool active);
+
+private slots:
+    // RoiListWidget信号处理槽函数
+    void handleRoiAddRequested(const QString& roiName);
+    void handleRoiDeleteRequested(const QString& roiId);
+    void handleRoiRenameRequested(const QString& roiId, const QString& newName);
+    void handleRoiActiveChanged(const QString& roiId, bool active);
+    void handleRoiSelectionChanged(const QString& roiId);
 
 private:
     RoiManager& m_roiManager;
@@ -83,6 +119,7 @@ private:
     ImageView* m_view;
     QStatusBar* m_statusBar;
     QTreeWidget* m_treeView;
+    RoiListWidget* m_roiListWidget;  // RoiListWidget引用
     QString m_currentSelectedRoiId;
 };
 
