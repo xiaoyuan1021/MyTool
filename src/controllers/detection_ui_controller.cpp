@@ -113,8 +113,12 @@ void DetectionUiController::switchToTabConfig(const TabConfig& config)
         m_tabWidget->setTabVisible(i, false);
     }
     
-    // 显示配置中指定的Tab
+    // 显示配置中指定的Tab（懒加载：如果Tab尚未创建则通知MainWindow创建）
     for (const QString& tabName : config.tabNames) {
+        // 请求MainWindow确保此Tab已创建
+        emit ensureTabNeeded(tabName);
+        
+        // 找到并显示对应的Tab
         for (int i = 0; i < m_tabNames.size(); ++i) {
             if (m_tabNames[i] == tabName) {
                 m_tabWidget->setTabVisible(i, true);

@@ -139,158 +139,22 @@ MainWindow::MainWindow(QWidget *parent)
         ui->stackedWidget_main->setCurrentIndex(0);
     });
     
-    // 创建 ImageTabWidget 并添加到 tabWidget
-    m_imageTabWidget = std::make_unique<ImageTabWidget>(m_pipelineManager, this);
-    ui->tabWidget->addTab(m_imageTabWidget.get(), "图像");
-    connect(m_imageTabWidget.get(), &ImageTabWidget::channelChanged,
-            this, [this](int channel) {
-                
-                m_pipelineManager->getConfig().channel = static_cast<PipelineConfig::Channel>(channel);
-            
-                processAndDisplay();
-                
-            });
-
-    // 创建 VideoTabWidget 并添加到 tabWidget
-    m_videoTabWidget = std::make_unique<VideoTabWidget>(this);
-    ui->tabWidget->addTab(m_videoTabWidget.get(), "视频");
-    connect(m_videoTabWidget.get(), &VideoTabWidget::videoFrameReady,
-            this, [this](const cv::Mat& frame) {
-                // 直接处理视频帧
-                if (!frame.empty()) {
-                    // 设置ROI管理器的当前图像为视频帧
-                    m_roiManager.setFullImage(frame);
-                    m_view->clearRoi();
-                    
-                    // 立即处理和显示
-                    processAndDisplay();
-                }
-            });
-
-    m_enhanceTabWidget = std::make_unique<EnhanceTabWidget>(
-    m_pipelineManager, this);
-    ui->tabWidget->addTab(m_enhanceTabWidget.get(), "增强");
-    connect(m_enhanceTabWidget.get(), &EnhanceTabWidget::processRequested,
-            this, &MainWindow::processAndDisplay);
-
-    m_filterTabWidget = std::make_unique<FilterTabWidget>(m_pipelineManager, this);
-    ui->tabWidget->addTab(m_filterTabWidget.get(), "过滤");
-    connect(m_filterTabWidget.get(), &FilterTabWidget::filterConfigChanged,
-            this, &MainWindow::processAndDisplay);
-
-    m_templateTabWidget = std::make_unique<TemplateTabWidget>(
-        m_view, &m_roiManager, this);
-    ui->tabWidget->addTab(m_templateTabWidget.get(), "补正");
-    m_templateTabWidget->initialize();
-    connect(m_templateTabWidget.get(), &TemplateTabWidget::imageToShow,
-            this, &MainWindow::showImage);
-    connect(m_templateTabWidget.get(), &TemplateTabWidget::templateCreated,
-            this, [this](const QString& name) {
-                Logger::instance()->info(QString("模板已创建: %1").arg(name));
-            });
-    connect(m_templateTabWidget.get(), &TemplateTabWidget::matchCompleted,
-            this, [](int count) {
-                Logger::instance()->info(QString("匹配完成，找到 %1 个目标").arg(count));
-            });
-
-    // 添加快捷键清除匹配结果（按 Escape 键）
-    QShortcut *clearMatchShortcut = new QShortcut(Qt::Key_Escape, this);
-    connect(clearMatchShortcut, &QShortcut::activated, m_templateTabWidget.get(), &TemplateTabWidget::clearMatchResults);
-
-    m_processTabWidget = std::make_unique<ProcessTabWidget>(
-        m_pipelineManager, this);
-    ui->tabWidget->addTab(m_processTabWidget.get(), "处理");
-    connect(m_processTabWidget.get(), &ProcessTabWidget::algorithmChanged,
-            this, &MainWindow::processAndDisplay);
-    m_processTabWidget->initialize();
-
-    m_extractTabWidget = std::make_unique<ExtractTabWidget>(
-        m_pipelineManager, m_view, &m_roiManager, this);
-    ui->tabWidget->addTab(m_extractTabWidget.get(), "提取");
-    m_extractTabWidget->initialize();
-    connect(m_extractTabWidget.get(), &ExtractTabWidget::extractionChanged,
-            this, &MainWindow::processAndDisplay);
-
-    m_judgeTabWidget = std::make_unique<JudgeTabWidget>(m_pipelineManager, this);
-    ui->tabWidget->addTab(m_judgeTabWidget.get(), "判定");
-
-    m_lineDetectTabWidget = std::make_unique<LineDetectTabWidget>(
-        m_pipelineManager, [this]() { m_processDebounceTimer->start(); }, this);
-    ui->tabWidget->addTab(m_lineDetectTabWidget.get(), "直线");
-    m_lineDetectTabWidget->initialize();
-    
-    // 连接参考线绘制信号
-    connect(m_lineDetectTabWidget.get(), &LineDetectTabWidget::requestDrawReferenceLine,
-            this, [this]() {
-                // 启用参考线绘制模式
-                m_view->startReferenceLineDrawing();
-            });
-    
-    connect(m_lineDetectTabWidget.get(), &LineDetectTabWidget::requestClearReferenceLine,
-            this, [this]() {
-                // 清除参考线
-                m_view->clearReferenceLine();
-                // 重新处理图像以清除匹配结果
-                processAndDisplay();
-            });
-    
-    // 连接参考线绘制完成信号
-    connect(m_view, &ImageView::referenceLineDrawn,
-            m_lineDetectTabWidget.get(), &LineDetectTabWidget::setReferenceLine);
-
-    // 创建条码Tab并添加到tabWidget
-    m_barcodeTabWidget = std::make_unique<BarcodeTabWidget>(
-        m_pipelineManager, [this]() { m_processDebounceTimer->start(); }, this);
-    ui->tabWidget->addTab(m_barcodeTabWidget.get(), "条码");
-
-    // 创建目标检测Tab并添加到tabWidget
-    m_objectDetectionTabWidget = std::make_unique<ObjectDetectionTabWidget>(
-        m_pipelineManager, this);
-    ui->tabWidget->addTab(m_objectDetectionTabWidget.get(), "目标检测");
-    connect(m_objectDetectionTabWidget.get(), &ObjectDetectionTabWidget::detectionConfigChanged,
-            this, &MainWindow::processAndDisplay);
-
-    // 记录所有Tab Widget和名称，用于动态切换
-    m_tabWidgets = {
-        m_imageTabWidget.get(),
-        m_videoTabWidget.get(),
-        m_enhanceTabWidget.get(),
-        m_filterTabWidget.get(),
-        m_templateTabWidget.get(),
-        m_processTabWidget.get(),
-        m_extractTabWidget.get(),
-        m_judgeTabWidget.get(),
-        m_lineDetectTabWidget.get(),
-        m_barcodeTabWidget.get(),
-        m_objectDetectionTabWidget.get()
-    };
-    m_tabNames = {"图像", "视频", "增强", "过滤", "补正", "处理", "提取", "判定", "直线", "条码", "目标检测"};
+    // ========== Tab懒加载：启动时不创建任何Tab Widget ==========
+    // Tab将在用户添加检测项时通过 ensureTabExists() 按需创建
     
     // 初始化Controller对象
     m_roiUiController = new RoiUiController(m_multiRoiConfig, m_roiManager, m_view, ui->statusbar, this);
     m_detectionUiController = new DetectionUiController(m_multiRoiConfig, ui->tabWidget, this);
     m_configController = new ConfigController(m_pipelineManager, m_roiManager, this);
     
-    // 设置Controller的Tab名称列表
+    // 设置Controller的Tab名称列表（初始为空，后续动态添加）
     m_detectionUiController->setTabNames(m_tabNames);
     
-    // 初始隐藏所有Tab，等待检测项选中时再显示对应的Tab
-    for (int i = 0; i < ui->tabWidget->count(); ++i) {
-        ui->tabWidget->setTabVisible(i, false);
-    }
-    
-    // 设置ConfigController的Tab Widget
-    m_configController->setTabWidgets(
-        m_enhanceTabWidget.get(),
-        m_filterTabWidget.get(),
-        m_extractTabWidget.get(),
-        m_judgeTabWidget.get(),
-        m_processTabWidget.get()
-    );
+    // 设置ConfigController的Tab Widget（初始为nullptr，Tab创建后更新）
+    m_configController->setTabWidgets(nullptr, nullptr, nullptr, nullptr, nullptr);
     
     // 初始化ROI UI Controller的TreeView
     m_roiUiController->setupTreeView(ui->treeView);
-    
     
     // 连接Controller信号
     connect(m_roiUiController, &RoiUiController::roiChanged, this, &MainWindow::processAndDisplay);
@@ -298,6 +162,10 @@ MainWindow::MainWindow(QWidget *parent)
         m_roiUiController->refreshRoiTreeView();
     });
     connect(m_configController, &ConfigController::configApplied, this, &MainWindow::processAndDisplay);
+    
+    // 连接Tab懒加载信号
+    connect(m_detectionUiController, &DetectionUiController::ensureTabNeeded,
+            this, &MainWindow::ensureTabExists);
     
     // 连接检测项选中信号到Tab切换逻辑
     connect(m_roiUiController, &RoiUiController::detectionItemSelected, 
@@ -452,48 +320,43 @@ void MainWindow::processAndDisplay()
 
 void MainWindow::setDisplayModeForCurrentTab()
 {
-    switch (m_currentTabIndex)
-    {
-    case 0: // 图像Tab
-    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Channel); break;
-    case 1: // 视频Tab
-    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Channel); break;
-    case 2: // 增强Tab
-    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Enhanced); break;
-    case 3: // 过滤Tab
-    {
-        // 根据当前过滤模式选择显示方式
+    // 使用Tab名称而非硬编码索引，适配动态Tab懒加载
+    QString tabName;
+    if (m_currentTabIndex >= 0 && m_currentTabIndex < m_tabNames.size()) {
+        tabName = m_tabNames[m_currentTabIndex];
+    }
+    
+    if (tabName == "图像" || tabName == "视频") {
+        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Channel);
+    }
+    else if (tabName == "增强") {
+        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Enhanced);
+    }
+    else if (tabName == "过滤") {
         const PipelineConfig& cfg = m_pipelineManager->getConfig();
-        if (cfg.currentFilterMode == PipelineConfig::FilterMode::None)
-        {
-            // None模式显示原图
+        if (cfg.currentFilterMode == PipelineConfig::FilterMode::None) {
             m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original);
-        }
-        else
-        {
-            // Gray/RGB/HSV模式显示mask
+        } else {
             m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskGreenWhite);
         }
-        break;
     }
-    case 4: // 补正Tab
-    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original); break;
-    case 5: // 处理Tab
-    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Processed); break;
-    case 6: // 提取Tab
-    // ✅ 修改后：使用Processed模式，显示算法处理结果
-    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Processed); break;
-
-    case 7: // 判定Tab
-    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskOverlay); break;
-    
-    case 8: // 直线检测Tab
-    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::LineDetect); break;
-    case 9: // 条码Tab
-    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original); break;
-    case 10: // 目标检测Tab
-    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original); break;
-    default: m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original); break;
+    else if (tabName == "补正") {
+        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original);
+    }
+    else if (tabName == "处理" || tabName == "提取") {
+        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Processed);
+    }
+    else if (tabName == "判定") {
+        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::MaskOverlay);
+    }
+    else if (tabName == "直线") {
+        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::LineDetect);
+    }
+    else if (tabName == "条码" || tabName == "目标检测") {
+        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original);
+    }
+    else {
+        m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original);
     }
 }
 
@@ -1003,5 +866,147 @@ void MainWindow::onImageListSelectionChanged()
         // 切换到新图片
         m_roiManager.switchToImage(imageId);
     }
+}
+
+// ========== Tab懒加载 ==========
+
+bool MainWindow::isTabCreated(const QString& tabName) const
+{
+    return m_tabNames.contains(tabName);
+}
+
+void MainWindow::ensureTabExists(const QString& tabName)
+{
+    if (isTabCreated(tabName)) return;  // 已存在则跳过
+    
+    QWidget* widget = createTabByName(tabName);
+    if (!widget) return;
+    
+    // 添加到tabWidget
+    ui->tabWidget->addTab(widget, tabName);
+    m_tabNames.append(tabName);
+    
+    // 更新DetectionUiController的Tab名称列表
+    m_detectionUiController->setTabNames(m_tabNames);
+    
+    // 维护所有ConfigController的Tab Widget指针（保留已有的，更新新的）
+    if (m_enhanceTabWidget || m_filterTabWidget || m_extractTabWidget || 
+        m_judgeTabWidget || m_processTabWidget) {
+        m_configController->setTabWidgets(
+            m_enhanceTabWidget.get(),
+            m_filterTabWidget.get(),
+            m_extractTabWidget.get(),
+            m_judgeTabWidget.get(),
+            m_processTabWidget.get()
+        );
+    }
+    
+    Logger::instance()->info(QString("按需创建Tab: %1").arg(tabName));
+}
+
+QWidget* MainWindow::createTabByName(const QString& name)
+{
+    if (name == "图像") {
+        m_imageTabWidget = std::make_unique<ImageTabWidget>(m_pipelineManager, this);
+        connect(m_imageTabWidget.get(), &ImageTabWidget::channelChanged,
+                this, [this](int channel) {
+                    m_pipelineManager->getConfig().channel = 
+                        static_cast<PipelineConfig::Channel>(channel);
+                    processAndDisplay();
+                });
+        return m_imageTabWidget.get();
+    }
+    else if (name == "视频") {
+        m_videoTabWidget = std::make_unique<VideoTabWidget>(this);
+        connect(m_videoTabWidget.get(), &VideoTabWidget::videoFrameReady,
+                this, [this](const cv::Mat& frame) {
+                    if (!frame.empty()) {
+                        m_roiManager.setFullImage(frame);
+                        m_view->clearRoi();
+                        processAndDisplay();
+                    }
+                });
+        return m_videoTabWidget.get();
+    }
+    else if (name == "增强") {
+        m_enhanceTabWidget = std::make_unique<EnhanceTabWidget>(m_pipelineManager, this);
+        connect(m_enhanceTabWidget.get(), &EnhanceTabWidget::processRequested,
+                this, &MainWindow::processAndDisplay);
+        return m_enhanceTabWidget.get();
+    }
+    else if (name == "过滤") {
+        m_filterTabWidget = std::make_unique<FilterTabWidget>(m_pipelineManager, this);
+        connect(m_filterTabWidget.get(), &FilterTabWidget::filterConfigChanged,
+                this, &MainWindow::processAndDisplay);
+        return m_filterTabWidget.get();
+    }
+    else if (name == "补正") {
+        m_templateTabWidget = std::make_unique<TemplateTabWidget>(
+            m_view, &m_roiManager, this);
+        m_templateTabWidget->initialize();
+        connect(m_templateTabWidget.get(), &TemplateTabWidget::imageToShow,
+                this, &MainWindow::showImage);
+        connect(m_templateTabWidget.get(), &TemplateTabWidget::templateCreated,
+                this, [this](const QString& n) {
+                    Logger::instance()->info(QString("模板已创建: %1").arg(n));
+                });
+        connect(m_templateTabWidget.get(), &TemplateTabWidget::matchCompleted,
+                this, [](int count) {
+                    Logger::instance()->info(
+                        QString("匹配完成，找到 %1 个目标").arg(count));
+                });
+        QShortcut* sc = new QShortcut(Qt::Key_Escape, this);
+        connect(sc, &QShortcut::activated, m_templateTabWidget.get(),
+                &TemplateTabWidget::clearMatchResults);
+        return m_templateTabWidget.get();
+    }
+    else if (name == "处理") {
+        m_processTabWidget = std::make_unique<ProcessTabWidget>(m_pipelineManager, this);
+        connect(m_processTabWidget.get(), &ProcessTabWidget::algorithmChanged,
+                this, &MainWindow::processAndDisplay);
+        m_processTabWidget->initialize();
+        return m_processTabWidget.get();
+    }
+    else if (name == "提取") {
+        m_extractTabWidget = std::make_unique<ExtractTabWidget>(
+            m_pipelineManager, m_view, &m_roiManager, this);
+        m_extractTabWidget->initialize();
+        connect(m_extractTabWidget.get(), &ExtractTabWidget::extractionChanged,
+                this, &MainWindow::processAndDisplay);
+        return m_extractTabWidget.get();
+    }
+    else if (name == "判定") {
+        m_judgeTabWidget = std::make_unique<JudgeTabWidget>(m_pipelineManager, this);
+        return m_judgeTabWidget.get();
+    }
+    else if (name == "直线") {
+        m_lineDetectTabWidget = std::make_unique<LineDetectTabWidget>(
+            m_pipelineManager, [this]() { m_processDebounceTimer->start(); }, this);
+        m_lineDetectTabWidget->initialize();
+        connect(m_lineDetectTabWidget.get(), &LineDetectTabWidget::requestDrawReferenceLine,
+                this, [this]() { m_view->startReferenceLineDrawing(); });
+        connect(m_lineDetectTabWidget.get(), &LineDetectTabWidget::requestClearReferenceLine,
+                this, [this]() {
+                    m_view->clearReferenceLine();
+                    processAndDisplay();
+                });
+        connect(m_view, &ImageView::referenceLineDrawn,
+                m_lineDetectTabWidget.get(), &LineDetectTabWidget::setReferenceLine);
+        return m_lineDetectTabWidget.get();
+    }
+    else if (name == "条码") {
+        m_barcodeTabWidget = std::make_unique<BarcodeTabWidget>(
+            m_pipelineManager, [this]() { m_processDebounceTimer->start(); }, this);
+        return m_barcodeTabWidget.get();
+    }
+    else if (name == "目标检测") {
+        m_objectDetectionTabWidget = std::make_unique<ObjectDetectionTabWidget>(
+            m_pipelineManager, this);
+        connect(m_objectDetectionTabWidget.get(), &ObjectDetectionTabWidget::detectionConfigChanged,
+                this, &MainWindow::processAndDisplay);
+        return m_objectDetectionTabWidget.get();
+    }
+    
+    return nullptr;
 }
 

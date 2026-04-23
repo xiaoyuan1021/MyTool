@@ -97,6 +97,11 @@ private:
     void updateTreeView();
     void switchToTabConfig(const TabConfig& config);
     void onRoiDetectionConfigRequested(const QString& roiId);
+    
+    // Tab懒加载
+    void ensureTabExists(const QString& tabName);
+    QWidget* createTabByName(const QString& name);
+    bool isTabCreated(const QString& tabName) const;
 
 private:
     Ui::MainWindow *ui;

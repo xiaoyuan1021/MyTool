@@ -43,6 +43,9 @@ public:
 signals:
     // 检测项变更信号
     void detectionChanged();
+    
+    // 请求创建Tab信号（懒加载）
+    void ensureTabNeeded(const QString& tabName);
 
 private:
     MultiRoiConfig* m_multiRoiConfig;
