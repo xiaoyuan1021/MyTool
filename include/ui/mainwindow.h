@@ -22,18 +22,9 @@
 #include "system_monitor.h"
 #include "file_manager.h"
 #include "config_manager.h"
-#include "widgets/image_tab_widget.h"
-#include "widgets/enhance_tab_widget.h"
-#include "widgets/filter_tab_widget.h"
-#include "widgets/template_tab_widget.h"
-#include "widgets/line_tab_widget.h"
-#include "widgets/extract_tab_widget.h"
-#include "widgets/process_tab_widget.h"
-#include "widgets/judge_tab_widget.h"
-#include "widgets/barcode_tab_widget.h"
-#include "widgets/video_tab_widget.h"
-#include "widgets/object_detection_tab_widget.h"
+// 各TabWidget的include已移至tab_manager.h
 #include "widgets/image_list_manager.h"
+#include "widgets/tab_manager.h"
 #include "widgets/roi_list_widget.h"
 #include "roi_config.h"
 #include "log_page.h"
@@ -99,10 +90,9 @@ private:
     void switchToTabConfig(const TabConfig& config);
     void onRoiDetectionConfigRequested(const QString& roiId);
     
-    // Tab懒加载
+    // Tab懒加载（委托给TabManager）
     void ensureTabExists(const QString& tabName);
-    QWidget* createTabByName(const QString& name);
-    bool isTabCreated(const QString& tabName) const;
+    void connectTabSignals(const QString& tabName, QWidget* widget);
 
 private:
     Ui::MainWindow *ui;
@@ -124,18 +114,8 @@ private:
     void collectConfigFromUI(AppConfig& config);
     void applyConfigToUI(const AppConfig& config);
 
-    std::unique_ptr<EnhanceTabWidget> m_enhanceTabWidget;
-    std::unique_ptr<FilterTabWidget> m_filterTabWidget;
-    std::unique_ptr<TemplateTabWidget> m_templateTabWidget;
-    std::unique_ptr<LineDetectTabWidget> m_lineDetectTabWidget;
-    std::unique_ptr<ExtractTabWidget> m_extractTabWidget;
-    std::unique_ptr<ProcessTabWidget> m_processTabWidget;
-    std::unique_ptr<JudgeTabWidget> m_judgeTabWidget;
-    std::unique_ptr<BarcodeTabWidget> m_barcodeTabWidget;
-    std::unique_ptr<ObjectDetectionTabWidget> m_objectDetectionTabWidget;
-    
-    std::unique_ptr<ImageTabWidget> m_imageTabWidget;
-    std::unique_ptr<VideoTabWidget> m_videoTabWidget;
+    // Tab管理器
+    TabManager* m_tabManager = nullptr;
 
     // 多线程处理相关
     QFutureWatcher<PipelineContext> m_pipelineWatcher;
@@ -145,8 +125,6 @@ private:
     // ROI配置管理
     MultiRoiConfig* m_multiRoiConfig;
     
-    // Tab Widget列表（用于动态切换）
-    QList<QWidget*> m_tabWidgets;
     QStringList m_tabNames;
     
     // Controller对象
