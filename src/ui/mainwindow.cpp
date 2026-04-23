@@ -45,9 +45,8 @@ MainWindow::MainWindow(QWidget *parent)
             this, [this]() {
                 m_isProcessing = false;
                 PipelineContext result = m_pipelineWatcher.result();
-                // 更新UI显示
+                // 获取Pipeline输出的干净图像（副本）
                 cv::Mat displayImage = result.getFinalDisplay();
-                showImage(displayImage);
 
                 // 更新判定Tab显示
                 int count = result.currentRegions;
@@ -71,6 +70,39 @@ MainWindow::MainWindow(QWidget *parent)
                     m_barcodeTabWidget->updateResultsTable(result.barcodeResults);
                     m_barcodeTabWidget->updateStatus(result.barcodeStatus);
                 }
+
+                // 执行目标检测（模型已加载时）
+                if (m_objectDetectionTabWidget && m_objectDetectionTabWidget->isModelLoaded()) {
+                    cv::Mat detectImage = m_roiManager.getCurrentImage();
+                    if (!detectImage.empty()) {
+                        std::vector<DetectionResult> detResults = m_objectDetectionTabWidget->runDetection(detectImage);
+                        m_objectDetectionTabWidget->updateDetectionResults(detResults);
+
+                        // 在干净的displayImage上绘制检测框
+                        for (const auto& det : detResults) {
+                            cv::rectangle(displayImage, det.box, cv::Scalar(0, 255, 0), 2);
+
+                            std::string label = det.className + " " + cv::format("%.2f", det.confidence);
+                            int baseline = 0;
+                            cv::Size textSize = cv::getTextSize(label, cv::FONT_HERSHEY_SIMPLEX, 0.6, 1, &baseline);
+
+                            cv::Point textOrg(det.box.x, det.box.y - 5);
+                            if (textOrg.y - textSize.height < 0) {
+                                textOrg.y = det.box.y + textSize.height + 5;
+                            }
+                            cv::rectangle(displayImage,
+                                cv::Point(textOrg.x, textOrg.y - textSize.height - 2),
+                                cv::Point(textOrg.x + textSize.width + 2, textOrg.y + 4),
+                                cv::Scalar(0, 255, 0), -1);
+
+                            cv::putText(displayImage, label, textOrg,
+                                cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 0, 0), 1);
+                        }
+                    }
+                }
+
+                // 绘制完成后再显示图像
+                showImage(displayImage);
                 
                 // 恢复状态栏
                 ui->statusbar->showMessage("处理完成", 2000);
@@ -215,6 +247,8 @@ MainWindow::MainWindow(QWidget *parent)
     m_objectDetectionTabWidget = std::make_unique<ObjectDetectionTabWidget>(
         m_pipelineManager, this);
     ui->tabWidget->addTab(m_objectDetectionTabWidget.get(), "目标检测");
+    connect(m_objectDetectionTabWidget.get(), &ObjectDetectionTabWidget::detectionConfigChanged,
+            this, &MainWindow::processAndDisplay);
 
     // 记录所有Tab Widget和名称，用于动态切换
     m_tabWidgets = {
@@ -456,6 +490,8 @@ void MainWindow::setDisplayModeForCurrentTab()
     case 8: // 直线检测Tab
     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::LineDetect); break;
     case 9: // 条码Tab
+    m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original); break;
+    case 10: // 目标检测Tab
     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original); break;
     default: m_pipelineManager->setDisplayMode(DisplayConfig::Mode::Original); break;
     }

@@ -3,6 +3,7 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QDebug>
+#include <QtConcurrent/QtConcurrent>
 
 ObjectDetectionTabWidget::ObjectDetectionTabWidget(PipelineManager* pipelineManager, QWidget* parent)
     : QWidget(parent)
@@ -35,6 +36,16 @@ void ObjectDetectionTabWidget::setupConnections()
         float threshold = value / 100.0f;
         m_ui->label_nmsValue->setText(QString::number(threshold, 'f', 2));
     });
+
+    // 模型加载完成信号
+    connect(this, &ObjectDetectionTabWidget::modelLoadFinished, this,
+        [this](bool success, const QString& message) {
+            m_ui->label_status->setText(message);
+            if (success) {
+                qDebug() << "[ObjectDetection] model loaded, emitting detectionConfigChanged";
+                emit detectionConfigChanged();
+            }
+        });
 }
 
 void ObjectDetectionTabWidget::onBrowseModel()
@@ -61,83 +72,113 @@ void ObjectDetectionTabWidget::onBrowseConfig()
 
 void ObjectDetectionTabWidget::onApplyClicked()
 {
-    qDebug() << "[ObjectDetection] 应用按钮被点击";
-    updateConfig();
-}
-
-void ObjectDetectionTabWidget::updateConfig()
-{
+    qDebug() << "[ObjectDetection] apply button clicked";
+    m_ui->label_status->setText("状态：正在加载模型...");
+    m_ui->btn_apply->setEnabled(false);
+    
+    // 使用QtConcurrent在后台线程加载模型，避免UI冻结
     QString modelPath = m_ui->lineEdit_modelPath->text().trimmed();
     QString configPath = m_ui->lineEdit_configPath->text().trimmed();
-    float confidenceThreshold = m_ui->slider_confidenceThreshold->value() / 100.0f;
-    float nmsThreshold = m_ui->slider_nmsThreshold->value() / 100.0f;
-    int inputWidth = m_ui->spinBox_inputWidth->value();
-    int inputHeight = m_ui->spinBox_inputHeight->value();
-
-    qDebug() << "[ObjectDetection] updateConfig:"
-             << "模型路径:" << modelPath
-             << "配置路径:" << configPath
-             << "置信度阈值:" << confidenceThreshold
-             << "NMS阈值:" << nmsThreshold
-             << "输入尺寸:" << inputWidth << "x" << inputHeight;
-
-    // 校验模型路径
+    
     if (modelPath.isEmpty()) {
-        qDebug() << "[ObjectDetection] 模型路径为空，跳过加载";
         m_ui->label_status->setText("状态：请选择模型文件");
+        m_ui->btn_apply->setEnabled(true);
         return;
     }
 
-    // 尝试加载模型
-    qDebug() << "[ObjectDetection] 正在加载模型...";
-    bool success = m_dnnInference.loadModel(modelPath, configPath);
-    if (success) {
-        qDebug() << "[ObjectDetection] 模型加载成功";
-        m_ui->label_status->setText("状态：模型加载成功，等待检测");
+    QFuture<bool> future = QtConcurrent::run(
+        [this, modelPath, configPath]() -> bool {
+            return m_dnnInference.loadModel(modelPath, configPath);
+        }
+    );
+    
+    // 使用 QFutureWatcher 监听完成信号
+    QFutureWatcher<bool>* watcher = new QFutureWatcher<bool>(this);
+    connect(watcher, &QFutureWatcher<bool>::finished, this, [this, watcher, modelPath]() {
+        bool success = watcher->result();
+        watcher->deleteLater();
+        m_ui->btn_apply->setEnabled(true);
         
-        // 发射配置变更信号
-        emit detectionConfigChanged();
-    } else {
-        qDebug() << "[ObjectDetection] 模型加载失败";
-        m_ui->label_status->setText("状态：模型加载失败");
-    }
+        if (success) {
+            emit modelLoadFinished(true, "状态：模型加载成功，等待检测");
+            qDebug() << "[ObjectDetection] model loaded successfully";
+        } else {
+            emit modelLoadFinished(false, "状态：模型加载失败");
+            qDebug() << "[ObjectDetection] model load failed";
+        }
+    });
+    watcher->setFuture(future);
 }
 
-void ObjectDetectionTabWidget::updateDetectionResults(const cv::Mat& image, 
-                                                       const std::vector<cv::Rect>& boxes, 
-                                                       const std::vector<float>& confidences, 
-                                                       const std::vector<int>& classIds,
-                                                       const std::vector<std::string>& classNames)
+std::vector<DetectionResult> ObjectDetectionTabWidget::runDetection(const cv::Mat& image)
+{
+    if (!m_dnnInference.isLoaded() || image.empty()) {
+        return {};
+    }
+    
+    return m_dnnInference.detect(image,
+        getConfidenceThreshold(),
+        getNmsThreshold(),
+        getInputWidth(),
+        getInputHeight());
+}
+
+bool ObjectDetectionTabWidget::isModelLoaded() const
+{
+    return m_dnnInference.isLoaded();
+}
+
+float ObjectDetectionTabWidget::getConfidenceThreshold() const
+{
+    return m_ui->slider_confidenceThreshold->value() / 100.0f;
+}
+
+float ObjectDetectionTabWidget::getNmsThreshold() const
+{
+    return m_ui->slider_nmsThreshold->value() / 100.0f;
+}
+
+int ObjectDetectionTabWidget::getInputWidth() const
+{
+    return m_ui->spinBox_inputWidth->value();
+}
+
+int ObjectDetectionTabWidget::getInputHeight() const
+{
+    return m_ui->spinBox_inputHeight->value();
+}
+
+void ObjectDetectionTabWidget::updateDetectionResults(const std::vector<DetectionResult>& results)
 {
     // 清空表格
     m_ui->tableWidget_results->setRowCount(0);
     
-    if (boxes.empty()) {
+    if (results.empty()) {
         m_ui->label_status->setText("状态：未检测到目标");
         return;
     }
     
     // 设置表格行数
-    m_ui->tableWidget_results->setRowCount(static_cast<int>(boxes.size()));
+    m_ui->tableWidget_results->setRowCount(static_cast<int>(results.size()));
     
-    for (int i = 0; i < static_cast<int>(boxes.size()); ++i) {
+    for (int i = 0; i < static_cast<int>(results.size()); ++i) {
+        const DetectionResult& det = results[i];
+        
         // 类别名称
-        QString className = (i < static_cast<int>(classNames.size())) 
-            ? QString::fromStdString(classNames[i]) 
-            : QString::number(classIds[i]);
+        QString className = QString::fromStdString(det.className);
         m_ui->tableWidget_results->setItem(i, 0, new QTableWidgetItem(className));
         
         // 置信度
-        QString confidence = QString::number(confidences[i], 'f', 3);
+        QString confidence = QString::number(det.confidence, 'f', 3);
         m_ui->tableWidget_results->setItem(i, 1, new QTableWidgetItem(confidence));
         
         // 位置
-        QString position = QString("(%1, %2) %3×%4")
-            .arg(boxes[i].x).arg(boxes[i].y)
-            .arg(boxes[i].width).arg(boxes[i].height);
+        QString position = QString("(%1, %2) %3x%4")
+            .arg(det.box.x).arg(det.box.y)
+            .arg(det.box.width).arg(det.box.height);
         m_ui->tableWidget_results->setItem(i, 2, new QTableWidgetItem(position));
     }
     
     // 更新状态
-    m_ui->label_status->setText(QString("状态：检测到 %1 个目标").arg(boxes.size()));
+    m_ui->label_status->setText(QString("状态：检测到 %1 个目标").arg(results.size()));
 }
