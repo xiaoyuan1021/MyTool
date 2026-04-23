@@ -1,0 +1,71 @@
+{
+    "algorithms": [
+        {
+            "description": "OpenCV图像处理算法",
+            "enabled": true,
+            "name": "联合",
+            "params": {
+                "OpenCVAlgoType": 8
+            },
+            "type": "OpenCVAlgorithm"
+        },
+        {
+            "description": "OpenCV图像处理算法",
+            "enabled": true,
+            "name": "圆形闭运算",
+            "params": {
+                "OpenCVAlgoType": 2,
+                "radius": 2
+            },
+            "type": "OpenCVAlgorithm"
+        },
+        {
+            "description": "OpenCV图像处理算法",
+            "enabled": true,
+            "name": "圆形开运算",
+            "params": {
+                "OpenCVAlgoType": 0,
+                "radius": 3
+            },
+            "type": "OpenCVAlgorithm"
+        }
+    ],
+    "enhance": {
+        "brightness": 0,
+        "contrast": 100,
+        "gamma": 208,
+        "sharpen": 100
+    },
+    "extract": {
+        "conditions": [
+            {
+                "feature": "circularity",
+                "maxValue": 1,
+                "minValue": 0.8
+            },
+            {
+                "feature": "area",
+                "maxValue": 10000,
+                "minValue": 1000
+            }
+        ],
+        "mode": "and"
+    },
+    "filter": {
+        "enabled": false,
+        "grayHigh": 176,
+        "grayLow": 0,
+        "mode": 1
+    },
+    "judge": {
+        "currentRegionCount": 6,
+        "maxRegionCount": 6,
+        "minRegionCount": 6
+    },
+    "roi": {
+        "height": 1456,
+        "width": 1207,
+        "x": 587,
+        "y": 143
+    }
+}

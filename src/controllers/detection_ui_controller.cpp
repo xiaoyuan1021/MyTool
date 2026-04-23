@@ -10,11 +10,11 @@
 #include <QApplication>
 
 DetectionUiController::DetectionUiController(
-    MultiRoiConfig* multiRoiConfig,
+    RoiManager& roiManager,
     QTabWidget* tabWidget,
     QObject* parent)
     : QObject(parent)
-    , m_multiRoiConfig(multiRoiConfig)
+    , m_roiManager(roiManager)
     , m_tabWidget(tabWidget)
 {
 }
@@ -34,7 +34,7 @@ void DetectionUiController::onAddDetectionClicked(const QString& roiId)
     }
     
     // 获取ROI配置
-    RoiConfig* roi = m_multiRoiConfig->getRoi(roiId);
+    RoiConfig* roi = m_roiManager.getRoiConfig(roiId);
     if (!roi) {
         qDebug() << "[DEBUG] onAddDetectionClicked: ROI not found for ID =" << roiId;
         QMessageBox::warning(nullptr, "警告", "未找到选中的ROI");

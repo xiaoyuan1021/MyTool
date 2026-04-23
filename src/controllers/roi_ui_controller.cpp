@@ -7,14 +7,14 @@
 #include <QDebug>
 
 RoiUiController::RoiUiController(
-    MultiRoiConfig* multiRoiConfig,
     RoiManager& roiManager,
+    PipelineManager* pipelineManager,
     ImageView* imageView,
     QStatusBar* statusBar,
     QObject* parent)
     : QObject(parent)
-    , m_multiRoiConfig(multiRoiConfig)
     , m_roiManager(roiManager)
+    , m_pipelineManager(pipelineManager)
     , m_view(imageView)
     , m_statusBar(statusBar)
     , m_treeView(nullptr)
@@ -44,10 +44,19 @@ void RoiUiController::setupTreeView(QTreeWidget* treeView)
     
     // 连接绘制ROI完成信号
     connect(m_view, &ImageView::roiSelected, this, [this](const QRectF& rect) {
-        // 创建新的ROI
-        QString roiName = QString("ROI_%1").arg(m_multiRoiConfig->size() + 1);
+        // 创建新的ROI配置
+        QString roiName = QString("ROI_%1").arg(m_roiManager.getRoiConfigCount() + 1);
         RoiConfig roi(roiName, rect);
-        m_multiRoiConfig->addRoi(roi);
+        
+        // 新ROI继承当前PipelineManager的配置
+        if (m_pipelineManager) {
+            roi.pipelineConfig = m_pipelineManager->getConfig();
+        }
+        
+        m_roiManager.addRoiConfig(roi);
+        
+        // 更新当前选中的ROI为新创建的ROI
+        m_currentSelectedRoiId = roi.roiId;
         
         // 刷新列表
         refreshRoiTreeView();
@@ -108,7 +117,7 @@ void RoiUiController::onDeleteRoiClicked()
     }
     
     // 获取ROI配置
-    RoiConfig* roi = m_multiRoiConfig->getRoi(roiId);
+    RoiConfig* roi = m_roiManager.getRoiConfig(roiId);
     if (!roi) {
         QMessageBox::warning(nullptr, "警告", "未找到选中的ROI");
         return;
@@ -123,7 +132,7 @@ void RoiUiController::onDeleteRoiClicked()
     
     if (reply == QMessageBox::Yes) {
         // 删除ROI
-        m_multiRoiConfig->removeRoi(roiId);
+        m_roiManager.removeRoiConfig(roiId);
         
         // 刷新树形视图
         refreshRoiTreeView();
@@ -147,6 +156,9 @@ void RoiUiController::onSwitchRoiClicked()
     
     if (m_roiManager.isRoiActive()) {
         // 当前是ROI模式，切换到原图模式
+        // 先保存当前ROI的PipelineConfig
+        saveCurrentRoiPipelineConfig();
+        
         m_roiManager.resetRoi();
         m_view->clearRoi();
         m_view->resetZoom();
@@ -154,17 +166,19 @@ void RoiUiController::onSwitchRoiClicked()
         Logger::instance()->info("已切换到原图模式");
     } else {
         // 当前是原图模式，切换到ROI模式
-        // 检查是否有选中的ROI
         if (m_currentSelectedRoiId.isEmpty()) {
             QMessageBox::warning(nullptr, "警告", "请先在左侧列表中选择一个ROI");
             return;
         }
         
-        RoiConfig* roi = m_multiRoiConfig->getRoi(m_currentSelectedRoiId);
+        RoiConfig* roi = m_roiManager.getRoiConfig(m_currentSelectedRoiId);
         if (!roi) {
             QMessageBox::warning(nullptr, "警告", "未找到选中的ROI");
             return;
         }
+        
+        // 加载该ROI的PipelineConfig
+        loadRoiPipelineConfig(m_currentSelectedRoiId);
         
         // 切换到ROI模式
         m_view->clearRoi();
@@ -190,12 +204,18 @@ void RoiUiController::refreshRoiTreeView()
 {
     if (!m_treeView) return;
     
+    // 刷新前保存当前ROI的PipelineConfig
+    saveCurrentRoiPipelineConfig();
+    
     // 保存当前选中的ROI ID，以便刷新后恢复选中状态
     QString previouslySelectedRoiId = m_currentSelectedRoiId;
     
+    // 阻塞信号，防止setCurrentItem触发itemClicked递归
+    m_treeView->blockSignals(true);
     m_treeView->clear();
+    m_treeView->blockSignals(false);
     
-    const QList<RoiConfig>& rois = m_multiRoiConfig->getRois();
+    const QList<RoiConfig>& rois = m_roiManager.getRoiConfigs();
     
     QTreeWidgetItem* itemToSelect = nullptr;  // 要选中的项目
     
@@ -258,23 +278,21 @@ void RoiUiController::refreshRoiTreeView()
     // 展开所有项
     m_treeView->expandAll();
     
-    // 恢复选中状态
+    // 恢复选中状态（阻塞信号避免递归触发itemClicked）
+    m_treeView->blockSignals(true);
     if (itemToSelect) {
-        // 如果之前选中的ROI还存在，恢复选中状态
         m_treeView->setCurrentItem(itemToSelect);
-        // 确保m_currentSelectedRoiId被正确设置
         m_currentSelectedRoiId = itemToSelect->data(0, Qt::UserRole).toString();
     } else if (m_treeView->topLevelItemCount() > 0) {
-        // 如果之前选中的ROI不存在了（被删除了），选中最后一个ROI
         QTreeWidgetItem* lastItem = m_treeView->topLevelItem(
             m_treeView->topLevelItemCount() - 1
         );
         m_treeView->setCurrentItem(lastItem);
         m_currentSelectedRoiId = lastItem->data(0, Qt::UserRole).toString();
     } else {
-        // 没有任何ROI
         m_currentSelectedRoiId.clear();
     }
+    m_treeView->blockSignals(false);
 }
 
 void RoiUiController::onRoiTreeItemClicked(QTreeWidgetItem* item, int column)
@@ -292,7 +310,14 @@ void RoiUiController::onRoiTreeItemClicked(QTreeWidgetItem* item, int column)
         // 点击的是检测项，找到父ROI
         QTreeWidgetItem* parentItem = item->parent();
         if (parentItem) {
-            m_currentSelectedRoiId = parentItem->data(0, Qt::UserRole).toString();
+            QString newRoiId = parentItem->data(0, Qt::UserRole).toString();
+            
+            // 如果切换了ROI，先保存旧ROI的配置，再加载新ROI的配置
+            if (newRoiId != m_currentSelectedRoiId) {
+                saveCurrentRoiPipelineConfig();
+                m_currentSelectedRoiId = newRoiId;
+                loadRoiPipelineConfig(m_currentSelectedRoiId);
+            }
             
             // 发出检测项选中信号，用于触发Tab切换
             emit detectionItemSelected(m_currentSelectedRoiId, itemId);
@@ -300,14 +325,22 @@ void RoiUiController::onRoiTreeItemClicked(QTreeWidgetItem* item, int column)
         
         Logger::instance()->info(QString("选中检测项: %1").arg(item->text(0)));
     } else {
-        // 点击的是ROI - 只更新选中状态，不重新缩放图像
-        m_currentSelectedRoiId = itemId;
+        // 点击的是ROI
+        QString newRoiId = itemId;
         
-        // 在图像视图中显示对应的ROI（不重置缩放）
-        RoiConfig* roi = m_multiRoiConfig->getRoi(itemId);
+        // 如果切换了ROI，先保存旧ROI的配置，再加载新ROI的配置
+        if (newRoiId != m_currentSelectedRoiId) {
+            saveCurrentRoiPipelineConfig();
+            m_currentSelectedRoiId = newRoiId;
+            loadRoiPipelineConfig(m_currentSelectedRoiId);
+        } else {
+            m_currentSelectedRoiId = newRoiId;
+        }
+        
+        // 在图像视图中显示对应的ROI
+        RoiConfig* roi = m_roiManager.getRoiConfig(m_currentSelectedRoiId);
         if (roi) {
             m_view->clearRoi();
-            // 直接使用QRectF，无需转换
             m_roiManager.setRoi(roi->roiRect);
             
             emit roiChanged();
@@ -321,14 +354,45 @@ void RoiUiController::onRoiTreeItemClicked(QTreeWidgetItem* item, int column)
 void RoiUiController::onRoiTreeItemDoubleClicked(QTreeWidgetItem* item, int column)
 {
     Q_UNUSED(column);
-    
-    if (!item) {
-        return;
-    }
+    Q_UNUSED(item);
 }
 
 void RoiUiController::onRoiTreeContextMenuRequested(const QPoint& pos)
 {
-    // 不再显示右键菜单，改用按钮实现删除功能
     Q_UNUSED(pos);
+}
+
+void RoiUiController::saveCurrentRoiPipelineConfig()
+{
+    if (m_currentSelectedRoiId.isEmpty() || !m_pipelineManager) {
+        return;
+    }
+    
+    RoiConfig* roi = m_roiManager.getRoiConfig(m_currentSelectedRoiId);
+    if (roi) {
+        // 将当前PipelineManager的配置保存到该ROI
+        roi->pipelineConfig = m_pipelineManager->getConfig();
+        Logger::instance()->info(QString("已保存ROI [%1] 的Pipeline配置").arg(roi->roiName));
+    }
+}
+
+void RoiUiController::loadRoiPipelineConfig(const QString& roiId)
+{
+    if (roiId.isEmpty() || !m_pipelineManager) {
+        return;
+    }
+    
+    RoiConfig* roi = m_roiManager.getRoiConfig(roiId);
+    if (roi) {
+        // 将该ROI的PipelineConfig加载到PipelineManager
+        m_pipelineManager->getConfig() = roi->pipelineConfig;
+        
+        // 发出信号通知MainWindow刷新EnhanceTabWidget的UI
+        emit roiPipelineConfigChanged(roi->pipelineConfig);
+        
+        Logger::instance()->info(QString("已加载ROI [%1] 的Pipeline配置: brightness=%2, contrast=%3")
+            .arg(roi->roiName)
+            .arg(roi->pipelineConfig.brightness)
+            .arg(roi->pipelineConfig.contrast));
+    }
 }

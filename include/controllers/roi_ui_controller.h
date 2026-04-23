@@ -13,6 +13,7 @@
 #include "roi_config.h"
 #include "roi_manager.h"
 #include "image_view.h"
+#include "pipeline_manager.h"
 
 QT_BEGIN_NAMESPACE
 class QStatusBar;
@@ -32,8 +33,8 @@ class RoiUiController : public QObject
 
 public:
     explicit RoiUiController(
-        MultiRoiConfig* multiRoiConfig,
         RoiManager& roiManager,
+        PipelineManager* pipelineManager,
         ImageView* imageView,
         QStatusBar* statusBar,
         QObject* parent = nullptr
@@ -60,16 +61,25 @@ public:
     // 获取当前选中的ROI ID
     QString getCurrentSelectedRoiId() const { return m_currentSelectedRoiId; }
 
+    // 保存当前ROI的PipelineConfig（在切换ROI前调用）
+    void saveCurrentRoiPipelineConfig();
+    
+    // 加载指定ROI的PipelineConfig到PipelineManager
+    void loadRoiPipelineConfig(const QString& roiId);
+    
 signals:
     // ROI变更信号（用于通知主窗口更新显示）
     void roiChanged();
     
     // 检测项选中信号（用于触发Tab切换）
     void detectionItemSelected(const QString& roiId, const QString& detectionId);
+    
+    // ROI切换信号（通知MainWindow刷新EnhanceTabWidget的UI）
+    void roiPipelineConfigChanged(const PipelineConfig& config);
 
 private:
-    MultiRoiConfig* m_multiRoiConfig;
     RoiManager& m_roiManager;
+    PipelineManager* m_pipelineManager;
     ImageView* m_view;
     QStatusBar* m_statusBar;
     QTreeWidget* m_treeView;

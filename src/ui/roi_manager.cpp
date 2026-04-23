@@ -676,3 +676,142 @@ void RoiManager::clearZoomState(const QString& imageId)
     
     Logger::instance()->info(QString("[RoiManager] 清除缩放状态: imageId=%1").arg(imageId));
 }
+
+// ==================== ROI配置管理（替代MultiRoiConfig） ====================
+
+void RoiManager::addRoiConfig(const RoiConfig& config)
+{
+    auto it = m_imageRoisMap.find(m_currentImageId);
+    if (it == m_imageRoisMap.end()) {
+        qDebug() << "[RoiManager] 没有当前图片，无法添加ROI配置";
+        return;
+    }
+
+    it.value().roiConfigs.append(config);
+    Logger::instance()->info(QString("[RoiManager] ROI配置已添加: %1").arg(config.roiName));
+    emit roiConfigChanged();
+}
+
+bool RoiManager::removeRoiConfig(const QString& roiId)
+{
+    auto it = m_imageRoisMap.find(m_currentImageId);
+    if (it == m_imageRoisMap.end()) {
+        return false;
+    }
+
+    QList<RoiConfig>& configs = it.value().roiConfigs;
+    for (int i = 0; i < configs.size(); ++i) {
+        if (configs[i].roiId == roiId) {
+            Logger::instance()->info(QString("[RoiManager] ROI配置已移除: %1").arg(configs[i].roiName));
+            configs.removeAt(i);
+            emit roiConfigChanged();
+            return true;
+        }
+    }
+    return false;
+}
+
+RoiConfig* RoiManager::getRoiConfig(const QString& roiId)
+{
+    auto it = m_imageRoisMap.find(m_currentImageId);
+    if (it == m_imageRoisMap.end()) {
+        return nullptr;
+    }
+
+    for (auto& config : it.value().roiConfigs) {
+        if (config.roiId == roiId) {
+            return &config;
+        }
+    }
+    return nullptr;
+}
+
+const RoiConfig* RoiManager::getRoiConfig(const QString& roiId) const
+{
+    auto it = m_imageRoisMap.find(m_currentImageId);
+    if (it == m_imageRoisMap.end()) {
+        return nullptr;
+    }
+
+    for (const auto& config : it.value().roiConfigs) {
+        if (config.roiId == roiId) {
+            return &config;
+        }
+    }
+    return nullptr;
+}
+
+QList<RoiConfig>& RoiManager::getRoiConfigs()
+{
+    static QList<RoiConfig> emptyList;
+    auto it = m_imageRoisMap.find(m_currentImageId);
+    if (it == m_imageRoisMap.end()) {
+        return emptyList;
+    }
+    return it.value().roiConfigs;
+}
+
+const QList<RoiConfig>& RoiManager::getRoiConfigs() const
+{
+    static const QList<RoiConfig> emptyList;
+    auto it = m_imageRoisMap.find(m_currentImageId);
+    if (it == m_imageRoisMap.end()) {
+        return emptyList;
+    }
+    return it.value().roiConfigs;
+}
+
+int RoiManager::getRoiConfigCount() const
+{
+    auto it = m_imageRoisMap.find(m_currentImageId);
+    if (it == m_imageRoisMap.end()) {
+        return 0;
+    }
+    return it.value().roiConfigs.size();
+}
+
+void RoiManager::clearRoiConfigs()
+{
+    auto it = m_imageRoisMap.find(m_currentImageId);
+    if (it == m_imageRoisMap.end()) {
+        return;
+    }
+    it.value().roiConfigs.clear();
+    emit roiConfigChanged();
+}
+
+QJsonDocument RoiManager::exportRoiConfigsToJson() const
+{
+    QJsonArray rois;
+    for (const auto& config : getRoiConfigs()) {
+        rois.append(config.toJson());
+    }
+
+    QJsonObject root;
+    root["version"] = "1.0";
+    root["roiCount"] = rois.size();
+    root["rois"] = rois;
+
+    return QJsonDocument(root);
+}
+
+void RoiManager::importRoiConfigsFromJson(const QJsonDocument& doc)
+{
+    auto it = m_imageRoisMap.find(m_currentImageId);
+    if (it == m_imageRoisMap.end()) {
+        return;
+    }
+
+    it.value().roiConfigs.clear();
+
+    QJsonObject root = doc.object();
+    QJsonArray rois = root["rois"].toArray();
+
+    for (const auto& val : rois) {
+        RoiConfig config;
+        config.fromJson(val.toObject());
+        it.value().roiConfigs.append(config);
+    }
+
+    emit roiConfigChanged();
+}

@@ -6,6 +6,7 @@
 #include <QMap>
 #include <QVector>
 #include "../data/roi_item.h"
+#include "roi_config.h"
 
 // 前向声明
 class ImageView;
@@ -294,7 +295,66 @@ public:
      */
     void clearZoomState(const QString& imageId);
 
+    // ==================== ROI配置管理（替代MultiRoiConfig） ====================
+
+    /**
+     * @brief 添加ROI配置
+     * @param config ROI配置
+     */
+    void addRoiConfig(const RoiConfig& config);
+
+    /**
+     * @brief 移除ROI配置
+     * @param roiId ROI唯一ID
+     * @return 是否移除成功
+     */
+    bool removeRoiConfig(const QString& roiId);
+
+    /**
+     * @brief 获取ROI配置（可修改）
+     * @param roiId ROI唯一ID
+     * @return RoiConfig指针，不存在返回nullptr
+     */
+    RoiConfig* getRoiConfig(const QString& roiId);
+
+    /**
+     * @brief 获取ROI配置（只读）
+     * @param roiId ROI唯一ID
+     * @return RoiConfig指针，不存在返回nullptr
+     */
+    const RoiConfig* getRoiConfig(const QString& roiId) const;
+
+    /**
+     * @brief 获取当前图片的所有ROI配置
+     * @return ROI配置列表引用
+     */
+    QList<RoiConfig>& getRoiConfigs();
+    const QList<RoiConfig>& getRoiConfigs() const;
+
+    /**
+     * @brief 获取当前图片的ROI配置数量
+     */
+    int getRoiConfigCount() const;
+
+    /**
+     * @brief 清空当前图片的所有ROI配置
+     */
+    void clearRoiConfigs();
+
+    /**
+     * @brief 序列化当前图片的ROI配置为JSON
+     */
+    QJsonDocument exportRoiConfigsToJson() const;
+
+    /**
+     * @brief 从JSON导入ROI配置到当前图片
+     */
+    void importRoiConfigsFromJson(const QJsonDocument& doc);
+
 signals:
+    // ROI配置变更信号
+    void roiConfigChanged();
+
     // 多图片管理信号
     void imageAdded(const QString& imageId);
     void imageRemoved(const QString& imageId);
@@ -305,7 +365,8 @@ private:
     struct ImageRois {
         cv::Mat image;              // 图像数据
         QString name;               // 图片名称
-        QMap<QString, RoiItem> rois;  // 该图片的ROI列表
+        QMap<QString, RoiItem> rois;  // 该图片的ROI列表（旧的多ROI）
+        QList<RoiConfig> roiConfigs;  // 该图片的ROI配置列表（新的统一数据源）
         QString selectedRoiId;      // 该图片选中的ROI
         int roiCounter;             // ROI计数器
         

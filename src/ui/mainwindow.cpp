@@ -39,7 +39,6 @@ MainWindow::MainWindow(QWidget *parent)
     , m_fileManager(new FileManager(this))
     , m_processDebounceTimer(nullptr)
     , m_currentTabIndex(0)
-    , m_multiRoiConfig(new MultiRoiConfig())
 {
     ui->setupUi(this);
     
@@ -158,8 +157,8 @@ MainWindow::MainWindow(QWidget *parent)
                                   m_view, m_processDebounceTimer, this);
 
     // 初始化Controller对象
-    m_roiUiController = new RoiUiController(m_multiRoiConfig, m_roiManager, m_view, ui->statusbar, this);
-    m_detectionUiController = new DetectionUiController(m_multiRoiConfig, ui->tabWidget, this);
+    m_roiUiController = new RoiUiController(m_roiManager, m_pipelineManager, m_view, ui->statusbar, this);
+    m_detectionUiController = new DetectionUiController(m_roiManager, ui->tabWidget, this);
     m_configController = new ConfigController(m_pipelineManager, m_roiManager, this);
     
     // 设置Controller的Tab名称列表（初始为空，后续动态添加）
@@ -177,6 +176,19 @@ MainWindow::MainWindow(QWidget *parent)
         m_roiUiController->refreshRoiTreeView();
     });
     connect(m_configController, &ConfigController::configApplied, this, &MainWindow::processAndDisplay);
+    
+    // 连接ROI切换信号：当切换ROI时，更新EnhanceTabWidget的UI显示
+    connect(m_roiUiController, &RoiUiController::roiPipelineConfigChanged, 
+            this, [this](const PipelineConfig& config) {
+        if (auto* enhanceTab = m_tabManager->getEnhanceTab()) {
+            enhanceTab->setEnhanceConfig(
+                config.brightness,
+                static_cast<int>(config.contrast * 100),
+                static_cast<int>(config.gamma * 100),
+                static_cast<int>(config.sharpen * 100)
+            );
+        }
+    });
     
     // 连接Tab懒加载信号
     connect(m_detectionUiController, &DetectionUiController::ensureTabNeeded,
@@ -196,7 +208,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_roiUiController, &RoiUiController::detectionItemSelected, 
             this, [this](const QString& roiId, const QString& detectionId) {
         // 获取ROI和检测项
-        RoiConfig* roi = m_multiRoiConfig->getRoi(roiId);
+        RoiConfig* roi = m_roiManager.getRoiConfig(roiId);
         if (roi) {
             for (const auto& detection : roi->detectionItems) {
                 if (detection.itemId == detectionId) {
@@ -289,8 +301,8 @@ void MainWindow::setupConnections()
                 QTimer::singleShot(5000, ui->statusbar, &QStatusBar::clearMessage);
             });
 
-    connect(m_view, &ImageView::roiSelected,
-            this, &MainWindow::onRoiSelected);
+    // roiSelected信号已在RoiUiController中处理，此处不再重复连接（避免双重创建ROI）
+    // MainWindow::onRoiSelected 已由 RoiUiController 内部调用
 
     connect(m_view, &ImageView::polygonDrawingPointAdded, this,
             [](const QString& type, const QPointF& point) {
@@ -525,7 +537,7 @@ void MainWindow::on_btn_deleteROI_clicked()
     }
     
     // 获取ROI配置
-    RoiConfig* roi = m_multiRoiConfig->getRoi(roiId);
+    RoiConfig* roi = m_roiManager.getRoiConfig(roiId);
     if (!roi) {
         QMessageBox::warning(this, "警告", "未找到选中的ROI");
         return;
@@ -540,7 +552,7 @@ void MainWindow::on_btn_deleteROI_clicked()
     
     if (reply == QMessageBox::Yes) {
         // 删除ROI
-        m_multiRoiConfig->removeRoi(roiId);
+        m_roiManager.removeRoiConfig(roiId);
         
         // 使用Controller刷新树形视图
         m_roiUiController->refreshRoiTreeView();
@@ -564,6 +576,9 @@ void MainWindow::on_btn_switchROI_clicked()
     
     if (m_roiManager.isRoiActive()) {
         // 当前是ROI模式，切换到原图模式
+        // 先保存当前ROI的PipelineConfig
+        m_roiUiController->saveCurrentRoiPipelineConfig();
+        
         m_roiManager.resetRoi();
         m_view->clearRoi();
         m_view->resetZoom();
@@ -579,11 +594,14 @@ void MainWindow::on_btn_switchROI_clicked()
             return;
         }
         
-        RoiConfig* roi = m_multiRoiConfig->getRoi(currentRoiId);
+        RoiConfig* roi = m_roiManager.getRoiConfig(currentRoiId);
         if (!roi) {
             QMessageBox::warning(this, "警告", "未找到选中的ROI");
             return;
         }
+        
+        // 加载该ROI的PipelineConfig到PipelineManager
+        m_roiUiController->loadRoiPipelineConfig(currentRoiId);
         
         // 切换到ROI模式
         m_view->clearRoi();
@@ -679,7 +697,7 @@ void MainWindow::onDeleteDetectionClicked()
         
         if (parentItem) {
             QString roiId = parentItem->data(0, Qt::UserRole).toString();
-            RoiConfig* roi = m_multiRoiConfig->getRoi(roiId);
+            RoiConfig* roi = m_roiManager.getRoiConfig(roiId);
             
             if (roi) {
                 // 查找检测项名称用于确认提示

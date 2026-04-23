@@ -12,6 +12,7 @@
 #include <QMessageBox>
 #include <QInputDialog>
 #include "roi_config.h"
+#include "ui/roi_manager.h"
 
 /**
  * @brief ROI列表管理组件
@@ -34,10 +35,10 @@ public:
     // ========== 数据管理接口 ==========
 
     /**
-     * @brief 设置ROI配置数据
-     * @param config 多ROI配置
+     * @brief 设置ROI管理器引用
+     * @param roiManager ROI管理器引用
      */
-    void setRoiConfig(MultiRoiConfig* config);
+    void setRoiManager(RoiManager& roiManager);
 
     /**
      * @brief 刷新ROI列表显示
@@ -158,7 +159,7 @@ private:
 
     // ========== 数据成员 ==========
 
-    MultiRoiConfig* m_roiConfig;        // ROI配置数据
+    RoiManager* m_roiManager;           // ROI管理器（非拥有）
     QString m_selectedRoiId;            // 当前选中的ROI ID
 
     // ========== 初始化函数 ==========

@@ -8,6 +8,7 @@
 #include <QStringList>
 
 #include "roi_config.h"
+#include "roi_manager.h"
 
 /**
  * 检测项UI控制器 - 负责检测项管理的UI交互逻辑
@@ -23,7 +24,7 @@ class DetectionUiController : public QObject
 
 public:
     explicit DetectionUiController(
-        MultiRoiConfig* multiRoiConfig,
+        RoiManager& roiManager,
         QTabWidget* tabWidget,
         QObject* parent = nullptr
     );
@@ -48,7 +49,7 @@ signals:
     void ensureTabNeeded(const QString& tabName);
 
 private:
-    MultiRoiConfig* m_multiRoiConfig;
+    RoiManager& m_roiManager;
     QTabWidget* m_tabWidget;
     QStringList m_tabNames;
 };

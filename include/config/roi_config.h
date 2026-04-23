@@ -10,6 +10,7 @@
 #include <QDateTime>
 #include <QRandomGenerator>
 #include "detection_config_types.h"
+#include "pipeline.h"
 
 /**
  * @brief 检测类型枚举
@@ -299,6 +300,7 @@ struct RoiConfig {
     bool isSelected;            // 是否选中
     QString color;              // 显示颜色
     QList<DetectionItem> detectionItems; // 检测项列表
+    PipelineConfig pipelineConfig; // 该ROI关联的Pipeline配置（亮度、对比度等）
 
     RoiConfig() 
         : isActive(true), isSelected(false), color("#FF6B6B") {}
@@ -365,6 +367,15 @@ struct RoiConfig {
         }
         obj["detectionItems"] = detections;
         
+        // 保存PipelineConfig
+        QJsonObject pipeConfig;
+        pipeConfig["brightness"] = pipelineConfig.brightness;
+        pipeConfig["contrast"] = pipelineConfig.contrast;
+        pipeConfig["gamma"] = pipelineConfig.gamma;
+        pipeConfig["sharpen"] = pipelineConfig.sharpen;
+        pipeConfig["channel"] = static_cast<int>(pipelineConfig.channel);
+        obj["pipelineConfig"] = pipeConfig;
+        
         return obj;
     }
 
@@ -393,102 +404,17 @@ struct RoiConfig {
             item.fromJson(val.toObject());
             detectionItems.append(item);
         }
+        
+        // 加载PipelineConfig
+        QJsonObject pipeConfig = obj["pipelineConfig"].toObject();
+        if (!pipeConfig.isEmpty()) {
+            pipelineConfig.brightness = pipeConfig["brightness"].toInt(0);
+            pipelineConfig.contrast = pipeConfig["contrast"].toDouble(1.0);
+            pipelineConfig.gamma = pipeConfig["gamma"].toDouble(1.0);
+            pipelineConfig.sharpen = pipeConfig["sharpen"].toDouble(1.0);
+            pipelineConfig.channel = static_cast<PipelineConfig::Channel>(
+                pipeConfig["channel"].toInt(0));
+        }
     }
 };
 
-/**
- * @brief 多ROI配置管理类
- */
-class MultiRoiConfig {
-public:
-    MultiRoiConfig() = default;
-
-    /**
-     * @brief 添加ROI
-     */
-    void addRoi(const RoiConfig& roi) {
-        m_rois.append(roi);
-    }
-
-    /**
-     * @brief 删除ROI
-     */
-    bool removeRoi(const QString& roiId) {
-        for (int i = 0; i < m_rois.size(); ++i) {
-            if (m_rois[i].roiId == roiId) {
-                m_rois.removeAt(i);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * @brief 获取ROI
-     */
-    RoiConfig* getRoi(const QString& roiId) {
-        for (auto& roi : m_rois) {
-            if (roi.roiId == roiId) {
-                return &roi;
-            }
-        }
-        return nullptr;
-    }
-
-    /**
-     * @brief 获取所有ROI
-     */
-    QList<RoiConfig>& getRois() { return m_rois; }
-    const QList<RoiConfig>& getRois() const { return m_rois; }
-
-    /**
-     * @brief 清空所有ROI
-     */
-    void clear() { m_rois.clear(); }
-
-    /**
-     * @brief 获取ROI数量
-     */
-    int size() const { return m_rois.size(); }
-
-    /**
-     * @brief 检查是否为空
-     */
-    bool isEmpty() const { return m_rois.isEmpty(); }
-
-    /**
-     * @brief 转换为JSON文档
-     */
-    QJsonDocument toJsonDocument() const {
-        QJsonArray rois;
-        for (const auto& roi : m_rois) {
-            rois.append(roi.toJson());
-        }
-        
-        QJsonObject root;
-        root["version"] = "1.0";
-        root["roiCount"] = m_rois.size();
-        root["rois"] = rois;
-        
-        return QJsonDocument(root);
-    }
-
-    /**
-     * @brief 从JSON文档加载
-     */
-    void fromJsonDocument(const QJsonDocument& doc) {
-        m_rois.clear();
-        
-        QJsonObject root = doc.object();
-        QJsonArray rois = root["rois"].toArray();
-        
-        for (const auto& val : rois) {
-            RoiConfig roi;
-            roi.fromJson(val.toObject());
-            m_rois.append(roi);
-        }
-    }
-
-private:
-    QList<RoiConfig> m_rois;
-};

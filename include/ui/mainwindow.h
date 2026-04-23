@@ -122,8 +122,7 @@ private:
     bool m_isProcessing = false;
     bool m_hasPendingProcess = false;
 
-    // ROI配置管理
-    MultiRoiConfig* m_multiRoiConfig;
+    // ROI配置管理（已移至RoiManager统一管理）
     
     QStringList m_tabNames;
     
