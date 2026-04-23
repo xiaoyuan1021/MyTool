@@ -33,6 +33,7 @@
 #include "widgets/barcode_tab_widget.h"
 #include "widgets/video_tab_widget.h"
 #include "widgets/object_detection_tab_widget.h"
+#include "widgets/image_list_manager.h"
 #include "widgets/roi_list_widget.h"
 #include "roi_config.h"
 #include "log_page.h"
@@ -153,16 +154,8 @@ private:
     DetectionUiController* m_detectionUiController;
     ConfigController* m_configController;
 
-    // 图片管理相关
-    void setupImageList();
-    void updateImageList();
-    void onImageAdded(const QString& imageId);
-    void onImageRemoved(const QString& imageId);
-    void onCurrentImageChanged(const QString& imageId);
-    void onAddImageClicked();
-    void onRemoveImageClicked();
-    void onImageListSelectionChanged();
-
+    // 图片列表管理器
+    ImageListManager* m_imageListManager = nullptr;
 };
 
 

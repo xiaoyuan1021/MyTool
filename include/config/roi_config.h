@@ -163,6 +163,9 @@ inline QString generateUniqueId(const QString& prefix) {
 
 /**
  * @brief 检测项配置结构
+ *
+ * 使用 QJsonObject 存储具体检测类型的配置，新增检测类型时
+ * 无需修改此结构体，只需在对应类型中实现 toJson/fromJson 即可。
  */
 struct DetectionItem {
     QString itemId;             // 检测项唯一ID
@@ -171,38 +174,31 @@ struct DetectionItem {
     QVariantMap parameters;     // 检测参数
     bool enabled;               // 是否启用
     QString description;        // 描述信息
-
-    // 特定类型的配置
-    BlobAnalysisConfig blobConfig;               // Blob分析配置
-    LineDetectionConfig lineConfig;              // 直线检测配置
-    BarcodeRecognitionConfig barcodeConfig;      // 条码识别配置
-    VideoSourceConfig videoConfig;               // 视频源配置
-    ObjectDetectionConfig objectDetectionConfig; // 目标检测配置
+    QJsonObject config;         // 检测类型的专属配置（通用JSON存储）
 
     DetectionItem() 
         : type(DetectionType::Blob), enabled(true) {}
 
     DetectionItem(const QString& name, DetectionType t)
         : itemName(name), type(t), enabled(true) {
-        // 生成唯一ID
         itemId = generateUniqueId("det");
         
-        // 根据类型初始化对应的配置
+        // 根据类型初始化对应的默认配置
         switch (type) {
             case DetectionType::Blob:
-                blobConfig = BlobAnalysisConfig();
+                config = BlobAnalysisConfig().toJson();
                 break;
             case DetectionType::Line:
-                lineConfig = LineDetectionConfig();
+                config = LineDetectionConfig().toJson();
                 break;
             case DetectionType::Barcode:
-                barcodeConfig = BarcodeRecognitionConfig();
+                config = BarcodeRecognitionConfig().toJson();
                 break;
             case DetectionType::VideoSource:
-                videoConfig = VideoSourceConfig();
+                config = VideoSourceConfig().toJson();
                 break;
             case DetectionType::ObjectDetection:
-                objectDetectionConfig = ObjectDetectionConfig();
+                config = ObjectDetectionConfig().toJson();
                 break;
             default:
                 break;
@@ -225,27 +221,7 @@ struct DetectionItem {
             params[it.key()] = QJsonValue::fromVariant(it.value());
         }
         obj["parameters"] = params;
-        
-        // 根据类型保存特定配置
-        switch (type) {
-            case DetectionType::Blob:
-                obj["blobConfig"] = blobConfig.toJson();
-                break;
-            case DetectionType::Line:
-                obj["lineConfig"] = lineConfig.toJson();
-                break;
-            case DetectionType::Barcode:
-                obj["barcodeConfig"] = barcodeConfig.toJson();
-                break;
-            case DetectionType::VideoSource:
-                obj["videoConfig"] = videoConfig.toJson();
-                break;
-            case DetectionType::ObjectDetection:
-                obj["objectDetectionConfig"] = objectDetectionConfig.toJson();
-                break;
-            default:
-                break;
-        }
+        obj["config"] = config;
         
         return obj;
     }
@@ -265,35 +241,49 @@ struct DetectionItem {
             parameters[it.key()] = it.value().toVariant();
         }
         
-        // 根据类型加载特定配置
-        switch (type) {
-            case DetectionType::Blob:
-                if (obj.contains("blobConfig")) {
-                    blobConfig.fromJson(obj["blobConfig"].toObject());
-                }
-                break;
-            case DetectionType::Line:
-                if (obj.contains("lineConfig")) {
-                    lineConfig.fromJson(obj["lineConfig"].toObject());
-                }
-                break;
-            case DetectionType::Barcode:
-                if (obj.contains("barcodeConfig")) {
-                    barcodeConfig.fromJson(obj["barcodeConfig"].toObject());
-                }
-                break;
-            case DetectionType::VideoSource:
-                if (obj.contains("videoConfig")) {
-                    videoConfig.fromJson(obj["videoConfig"].toObject());
-                }
-                break;
-            case DetectionType::ObjectDetection:
-                if (obj.contains("objectDetectionConfig")) {
-                    objectDetectionConfig.fromJson(obj["objectDetectionConfig"].toObject());
-                }
-                break;
-            default:
-                break;
+        config = obj["config"].toObject();
+        
+        // 兼容旧版本：如果config为空，尝试从旧字段加载
+        if (config.isEmpty()) {
+            switch (type) {
+                case DetectionType::Blob:
+                    if (obj.contains("blobConfig")) {
+                        config = obj["blobConfig"].toObject();
+                    } else {
+                        config = BlobAnalysisConfig().toJson();
+                    }
+                    break;
+                case DetectionType::Line:
+                    if (obj.contains("lineConfig")) {
+                        config = obj["lineConfig"].toObject();
+                    } else {
+                        config = LineDetectionConfig().toJson();
+                    }
+                    break;
+                case DetectionType::Barcode:
+                    if (obj.contains("barcodeConfig")) {
+                        config = obj["barcodeConfig"].toObject();
+                    } else {
+                        config = BarcodeRecognitionConfig().toJson();
+                    }
+                    break;
+                case DetectionType::VideoSource:
+                    if (obj.contains("videoConfig")) {
+                        config = obj["videoConfig"].toObject();
+                    } else {
+                        config = VideoSourceConfig().toJson();
+                    }
+                    break;
+                case DetectionType::ObjectDetection:
+                    if (obj.contains("objectDetectionConfig")) {
+                        config = obj["objectDetectionConfig"].toObject();
+                    } else {
+                        config = ObjectDetectionConfig().toJson();
+                    }
+                    break;
+                default:
+                    break;
+            }
         }
     }
 };
