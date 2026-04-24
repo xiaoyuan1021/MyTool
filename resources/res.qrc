@@ -1,11 +1,11 @@
 <RCC>
     <qresource prefix="/">
         <file>style.qss</file>
+        <file>icons/keji.png</file>
         <file>icons/branch_open.png</file>
         <file>icons/branch_closed.png</file>
         <file>icons/check.png</file>
         <file>icons/CPU.png</file>
         <file>icons/memory.png</file>
-        <file>icons/keji.png</file>
     </qresource>
 </RCC>

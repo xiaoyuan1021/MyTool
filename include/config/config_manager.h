@@ -9,6 +9,7 @@
 #include "roi_manager.h"
 #include "roi_config.h"
 #include "shape_filter_types.h"
+#include "mqtt_config.h"
 struct AppConfig
 {
     // ROI 配置（单ROI模式，向后兼容）
@@ -39,6 +40,9 @@ struct AppConfig
     // 多图片ROI配置（新）
     QMap<QString, QList<RoiConfig>> multiRoiConfigs;  // 图片ID -> ROI配置列表
     QString currentImageId;                            // 当前图片ID
+
+    // MQTT 配置
+    MqttConfig mqttConfig;
 
     // 转换为 JSON
     QJsonObject toJson() const;

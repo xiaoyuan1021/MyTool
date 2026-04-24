@@ -8,7 +8,7 @@ int main(int argc, char *argv[])
     QApplication a(argc, argv);
     MainWindow w;
     w.setWindowTitle("Vision_Tool");
-    w.setWindowIcon(QIcon(":/keji.png"));
+    w.setWindowIcon(QIcon(":/icons/keji.png"));
     w.show();
     return a.exec();
 }

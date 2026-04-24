@@ -87,6 +87,9 @@ QJsonObject AppConfig::toJson() const
     }
     json["multiRoiConfigs"] = multiRoiObj;
 
+    // MQTT 配置
+    json["mqtt"] = mqttConfig.toJson();
+
     return json;
 }
 
@@ -193,6 +196,11 @@ void AppConfig::fromJson(const QJsonObject& json)
             }
             multiRoiConfigs[it.key()] = configs;
         }
+    }
+
+    // MQTT 配置
+    if (json.contains("mqtt")) {
+        mqttConfig.fromJson(json["mqtt"].toObject());
     }
 }
 
