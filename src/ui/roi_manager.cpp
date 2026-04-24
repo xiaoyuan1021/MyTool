@@ -844,6 +844,15 @@ const QList<RoiConfig>& RoiManager::getRoiConfigs() const
     return it.value().roiConfigs;
 }
 
+QList<RoiConfig> RoiManager::getRoiConfigsForImage(const QString& imageId) const
+{
+    auto it = m_imageRoisMap.find(imageId);
+    if (it == m_imageRoisMap.end()) {
+        return {};
+    }
+    return it.value().roiConfigs;
+}
+
 int RoiManager::getRoiConfigCount() const
 {
     auto it = m_imageRoisMap.find(m_currentImageId);

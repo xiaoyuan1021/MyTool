@@ -32,6 +32,8 @@ signals:
     void gammaChanged(int);
     void sharpenChanged(int);
     void processRequested();
+    /** 增强参数变化时触发，用于通知外部将配置回写到当前ROI */
+    void enhanceConfigChanged();
 
 private slots:
 

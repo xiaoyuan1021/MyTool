@@ -1,0 +1,215 @@
+{
+    "algorithms": [
+        {
+            "description": "OpenCV图像处理算法",
+            "enabled": true,
+            "name": "联合",
+            "params": {
+                "OpenCVAlgoType": 8
+            },
+            "type": "OpenCVAlgorithm"
+        },
+        {
+            "description": "OpenCV图像处理算法",
+            "enabled": true,
+            "name": "圆形闭运算",
+            "params": {
+                "OpenCVAlgoType": 2,
+                "radius": 2
+            },
+            "type": "OpenCVAlgorithm"
+        },
+        {
+            "description": "OpenCV图像处理算法",
+            "enabled": true,
+            "name": "圆形开运算",
+            "params": {
+                "OpenCVAlgoType": 0,
+                "radius": 2
+            },
+            "type": "OpenCVAlgorithm"
+        }
+    ],
+    "currentImageId": "img_1777027676183_0",
+    "enhance": {
+        "brightness": 0,
+        "contrast": 100,
+        "gamma": 174,
+        "sharpen": 100
+    },
+    "extract": {
+        "conditions": [
+            {
+                "feature": "circularity",
+                "maxValue": 1,
+                "minValue": 0.8
+            }
+        ],
+        "mode": "and"
+    },
+    "filter": {
+        "enabled": false,
+        "grayHigh": 184,
+        "grayLow": 0,
+        "mode": 1
+    },
+    "imageIdToFilePath": {
+        "img_1777027676183_0": "F:/QT/MyTool/images/1_1.jpg"
+    },
+    "imagePaths": [
+        "F:/QT/MyTool/images/1_1.jpg"
+    ],
+    "judge": {
+        "currentRegionCount": 6,
+        "maxRegionCount": 7,
+        "minRegionCount": 7
+    },
+    "mqtt": {
+        "auth": {
+            "password": "",
+            "useAuth": false,
+            "username": ""
+        },
+        "connection": {
+            "brokerHost": "localhost",
+            "brokerPort": 1883,
+            "clientId": "VisionTool",
+            "enabled": false
+        },
+        "reconnect": {
+            "autoReconnect": true,
+            "maxReconnectAttempts": 10,
+            "reconnectIntervalMs": 5000
+        },
+        "report": {
+            "reportBarcodes": true,
+            "reportIntervalMs": 0,
+            "reportOnStateChange": true,
+            "reportRegions": true
+        },
+        "topic": {
+            "publishTopic": "visiontool/results",
+            "qos": 1,
+            "subscribeTopic": "visiontool/commands"
+        }
+    },
+    "multiRoiConfigs": {
+        "img_1777027676183_0": [
+            {
+                "color": "#FF6B6B",
+                "detectionItems": [
+                    {
+                        "config": {
+                            "binarizationThreshold": 128,
+                            "brightness": 0,
+                            "codeTypes": [
+                                "auto"
+                            ],
+                            "contrast": 100,
+                            "enableBarcode": true,
+                            "enablePreprocessing": true,
+                            "gamma": 100,
+                            "maxNumSymbols": 0,
+                            "minConfidence": 0.7,
+                            "morphologySize": 3,
+                            "preprocessMethod": 0,
+                            "returnQuality": true,
+                            "sharpen": 100,
+                            "timeout": 5000
+                        },
+                        "description": "",
+                        "enabled": true,
+                        "itemId": "det_1777027774743_3601",
+                        "itemName": "条码检测",
+                        "parameters": {
+                        },
+                        "type": "条码检测"
+                    }
+                ],
+                "isActive": true,
+                "isSelected": false,
+                "pipelineConfig": {
+                    "brightness": 0,
+                    "channel": 1,
+                    "contrast": 1,
+                    "gamma": 1,
+                    "sharpen": 1
+                },
+                "roiId": "roi_1777027686863_7704",
+                "roiName": "ROI_1",
+                "roiRect": {
+                    "height": 600.4000000000003,
+                    "width": 760.0000000000001,
+                    "x": 425.6,
+                    "y": 1573.2
+                }
+            },
+            {
+                "color": "#FF6B6B",
+                "detectionItems": [
+                    {
+                        "config": {
+                            "brightness": 0,
+                            "contourMode": 0,
+                            "contrast": 100,
+                            "correctionMethod": 0,
+                            "correctionThreshold": 0.8,
+                            "enableCorrection": false,
+                            "extractionMethod": 0,
+                            "gamma": 100,
+                            "invertBinary": false,
+                            "maxArea": 10000,
+                            "maxAreaThreshold": 1000000,
+                            "maxBlobCount": 100,
+                            "maxCircularity": 1,
+                            "maxConvexity": 1,
+                            "maxInertia": 1,
+                            "minArea": 100,
+                            "minAreaThreshold": 0,
+                            "minBlobCount": 0,
+                            "minCircularity": 0.5,
+                            "minConvexity": 0.8,
+                            "minInertia": 0.5,
+                            "morphologyOp": 0,
+                            "morphologySize": 3,
+                            "sharpen": 100,
+                            "thresholdType": 0,
+                            "thresholdValue": 128,
+                            "useHierarchy": true
+                        },
+                        "description": "",
+                        "enabled": true,
+                        "itemId": "det_1777027809628_3546",
+                        "itemName": "Blob分析",
+                        "parameters": {
+                        },
+                        "type": "Blob分析"
+                    }
+                ],
+                "isActive": true,
+                "isSelected": false,
+                "pipelineConfig": {
+                    "brightness": 0,
+                    "channel": 1,
+                    "contrast": 1,
+                    "gamma": 1.74,
+                    "sharpen": 1
+                },
+                "roiId": "roi_1777027797069_5514",
+                "roiName": "ROI_2",
+                "roiRect": {
+                    "height": 566.1303767039999,
+                    "width": 416.947372032,
+                    "x": 1247.0169108480002,
+                    "y": 1017.5045959680001
+                }
+            }
+        ]
+    },
+    "roi": {
+        "height": 567,
+        "width": 417,
+        "x": 1247,
+        "y": 1017
+    }
+}

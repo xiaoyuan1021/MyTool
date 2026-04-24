@@ -53,14 +53,25 @@ struct DetectionStats
 };
 
 /**
- * 自动检测控制器
+ * 单个检测任务（一张图片的检测）
+ */
+struct ImageDetectionTask
+{
+    QString imageId;            ///< 图片ID
+    QString imagePath;          ///< 图片文件路径
+    QString imageName;          ///< 图片名称
+    QList<RoiConfig> roiConfigs; ///< 该图片的ROI配置列表
+};
+
+/**
+ * 自动检测控制器（方案B：基于RoiManager中已有的图片和ROI配置）
  *
- * 管理批量图片的自动检测流程：
- * - 支持从文件夹或图片列表启动批量检测
- * - 逐张执行 Pipeline 检测
- * - 实时统计合格/不合格数量和合格率
- * - 支持停止/暂停/恢复控制
- * - 生成检测结果报告（预留 MQTT 上报接口）
+ * 工作流程：
+ * 1. 从 RoiManager 获取所有已添加的图片及其 ROI 配置
+ * 2. 对每张图片的每个 ROI 区域裁剪并执行 Pipeline 检测
+ * 3. 根据 Pipeline 结果判断 OK/NG
+ * 4. 实时统计合格/不合格数量
+ * 5. 支持停止/暂停/恢复控制
  */
 class AutoDetectionController : public QObject
 {
@@ -76,9 +87,8 @@ public:
 
     // ==================== 控制接口 ====================
 
-    /// 开始批量检测
-    /// @param imagePaths 待检测的图片路径列表
-    void startDetection(const QStringList& imagePaths);
+    /// 开始批量检测（从RoiManager自动获取图片和ROI配置）
+    void startDetection();
 
     /// 停止检测
     void stopDetection();
@@ -99,10 +109,10 @@ public:
     /// 获取所有检测报告
     const QList<DetectionResultReport>& results() const { return m_reports; }
 
-    /// 获取不合格图片路径列表
+    /// 获取不合格图片列表
     QStringList failedImages() const { return m_failedImages; }
 
-    /// 获取检测结果摘要（用于日志/显示）
+    /// 获取检测结果摘要
     QString summaryString() const;
 
 signals:
@@ -118,7 +128,7 @@ signals:
     /// 进度更新
     void progressUpdated(int currentIndex, int totalCount);
 
-    /// 单张图片检测完成
+    /// 单张图片检测完成 (passed: 该图片所有ROI都通过才为true)
     void imageProcessed(int index, const QString& imagePath, bool passed);
 
     /// 统计信息更新
@@ -128,11 +138,14 @@ signals:
     void logMessage(const QString& message);
 
 private:
-    /// 处理下一张图片
-    void processNextImage();
+    /// 构建检测任务列表（从RoiManager获取）
+    QList<ImageDetectionTask> buildTaskList();
 
-    /// 处理单张图片
-    void processSingleImage(const QString& imagePath);
+    /// 处理下一个任务
+    void processNextTask();
+
+    /// 处理单个图片任务（在后台线程执行）
+    void processImageTask(const ImageDetectionTask& task);
 
     /// 完成检测
     void finishDetection();
@@ -140,7 +153,7 @@ private:
     PipelineManager* m_pipeline;
     RoiManager* m_roiManager;
 
-    QStringList m_imagePaths;           ///< 待检测图片列表
+    QList<ImageDetectionTask> m_tasks;    ///< 待检测任务列表
     int m_currentIndex = 0;
     bool m_running = false;
     bool m_paused = false;

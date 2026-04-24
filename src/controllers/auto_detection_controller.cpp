@@ -17,27 +17,29 @@ AutoDetectionController::AutoDetectionController(
 
 // ==================== 控制接口 ====================
 
-void AutoDetectionController::startDetection(const QStringList& imagePaths)
+void AutoDetectionController::startDetection()
 {
     if (m_running) {
         emit logMessage("检测已在运行中，请先停止当前检测");
         return;
     }
 
-    if (imagePaths.isEmpty()) {
-        emit logMessage("没有要检测的图片");
+    // 从 RoiManager 构建任务列表
+    m_tasks = buildTaskList();
+
+    if (m_tasks.isEmpty()) {
+        emit logMessage("没有要检测的图片，请先添加图片并配置ROI和检测项");
         return;
     }
 
     // 重置状态
-    m_imagePaths = imagePaths;
     m_currentIndex = 0;
     m_stopRequested = false;
     m_paused = false;
     m_running = true;
 
     m_stats.reset();
-    m_stats.totalCount = imagePaths.size();
+    m_stats.totalCount = m_tasks.size();
     m_reports.clear();
     m_failedImages.clear();
 
@@ -46,8 +48,8 @@ void AutoDetectionController::startDetection(const QStringList& imagePaths)
     emit detectionStarted(m_stats.totalCount);
     emit logMessage(QString("开始批量检测: 共 %1 张图片").arg(m_stats.totalCount));
 
-    // 开始处理第一张
-    processNextImage();
+    // 开始处理第一个任务
+    processNextTask();
 }
 
 void AutoDetectionController::stopDetection()
@@ -80,8 +82,8 @@ void AutoDetectionController::resumeDetection()
     m_paused = false;
     emit logMessage("检测已恢复");
 
-    // 继续处理下一张
-    processNextImage();
+    // 继续处理下一个任务
+    processNextTask();
 }
 
 // ==================== 状态查询 ====================
@@ -100,7 +102,39 @@ QString AutoDetectionController::summaryString() const
 
 // ==================== 内部实现 ====================
 
-void AutoDetectionController::processNextImage()
+QList<ImageDetectionTask> AutoDetectionController::buildTaskList()
+{
+    QList<ImageDetectionTask> tasks;
+
+    QStringList imageIds = m_roiManager->getImageIds();
+    for (const QString& imageId : imageIds) {
+        ImageDetectionTask task;
+        task.imageId = imageId;
+        task.imagePath = m_roiManager->getImageFilePath(imageId);
+        task.imageName = m_roiManager->getImageName(imageId);
+
+        // 获取该图片的ROI配置（关键：使用 getRoiConfigsForImage，不会切换当前图片）
+        task.roiConfigs = m_roiManager->getRoiConfigsForImage(imageId);
+
+        // 至少需要图片文件路径
+        if (task.imagePath.isEmpty()) {
+            emit logMessage(QString("跳过图片 '%1': 无文件路径").arg(task.imageName));
+            continue;
+        }
+
+        // 如果没有ROI配置，也跳过（全图检测的场景可以后续扩展）
+        if (task.roiConfigs.isEmpty()) {
+            emit logMessage(QString("跳过图片 '%1': 未配置ROI").arg(task.imageName));
+            continue;
+        }
+
+        tasks.append(task);
+    }
+
+    return tasks;
+}
+
+void AutoDetectionController::processNextTask()
 {
     // 检查是否需要停止
     if (m_stopRequested) {
@@ -114,23 +148,29 @@ void AutoDetectionController::processNextImage()
     }
 
     // 检查是否处理完毕
-    if (m_currentIndex >= m_imagePaths.size()) {
+    if (m_currentIndex >= m_tasks.size()) {
         finishDetection();
         return;
     }
 
-    // 处理当前图片
-    processSingleImage(m_imagePaths[m_currentIndex]);
+    // 处理当前任务
+    processImageTask(m_tasks[m_currentIndex]);
 }
 
-void AutoDetectionController::processSingleImage(const QString& imagePath)
+void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
 {
-    // 捕获需要的指针（按值），避免在后台线程中捕获 this
+    // 捕获需要的指针和数据（按值），避免在后台线程中捕获 this
     PipelineManager* pipeline = m_pipeline;
+    QList<RoiConfig> roiConfigs = task.roiConfigs;  // 值拷贝，线程安全
+    QString imagePath = task.imagePath;
+    QString imageName = task.imageName;
+    QString imageId = task.imageId;
+    int currentIndex = m_currentIndex;
+    int totalCount = m_stats.totalCount;
 
     // 使用 QtConcurrent 在后台线程执行，避免阻塞 UI
     QFuture<PipelineContext> future = QtConcurrent::run(
-        [pipeline, imagePath]() -> PipelineContext {
+        [pipeline, imagePath, roiConfigs]() -> PipelineContext {
             // 加载图片
             cv::Mat image = cv::imread(imagePath.toStdString());
             if (image.empty()) {
@@ -140,52 +180,123 @@ void AutoDetectionController::processSingleImage(const QString& imagePath)
                 return emptyCtx;
             }
 
-            // 在后台线程中执行 Pipeline（只读取配置，不修改 UI）
-            return pipeline->execute(image);
+            // 如果有多个ROI，对每个ROI分别检测
+            // 简化策略：取第一个ROI区域裁剪后执行Pipeline
+            // 后续可以扩展为多ROI分别检测后汇总
+            bool allPassed = true;
+            QString failReason;
+
+            for (const RoiConfig& roiConfig : roiConfigs) {
+                if (!roiConfig.isActive) continue;
+
+                cv::Mat roiImage;
+                QRectF rect = roiConfig.roiRect;
+
+                // 裁剪ROI区域
+                if (!rect.isEmpty() && rect.width() > 0 && rect.height() > 0) {
+                    int x = std::max(0, (int)std::floor(rect.x()));
+                    int y = std::max(0, (int)std::floor(rect.y()));
+                    int w = std::min((int)std::ceil(rect.width()), image.cols - x);
+                    int h = std::min((int)std::ceil(rect.height()), image.rows - y);
+
+                    if (w > 0 && h > 0) {
+                        roiImage = image(cv::Rect(x, y, w, h)).clone();
+                    } else {
+                        roiImage = image.clone();
+                    }
+                } else {
+                    // 无ROI配置，使用全图
+                    roiImage = image.clone();
+                }
+
+                // 执行Pipeline
+                PipelineContext ctx = pipeline->execute(roiImage);
+
+                // 根据DetectionItem的配置判断 pass/fail
+                bool roiPassed = true;
+                QString roiFailReason;
+
+                for (const DetectionItem& detItem : roiConfig.detectionItems) {
+                    if (!detItem.enabled) continue;
+
+                    if (detItem.type == DetectionType::Blob) {
+                        // 解析BlobAnalysisConfig
+                        BlobAnalysisConfig blobConfig;
+                        blobConfig.fromJson(detItem.config);
+
+                        int currentCount = ctx.currentRegions;
+                        int minCount = blobConfig.minBlobCount;
+                        int maxCount = blobConfig.maxBlobCount;
+
+                        if (currentCount < minCount || currentCount > maxCount) {
+                            roiPassed = false;
+                            roiFailReason = QString("Blob数量%1, 要求[%2,%3]")
+                                .arg(currentCount).arg(minCount).arg(maxCount);
+                        }
+                    }
+                    // 其他检测类型（Line/Barcode等）后续可扩展
+                }
+
+                if (!roiPassed) {
+                    allPassed = false;
+                    if (!failReason.isEmpty()) failReason += "; ";
+                    failReason += QString("[%1] %2")
+                        .arg(roiConfig.roiName)
+                        .arg(roiFailReason.isEmpty() ? "NG" : roiFailReason);
+                }
+            }
+
+            PipelineContext resultCtx;
+            resultCtx.pass = allPassed;
+            resultCtx.reason = failReason;
+            return resultCtx;
         }
     );
 
     // 使用 watcher 等待结果（在主线程中处理）
     QFutureWatcher<PipelineContext>* watcher = new QFutureWatcher<PipelineContext>(this);
-    connect(watcher, &QFutureWatcher<PipelineContext>::finished, this, [this, watcher, imagePath]() {
-        PipelineContext ctx = watcher->result();
-        watcher->deleteLater();
+    connect(watcher, &QFutureWatcher<PipelineContext>::finished, this,
+        [this, watcher, task, currentIndex, totalCount]() {
+            PipelineContext ctx = watcher->result();
+            watcher->deleteLater();
 
-        // 更新统计
-        m_stats.processedCount++;
-        m_stats.elapsedMs = m_elapsedTimer.elapsed();
+            // 更新统计
+            m_stats.processedCount++;
+            m_stats.elapsedMs = m_elapsedTimer.elapsed();
 
-        bool passed = ctx.pass;
-        if (passed) {
-            m_stats.passCount++;
-        } else {
-            m_stats.failCount++;
-            m_failedImages.append(imagePath);
+            bool passed = ctx.pass;
+            if (passed) {
+                m_stats.passCount++;
+            } else {
+                m_stats.failCount++;
+                m_failedImages.append(task.imagePath);
+            }
+
+            // 生成检测报告
+            DetectionResultReport report = DetectionResultReport::fromPipelineContext(
+                ctx, task.imageName, QString(), task.imageName);
+            report.imageId = task.imageId;
+            m_reports.append(report);
+
+            // 发送信号
+            emit imageProcessed(currentIndex, task.imagePath, passed);
+            emit progressUpdated(currentIndex + 1, totalCount);
+            emit statsUpdated(m_stats);
+
+            // 记录日志
+            QString status = passed ? "PASS" : "FAIL";
+            emit logMessage(QString("[%1/%2] %3 -> %4 (%5)")
+                .arg(currentIndex + 1)
+                .arg(totalCount)
+                .arg(task.imageName)
+                .arg(status)
+                .arg(ctx.reason.isEmpty() ? "OK" : ctx.reason));
+
+            // 处理下一个任务
+            m_currentIndex++;
+            processNextTask();
         }
-
-        // 生成检测报告
-        DetectionResultReport report = DetectionResultReport::fromPipelineContext(
-            ctx, QFileInfo(imagePath).fileName());
-        m_reports.append(report);
-
-        // 发送信号
-        emit imageProcessed(m_currentIndex, imagePath, passed);
-        emit progressUpdated(m_currentIndex + 1, m_stats.totalCount);
-        emit statsUpdated(m_stats);
-
-        // 记录日志
-        QString status = passed ? "PASS" : "FAIL";
-        emit logMessage(QString("[%1/%2] %3 -> %4 (%5)")
-            .arg(m_currentIndex + 1)
-            .arg(m_stats.totalCount)
-            .arg(QFileInfo(imagePath).fileName())
-            .arg(status)
-            .arg(ctx.reason.isEmpty() ? "OK" : ctx.reason));
-
-        // 处理下一张
-        m_currentIndex++;
-        processNextImage();
-    });
+    );
 
     watcher->setFuture(future);
 }
@@ -197,7 +308,7 @@ void AutoDetectionController::finishDetection()
     m_stopRequested = false;
     m_stats.elapsedMs = m_elapsedTimer.elapsed();
 
-    if (m_currentIndex >= m_imagePaths.size()) {
+    if (m_currentIndex >= m_tasks.size()) {
         emit logMessage(QString("批量检测完成! %1").arg(summaryString()));
     } else {
         emit logMessage(QString("批量检测已停止! %1").arg(summaryString()));

@@ -183,6 +183,9 @@ void EnhanceTabWidget::syncConfigToPipeline()
     m_pipelineManager->getConfig().contrast = current.contrast / 100.0;
     m_pipelineManager->getConfig().gamma = current.gamma / 100.0;
     m_pipelineManager->getConfig().sharpen = current.sharpen / 100.0;
+    
+    // 通知外部将配置回写到当前ROI，防止ROI之间配置串扰
+    emit enhanceConfigChanged();
 }
 
 EnhanceTabWidget::~EnhanceTabWidget()

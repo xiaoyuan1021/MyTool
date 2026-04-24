@@ -599,19 +599,8 @@ void MainWindow::on_btn_importConfig_clicked()
 
 void MainWindow::on_btn_startAutoDetection_clicked()
 {
-    // 打开文件选择对话框，支持多选
-    QStringList fileNames = QFileDialog::getOpenFileNames(
-        this,
-        "选择要批量检测的图片",
-        "",
-        "图片文件 (*.png *.jpg *.jpeg *.bmp *.tiff *.tif);;所有文件 (*.*)"
-    );
-
-    if (fileNames.isEmpty()) {
-        return;
-    }
-
-    m_autoDetectionController->startDetection(fileNames);
+    // 从 RoiManager 自动获取已添加的图片和ROI配置，无需弹文件选择对话框
+    m_autoDetectionController->startDetection();
 }
 
 void MainWindow::on_btn_stopAutoDetection_clicked()
@@ -723,6 +712,11 @@ void MainWindow::connectTabSignals(const QString& tabName, QWidget* widget)
         auto* tab = qobject_cast<EnhanceTabWidget*>(widget);
         connect(tab, &EnhanceTabWidget::processRequested,
                 this, &MainWindow::processAndDisplay);
+        // 增强参数变化时，实时回写到当前ROI，防止多ROI间亮度/对比度等参数串扰
+        connect(tab, &EnhanceTabWidget::enhanceConfigChanged,
+                this, [this]() {
+                    m_roiUiController->saveCurrentRoiPipelineConfig();
+                });
     }
     else if (tabName == "过滤") {
         auto* tab = qobject_cast<FilterTabWidget*>(widget);

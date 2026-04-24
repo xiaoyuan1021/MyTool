@@ -362,6 +362,13 @@ public:
     const QList<RoiConfig>& getRoiConfigs() const;
 
     /**
+     * @brief 获取指定图片的所有ROI配置（不切换当前图片）
+     * @param imageId 图片ID
+     * @return ROI配置列表的副本，如果图片不存在返回空列表
+     */
+    QList<RoiConfig> getRoiConfigsForImage(const QString& imageId) const;
+
+    /**
      * @brief 获取当前图片的ROI配置数量
      */
     int getRoiConfigCount() const;
