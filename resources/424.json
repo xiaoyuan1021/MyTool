@@ -1,0 +1,164 @@
+{
+    "algorithms": [
+    ],
+    "currentImageId": "img_1777021763751_1",
+    "enhance": {
+        "brightness": 0,
+        "contrast": 100,
+        "gamma": 100,
+        "sharpen": 100
+    },
+    "extract": {
+        "conditions": [
+        ],
+        "mode": "and"
+    },
+    "filter": {
+        "enabled": false,
+        "grayHigh": 255,
+        "grayLow": 0,
+        "mode": 0
+    },
+    "imagePaths": [
+        "F:/QT/MyTool/images/zidane.jpg",
+        "F:/QT/MyTool/images/1_1.jpg"
+    ],
+    "judge": {
+        "currentRegionCount": 0,
+        "maxRegionCount": 1000,
+        "minRegionCount": 0
+    },
+    "mqtt": {
+        "auth": {
+            "password": "",
+            "useAuth": false,
+            "username": ""
+        },
+        "connection": {
+            "brokerHost": "localhost",
+            "brokerPort": 1883,
+            "clientId": "VisionTool",
+            "enabled": false
+        },
+        "reconnect": {
+            "autoReconnect": true,
+            "maxReconnectAttempts": 10,
+            "reconnectIntervalMs": 5000
+        },
+        "report": {
+            "reportBarcodes": true,
+            "reportIntervalMs": 0,
+            "reportOnStateChange": true,
+            "reportRegions": true
+        },
+        "topic": {
+            "publishTopic": "visiontool/results",
+            "qos": 1,
+            "subscribeTopic": "visiontool/commands"
+        }
+    },
+    "multiRoiConfigs": {
+        "img_1777021725398_0": [
+            {
+                "color": "#FF6B6B",
+                "detectionItems": [
+                    {
+                        "config": {
+                            "confidenceThreshold": 0.5,
+                            "configPath": "",
+                            "inputHeight": 640,
+                            "inputWidth": 640,
+                            "lineWidth": 2,
+                            "modelPath": "",
+                            "nmsThreshold": 0.4000000059604645,
+                            "showBoundingBox": true,
+                            "showConfidence": true,
+                            "showLabels": true
+                        },
+                        "description": "",
+                        "enabled": true,
+                        "itemId": "det_1777021738433_5644",
+                        "itemName": "目标检测",
+                        "parameters": {
+                        },
+                        "type": "目标检测"
+                    }
+                ],
+                "isActive": true,
+                "isSelected": false,
+                "pipelineConfig": {
+                    "brightness": 0,
+                    "channel": 1,
+                    "contrast": 1,
+                    "gamma": 1,
+                    "sharpen": 1
+                },
+                "roiId": "roi_1777021731313_8621",
+                "roiName": "ROI_1",
+                "roiRect": {
+                    "height": 563.5555555555555,
+                    "width": 846.2222222222222,
+                    "x": 92.44444444444444,
+                    "y": 99.55555555555554
+                }
+            }
+        ],
+        "img_1777021763751_1": [
+            {
+                "color": "#FF6B6B",
+                "detectionItems": [
+                    {
+                        "config": {
+                            "binarizationThreshold": 128,
+                            "brightness": 0,
+                            "codeTypes": [
+                                "auto"
+                            ],
+                            "contrast": 100,
+                            "enableBarcode": true,
+                            "enablePreprocessing": true,
+                            "gamma": 100,
+                            "maxNumSymbols": 0,
+                            "minConfidence": 0.7,
+                            "morphologySize": 3,
+                            "preprocessMethod": 0,
+                            "returnQuality": true,
+                            "sharpen": 100,
+                            "timeout": 5000
+                        },
+                        "description": "",
+                        "enabled": true,
+                        "itemId": "det_1777021782206_6395",
+                        "itemName": "条码检测",
+                        "parameters": {
+                        },
+                        "type": "条码检测"
+                    }
+                ],
+                "isActive": true,
+                "isSelected": false,
+                "pipelineConfig": {
+                    "brightness": 0,
+                    "channel": 1,
+                    "contrast": 1,
+                    "gamma": 1,
+                    "sharpen": 1
+                },
+                "roiId": "roi_1777021770906_1619",
+                "roiName": "ROI_1",
+                "roiRect": {
+                    "height": 714.4000000000001,
+                    "width": 820.8000000000002,
+                    "x": 402.8,
+                    "y": 1618.8000000000002
+                }
+            }
+        ]
+    },
+    "roi": {
+        "height": 715,
+        "width": 821,
+        "x": 402,
+        "y": 1618
+    }
+}

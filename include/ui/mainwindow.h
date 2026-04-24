@@ -137,6 +137,9 @@ private:
 
     // 自动检测控制器
     AutoDetectionController* m_autoDetectionController = nullptr;
+
+    // 目标检测请求标志：仅在用户主动触发时才执行目标检测
+    bool m_objectDetectionRequested = false;
 };
 
 

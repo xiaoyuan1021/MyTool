@@ -83,34 +83,38 @@ MainWindow::MainWindow(QWidget *parent)
                     barcodeTab->updateStatus(result.barcodeStatus);
                 }
 
-                // 执行目标检测（模型已加载时）
-                if (auto* objTab = m_tabManager->getObjectDetectionTab(); objTab && objTab->isModelLoaded()) {
-                    cv::Mat detectImage = m_roiManager.getCurrentImage();
-                    if (!detectImage.empty()) {
-                        std::vector<DetectionResult> detResults = objTab->runDetection(detectImage);
-                        objTab->updateDetectionResults(detResults);
+                // 仅在用户主动请求目标检测时才执行（避免每次 pipeline 处理后都重复检测）
+                if (m_objectDetectionRequested) {
+                    if (auto* objTab = m_tabManager->getObjectDetectionTab(); objTab && objTab->isModelLoaded()) {
+                        cv::Mat detectImage = m_roiManager.getCurrentImage();
+                        if (!detectImage.empty()) {
+                            std::vector<DetectionResult> detResults = objTab->runDetection(detectImage);
+                            objTab->updateDetectionResults(detResults);
 
-                        // 在干净的displayImage上绘制检测框
-                        for (const auto& det : detResults) {
-                            cv::rectangle(displayImage, det.box, cv::Scalar(0, 255, 0), 2);
+                            // 在干净的displayImage上绘制检测框
+                            for (const auto& det : detResults) {
+                                cv::rectangle(displayImage, det.box, cv::Scalar(0, 255, 0), 2);
 
-                            std::string label = det.className + " " + cv::format("%.2f", det.confidence);
-                            int baseline = 0;
-                            cv::Size textSize = cv::getTextSize(label, cv::FONT_HERSHEY_SIMPLEX, 0.6, 1, &baseline);
+                                std::string label = det.className + " " + cv::format("%.2f", det.confidence);
+                                int baseline = 0;
+                                cv::Size textSize = cv::getTextSize(label, cv::FONT_HERSHEY_SIMPLEX, 0.6, 1, &baseline);
 
-                            cv::Point textOrg(det.box.x, det.box.y - 5);
-                            if (textOrg.y - textSize.height < 0) {
-                                textOrg.y = det.box.y + textSize.height + 5;
+                                cv::Point textOrg(det.box.x, det.box.y - 5);
+                                if (textOrg.y - textSize.height < 0) {
+                                    textOrg.y = det.box.y + textSize.height + 5;
+                                }
+                                cv::rectangle(displayImage,
+                                    cv::Point(textOrg.x, textOrg.y - textSize.height - 2),
+                                    cv::Point(textOrg.x + textSize.width + 2, textOrg.y + 4),
+                                    cv::Scalar(0, 255, 0), -1);
+
+                                cv::putText(displayImage, label, textOrg,
+                                    cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 0, 0), 1);
                             }
-                            cv::rectangle(displayImage,
-                                cv::Point(textOrg.x, textOrg.y - textSize.height - 2),
-                                cv::Point(textOrg.x + textSize.width + 2, textOrg.y + 4),
-                                cv::Scalar(0, 255, 0), -1);
-
-                            cv::putText(displayImage, label, textOrg,
-                                cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 0, 0), 1);
                         }
                     }
+                    // 执行完后重置标志，避免后续 pipeline 处理时重复执行
+                    m_objectDetectionRequested = false;
                 }
 
                 // 绘制完成后再显示图像
@@ -767,7 +771,12 @@ void MainWindow::connectTabSignals(const QString& tabName, QWidget* widget)
     else if (tabName == "目标检测") {
         auto* tab = qobject_cast<ObjectDetectionTabWidget*>(widget);
         connect(tab, &ObjectDetectionTabWidget::detectionConfigChanged,
-                this, &MainWindow::processAndDisplay);
+                this, [this]() {
+            // 用户点击"应用"按钮加载模型成功后，设置标志并触发处理
+            // 这样 pipeline 完成后会自动执行目标检测
+            m_objectDetectionRequested = true;
+            processAndDisplay();
+        });
     }
 }
 

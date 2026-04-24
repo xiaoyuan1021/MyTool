@@ -8,6 +8,8 @@
 
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QFileInfo>
+#include <opencv2/opencv.hpp>
 
 ConfigController::ConfigController(
     PipelineManager* pipelineManager,
@@ -101,13 +103,20 @@ void ConfigController::collectConfigFromUI(AppConfig& config)
         );
     }
     
-    // 收集多图片ROI配置
-    config.currentImageId = m_roiManager.getCurrentImageId();
+    // 收集图片文件路径和 imageId -> filePath 映射
+    config.imageFilePaths.clear();
+    config.imageIdToFilePath.clear();
     const QStringList imageIds = m_roiManager.getImageIds();
     for (const QString& imageId : imageIds) {
-        // 临时切换到该图片获取其配置
-        // 但这里我们不需要切换，因为RoiManager内部已经按图片ID存储了配置
+        QString filePath = m_roiManager.getImageFilePath(imageId);
+        if (!filePath.isEmpty()) {
+            config.imageFilePaths.append(filePath);
+            config.imageIdToFilePath[imageId] = filePath;
+        }
     }
+    
+    // 收集多图片ROI配置
+    config.currentImageId = m_roiManager.getCurrentImageId();
     // 直接从RoiManager导出所有配置
     QJsonDocument allConfigsDoc = m_roiManager.exportAllConfigsToJson();
     QJsonObject allConfigsObj = allConfigsDoc.object();
@@ -166,21 +175,93 @@ void ConfigController::collectConfigFromUI(AppConfig& config)
 
 void ConfigController::applyConfigToUI(const AppConfig& config)
 {
-    // 应用 ROI 配置（单ROI模式，向后兼容）
-    if (config.roiRect.isValid()) {
+    // ====== 第一步：如果配置包含图片路径，先加载图片 ======
+    // 建立 filePath -> newImageId 的映射
+    QMap<QString, QString> filePathToNewId;
+    
+    if (!config.imageFilePaths.isEmpty()) {
+        // 清空现有图片
+        m_roiManager.clear();
+        
+        int loadedCount = 0;
+        for (const QString& filePath : config.imageFilePaths) {
+            cv::Mat img = cv::imread(filePath.toStdString());
+            if (img.empty()) {
+                Logger::instance()->warning(QString("无法加载图片: %1").arg(filePath));
+                continue;
+            }
+            QFileInfo fi(filePath);
+            QString imageId = m_roiManager.addImage(img, fi.fileName(), filePath);
+            if (!imageId.isEmpty()) {
+                loadedCount++;
+                filePathToNewId[filePath] = imageId;
+            }
+        }
+        
+        // 切换到第一张图片
+        const QStringList imageIds = m_roiManager.getImageIds();
+        if (!imageIds.isEmpty()) {
+            m_roiManager.switchToImage(imageIds.first());
+        }
+        
+        Logger::instance()->info(QString("已从配置加载 %1/%2 张图片")
+            .arg(loadedCount).arg(config.imageFilePaths.size()));
+    }
+    
+    // ====== 第二步：恢复单ROI配置（向后兼容） ======
+    if (config.roiRect.isValid() && m_roiManager.imageCount() > 0) {
         m_roiManager.setRoi(config.roiRect);
         Logger::instance()->info("已恢复 ROI 配置");
     }
     
-    // 应用多图片ROI配置
+    // ====== 第三步：恢复多图片ROI配置 ======
     if (!config.multiRoiConfigs.isEmpty()) {
-        // 构建JSON文档用于导入
+        // 关键修复：通过 imageIdToFilePath 映射，将旧 imageId 关联到新加载图片的 imageId
+        const QStringList newImageIds = m_roiManager.getImageIds();
+        
+        // 构建 filePath -> newImageId 的映射
+        QMap<QString, QString> filePathToNewId;
+        for (const QString& newId : newImageIds) {
+            QString filePath = m_roiManager.getImageFilePath(newId);
+            if (!filePath.isEmpty()) {
+                filePathToNewId[filePath] = newId;
+            }
+        }
+        
+        // 构建 oldImageId -> newImageId 的映射
+        QMap<QString, QString> oldToNewId;
+        for (auto it = config.imageIdToFilePath.constBegin(); it != config.imageIdToFilePath.constEnd(); ++it) {
+            QString oldId = it.key();
+            QString filePath = it.value();
+            if (filePathToNewId.contains(filePath)) {
+                oldToNewId[oldId] = filePathToNewId[filePath];
+            }
+        }
+        
+        // 如果没有 imageIdToFilePath 映射（旧格式配置文件），尝试按顺序匹配
+        if (oldToNewId.isEmpty() && !config.multiRoiConfigs.isEmpty()) {
+            auto oldIt = config.multiRoiConfigs.constBegin();
+            for (int i = 0; i < newImageIds.size() && oldIt != config.multiRoiConfigs.constEnd(); ++i, ++oldIt) {
+                oldToNewId[oldIt.key()] = newImageIds[i];
+            }
+        }
+        
+        // 构建 JSON 文档，使用新的 imageId
         QJsonObject root;
         root["version"] = "1.0";
-        root["currentImageId"] = config.currentImageId;
+        
+        // 映射 currentImageId
+        if (oldToNewId.contains(config.currentImageId)) {
+            root["currentImageId"] = oldToNewId[config.currentImageId];
+        } else {
+            root["currentImageId"] = config.currentImageId;
+        }
         
         QJsonObject imagesObj;
         for (auto it = config.multiRoiConfigs.constBegin(); it != config.multiRoiConfigs.constEnd(); ++it) {
+            QString oldImageId = it.key();
+            QString newImageId = oldToNewId.value(oldImageId, oldImageId);
+            
             QJsonObject imageObj;
             QJsonArray configsArray;
             for (const auto& cfg : it.value()) {
@@ -188,7 +269,7 @@ void ConfigController::applyConfigToUI(const AppConfig& config)
             }
             imageObj["roiConfigs"] = configsArray;
             imageObj["selectedRoiId"] = "";
-            imagesObj[it.key()] = imageObj;
+            imagesObj[newImageId] = imageObj;
         }
         root["images"] = imagesObj;
         
@@ -196,7 +277,7 @@ void ConfigController::applyConfigToUI(const AppConfig& config)
         Logger::instance()->info(QString("已恢复多图片ROI配置，共%1张图片").arg(config.multiRoiConfigs.size()));
     }
     
-    // 应用增强参数
+    // ====== 第四步：恢复增强参数 ======
     if (m_enhanceTabWidget) {
         m_enhanceTabWidget->setEnhanceConfig(
             config.brightness, 

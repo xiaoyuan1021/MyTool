@@ -41,6 +41,12 @@ struct AppConfig
     QMap<QString, QList<RoiConfig>> multiRoiConfigs;  // 图片ID -> ROI配置列表
     QString currentImageId;                            // 当前图片ID
 
+    // 图片文件路径列表（有序，用于导入时重新加载图片）
+    QStringList imageFilePaths;
+
+    // imageId -> filePath 映射（用于导入时重建 imageId 对应关系）
+    QMap<QString, QString> imageIdToFilePath;
+
     // MQTT 配置
     MqttConfig mqttConfig;
 

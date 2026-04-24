@@ -56,6 +56,11 @@ void RoiManager::clear()
 
 QString RoiManager::addImage(const cv::Mat &img, const QString &name)
 {
+    return addImage(img, name, QString());
+}
+
+QString RoiManager::addImage(const cv::Mat &img, const QString &name, const QString &filePath)
+{
     if (img.empty()) {
         qDebug() << "[RoiManager] 图像为空，无法添加";
         return QString();
@@ -70,6 +75,7 @@ QString RoiManager::addImage(const cv::Mat &img, const QString &name)
     ImageRois imageRois;
     imageRois.image = img.clone();
     imageRois.name = name.isEmpty() ? generateDefaultImageName() : name;
+    imageRois.filePath = filePath;
     imageRois.selectedRoiId.clear();
     imageRois.roiCounter = 0;
     imageRois.isRoiActive = false;
@@ -81,8 +87,8 @@ QString RoiManager::addImage(const cv::Mat &img, const QString &name)
 
     m_imageRoisMap.insert(imageId, imageRois);
 
-    Logger::instance()->info(QString("[RoiManager] 图片已添加: id=%1, name=%2")
-                                 .arg(imageId).arg(imageRois.name));
+    Logger::instance()->info(QString("[RoiManager] 图片已添加: id=%1, name=%2, filePath=%3")
+                                 .arg(imageId).arg(imageRois.name).arg(filePath));
 
     emit imageAdded(imageId);
     return imageId;
@@ -144,6 +150,15 @@ QString RoiManager::getImageName(const QString &imageId) const
     auto it = m_imageRoisMap.find(imageId);
     if (it != m_imageRoisMap.end()) {
         return it.value().name;
+    }
+    return QString();
+}
+
+QString RoiManager::getImageFilePath(const QString &imageId) const
+{
+    auto it = m_imageRoisMap.find(imageId);
+    if (it != m_imageRoisMap.end()) {
+        return it.value().filePath;
     }
     return QString();
 }
@@ -704,6 +719,7 @@ QJsonDocument RoiManager::exportAllConfigsToJson() const
     for (auto it = m_imageRoisMap.constBegin(); it != m_imageRoisMap.constEnd(); ++it) {
         QJsonObject imageObj;
         imageObj["name"] = it.value().name;
+        imageObj["filePath"] = it.value().filePath;
 
         QJsonArray configsArray;
         for (const auto& config : it.value().roiConfigs) {

@@ -87,6 +87,22 @@ QJsonObject AppConfig::toJson() const
     }
     json["multiRoiConfigs"] = multiRoiObj;
 
+    // 图片文件路径列表
+    QJsonArray imagePathsArray;
+    for (const auto& path : imageFilePaths) {
+        imagePathsArray.append(path);
+    }
+    json["imagePaths"] = imagePathsArray;
+
+    // imageId -> filePath 映射
+    if (!imageIdToFilePath.isEmpty()) {
+        QJsonObject mappingObj;
+        for (auto it = imageIdToFilePath.constBegin(); it != imageIdToFilePath.constEnd(); ++it) {
+            mappingObj[it.key()] = it.value();
+        }
+        json["imageIdToFilePath"] = mappingObj;
+    }
+
     // MQTT 配置
     json["mqtt"] = mqttConfig.toJson();
 
@@ -195,6 +211,24 @@ void AppConfig::fromJson(const QJsonObject& json)
                 configs.append(config);
             }
             multiRoiConfigs[it.key()] = configs;
+        }
+    }
+
+    // 图片文件路径列表
+    if (json.contains("imagePaths")) {
+        imageFilePaths.clear();
+        QJsonArray imagePathsArray = json["imagePaths"].toArray();
+        for (const auto& val : imagePathsArray) {
+            imageFilePaths.append(val.toString());
+        }
+    }
+
+    // imageId -> filePath 映射
+    if (json.contains("imageIdToFilePath")) {
+        imageIdToFilePath.clear();
+        QJsonObject mappingObj = json["imageIdToFilePath"].toObject();
+        for (auto it = mappingObj.begin(); it != mappingObj.end(); ++it) {
+            imageIdToFilePath[it.key()] = it.value().toString();
         }
     }
 

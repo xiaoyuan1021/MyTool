@@ -61,7 +61,7 @@ void ImageListManager::onAddClicked()
 
     QFileInfo fileInfo(fileName);
     QString imageName = fileInfo.completeBaseName();
-    QString imageId = m_roiManager.addImage(img, imageName);
+    QString imageId = m_roiManager.addImage(img, imageName, fileName);
 
     if (!imageId.isEmpty()) {
         m_roiManager.switchToImage(imageId);

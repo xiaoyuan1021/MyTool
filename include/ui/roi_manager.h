@@ -59,6 +59,15 @@ public:
     QString addImage(const cv::Mat &img, const QString &name);
 
     /**
+     * @brief 添加图片（带文件路径）
+     * @param img 图像数据
+     * @param name 图片名称
+     * @param filePath 图片文件路径
+     * @return 图片ID，失败返回空字符串
+     */
+    QString addImage(const cv::Mat &img, const QString &name, const QString &filePath);
+
+    /**
      * @brief 切换到指定图片
      * @param imageId 图片ID
      * @return 是否切换成功
@@ -90,6 +99,13 @@ public:
      * @return 图片名称，如果图片不存在返回空字符串
      */
     QString getImageName(const QString &imageId) const;
+
+    /**
+     * @brief 获取图片文件路径
+     * @param imageId 图片ID
+     * @return 图片文件路径，如果不存在返回空字符串
+     */
+    QString getImageFilePath(const QString &imageId) const;
 
     /**
      * @brief 获取图片数量
@@ -379,6 +395,7 @@ private:
     struct ImageRois {
         cv::Mat image;              // 图像数据
         QString name;               // 图片名称
+        QString filePath;           // 图片文件路径
         QMap<QString, RoiItem> rois;  // 该图片的ROI列表（旧的多ROI）
         QList<RoiConfig> roiConfigs;  // 该图片的ROI配置列表（新的统一数据源）
         QString selectedRoiId;      // 该图片选中的ROI
