@@ -160,6 +160,44 @@ MainWindow::MainWindow(QWidget *parent)
     m_roiUiController = new RoiUiController(m_roiManager, m_pipelineManager, m_view, ui->statusbar, this);
     m_detectionUiController = new DetectionUiController(m_roiManager, ui->tabWidget, this);
     m_configController = new ConfigController(m_pipelineManager, m_roiManager, this);
+
+    // 初始化自动检测控制器
+    m_autoDetectionController = new AutoDetectionController(m_pipelineManager, &m_roiManager, this);
+    connect(m_autoDetectionController, &AutoDetectionController::logMessage,
+            this, [](const QString& msg) { Logger::instance()->info(msg); });
+    connect(m_autoDetectionController, &AutoDetectionController::detectionStarted,
+            this, [this](int totalCount) {
+        ui->btn_startAutoDetection->setEnabled(false);
+        ui->btn_stopAutoDetection->setEnabled(true);
+        ui->statusbar->showMessage(QString("批量检测中... 0/%1").arg(totalCount));
+    });
+    connect(m_autoDetectionController, &AutoDetectionController::detectionFinished,
+            this, [this](const DetectionStats& stats) {
+        ui->btn_startAutoDetection->setEnabled(true);
+        ui->btn_stopAutoDetection->setEnabled(false);
+        ui->statusbar->showMessage(
+            QString("检测完成 | 总计:%1 合格:%2 不合格:%3 合格率:%4%")
+                .arg(stats.totalCount).arg(stats.passCount)
+                .arg(stats.failCount).arg(stats.passRate(), 0, 'f', 1), 10000);
+    });
+    connect(m_autoDetectionController, &AutoDetectionController::detectionStopped,
+            this, [this]() {
+        ui->btn_startAutoDetection->setEnabled(true);
+        ui->btn_stopAutoDetection->setEnabled(false);
+        ui->statusbar->showMessage("检测已停止", 5000);
+    });
+    connect(m_autoDetectionController, &AutoDetectionController::progressUpdated,
+            this, [this](int current, int total) {
+        ui->statusbar->showMessage(QString("批量检测中... %1/%2").arg(current).arg(total));
+    });
+    connect(m_autoDetectionController, &AutoDetectionController::statsUpdated,
+            this, [this](const DetectionStats& stats) {
+        // 更新图片列表中当前图片的高亮状态（可扩展）
+        QString statusText = QString("已处理: %1 | 合格: %2 | 不合格: %3 | 合格率: %4%")
+            .arg(stats.processedCount).arg(stats.passCount)
+            .arg(stats.failCount).arg(stats.passRate(), 0, 'f', 1);
+        ui->label_imageList->setText(statusText);
+    });
     
     // 设置Controller的Tab名称列表（初始为空，后续动态添加）
     m_detectionUiController->setTabNames(m_tabNames);
@@ -551,6 +589,30 @@ void MainWindow::on_btn_saveConfig_clicked()
 void MainWindow::on_btn_importConfig_clicked()
 {
     loadConfig();
+}
+
+// ========== 自动检测 ==========
+
+void MainWindow::on_btn_startAutoDetection_clicked()
+{
+    // 打开文件选择对话框，支持多选
+    QStringList fileNames = QFileDialog::getOpenFileNames(
+        this,
+        "选择要批量检测的图片",
+        "",
+        "图片文件 (*.png *.jpg *.jpeg *.bmp *.tiff *.tif);;所有文件 (*.*)"
+    );
+
+    if (fileNames.isEmpty()) {
+        return;
+    }
+
+    m_autoDetectionController->startDetection(fileNames);
+}
+
+void MainWindow::on_btn_stopAutoDetection_clicked()
+{
+    m_autoDetectionController->stopDetection();
 }
 
 // ========== 配置管理 ==========

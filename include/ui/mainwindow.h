@@ -31,6 +31,7 @@
 #include "controllers/roi_ui_controller.h"
 #include "controllers/detection_ui_controller.h"
 #include "controllers/config_controller.h"
+#include "controllers/auto_detection_controller.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -71,8 +72,8 @@ private slots:
     void on_btn_Home_clicked();
     void on_btn_saveConfig_clicked();
     void on_btn_importConfig_clicked();
-
-
+    void on_btn_startAutoDetection_clicked();
+    void on_btn_stopAutoDetection_clicked();
 private:
     void setupUI();
     void setupConnections();
@@ -133,6 +134,9 @@ private:
 
     // 图片列表管理器
     ImageListManager* m_imageListManager = nullptr;
+
+    // 自动检测控制器
+    AutoDetectionController* m_autoDetectionController = nullptr;
 };
 
 

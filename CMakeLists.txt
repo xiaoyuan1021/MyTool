@@ -212,6 +212,60 @@ target_link_libraries(VisionTool PRIVATE
 
 
 # ============================================================
+# 第三方库配置 (Paho MQTT)
+# ============================================================
+set(PAHO_MQTT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/paho-mqtt")
+
+target_include_directories(VisionTool PRIVATE
+    "${PAHO_MQTT_ROOT}/include"
+)
+
+# 必须定义导入宏，否则 MSVC 无法解析 DLL 中的数据符号（如 mqtt::message::EMPTY_STR）
+target_compile_definitions(VisionTool PRIVATE
+    PAHO_MQTTPP_IMPORTS
+    PAHO_MQTT_IMPORTS
+)
+
+set(PAHO_MQTT_LIB_DIR "${PAHO_MQTT_ROOT}/lib")
+
+# Paho MQTT C++ wrapper
+find_library(PAHO_MQTT_CPP_LIB
+    NAMES paho-mqttpp3
+    PATHS "${PAHO_MQTT_LIB_DIR}"
+    NO_DEFAULT_PATH
+)
+if(PAHO_MQTT_CPP_LIB)
+    target_link_libraries(VisionTool PRIVATE ${PAHO_MQTT_CPP_LIB})
+    message(STATUS "Found Paho MQTT C++ library: ${PAHO_MQTT_CPP_LIB}")
+else()
+    message(WARNING "Paho MQTT C++ library not found at ${PAHO_MQTT_LIB_DIR}")
+endif()
+
+# Paho MQTT C core
+find_library(PAHO_MQTT_C_LIB
+    NAMES paho-mqtt3a
+    PATHS "${PAHO_MQTT_LIB_DIR}"
+    NO_DEFAULT_PATH
+)
+if(PAHO_MQTT_C_LIB)
+    target_link_libraries(VisionTool PRIVATE ${PAHO_MQTT_C_LIB})
+    message(STATUS "Found Paho MQTT C library: ${PAHO_MQTT_C_LIB}")
+else()
+    message(WARNING "Paho MQTT C library not found at ${PAHO_MQTT_LIB_DIR}")
+endif()
+
+# 自动拷贝 Paho MQTT DLL 到 exe 输出目录
+add_custom_command(TARGET VisionTool POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${PAHO_MQTT_ROOT}/bin/paho-mqttpp3.dll"
+        $<TARGET_FILE_DIR:VisionTool>
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${PAHO_MQTT_ROOT}/bin/paho-mqtt3a.dll"
+        $<TARGET_FILE_DIR:VisionTool>
+    COMMENT "Copying Paho MQTT DLLs..."
+)
+
+# ============================================================
 # 编译器特定选项 (MSVC)
 # ============================================================
 if(MSVC)

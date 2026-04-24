@@ -70,7 +70,7 @@ struct DetectionResultReport
         report.failReason = ctx.reason;
         report.totalRegionCount = ctx.currentRegions;
         report.regions = ctx.regions;
-        report.barcodeResults = ctx.barcodeResults;
+        report.barcodeResults.assign(ctx.barcodeResults.begin(), ctx.barcodeResults.end());
         return report;
     }
 
