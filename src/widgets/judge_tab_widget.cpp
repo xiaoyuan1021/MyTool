@@ -1,6 +1,7 @@
 #include "judge_tab_widget.h"
 #include "ui_judge_tab.h"
 #include <QMessageBox>
+#include <QSignalBlocker>
 
 JudgeTabWidget::JudgeTabWidget(PipelineManager* pipelineManager, QWidget *parent)
     : QWidget(parent)
@@ -10,6 +11,9 @@ JudgeTabWidget::JudgeTabWidget(PipelineManager* pipelineManager, QWidget *parent
     m_ui->setupUi(this);
     m_ui->lineEdit_nowRegions->setReadOnly(true);
     connect(m_ui->btn_runTest, &QPushButton::clicked, this, &JudgeTabWidget::onRunTestClicked);
+    // 【Bug1修复补充】连接min/max输入框变化信号，用于同步到DetectionItem.config
+    connect(m_ui->lineEdit_minRegionCount, &QLineEdit::editingFinished, this, &JudgeTabWidget::onJudgeValueChanged);
+    connect(m_ui->lineEdit_maxRegionCount, &QLineEdit::editingFinished, this, &JudgeTabWidget::onJudgeValueChanged);
 }
 
 JudgeTabWidget::~JudgeTabWidget()
@@ -66,7 +70,17 @@ void JudgeTabWidget::getJudgeConfig(int& minCount, int& maxCount, int& currentCo
 
 void JudgeTabWidget::setJudgeConfig(int minCount, int maxCount, int currentCount)
 {
+    // 临时阻塞信号，避免setJudgeConfig触发onJudgeValueChanged导致循环
+    QSignalBlocker blocker1(m_ui->lineEdit_minRegionCount);
+    QSignalBlocker blocker2(m_ui->lineEdit_maxRegionCount);
     m_ui->lineEdit_minRegionCount->setText(QString::number(minCount));
     m_ui->lineEdit_maxRegionCount->setText(QString::number(maxCount));
     m_ui->lineEdit_nowRegions->setText(QString::number(currentCount));
+}
+
+void JudgeTabWidget::onJudgeValueChanged()
+{
+    int minCount = m_ui->lineEdit_minRegionCount->text().toInt();
+    int maxCount = m_ui->lineEdit_maxRegionCount->text().toInt();
+    emit judgeConfigChanged(minCount, maxCount);
 }

@@ -282,19 +282,28 @@ void RoiUiController::refreshRoiTreeView()
     
     // 恢复选中状态（阻塞信号避免递归触发itemClicked）
     m_treeView->blockSignals(true);
+    QString newSelectedId;
     if (itemToSelect) {
         m_treeView->setCurrentItem(itemToSelect);
-        m_currentSelectedRoiId = itemToSelect->data(0, Qt::UserRole).toString();
+        newSelectedId = itemToSelect->data(0, Qt::UserRole).toString();
     } else if (m_treeView->topLevelItemCount() > 0) {
         QTreeWidgetItem* lastItem = m_treeView->topLevelItem(
             m_treeView->topLevelItemCount() - 1
         );
         m_treeView->setCurrentItem(lastItem);
-        m_currentSelectedRoiId = lastItem->data(0, Qt::UserRole).toString();
-    } else {
-        m_currentSelectedRoiId.clear();
+        newSelectedId = lastItem->data(0, Qt::UserRole).toString();
     }
+    
+    // 【Bug3修复】检测选中ID是否发生变化，如果变化了需要加载新ROI的配置
+    bool selectionChanged = (newSelectedId != m_currentSelectedRoiId);
+    m_currentSelectedRoiId = newSelectedId;
     m_treeView->blockSignals(false);
+    
+    // 如果选中ID发生了变化（如删除后自动选择了另一个ROI），
+    // 需要加载新ROI的PipelineConfig到PipelineManager，确保UI显示正确的配置
+    if (selectionChanged && !m_currentSelectedRoiId.isEmpty()) {
+        loadRoiPipelineConfig(m_currentSelectedRoiId);
+    }
 }
 
 void RoiUiController::onRoiTreeItemClicked(QTreeWidgetItem* item, int column)
@@ -512,20 +521,44 @@ void RoiUiController::handleRoiAddRequested(const QString& roiName)
 
 void RoiUiController::handleRoiDeleteRequested(const QString& roiId)
 {
+    Logger::instance()->info(QString("[RoiUI] handleRoiDeleteRequested: roiId=%1, 当前选中=%2").arg(roiId).arg(m_currentSelectedRoiId));
+    
     // 获取ROI名称用于日志
     RoiConfig* roi = m_roiManager.getRoiConfig(roiId);
     QString roiName = roi ? roi->roiName : roiId;
     
+    // 记录删除前是否是当前选中的ROI
+    bool wasSelected = (m_currentSelectedRoiId == roiId);
+    Logger::instance()->info(QString("[RoiUI] 删除前: roiName=%1, wasSelected=%2, ROI配置数=%3")
+        .arg(roiName).arg(wasSelected ? "true" : "false").arg(m_roiManager.getRoiConfigCount()));
+    
     if (m_roiManager.removeRoiConfig(roiId)) {
+        Logger::instance()->info(QString("[RoiUI] 删除成功, 剩余ROI配置数=%1").arg(m_roiManager.getRoiConfigCount()));
+        
         // 如果删除的是当前选中的ROI，重置ROI状态
-        if (m_currentSelectedRoiId == roiId) {
+        if (wasSelected) {
+            Logger::instance()->info("[RoiUI] 删除的是当前选中ROI，重置ROI状态");
             m_roiManager.resetRoiWithUI(m_view, m_statusBar);
             m_currentSelectedRoiId.clear();
         }
         
+        // 【Bug3修复】刷新后，如果自动选择了新的ROI，需要加载其PipelineConfig
+        QString previousSelectedId = m_currentSelectedRoiId;
+        Logger::instance()->info(QString("[RoiUI] refreshRoiTreeView前: selectedId=%1").arg(m_currentSelectedRoiId));
         refreshRoiTreeView();
+        Logger::instance()->info(QString("[RoiUI] refreshRoiTreeView后: selectedId=%1").arg(m_currentSelectedRoiId));
+        
+        // 如果auto-selection改变了选中的ROI，加载新ROI的配置
+        if (m_currentSelectedRoiId != previousSelectedId && !m_currentSelectedRoiId.isEmpty()) {
+            Logger::instance()->info(QString("[RoiUI] 选中ID变化: %1 -> %2, 加载新ROI的PipelineConfig")
+                .arg(previousSelectedId).arg(m_currentSelectedRoiId));
+            loadRoiPipelineConfig(m_currentSelectedRoiId);
+        }
+        
         emit roiChanged();
         Logger::instance()->info(QString("已删除ROI: %1").arg(roiName));
+    } else {
+        Logger::instance()->warning(QString("[RoiUI] 删除失败: roiId=%1").arg(roiId));
     }
 }
 
@@ -575,35 +608,47 @@ void RoiUiController::handleRoiSelectionChanged(const QString& roiId)
 void RoiUiController::saveCurrentRoiPipelineConfig()
 {
     if (m_currentSelectedRoiId.isEmpty() || !m_pipelineManager) {
+        Logger::instance()->info(QString("[RoiUI] saveCurrentRoiPipelineConfig: 跳过 (selectedId=%1, pipeline=%2)")
+            .arg(m_currentSelectedRoiId).arg(m_pipelineManager ? "有效" : "nullptr"));
         return;
     }
     
     RoiConfig* roi = m_roiManager.getRoiConfig(m_currentSelectedRoiId);
     if (roi) {
-        // 将当前PipelineManager的配置保存到该ROI
         roi->pipelineConfig = m_pipelineManager->getConfig();
-        Logger::instance()->info(QString("已保存ROI [%1] 的Pipeline配置").arg(roi->roiName));
+        Logger::instance()->info(QString("[RoiUI] 已保存ROI [%1] 的Pipeline配置: brightness=%2, contrast=%3, gamma=%4")
+            .arg(roi->roiName)
+            .arg(roi->pipelineConfig.brightness)
+            .arg(roi->pipelineConfig.contrast)
+            .arg(roi->pipelineConfig.gamma));
+    } else {
+        Logger::instance()->warning(QString("[RoiUI] saveCurrentRoiPipelineConfig: ROI不存在, id=%1").arg(m_currentSelectedRoiId));
     }
 }
 
 void RoiUiController::loadRoiPipelineConfig(const QString& roiId)
 {
     if (roiId.isEmpty() || !m_pipelineManager) {
+        Logger::instance()->info(QString("[RoiUI] loadRoiPipelineConfig: 跳过 (roiId=%1, pipeline=%2)")
+            .arg(roiId).arg(m_pipelineManager ? "有效" : "nullptr"));
         return;
     }
     
     RoiConfig* roi = m_roiManager.getRoiConfig(roiId);
     if (roi) {
-        // 将该ROI的PipelineConfig加载到PipelineManager
         m_pipelineManager->getConfig() = roi->pipelineConfig;
         
-        // 发出信号通知MainWindow刷新EnhanceTabWidget的UI
         emit roiPipelineConfigChanged(roi->pipelineConfig);
         
-        Logger::instance()->info(QString("已加载ROI [%1] 的Pipeline配置: brightness=%2, contrast=%3")
+        Logger::instance()->info(QString("[RoiUI] 已加载ROI [%1] 的Pipeline配置: brightness=%2, contrast=%3, gamma=%4, sharpen=%5, channel=%6")
             .arg(roi->roiName)
             .arg(roi->pipelineConfig.brightness)
-            .arg(roi->pipelineConfig.contrast));
+            .arg(roi->pipelineConfig.contrast)
+            .arg(roi->pipelineConfig.gamma)
+            .arg(roi->pipelineConfig.sharpen)
+            .arg(static_cast<int>(roi->pipelineConfig.channel)));
+    } else {
+        Logger::instance()->warning(QString("[RoiUI] loadRoiPipelineConfig: ROI不存在, id=%1").arg(roiId));
     }
 }
 

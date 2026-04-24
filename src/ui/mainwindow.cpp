@@ -262,6 +262,22 @@ MainWindow::MainWindow(QWidget *parent)
                 if (detection.itemId == detectionId) {
                     TabConfig config = TabConfig::getConfigForType(detection.type);
                     m_detectionUiController->switchToTabConfig(config);
+
+                    // 【Bug1修复补充】当选中Blob检测项时，将DetectionItem.config中的BlobAnalysisConfig
+                    // 加载到JudgeTabWidget，确保判定Tab的min/max值与DetectionItem.config同步
+                    if (detection.type == DetectionType::Blob) {
+                        BlobAnalysisConfig blobConfig;
+                        blobConfig.fromJson(detection.config);
+                        if (auto* judgeTab = m_tabManager->getJudgeTab()) {
+                            judgeTab->setJudgeConfig(
+                                blobConfig.minBlobCount,
+                                blobConfig.maxBlobCount,
+                                m_pipelineManager->getLastContext().currentRegions
+                            );
+                            Logger::instance()->info(QString("[MainWindow] 从DetectionItem加载Blob判定配置到JudgeTab: min=%1, max=%2")
+                                .arg(blobConfig.minBlobCount).arg(blobConfig.maxBlobCount));
+                        }
+                    }
                     break;
                 }
             }
@@ -599,6 +615,10 @@ void MainWindow::on_btn_importConfig_clicked()
 
 void MainWindow::on_btn_startAutoDetection_clicked()
 {
+    // 【Bug修复】确保当前ROI的最新Pipeline配置（包含shapeFilter等）已保存到RoiConfig中
+    // 用户可能在Extract/Filter/Enhance等tab中修改了参数但未切换ROI，导致最新参数未同步到RoiConfig
+    m_roiUiController->saveCurrentRoiPipelineConfig();
+    
     // 从 RoiManager 自动获取已添加的图片和ROI配置，无需弹文件选择对话框
     m_autoDetectionController->startDetection();
 }
@@ -749,6 +769,29 @@ void MainWindow::connectTabSignals(const QString& tabName, QWidget* widget)
         auto* tab = qobject_cast<ExtractTabWidget*>(widget);
         connect(tab, &ExtractTabWidget::extractionChanged,
                 this, &MainWindow::processAndDisplay);
+    }
+    else if (tabName == "判定") {
+        auto* tab = qobject_cast<JudgeTabWidget*>(widget);
+        // 【Bug1修复补充】当判定Tab的min/max值变化时，同步写回当前选中ROI的DetectionItem.config
+        connect(tab, &JudgeTabWidget::judgeConfigChanged,
+                this, [this](int minCount, int maxCount) {
+                    QString roiId = m_roiUiController->getCurrentSelectedRoiId();
+                    RoiConfig* roi = m_roiManager.getRoiConfig(roiId);
+                    if (!roi) return;
+                    // 找到当前选中的Blob检测项，更新其config中的minBlobCount/maxBlobCount
+                    for (auto& detItem : roi->detectionItems) {
+                        if (detItem.type == DetectionType::Blob && detItem.enabled) {
+                            BlobAnalysisConfig blobConfig;
+                            blobConfig.fromJson(detItem.config);
+                            blobConfig.minBlobCount = minCount;
+                            blobConfig.maxBlobCount = maxCount;
+                            detItem.config = blobConfig.toJson();
+                            Logger::instance()->info(QString("[MainWindow] 判定Tab值变化，同步到DetectionItem.config: min=%1, max=%2")
+                                .arg(minCount).arg(maxCount));
+                            break;
+                        }
+                    }
+                });
     }
     else if (tabName == "直线") {
         auto* tab = qobject_cast<LineDetectTabWidget*>(widget);
