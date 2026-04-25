@@ -7,6 +7,8 @@
 #include <QSlider>
 #include <QSpinBox>
 #include <QString>
+#include <QMutex>
+#include <QMutexLocker>
 
 /**
  * Pipeline管理器 - 负责Pipeline的创建、配置和执行
@@ -41,11 +43,23 @@ public:
     // 设置面积筛选范围
     void setAreaRange(double minArea, double maxArea);
 
-    // 获取当前配置（只读）
-    const PipelineConfig& getConfig() const { return m_config; }
+    // 获取当前配置快照（线程安全：tryLock不阻塞UI线程）
+    // 如果Pipeline正在执行（锁被占用），返回上次保存的缓存快照
+    PipelineConfig getConfigSnapshot() const {
+        if (m_configMutex.tryLock()) {
+            PipelineConfig result = m_config;
+            m_configMutex.unlock();
+            return result;
+        }
+        return m_lastConfigSnapshot;
+    }
 
-    // 获取当前配置（可写）
-    PipelineConfig& getConfig() { return m_config; }
+    // 设置配置（线程安全：加锁修改，与execute互斥）
+    void setConfig(const PipelineConfig& config) {
+        QMutexLocker locker(&m_configMutex);
+        m_config = config;
+        m_lastConfigSnapshot = config;
+    }
 
     // ========== 算法队列管理 ==========
 
@@ -66,9 +80,10 @@ public:
     // ========== Pipeline执行 ==========
 
     // 执行Pipeline处理
-    // 输入：BGR图像
-    // 输出：处理结果上下文（返回独立副本，线程安全）
-    PipelineContext execute(const cv::Mat& inputImage);
+    // 输入：BGR图像 + 配置快照（值拷贝，线程安全）
+    // 输出：处理结果上下文
+    // 注意：内部会加锁，确保执行期间配置不被并发修改
+    PipelineContext execute(const cv::Mat& inputImage, const PipelineConfig& config);
 
     // 获取最后一次执行的上下文
     const PipelineContext& getLastContext() const { return m_lastContext; }
@@ -126,8 +141,14 @@ private:
     void rebuildPipeline();
 
 private:
-    // 配置
+    // 互斥锁：保护 m_config 和 Pipeline 执行期间的状态
+    mutable QMutex m_configMutex;
+
+    // 配置（所有访问必须通过 getConfigSnapshot/setConfig 或加锁）
     PipelineConfig m_config;
+
+    // 缓存快照：每次setConfig/execute时更新，供tryLock失败时返回
+    PipelineConfig m_lastConfigSnapshot;
 
     // Pipeline实例
     Pipeline m_pipeline;

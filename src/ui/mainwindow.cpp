@@ -68,7 +68,7 @@ MainWindow::MainWindow(QWidget *parent)
                 
                 // 更新直线检测Tab匹配结果
                 if (auto* lineTab = m_tabManager->getLineDetectTab(); lineTab && result.totalLineCount > 0) {
-                    const PipelineConfig& cfg = m_pipelineManager->getConfig();
+                    PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
                     lineTab->updateMatchResultStatus(
                         result.matchedLineCount, 
                         result.totalLineCount, 
@@ -403,9 +403,12 @@ void MainWindow::processAndDisplay()
     m_hasPendingProcess = false;
     ui->statusbar->showMessage("正在处理...");
 
+    // 在主线程获取配置快照（值拷贝），确保后台线程使用一致的配置
+    PipelineConfig configSnapshot = m_pipelineManager->getConfigSnapshot();
+
     QFuture<PipelineContext> future = QtConcurrent::run(
-        [this, currentImage]() -> PipelineContext {
-            return m_pipelineManager->execute(currentImage);
+        [this, currentImage, configSnapshot]() -> PipelineContext {
+            return m_pipelineManager->execute(currentImage, configSnapshot);
         }
     );
     m_pipelineWatcher.setFuture(future);
@@ -438,7 +441,7 @@ void MainWindow::setDisplayModeForCurrentTab()
 
     // 过滤模式特殊处理（需要根据当前过滤状态动态决定）
     if (tabName == "过滤") {
-        const PipelineConfig& cfg = m_pipelineManager->getConfig();
+        PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
         mode = (cfg.currentFilterMode == PipelineConfig::FilterMode::None)
             ? DisplayConfig::Mode::Original
             : DisplayConfig::Mode::MaskGreenWhite;
@@ -712,8 +715,9 @@ void MainWindow::connectTabSignals(const QString& tabName, QWidget* widget)
         auto* tab = qobject_cast<ImageTabWidget*>(widget);
         connect(tab, &ImageTabWidget::channelChanged,
                 this, [this](int channel) {
-                    m_pipelineManager->getConfig().channel =
-                        static_cast<PipelineConfig::Channel>(channel);
+                    PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
+                    cfg.channel = static_cast<PipelineConfig::Channel>(channel);
+                    m_pipelineManager->setConfig(cfg);
                     processAndDisplay();
                 });
     }

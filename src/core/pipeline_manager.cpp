@@ -108,14 +108,14 @@ void PipelineManager::clearAlgorithmQueue()
 
 // ========== Pipeline执行 ==========
 
-PipelineContext PipelineManager::execute(const cv::Mat& inputImage)
+PipelineContext PipelineManager::execute(const cv::Mat& inputImage, const PipelineConfig& config)
 {
     if (inputImage.empty())
     {
         return PipelineContext();
     }
 
-    // ✅ 显式释放所有Mat
+    // ✅ 显式释放所有Mat（不持锁，避免阻塞UI线程）
     m_lastContext.srcBgr.release();
     m_lastContext.channelImg.release();
     m_lastContext.enhanced.release();
@@ -131,8 +131,20 @@ PipelineContext PipelineManager::execute(const cv::Mat& inputImage)
     m_lastContext.displayConfig.mode = m_displayMode;
     m_lastContext.displayConfig.overlayAlpha = m_overlayAlpha;
 
-    // 执行Pipeline
-    m_pipeline.run(m_lastContext);
+    // 短暂加锁：写入配置、执行Pipeline、恢复配置
+    // Steps通过 &m_config 指针读取配置，执行期间需要保护 m_config 不被修改
+    {
+        QMutexLocker locker(&m_configMutex);
+        PipelineConfig savedConfig = m_config;
+        m_config = config;
+        m_lastConfigSnapshot = config;
+
+        // 执行Pipeline
+        m_pipeline.run(m_lastContext);
+
+        // 恢复m_config
+        m_config = savedConfig;
+    }
 
     // 发出完成信号
     QString message = m_lastContext.reason.isEmpty()
@@ -245,6 +257,8 @@ PipelineConfig::FilterMode PipelineManager::getCurrentFilterMode() const
 void PipelineManager::resetPipeline()
 {
     //qDebug() << "[PipelineManager] ===== 开始完全重置Pipeline =====";
+
+    QMutexLocker locker(&m_configMutex);
 
     // 1️⃣ 清空上次执行的上下文
     //clearLastContext();

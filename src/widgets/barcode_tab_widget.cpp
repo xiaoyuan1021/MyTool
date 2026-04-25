@@ -61,8 +61,9 @@ void BarcodeTabWidget::updatePipelineConfig()
 {
     if (!m_pipelineManager) return;
     
-    PipelineConfig& config = m_pipelineManager->getConfig();
+    PipelineConfig config = m_pipelineManager->getConfigSnapshot();
     config.barcode = getBarcodeConfig();
+    m_pipelineManager->setConfig(config);
     
     // 如果禁用了条码识别，清空结果
     if (!config.barcode.enableBarcode)

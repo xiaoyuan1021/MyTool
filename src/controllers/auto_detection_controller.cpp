@@ -220,7 +220,7 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
             Logger::instance()->info(QString("[检测] 图片加载成功: %1x%2").arg(image.cols).arg(image.rows));
 
             // 保存PipelineManager当前全局配置（执行完毕后恢复）
-            PipelineConfig savedGlobalConfig = pipeline->getConfig();
+            PipelineConfig savedGlobalConfig = pipeline->getConfigSnapshot();
 
             bool allPassed = true;
             QString failReason;
@@ -266,8 +266,7 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
 
                 Logger::instance()->info(QString("[检测] ROI图像尺寸: %1x%2").arg(roiImage.cols).arg(roiImage.rows));
 
-                // 【Bug1修复】应用该ROI专属的Pipeline配置，而非使用全局配置
-                pipeline->getConfig() = roiConfig.pipelineConfig;
+                // 【Bug1修复】应用该ROI专属的Pipeline配置，通过execute参数传递
 
                 Logger::instance()->info(QString("[检测] 应用PipelineConfig: brightness=%1, contrast=%2, gamma=%3, sharpen=%4, channel=%5")
                     .arg(roiConfig.pipelineConfig.brightness)
@@ -276,9 +275,9 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
                     .arg(roiConfig.pipelineConfig.sharpen)
                     .arg(static_cast<int>(roiConfig.pipelineConfig.channel)));
 
-                // 执行Pipeline
+                // 执行Pipeline（传入ROI专属配置，线程安全）
                 Logger::instance()->info("[检测] 开始执行Pipeline...");
-                PipelineContext ctx = pipeline->execute(roiImage);
+                PipelineContext ctx = pipeline->execute(roiImage, roiConfig.pipelineConfig);
                 Logger::instance()->info(QString("[检测] Pipeline执行完成: currentRegions=%1, barcodeResults=%2, matchedLines=%3, totalLines=%4")
                     .arg(ctx.currentRegions)
                     .arg(ctx.barcodeResults.size())
@@ -378,8 +377,7 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
                 }
             }
 
-            // 恢复PipelineManager全局配置
-            pipeline->getConfig() = savedGlobalConfig;
+            // 不再需要手动恢复配置，execute内部已处理
 
             Logger::instance()->info(QString("[检测] 整体结果: %1, reason=%2")
                 .arg(allPassed ? "PASS" : "FAIL").arg(failReason.isEmpty() ? "无" : failReason));

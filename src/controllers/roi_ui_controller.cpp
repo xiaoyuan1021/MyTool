@@ -52,7 +52,7 @@ void RoiUiController::setupTreeView(QTreeWidget* treeView)
         
         // 新ROI继承当前PipelineManager的配置
         if (m_pipelineManager) {
-            roi.pipelineConfig = m_pipelineManager->getConfig();
+            roi.pipelineConfig = m_pipelineManager->getConfigSnapshot();
         }
         
         m_roiManager.addRoiConfig(roi);
@@ -615,7 +615,7 @@ void RoiUiController::saveCurrentRoiPipelineConfig()
     
     RoiConfig* roi = m_roiManager.getRoiConfig(m_currentSelectedRoiId);
     if (roi) {
-        roi->pipelineConfig = m_pipelineManager->getConfig();
+        roi->pipelineConfig = m_pipelineManager->getConfigSnapshot();
         Logger::instance()->info(QString("[RoiUI] 已保存ROI [%1] 的Pipeline配置: brightness=%2, contrast=%3, gamma=%4")
             .arg(roi->roiName)
             .arg(roi->pipelineConfig.brightness)
@@ -636,7 +636,7 @@ void RoiUiController::loadRoiPipelineConfig(const QString& roiId)
     
     RoiConfig* roi = m_roiManager.getRoiConfig(roiId);
     if (roi) {
-        m_pipelineManager->getConfig() = roi->pipelineConfig;
+        m_pipelineManager->setConfig(roi->pipelineConfig);
         
         emit roiPipelineConfigChanged(roi->pipelineConfig);
         

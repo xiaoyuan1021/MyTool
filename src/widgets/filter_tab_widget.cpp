@@ -250,8 +250,10 @@ void FilterTabWidget::syncGrayParameters()
 {
     int grayLow = m_ui->Slider_grayLow->value();
     int grayHigh = m_ui->Slider_grayHigh->value();
-    m_pipelineManager->getConfig().grayLow = grayLow;
-    m_pipelineManager->getConfig().grayHigh = grayHigh;
+    PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
+    cfg.grayLow = grayLow;
+    cfg.grayHigh = grayHigh;
+    m_pipelineManager->setConfig(cfg);
 }
 
 void FilterTabWidget::syncRGBParameters()

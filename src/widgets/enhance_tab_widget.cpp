@@ -151,11 +151,15 @@ void EnhanceTabWidget::applyState(const EnhancementState &state)
     m_ui->spinBox_gamma->setValue(state.gamma);
     m_ui->spinBox_sharpen->setValue(state.sharpen);
 
-    // 同步参数到 Pipeline
-    m_pipelineManager->getConfig().brightness = state.brightness;
-    m_pipelineManager->getConfig().contrast = state.contrast / 100.0;
-    m_pipelineManager->getConfig().gamma = state.gamma / 100.0;
-    m_pipelineManager->getConfig().sharpen = state.sharpen / 100.0;
+    // 同步参数到 Pipeline（线程安全：使用快照+setConfig模式）
+    {
+        PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
+        cfg.brightness = state.brightness;
+        cfg.contrast = state.contrast / 100.0;
+        cfg.gamma = state.gamma / 100.0;
+        cfg.sharpen = state.sharpen / 100.0;
+        m_pipelineManager->setConfig(cfg);
+    }
 
     emit processRequested();
 }
@@ -179,10 +183,12 @@ void EnhanceTabWidget::updateUndoUi()
 void EnhanceTabWidget::syncConfigToPipeline()
 {
     EnhancementState current = captureState();
-    m_pipelineManager->getConfig().brightness = current.brightness;
-    m_pipelineManager->getConfig().contrast = current.contrast / 100.0;
-    m_pipelineManager->getConfig().gamma = current.gamma / 100.0;
-    m_pipelineManager->getConfig().sharpen = current.sharpen / 100.0;
+    PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
+    cfg.brightness = current.brightness;
+    cfg.contrast = current.contrast / 100.0;
+    cfg.gamma = current.gamma / 100.0;
+    cfg.sharpen = current.sharpen / 100.0;
+    m_pipelineManager->setConfig(cfg);
     
     // 通知外部将配置回写到当前ROI，防止ROI之间配置串扰
     emit enhanceConfigChanged();
