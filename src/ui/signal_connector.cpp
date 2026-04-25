@@ -2,6 +2,7 @@
 #include "mainwindow.h"
 #include "logger.h"
 #include "ui/image_view.h"
+#include "controllers/roi_ui_controller.h"
 
 // Tab Widget 头文件
 #include "widgets/image_tab_widget.h"
@@ -192,9 +193,8 @@ void SignalConnector::connectObjectDetectionTab(QWidget* widget)
     auto* tab = qobject_cast<ObjectDetectionTabWidget*>(widget);
     connect(tab, &ObjectDetectionTabWidget::detectionConfigChanged,
             m_mainWindow, [this]() {
-                // 用户点击"应用"按钮加载模型成功后，设置标志并触发处理
-                // 这样 pipeline 完成后会自动执行目标检测
-                m_mainWindow->m_objectDetectionRequested = true;
+                // 用户点击"应用"按钮加载模型成功后，触发处理
+                // pipeline 完成后会自动检查模型是否已加载并执行目标检测
                 m_mainWindow->processAndDisplay();
             });
 }

@@ -1,6 +1,8 @@
 #include "controllers/detection_ui_controller.h"
 #include "controllers/roi_ui_controller.h"
 #include "logger.h"
+#include "widgets/tab_manager.h"
+#include "widgets/judge_tab_widget.h"
 
 #include <QMessageBox>
 #include <QComboBox>
@@ -99,10 +101,46 @@ void DetectionUiController::onAddDetectionClicked(const QString& roiId)
     }
 }
 
-void DetectionUiController::onDeleteDetectionClicked()
+void DetectionUiController::onDeleteDetectionClicked(const QString& roiId, const QString& detectionId)
 {
-    // 这个方法需要在主窗口中调用，传入当前选中的检测项
-    // 暂时留空，由主窗口直接处理
+    if (roiId.isEmpty() || detectionId.isEmpty()) {
+        QMessageBox::warning(nullptr, "警告", "请先选择要删除的检测项");
+        return;
+    }
+
+    RoiConfig* roi = m_roiManager.getRoiConfig(roiId);
+    if (!roi) return;
+
+    roi->removeDetectionItem(detectionId);
+    emit detectionChanged();
+    Logger::instance()->info(QString("已删除检测项: %1").arg(detectionId));
+}
+
+void DetectionUiController::onDetectionItemSelected(const QString& roiId, const QString& detectionId,
+                                                    TabManager* tabManager, PipelineManager* pipelineManager)
+{
+    RoiConfig* roi = m_roiManager.getRoiConfig(roiId);
+    if (!roi) return;
+
+    for (const auto& detection : roi->detectionItems) {
+        if (detection.itemId != detectionId) continue;
+        
+        TabConfig config = TabConfig::getConfigForType(detection.type);
+        switchToTabConfig(config);
+
+        if (detection.type == DetectionType::Blob) {
+            BlobAnalysisConfig blobConfig;
+            blobConfig.fromJson(detection.config);
+            if (auto* judgeTab = tabManager->getJudgeTab()) {
+                judgeTab->setJudgeConfig(
+                    blobConfig.minBlobCount,
+                    blobConfig.maxBlobCount,
+                    pipelineManager->getLastContext().currentRegions
+                );
+            }
+        }
+        break;
+    }
 }
 
 void DetectionUiController::switchToTabConfig(const TabConfig& config)

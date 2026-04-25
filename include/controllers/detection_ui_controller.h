@@ -14,14 +14,18 @@
 // 前向声明
 class RoiUiController;
 class TabManager;
+class PipelineManager;
+class JudgeTabWidget;
+struct BlobAnalysisConfig;
 
 /**
  * 检测项UI控制器 - 负责检测项管理的UI交互逻辑
  *
  * 职责：
  * 1. 检测项添加/删除操作
- * 2. Tab配置切换
- * 3. TreeView更新
+ * 2. 检测项选中跳转
+ * 3. Tab配置切换
+ * 4. TreeView更新
  */
 class DetectionUiController : public QObject
 {
@@ -37,7 +41,11 @@ public:
 
     // 检测项操作
     void onAddDetectionClicked(const QString& roiId);
-    void onDeleteDetectionClicked();
+    void onDeleteDetectionClicked(const QString& roiId, const QString& detectionId);
+
+    // 检测项选中跳转
+    void onDetectionItemSelected(const QString& roiId, const QString& detectionId,
+                                 TabManager* tabManager, PipelineManager* pipelineManager);
 
     // Tab配置管理
     void switchToTabConfig(const TabConfig& config);

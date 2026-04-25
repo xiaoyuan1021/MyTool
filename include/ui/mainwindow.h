@@ -2,37 +2,26 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QFileDialog>
-#include <QMessageBox>
-#include <QSlider>
-#include <QSpinBox>
-#include <QListWidgetItem>
 #include <QTimer>
-#include <QStack>
-#include <QSignalBlocker>
-#include <QtConcurrent/QtConcurrent>
 #include <QFutureWatcher>
-#include <QStandardItemModel>
 
 #include <opencv2/opencv.hpp>
 
-#include "image_view.h"
-#include "image_utils.h"
 #include "pipeline_manager.h"
-#include "system_monitor.h"
-#include "file_manager.h"
-#include "config_manager.h"
-// 各TabWidget的include已移至tab_manager.h
-#include "widgets/image_list_manager.h"
-#include "widgets/tab_manager.h"
-#include "widgets/roi_list_widget.h"
-#include "roi_config.h"
-#include "log_page.h"
-#include "controllers/roi_ui_controller.h"
-#include "controllers/detection_ui_controller.h"
-#include "controllers/config_controller.h"
-#include "controllers/auto_detection_controller.h"
-#include "ui/pipeline_result_handler.h"
+#include "roi_manager.h"
+
+// 前向声明
+class ImageView;
+class SignalConnector;
+class SystemMonitor;
+class FileManager;
+class TabManager;
+class ImageListManager;
+class RoiUiController;
+class DetectionUiController;
+class ConfigController;
+class AutoDetectionController;
+class PipelineResultHandler;
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -46,19 +35,20 @@ QT_END_NAMESPACE
  * 职责：
  * 1. UI事件处理
  * 2. 图像显示
- * 3. ROI管理
- * 4. 协调各模块工作
+ * 3. 协调各模块工作
  */
 
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
 
-    friend class SignalConnector;
-
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
+
+    /// 供外部模块请求处理
+    void processAndDisplay();
+    void showImage(const cv::Mat& img);
 
 private slots:
     void on_btn_openImg_clicked();
@@ -77,46 +67,29 @@ private slots:
     void on_btn_importConfig_clicked();
     void on_btn_startAutoDetection_clicked();
     void on_btn_stopAutoDetection_clicked();
+
 private:
     // 初始化方法
     void setupBasicInfrastructure();
     void setupManagers();
     void setupControllers();
     void setupResultHandler();
-    
     void setupUI();
     void setupConnections();
-    void setupSystemMonitor();
-    
-    void processAndDisplay();
-    void showImage(const cv::Mat& img);
+
     void setDisplayModeForCurrentTab();
-    
-    // 事件处理
-    void onDetectionItemSelected(const QString& roiId, const QString& detectionId);
-    void onDeleteDetectionClicked();
-    
-    // Tab懒加载（委托给TabManager）
     void ensureTabExists(const QString& tabName);
-    void connectTabSignals(const QString& tabName, QWidget* widget);
 
-private:
     Ui::MainWindow *ui;
-    ImageView *m_view;
+    ImageView *m_view = nullptr;
 
-    PipelineManager* m_pipelineManager;
+    PipelineManager* m_pipelineManager = nullptr;
     RoiManager m_roiManager;
-    SystemMonitor* m_systemMonitor;
-    FileManager* m_fileManager;
-    QTimer* m_processDebounceTimer;
+    SystemMonitor* m_systemMonitor = nullptr;
+    FileManager* m_fileManager = nullptr;
+    QTimer* m_processDebounceTimer = nullptr;
 
-    int m_currentTabIndex;
     bool m_isDestroying = false;
-
-    void saveConfig();
-    void loadConfig();
-    void collectConfigFromUI(AppConfig& config);
-    void applyConfigToUI(const AppConfig& config);
 
     // Tab管理器
     TabManager* m_tabManager = nullptr;
@@ -126,30 +99,22 @@ private:
     bool m_isProcessing = false;
     bool m_hasPendingProcess = false;
 
-    // ROI配置管理（已移至RoiManager统一管理）
-    
-    QStringList m_tabNames;
-    
     // Controller对象
-    RoiUiController* m_roiUiController;
-    DetectionUiController* m_detectionUiController;
-    ConfigController* m_configController;
+    RoiUiController* m_roiUiController = nullptr;
+    DetectionUiController* m_detectionUiController = nullptr;
+    ConfigController* m_configController = nullptr;
 
     // 图片列表管理器
     ImageListManager* m_imageListManager = nullptr;
 
     // 自动检测控制器
     AutoDetectionController* m_autoDetectionController = nullptr;
-    
+
     // 信号连接器
     SignalConnector* m_signalConnector = nullptr;
 
     // Pipeline结果处理器
     PipelineResultHandler* m_pipelineResultHandler = nullptr;
-
-    // 目标检测请求标志：仅在用户主动触发时才执行目标检测
-    bool m_objectDetectionRequested = false;
 };
-
 
 #endif // MAINWINDOW_H
