@@ -60,6 +60,10 @@ void RoiUiController::setupTreeView(QTreeWidget* treeView)
         // 更新当前选中的ROI为新创建的ROI
         m_currentSelectedRoiId = roi.roiId;
         
+        // 【Bug修复】激活新绘制的ROI在图像视图中
+        m_view->clearRoi();
+        m_roiManager.setRoi(roi.roiRect);
+        
         // 【P1修复】退出ROI绘制模式
         m_view->finishRoiMode();
         
@@ -325,6 +329,14 @@ void RoiUiController::refreshRoiTreeView()
     // 需要加载新ROI的PipelineConfig到PipelineManager，确保UI显示正确的配置
     if (selectionChanged && !m_currentSelectedRoiId.isEmpty()) {
         loadRoiPipelineConfig(m_currentSelectedRoiId);
+        
+        // 【P1修复】同步激活ROI到图像视图，保持树形视图与图像显示一致
+        RoiConfig* roi = m_roiManager.getRoiConfig(m_currentSelectedRoiId);
+        if (roi) {
+            m_view->clearRoi();
+            m_roiManager.setRoi(roi->roiRect);
+            emit roiDisplayChanged(m_currentSelectedRoiId);
+        }
     }
 }
 
@@ -350,6 +362,16 @@ void RoiUiController::onRoiTreeItemClicked(QTreeWidgetItem* item, int column)
                 saveCurrentRoiPipelineConfig();
                 m_currentSelectedRoiId = newRoiId;
                 loadRoiPipelineConfig(m_currentSelectedRoiId);
+            }
+            
+            // 【Bug修复】激活父ROI在图像视图中，确保Pipeline在ROI区域上处理
+            RoiConfig* roi = m_roiManager.getRoiConfig(m_currentSelectedRoiId);
+            if (roi) {
+                m_view->clearRoi();
+                m_roiManager.setRoi(roi->roiRect);
+                
+                // 纯显示切换，不触发Pipeline处理
+                emit roiDisplayChanged(m_currentSelectedRoiId);
             }
             
             // 发出检测项选中信号，用于触发Tab切换
