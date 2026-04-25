@@ -60,8 +60,25 @@ void RoiUiController::setupTreeView(QTreeWidget* treeView)
         // 更新当前选中的ROI为新创建的ROI
         m_currentSelectedRoiId = roi.roiId;
         
+        // 【P1修复】退出ROI绘制模式
+        m_view->finishRoiMode();
+        
+        // 【P1修复】更新状态栏，清除"请按下左键绘制ROI"的提示
+        if (m_statusBar) {
+            m_statusBar->showMessage(
+                QString("ROI已添加: %1 (x=%2 y=%3 w=%4 h=%5)")
+                    .arg(roi.roiName)
+                    .arg((int)rect.x()).arg((int)rect.y())
+                    .arg((int)rect.width()).arg((int)rect.height()),
+                3000
+            );
+        }
+        
         // 刷新列表
         refreshRoiTreeView();
+        
+        // 触发配置修改信号（需要Pipeline重新处理）
+        emit roiChanged();
         
         Logger::instance()->info(QString("已添加ROI: %1").arg(roiName));
     });
@@ -165,6 +182,9 @@ void RoiUiController::onSwitchRoiClicked()
         m_view->clearRoi();
         m_view->resetZoom();
         m_view->setImage(ImageUtils::matToQImage(m_roiManager.getFullImage()));
+        
+        // 【P1修复】纯显示切换，不触发Pipeline处理
+        emit fullImageDisplayRequested();
         Logger::instance()->info("已切换到原图模式");
     } else {
         // 当前是原图模式，切换到ROI模式
@@ -185,7 +205,9 @@ void RoiUiController::onSwitchRoiClicked()
         // 切换到ROI模式
         m_view->clearRoi();
         m_roiManager.setRoi(roi->roiRect);
-        emit roiChanged();
+        
+        // 【P1修复】纯显示切换，不触发Pipeline处理
+        emit roiDisplayChanged(m_currentSelectedRoiId);
         Logger::instance()->info(QString("已切换到ROI模式: %1").arg(roi->roiName));
     }
 }
@@ -354,7 +376,8 @@ void RoiUiController::onRoiTreeItemClicked(QTreeWidgetItem* item, int column)
             m_view->clearRoi();
             m_roiManager.setRoi(roi->roiRect);
             
-            emit roiChanged();
+            // 【P1修复】纯显示切换，不触发Pipeline处理
+            emit roiDisplayChanged(m_currentSelectedRoiId);
             Logger::instance()->info(QString("已选中ROI: %1").arg(roi->roiName));
         } else {
             Logger::instance()->info(QString("选中ROI: %1").arg(itemId));
@@ -600,7 +623,8 @@ void RoiUiController::handleRoiSelectionChanged(const QString& roiId)
         m_view->clearRoi();
         m_roiManager.setRoi(roi->roiRect);
         
-        emit roiChanged();
+        // 【P1修复】纯显示切换，不触发Pipeline处理
+        emit roiDisplayChanged(roiId);
         Logger::instance()->info(QString("已选中ROI: %1").arg(roi->roiName));
     }
 }

@@ -213,7 +213,33 @@ MainWindow::MainWindow(QWidget *parent)
     m_roiUiController->setupTreeView(ui->treeView);
     
     // 连接Controller信号
+
+    // 【P1修复】roiChanged 仅用于需要重新Pipeline处理的场景（添加/删除/修改ROI配置）
     connect(m_roiUiController, &RoiUiController::roiChanged, this, &MainWindow::processAndDisplay);
+
+    // 【P1修复】roiDisplayChanged 用于纯显示切换，不触发Pipeline处理
+    connect(m_roiUiController, &RoiUiController::roiDisplayChanged,
+            this, [this](const QString& roiId) {
+        // 纯显示切换：切换到ROI区域图像，无需Pipeline重新处理
+        Q_UNUSED(roiId);
+        cv::Mat currentImage = m_roiManager.getCurrentImage();
+        if (!currentImage.empty()) {
+            showImage(currentImage);
+            ui->statusbar->showMessage("已切换显示", 2000);
+        }
+    });
+
+    // 【P1修复】fullImageDisplayRequested 用于切回原图显示，不触发Pipeline处理
+    connect(m_roiUiController, &RoiUiController::fullImageDisplayRequested,
+            this, [this]() {
+        // 纯显示切换：显示完整原图，无需Pipeline重新处理
+        cv::Mat fullImage = m_roiManager.getFullImage();
+        if (!fullImage.empty()) {
+            showImage(fullImage);
+            ui->statusbar->showMessage("已切换到原图", 2000);
+        }
+    });
+
     connect(m_detectionUiController, &DetectionUiController::detectionChanged, this, [this]() {
         m_roiUiController->refreshRoiTreeView();
     });
@@ -295,8 +321,16 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow()
 {
     m_isDestroying = true;
-    // 先断开Logger的所有连接，防止析构时访问已删除的UI
+
+    // 【关键修复】等待后台Pipeline处理完成，避免析构时访问已释放的cv::Mat/OpenCV资源
+    if (m_isProcessing) {
+        m_pipelineWatcher.waitForFinished();
+    }
+
+    // 断开所有可能在析构过程中触发的信号连接
+    disconnect(&m_pipelineWatcher, nullptr, this, nullptr);
     disconnect(Logger::instance(), nullptr, this, nullptr);
+
     delete ui;
 }
 
@@ -547,13 +581,13 @@ void MainWindow::on_btn_drawRoi_clicked()
 void MainWindow::on_btn_resetROI_clicked()
 {
     m_roiUiController->onResetRoiClicked();
-    processAndDisplay();
+    // 移除 processAndDisplay() — roiChanged 信号已连接到 processAndDisplay
 }
 
 void MainWindow::onRoiSelected(const QRectF &roiImgRectF)
 {
     m_roiUiController->handleRoiSelectedComplete(roiImgRectF);
-    processAndDisplay();
+    // 移除 processAndDisplay() — roiChanged 信号已连接到 processAndDisplay
 }
 
 void MainWindow::on_btn_addROI_clicked()
@@ -564,13 +598,15 @@ void MainWindow::on_btn_addROI_clicked()
 void MainWindow::on_btn_deleteROI_clicked()
 {
     m_roiUiController->onDeleteRoiClicked();
-    processAndDisplay();
+    // 移除 processAndDisplay() — roiChanged 信号已连接到 processAndDisplay
 }
 
 void MainWindow::on_btn_switchROI_clicked()
 {
     m_roiUiController->onSwitchRoiClicked();
-    processAndDisplay();
+    // 【P1修复】移除 processAndDisplay() — 切换显示是纯UI操作
+    // onSwitchRoiClicked 内部已经通过 roiDisplayChanged/fullImageDisplayRequested 信号处理显示
+    // 不需要重新执行Pipeline处理
 }
 
 void MainWindow::on_tabWidget_currentChanged(int index)

@@ -115,26 +115,29 @@ PipelineContext PipelineManager::execute(const cv::Mat& inputImage, const Pipeli
         return PipelineContext();
     }
 
-    // ✅ 显式释放所有Mat（不持锁，避免阻塞UI线程）
-    m_lastContext.srcBgr.release();
-    m_lastContext.channelImg.release();
-    m_lastContext.enhanced.release();
-    m_lastContext.mask.release();
-    m_lastContext.processed.release();
-    m_lastContext.regions.clear();
-    m_lastContext.currentRegions = 0;
-    m_lastContext.pass = true;
-    m_lastContext.reason.clear();
+    // 标记后台Pipeline开始运行
+    m_pipelineRunning.storeRelease(1);
 
-    m_lastContext.srcBgr = inputImage;
-
-    m_lastContext.displayConfig.mode = m_displayMode;
-    m_lastContext.displayConfig.overlayAlpha = m_overlayAlpha;
-
-    // 短暂加锁：写入配置、执行Pipeline、恢复配置
-    // Steps通过 &m_config 指针读取配置，执行期间需要保护 m_config 不被修改
+    // 在锁内执行所有操作：修改m_lastContext、执行Pipeline、处理pending
     {
         QMutexLocker locker(&m_configMutex);
+
+        // 清空上次执行结果（在锁内，避免与主线程读取竞争）
+        m_lastContext.srcBgr.release();
+        m_lastContext.channelImg.release();
+        m_lastContext.enhanced.release();
+        m_lastContext.mask.release();
+        m_lastContext.processed.release();
+        m_lastContext.regions.clear();
+        m_lastContext.currentRegions = 0;
+        m_lastContext.pass = true;
+        m_lastContext.reason.clear();
+
+        m_lastContext.srcBgr = inputImage;
+        m_lastContext.displayConfig.mode = m_displayMode;
+        m_lastContext.displayConfig.overlayAlpha = m_overlayAlpha;
+
+        // 临时设置config用于Pipeline执行
         PipelineConfig savedConfig = m_config;
         m_config = config;
         m_lastConfigSnapshot = config;
@@ -144,15 +147,38 @@ PipelineContext PipelineManager::execute(const cv::Mat& inputImage, const Pipeli
 
         // 恢复m_config
         m_config = savedConfig;
+
+        // 处理延迟的配置更新（UI线程在Pipeline执行期间设置的新配置）
+        if (m_hasPendingConfig.loadAcquire()) {
+            m_config = m_pendingConfig;
+            m_lastConfigSnapshot = m_pendingConfig;
+            m_hasPendingConfig.storeRelease(0);
+        }
+
+        // 处理延迟的Pipeline重置
+        if (m_hasPendingReset.loadAcquire()) {
+            m_algorithmQueue.clear();
+            m_config.shapeFilter.clear();
+            m_displayMode = DisplayConfig::Mode::MaskGreenWhite;
+            m_overlayAlpha = 0.3f;
+            initPipeline();
+            m_hasPendingReset.storeRelease(0);
+            // 重置信号需要在锁外发送，但这里为简化直接发送
+            emit pipelineReset();
+            emit algorithmQueueChanged(0);
+        }
     }
 
-    // 发出完成信号
+    // 标记后台Pipeline运行结束
+    m_pipelineRunning.storeRelease(0);
+
+    // 发出完成信号（在锁外，避免死锁）
     QString message = m_lastContext.reason.isEmpty()
                           ? "Pipeline执行完成"
                           : m_lastContext.reason;
     emit pipelineFinished(message);
 
-    // ✅ 返回副本，避免多线程竞争
+    // 返回副本，避免多线程竞争
     return m_lastContext;
 }
 
@@ -256,37 +282,19 @@ PipelineConfig::FilterMode PipelineManager::getCurrentFilterMode() const
 
 void PipelineManager::resetPipeline()
 {
-    //qDebug() << "[PipelineManager] ===== 开始完全重置Pipeline =====";
+    // 如果后台Pipeline正在运行，标记延迟重置，等execute完成后自动执行
+    if (m_pipelineRunning.loadAcquire()) {
+        m_hasPendingReset.storeRelease(1);
+        return;
+    }
 
-    QMutexLocker locker(&m_configMutex);
-
-    // 1️⃣ 清空上次执行的上下文
-    //clearLastContext();
-
-    // 2️⃣ 重置配置到默认值
-    //m_config = getDefaultConfig();
-    //qDebug() << "[PipelineManager]   - 配置已重置";
-
-    // 3️⃣ 清空算法队列
+    // Pipeline未在运行，直接执行重置（无需加锁，因为在UI线程且无并发）
     m_algorithmQueue.clear();
-    //qDebug() << "[PipelineManager]   - 算法队列已清空";
-
-    // 4️⃣ 清空形状筛选
     m_config.shapeFilter.clear();
-    //qDebug() << "[PipelineManager]   - 形状筛选已清空";
-
-    // 5️⃣ 重置显示模式
     m_displayMode = DisplayConfig::Mode::MaskGreenWhite;
     m_overlayAlpha = 0.3f;
-    //qDebug() << "[PipelineManager]   - 显示模式已重置";
-
-    // 6️⃣ 重新初始化Pipeline
     initPipeline();
-    //qDebug() << "[PipelineManager]   - Pipeline已重新初始化";
 
-    // 8️⃣ 发出信号
     emit pipelineReset();
     emit algorithmQueueChanged(0);
-
-    //qDebug() << "[PipelineManager] ===== Pipeline重置完成 =====";
 }

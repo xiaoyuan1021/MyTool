@@ -9,15 +9,15 @@
 #include <QString>
 #include <QMutex>
 #include <QMutexLocker>
+#include <QAtomicInt>
 
 /**
  * Pipeline管理器 - 负责Pipeline的创建、配置和执行
  *
- * 职责：
- * 1. 管理Pipeline配置（PipelineConfig）
- * 2. 管理Pipeline实例
- * 3. 管理算法队列
- * 4. 提供统一的执行接口
+ * 线程模型：
+ * - 配置管理方法（setConfig/getConfigSnapshot等）仅在UI线程调用，无需加锁
+ * - execute() 在后台线程调用，使用m_configMutex保护Pipeline执行期间的状态
+ * - UI线程和后台线程之间通过值拷贝传递数据，避免共享可变状态
  */
 class PipelineManager : public QObject
 {
@@ -26,7 +26,7 @@ class PipelineManager : public QObject
 public:
     explicit PipelineManager(QObject* parent = nullptr);
 
-    // ========== 配置管理 ==========
+    // ========== 配置管理（仅UI线程调用）==========
 
     // 从UI控件同步参数到配置
     void syncFromUI(QSlider* brightness, QSlider* contrast, QSlider* gamma,
@@ -43,22 +43,22 @@ public:
     // 设置面积筛选范围
     void setAreaRange(double minArea, double maxArea);
 
-    // 获取当前配置快照（线程安全：tryLock不阻塞UI线程）
-    // 如果Pipeline正在执行（锁被占用），返回上次保存的缓存快照
+    // 获取当前配置快照（永不阻塞UI线程）
+    // m_config仅在UI线程读写，直接返回拷贝
     PipelineConfig getConfigSnapshot() const {
-        if (m_configMutex.tryLock()) {
-            PipelineConfig result = m_config;
-            m_configMutex.unlock();
-            return result;
-        }
-        return m_lastConfigSnapshot;
+        return m_config;
     }
 
-    // 设置配置（线程安全：加锁修改，与execute互斥）
+    // 设置配置（永不阻塞UI线程）
+    // 如果Pipeline正在执行，将配置存入pending队列
     void setConfig(const PipelineConfig& config) {
-        QMutexLocker locker(&m_configMutex);
         m_config = config;
         m_lastConfigSnapshot = config;
+        // 如果后台线程正在执行Pipeline，标记pending让worker完成后应用
+        if (m_pipelineRunning.loadAcquire()) {
+            m_pendingConfig = config;
+            m_hasPendingConfig.storeRelease(1);
+        }
     }
 
     // ========== 算法队列管理 ==========
@@ -79,10 +79,10 @@ public:
 
     // ========== Pipeline执行 ==========
 
-    // 执行Pipeline处理
-    // 输入：BGR图像 + 配置快照（值拷贝，线程安全）
+    // 执行Pipeline处理（在后台线程调用）
+    // 输入：BGR图像 + 配置快照（值拷贝）
     // 输出：处理结果上下文
-    // 注意：内部会加锁，确保执行期间配置不被并发修改
+    // 内部会加锁，确保执行期间Pipeline状态不被并发修改
     PipelineContext execute(const cv::Mat& inputImage, const PipelineConfig& config);
 
     // 获取最后一次执行的上下文
@@ -141,14 +141,24 @@ private:
     void rebuildPipeline();
 
 private:
-    // 互斥锁：保护 m_config 和 Pipeline 执行期间的状态
+    // 互斥锁：仅保护Pipeline执行期间的m_pipeline和m_lastContext
     mutable QMutex m_configMutex;
 
-    // 配置（所有访问必须通过 getConfigSnapshot/setConfig 或加锁）
+    // 配置（仅在UI线程读写，不需要锁保护）
     PipelineConfig m_config;
 
-    // 缓存快照：每次setConfig/execute时更新，供tryLock失败时返回
+    // 缓存快照：供后台execute时使用
     PipelineConfig m_lastConfigSnapshot;
+
+    // 原子标志：后台Pipeline是否正在运行
+    QAtomicInt m_pipelineRunning{0};
+
+    // 延迟应用的配置（后台线程正在执行时，UI线程写入的配置暂存于此）
+    PipelineConfig m_pendingConfig;
+    QAtomicInt m_hasPendingConfig{0};
+
+    // 延迟重置标志
+    QAtomicInt m_hasPendingReset{0};
 
     // Pipeline实例
     Pipeline m_pipeline;

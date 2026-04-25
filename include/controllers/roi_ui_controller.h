@@ -87,8 +87,15 @@ public:
     RoiManager& getRoiManager() { return m_roiManager; }
 
 signals:
-    // ROI变更信号（用于通知主窗口更新显示）
+    // ROI配置修改信号（需要重新执行Pipeline处理）
     void roiChanged();
+    
+    // ROI显示切换信号（纯显示切换，不需要Pipeline处理）
+    // 用于：切换原图/ROI显示、点击ROI列表项切换显示
+    void roiDisplayChanged(const QString& roiId);
+    
+    // 切换到原图显示信号（纯显示切换，不需要Pipeline处理）
+    void fullImageDisplayRequested();
     
     // 检测项选中信号（用于触发Tab切换）
     void detectionItemSelected(const QString& roiId, const QString& detectionId);
