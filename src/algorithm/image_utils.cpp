@@ -111,6 +111,22 @@ cv::Mat ImageUtils::qImageToMat(const QImage &image, bool clone)
 }
 
 
+cv::Rect ImageUtils::mapRoiToCvRect(const QRectF& roiRect, int imageCols, int imageRows)
+{
+    if (imageCols <= 0 || imageRows <= 0)
+        return cv::Rect();
+
+    int x = std::max(0, (int)std::floor(roiRect.x()));
+    int y = std::max(0, (int)std::floor(roiRect.y()));
+    int w = std::min((int)std::ceil(roiRect.width()), imageCols - x);
+    int h = std::min((int)std::ceil(roiRect.height()), imageRows - y);
+
+    if (w <= 0 || h <= 0)
+        return cv::Rect();
+
+    return cv::Rect(x, y, w, h);
+}
+
 cv::Mat ImageUtils::makeStructElement(int ksize)
 {
     return cv::getStructuringElement(cv::MORPH_ELLIPSE,

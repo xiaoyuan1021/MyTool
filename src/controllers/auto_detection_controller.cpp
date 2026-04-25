@@ -1,6 +1,7 @@
 #include "controllers/auto_detection_controller.h"
 #include "logger.h"
 #include "config/detection_config_types.h"
+#include "algorithm/image_utils.h"
 #include <QFileInfo>
 #include <QCoreApplication>
 #include <QtConcurrent/QtConcurrent>
@@ -253,23 +254,13 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
                 QRectF rect = roiConfig.roiRect;
 
                 // 裁剪ROI区域
-                if (!rect.isEmpty() && rect.width() > 0 && rect.height() > 0) {
-                    int x = std::max(0, (int)std::floor(rect.x()));
-                    int y = std::max(0, (int)std::floor(rect.y()));
-                    int w = std::min((int)std::ceil(rect.width()), image.cols - x);
-                    int h = std::min((int)std::ceil(rect.height()), image.rows - y);
-
+                cv::Rect r = ImageUtils::mapRoiToCvRect(rect, image.cols, image.rows);
+                if (!r.empty()) {
                     Logger::instance()->info(QString("[检测] ROI裁剪: x=%1, y=%2, w=%3, h=%4, 图片尺寸=%5x%6")
-                        .arg(x).arg(y).arg(w).arg(h).arg(image.cols).arg(image.rows));
-
-                    if (w > 0 && h > 0) {
-                        roiImage = image(cv::Rect(x, y, w, h)).clone();
-                    } else {
-                        Logger::instance()->warning("[检测] ROI裁剪尺寸无效，使用全图");
-                        roiImage = image.clone();
-                    }
+                        .arg(r.x).arg(r.y).arg(r.width).arg(r.height).arg(image.cols).arg(image.rows));
+                    roiImage = image(r).clone();
                 } else {
-                    Logger::instance()->info("[检测] 无ROI区域，使用全图");
+                    Logger::instance()->info("[检测] 无ROI区域或尺寸无效，使用全图");
                     roiImage = image.clone();
                 }
 

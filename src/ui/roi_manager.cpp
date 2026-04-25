@@ -1,6 +1,7 @@
 #include "roi_manager.h"
 #include "logger.h"
 #include "image_view.h"
+#include "algorithm/image_utils.h"
 #include <QStatusBar>
 #include <QDebug>
 #include <algorithm>
@@ -176,13 +177,9 @@ cv::Mat RoiManager::getCurrentImage() const
     // 查找激活的ROI配置并裁剪
     for (const auto& cfg : imageRois.roiConfigs) {
         if (cfg.roiId == imageRois.activeRoiId) {
-            int x = std::max(0, (int)std::floor(cfg.roiRect.x()));
-            int y = std::max(0, (int)std::floor(cfg.roiRect.y()));
-            int w = std::min((int)std::ceil(cfg.roiRect.width()), imageRois.image.cols - x);
-            int h = std::min((int)std::ceil(cfg.roiRect.height()), imageRois.image.rows - y);
-
-            if (w > 0 && h > 0) {
-                return imageRois.image(cv::Rect(x, y, w, h)).clone();
+            cv::Rect r = ImageUtils::mapRoiToCvRect(cfg.roiRect, imageRois.image.cols, imageRois.image.rows);
+            if (!r.empty()) {
+                return imageRois.image(r).clone();
             }
             break;
         }
@@ -207,15 +204,12 @@ bool RoiManager::setRoi(const QRectF &roiRectF)
     }
 
     // 转换并验证ROI区域
-    int x = std::max(0, (int)std::floor(roiRectF.x()));
-    int y = std::max(0, (int)std::floor(roiRectF.y()));
-    int w = std::min((int)std::ceil(roiRectF.width()), imageRois.image.cols - x);
-    int h = std::min((int)std::ceil(roiRectF.height()), imageRois.image.rows - y);
-
-    if (w <= 0 || h <= 0) {
+    cv::Rect r = ImageUtils::mapRoiToCvRect(roiRectF, imageRois.image.cols, imageRois.image.rows);
+    if (r.empty()) {
         qDebug() << "[RoiManager] ROI区域无效";
         return false;
     }
+    int x = r.x, y = r.y, w = r.width, h = r.height;
 
     QRectF normalizedRect(x, y, w, h);
 
@@ -279,12 +273,9 @@ cv::Rect RoiManager::getLastRoi() const
 
     for (const auto& cfg : imageRois.roiConfigs) {
         if (cfg.roiId == imageRois.activeRoiId) {
-            int x = std::max(0, (int)std::floor(cfg.roiRect.x()));
-            int y = std::max(0, (int)std::floor(cfg.roiRect.y()));
-            int w = std::min((int)std::ceil(cfg.roiRect.width()), imageRois.image.cols - x);
-            int h = std::min((int)std::ceil(cfg.roiRect.height()), imageRois.image.rows - y);
-            if (w > 0 && h > 0) {
-                return cv::Rect(x, y, w, h);
+            cv::Rect r = ImageUtils::mapRoiToCvRect(cfg.roiRect, imageRois.image.cols, imageRois.image.rows);
+            if (!r.empty()) {
+                return r;
             }
             break;
         }

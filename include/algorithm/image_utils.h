@@ -16,6 +16,9 @@ public:
 
     static cv::Mat makeStructElement(int ksize);
     static QRect mapLabelToImage(const QRect& rect,const cv::Mat& img,QLabel* label);
+
+    /// 将 QRectF 映射到图像边界内的 cv::Rect；无效时返回空 Rect
+    static cv::Rect mapRoiToCvRect(const QRectF& roiRect, int imageCols, int imageRows);
     
 };
 
