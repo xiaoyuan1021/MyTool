@@ -3,6 +3,9 @@
 #include "roi_config.h"
 #include "logger.h"
 #include "image_utils.h"
+#include "widgets/enhance_tab_widget.h"
+
+#include "widgets/tab_manager.h"
 
 #include <QApplication>
 #include <QDebug>
@@ -712,4 +715,45 @@ void RoiUiController::syncRoiConfigsToWidget()
     }
     refreshRoiTreeView();
     Logger::instance()->info("[RoiUiController] 已同步ROI配置到Widget");
+}
+
+// ========== MainWindow信号连接（从MainWindow迁移） ==========
+
+void RoiUiController::setupMainWindowConnections(TabManager* tabManager)
+{
+    // 纯显示切换：切换到ROI区域图像，无需Pipeline重新处理
+    connect(this, &RoiUiController::roiDisplayChanged,
+            this, [this](const QString& roiId) {
+        Q_UNUSED(roiId);
+        cv::Mat currentImage = m_roiManager.getCurrentImage();
+        if (!currentImage.empty()) {
+            QImage qimg = ImageUtils::matToQImage(currentImage);
+            m_view->setImage(qimg);
+            if (m_statusBar) m_statusBar->showMessage("已切换显示", 2000);
+        }
+    });
+
+    // 切换到原图显示，无需Pipeline重新处理
+    connect(this, &RoiUiController::fullImageDisplayRequested,
+            this, [this]() {
+        cv::Mat fullImage = m_roiManager.getFullImage();
+        if (!fullImage.empty()) {
+            QImage qimg = ImageUtils::matToQImage(fullImage);
+            m_view->setImage(qimg);
+            if (m_statusBar) m_statusBar->showMessage("已切换到原图", 2000);
+        }
+    });
+
+    // ROI切换时更新EnhanceTabWidget的UI显示
+    connect(this, &RoiUiController::roiPipelineConfigChanged,
+            this, [tabManager](const PipelineConfig& config) {
+        if (auto* enhanceTab = tabManager->getEnhanceTab()) {
+            enhanceTab->setEnhanceConfig(
+                config.brightness,
+                static_cast<int>(config.contrast * 100),
+                static_cast<int>(config.gamma * 100),
+                static_cast<int>(config.sharpen * 100)
+            );
+        }
+    });
 }

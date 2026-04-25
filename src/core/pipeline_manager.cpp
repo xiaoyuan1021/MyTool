@@ -1,6 +1,7 @@
 #include "pipeline_manager.h"
 #include "barcode_step.h"
 #include "config/pipeline_config_mapper.h"
+#include "config/constants.h"
 #include <QDebug>
 #include <algorithm>
 
@@ -13,14 +14,6 @@ PipelineManager::PipelineManager(QObject* parent)
 }
 
 // ========== 配置管理 ==========
-
-void PipelineManager::syncFromUI(QSlider* brightness, QSlider* contrast,
-                                 QSlider* gamma, QSlider* sharpen,
-                                 QSlider* grayLow, QSlider* grayHigh)
-{
-    PipelineConfigMapper::syncConfigFromUI(m_config, brightness, contrast, gamma,
-                                           sharpen, grayLow, grayHigh);
-}
 
 void PipelineManager::resetEnhancement()
 {
@@ -164,7 +157,7 @@ PipelineContext PipelineManager::execute(const cv::Mat& inputImage, const Pipeli
             m_algorithmQueue.clear();
             m_config.shapeFilter.clear();
             m_displayMode = DisplayConfig::Mode::MaskGreenWhite;
-            m_overlayAlpha = 0.3f;
+            m_overlayAlpha = AppConstants::DEFAULT_OVERLAY_ALPHA;
             initPipeline();
             m_hasPendingReset.storeRelease(0);
             shouldEmitPipelineReset = true;
@@ -300,7 +293,7 @@ void PipelineManager::resetPipeline()
     m_algorithmQueue.clear();
     m_config.shapeFilter.clear();
     m_displayMode = DisplayConfig::Mode::MaskGreenWhite;
-    m_overlayAlpha = 0.3f;
+    m_overlayAlpha = AppConstants::DEFAULT_OVERLAY_ALPHA;
     initPipeline();
 
     emit pipelineReset();

@@ -32,7 +32,7 @@
 #include "controllers/detection_ui_controller.h"
 #include "controllers/config_controller.h"
 #include "controllers/auto_detection_controller.h"
-#include "core/pipeline_result_handler.h"
+#include "ui/pipeline_result_handler.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -53,6 +53,8 @@ QT_END_NAMESPACE
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
+
+    friend class SignalConnector;
 
 public:
     MainWindow(QWidget *parent = nullptr);
@@ -139,6 +141,9 @@ private:
     // 自动检测控制器
     AutoDetectionController* m_autoDetectionController = nullptr;
     
+    // 信号连接器
+    SignalConnector* m_signalConnector = nullptr;
+
     // Pipeline结果处理器
     PipelineResultHandler* m_pipelineResultHandler = nullptr;
 

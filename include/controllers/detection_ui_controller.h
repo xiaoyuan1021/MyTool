@@ -6,9 +6,14 @@
 #include <QTreeWidgetItem>
 #include <QTabWidget>
 #include <QStringList>
+#include <functional>
 
 #include "roi_config.h"
 #include "roi_manager.h"
+
+// 前向声明
+class RoiUiController;
+class TabManager;
 
 /**
  * 检测项UI控制器 - 负责检测项管理的UI交互逻辑
@@ -40,6 +45,9 @@ public:
 
     // 设置Tab名称列表（用于动态切换）
     void setTabNames(const QStringList& tabNames) { m_tabNames = tabNames; }
+
+    /// 将UI信号连接到Controller（从MainWindow迁移）
+    void setupConnections(RoiUiController* roiController, std::function<void(const QString&)> ensureTabFunc);
 
 signals:
     // 检测项变更信号

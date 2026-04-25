@@ -1,4 +1,5 @@
 #include "controllers/detection_ui_controller.h"
+#include "controllers/roi_ui_controller.h"
 #include "logger.h"
 
 #include <QMessageBox>
@@ -134,5 +135,27 @@ void DetectionUiController::switchToTabConfig(const TabConfig& config)
             break;
         }
     }
+}
+
+// ========== UI信号连接（从MainWindow迁移） ==========
+
+void DetectionUiController::setupConnections(
+    RoiUiController* roiController, std::function<void(const QString&)> ensureTabFunc)
+{
+    // 检测项变更时刷新ROI树形视图
+    connect(this, &DetectionUiController::detectionChanged,
+            this, [roiController]() {
+        if (roiController) {
+            roiController->refreshRoiTreeView();
+        }
+    });
+
+    // Tab懒加载请求
+    connect(this, &DetectionUiController::ensureTabNeeded,
+            this, [ensureTabFunc](const QString& tabName) {
+        if (ensureTabFunc) {
+            ensureTabFunc(tabName);
+        }
+    });
 }
 

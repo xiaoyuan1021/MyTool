@@ -3,9 +3,8 @@
 #include "pipeline.h"
 #include "pipeline_steps.h"
 #include "image_processor.h"
+#include "config/constants.h"
 #include <QObject>
-#include <QSlider>
-#include <QSpinBox>
 #include <QString>
 #include <QMutex>
 #include <QMutexLocker>
@@ -27,10 +26,6 @@ public:
     explicit PipelineManager(QObject* parent = nullptr);
 
     // ========== 配置管理（仅UI线程调用）==========
-
-    // 从UI控件同步参数到配置
-    void syncFromUI(QSlider* brightness, QSlider* contrast, QSlider* gamma,
-                    QSlider* sharpen, QSlider* grayLow, QSlider* grayHigh);
 
     // 重置增强参数
     void resetEnhancement();
@@ -177,6 +172,6 @@ private:
     PipelineContext m_lastContext;
 
     DisplayConfig::Mode m_displayMode = DisplayConfig::Mode::MaskGreenWhite;
-    float m_overlayAlpha = 0.3f;
+    float m_overlayAlpha = AppConstants::DEFAULT_OVERLAY_ALPHA;
 
 };

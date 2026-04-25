@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "logger.h"
+#include "config/constants.h"
 #include <QFile>
 #include <QDir>
 #include <QTimer>
@@ -17,6 +18,7 @@
 #include "controllers/roi_ui_controller.h"
 #include "controllers/detection_ui_controller.h"
 #include "controllers/config_controller.h"
+#include "signal_connector.h"
 
 // Tab Widget头文件（mainwindow.cpp中仍需使用具体类型的方法）
 #include "widgets/judge_tab_widget.h"
@@ -48,7 +50,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     m_processDebounceTimer =new QTimer(this);
     m_processDebounceTimer ->setSingleShot(true);
-    m_processDebounceTimer ->setInterval(150);
+    m_processDebounceTimer ->setInterval(AppConstants::DEBOUNCE_PROCESS_MS);
 
     connect(m_processDebounceTimer, &QTimer::timeout,this,&MainWindow::processAndDisplay);
 
@@ -87,41 +89,9 @@ MainWindow::MainWindow(QWidget *parent)
 
     // 初始化自动检测控制器
     m_autoDetectionController = new AutoDetectionController(m_pipelineManager, &m_roiManager, this);
-    connect(m_autoDetectionController, &AutoDetectionController::logMessage,
-            this, [](const QString& msg) { Logger::instance()->info(msg); });
-    connect(m_autoDetectionController, &AutoDetectionController::detectionStarted,
-            this, [this](int totalCount) {
-        ui->btn_startAutoDetection->setEnabled(false);
-        ui->btn_stopAutoDetection->setEnabled(true);
-        ui->statusbar->showMessage(QString("批量检测中... 0/%1").arg(totalCount));
-    });
-    connect(m_autoDetectionController, &AutoDetectionController::detectionFinished,
-            this, [this](const DetectionStats& stats) {
-        ui->btn_startAutoDetection->setEnabled(true);
-        ui->btn_stopAutoDetection->setEnabled(false);
-        ui->statusbar->showMessage(
-            QString("检测完成 | 总计:%1 合格:%2 不合格:%3 合格率:%4%")
-                .arg(stats.totalCount).arg(stats.passCount)
-                .arg(stats.failCount).arg(stats.passRate(), 0, 'f', 1), 10000);
-    });
-    connect(m_autoDetectionController, &AutoDetectionController::detectionStopped,
-            this, [this]() {
-        ui->btn_startAutoDetection->setEnabled(true);
-        ui->btn_stopAutoDetection->setEnabled(false);
-        ui->statusbar->showMessage("检测已停止", 5000);
-    });
-    connect(m_autoDetectionController, &AutoDetectionController::progressUpdated,
-            this, [this](int current, int total) {
-        ui->statusbar->showMessage(QString("批量检测中... %1/%2").arg(current).arg(total));
-    });
-    connect(m_autoDetectionController, &AutoDetectionController::statsUpdated,
-            this, [this](const DetectionStats& stats) {
-        // 更新图片列表中当前图片的高亮状态（可扩展）
-        QString statusText = QString("已处理: %1 | 合格: %2 | 不合格: %3 | 合格率: %4%")
-            .arg(stats.processedCount).arg(stats.passCount)
-            .arg(stats.failCount).arg(stats.passRate(), 0, 'f', 1);
-        ui->label_imageList->setText(statusText);
-    });
+    m_autoDetectionController->setupUiConnections(
+        ui->btn_startAutoDetection, ui->btn_stopAutoDetection,
+        ui->statusbar, ui->label_imageList);
     
     // 设置Controller的Tab名称列表（初始为空，后续动态添加）
     m_detectionUiController->setTabNames(m_tabNames);
@@ -132,59 +102,24 @@ MainWindow::MainWindow(QWidget *parent)
     // 初始化ROI UI Controller的TreeView
     m_roiUiController->setupTreeView(ui->treeView);
     
-    // 连接Controller信号
-
+    // 连接Controller信号（从各Controller的setupConnections中建立）
     // 【P1修复】roiChanged 仅用于需要重新Pipeline处理的场景（添加/删除/修改ROI配置）
     connect(m_roiUiController, &RoiUiController::roiChanged, this, &MainWindow::processAndDisplay);
-
-    // 【P1修复】roiDisplayChanged 用于纯显示切换，不触发Pipeline处理
-    connect(m_roiUiController, &RoiUiController::roiDisplayChanged,
-            this, [this](const QString& roiId) {
-        // 纯显示切换：切换到ROI区域图像，无需Pipeline重新处理
-        Q_UNUSED(roiId);
-        cv::Mat currentImage = m_roiManager.getCurrentImage();
-        if (!currentImage.empty()) {
-            showImage(currentImage);
-            ui->statusbar->showMessage("已切换显示", 2000);
-        }
-    });
-
-    // 【P1修复】fullImageDisplayRequested 用于切回原图显示，不触发Pipeline处理
-    connect(m_roiUiController, &RoiUiController::fullImageDisplayRequested,
-            this, [this]() {
-        // 纯显示切换：显示完整原图，无需Pipeline重新处理
-        cv::Mat fullImage = m_roiManager.getFullImage();
-        if (!fullImage.empty()) {
-            showImage(fullImage);
-            ui->statusbar->showMessage("已切换到原图", 2000);
-        }
-    });
-
-    connect(m_detectionUiController, &DetectionUiController::detectionChanged, this, [this]() {
-        m_roiUiController->refreshRoiTreeView();
-    });
     connect(m_configController, &ConfigController::configApplied, this, &MainWindow::processAndDisplay);
-    
-    // 连接ROI切换信号：当切换ROI时，更新EnhanceTabWidget的UI显示
-    connect(m_roiUiController, &RoiUiController::roiPipelineConfigChanged, 
-            this, [this](const PipelineConfig& config) {
-        if (auto* enhanceTab = m_tabManager->getEnhanceTab()) {
-            enhanceTab->setEnhanceConfig(
-                config.brightness,
-                static_cast<int>(config.contrast * 100),
-                static_cast<int>(config.gamma * 100),
-                static_cast<int>(config.sharpen * 100)
-            );
-        }
-    });
-    
-    // 连接Tab懒加载信号
-    connect(m_detectionUiController, &DetectionUiController::ensureTabNeeded,
-            this, &MainWindow::ensureTabExists);
 
-    // 连接TabManager的tabCreated信号，在此处建立Tab与MainWindow的信号连接
+    // 各Controller内部信号连接（从MainWindow迁移）
+    m_roiUiController->setupMainWindowConnections(m_tabManager);
+    m_detectionUiController->setupConnections(m_roiUiController,
+        [this](const QString& tabName) { ensureTabExists(tabName); });
+
+    // 初始化信号连接器
+    m_signalConnector = new SignalConnector(this, m_pipelineManager, &m_roiManager,
+                                           m_view, m_tabManager, m_roiUiController,
+                                           m_detectionUiController, this);
+
+    // 连接TabManager的tabCreated信号，委托给SignalConnector建立信号连接
     connect(m_tabManager, &TabManager::tabCreated,
-            this, &MainWindow::connectTabSignals);
+            m_signalConnector, &SignalConnector::connectTabSignals);
 
     // 初始化图片列表管理器
     m_imageListManager = new ImageListManager(m_roiManager, m_fileManager, this, this);
@@ -252,7 +187,7 @@ MainWindow::MainWindow(QWidget *parent)
                 if (m_hasPendingProcess) {
                     qDebug() << "检测到pending处理请求，重新触发processAndDisplay";
                     m_hasPendingProcess = false;
-                    QTimer::singleShot(50, this, &MainWindow::processAndDisplay);
+                    QTimer::singleShot(AppConstants::PENDING_PROCESS_DELAY_MS, this, &MainWindow::processAndDisplay);
                 }
             });
 }
@@ -276,7 +211,7 @@ MainWindow::~MainWindow()
 void MainWindow::setupSystemMonitor()
 {
     // 系统监控信息显示在状态栏
-    m_systemMonitor->setupWithStatusBar(ui->statusbar, 1000);
+    m_systemMonitor->setupWithStatusBar(ui->statusbar, AppConstants::SYSTEM_MONITOR_INTERVAL_MS);
 }
 
 // ========== 初始化 ==========
@@ -335,7 +270,7 @@ void MainWindow::setupConnections()
                         .arg(color.red()).arg(color.green()).arg(color.blue())
                         .arg(gray)
                     );
-                QTimer::singleShot(5000, ui->statusbar, &QStatusBar::clearMessage);
+                QTimer::singleShot(AppConstants::PIXEL_INFO_TIMEOUT_MS, ui->statusbar, &QStatusBar::clearMessage);
             });
 
     // roiSelected信号已在RoiUiController中处理，此处不再重复连接（避免双重创建ROI）
@@ -685,114 +620,10 @@ void MainWindow::ensureTabExists(const QString& tabName)
 
 void MainWindow::connectTabSignals(const QString& tabName, QWidget* widget)
 {
-    // 根据Tab名称建立信号连接
-    if (tabName == "图像") {
-        auto* tab = qobject_cast<ImageTabWidget*>(widget);
-        connect(tab, &ImageTabWidget::channelChanged,
-                this, [this](int channel) {
-                    PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
-                    cfg.channel = static_cast<PipelineConfig::Channel>(channel);
-                    m_pipelineManager->setConfig(cfg);
-                    processAndDisplay();
-                });
-    }
-    else if (tabName == "视频") {
-        auto* tab = qobject_cast<VideoTabWidget*>(widget);
-        connect(tab, &VideoTabWidget::videoFrameReady,
-                this, [this](const cv::Mat& frame) {
-                    if (!frame.empty()) {
-                        m_roiManager.setFullImage(frame);
-                        m_view->clearRoi();
-                        processAndDisplay();
-                    }
-                });
-    }
-    else if (tabName == "增强") {
-        auto* tab = qobject_cast<EnhanceTabWidget*>(widget);
-        connect(tab, &EnhanceTabWidget::processRequested,
-                this, &MainWindow::processAndDisplay);
-        // 增强参数变化时，实时回写到当前ROI，防止多ROI间亮度/对比度等参数串扰
-        connect(tab, &EnhanceTabWidget::enhanceConfigChanged,
-                this, [this]() {
-                    m_roiUiController->saveCurrentRoiPipelineConfig();
-                });
-    }
-    else if (tabName == "过滤") {
-        auto* tab = qobject_cast<FilterTabWidget*>(widget);
-        connect(tab, &FilterTabWidget::filterConfigChanged,
-                this, &MainWindow::processAndDisplay);
-    }
-    else if (tabName == "补正") {
-        auto* tab = qobject_cast<TemplateTabWidget*>(widget);
-        connect(tab, &TemplateTabWidget::imageToShow,
-                this, &MainWindow::showImage);
-        connect(tab, &TemplateTabWidget::templateCreated,
-                this, [](const QString& n) {
-                    Logger::instance()->info(QString("模板已创建: %1").arg(n));
-                });
-        connect(tab, &TemplateTabWidget::matchCompleted,
-                this, [](int count) {
-                    Logger::instance()->info(
-                        QString("匹配完成，找到 %1 个目标").arg(count));
-                });
-        QShortcut* sc = new QShortcut(Qt::Key_Escape, this);
-        connect(sc, &QShortcut::activated, tab,
-                &TemplateTabWidget::clearMatchResults);
-    }
-    else if (tabName == "处理") {
-        auto* tab = qobject_cast<ProcessTabWidget*>(widget);
-        connect(tab, &ProcessTabWidget::algorithmChanged,
-                this, &MainWindow::processAndDisplay);
-    }
-    else if (tabName == "提取") {
-        auto* tab = qobject_cast<ExtractTabWidget*>(widget);
-        connect(tab, &ExtractTabWidget::extractionChanged,
-                this, &MainWindow::processAndDisplay);
-    }
-    else if (tabName == "判定") {
-        auto* tab = qobject_cast<JudgeTabWidget*>(widget);
-        // 【Bug1修复补充】当判定Tab的min/max值变化时，同步写回当前选中ROI的DetectionItem.config
-        connect(tab, &JudgeTabWidget::judgeConfigChanged,
-                this, [this](int minCount, int maxCount) {
-                    QString roiId = m_roiUiController->getCurrentSelectedRoiId();
-                    RoiConfig* roi = m_roiManager.getRoiConfig(roiId);
-                    if (!roi) return;
-                    // 找到当前选中的Blob检测项，更新其config中的minBlobCount/maxBlobCount
-                    for (auto& detItem : roi->detectionItems) {
-                        if (detItem.type == DetectionType::Blob && detItem.enabled) {
-                            BlobAnalysisConfig blobConfig;
-                            blobConfig.fromJson(detItem.config);
-                            blobConfig.minBlobCount = minCount;
-                            blobConfig.maxBlobCount = maxCount;
-                            detItem.config = blobConfig.toJson();
-                            Logger::instance()->info(QString("[MainWindow] 判定Tab值变化，同步到DetectionItem.config: min=%1, max=%2")
-                                .arg(minCount).arg(maxCount));
-                            break;
-                        }
-                    }
-                });
-    }
-    else if (tabName == "直线") {
-        auto* tab = qobject_cast<LineDetectTabWidget*>(widget);
-        connect(tab, &LineDetectTabWidget::requestDrawReferenceLine,
-                this, [this]() { m_view->startReferenceLineDrawing(); });
-        connect(tab, &LineDetectTabWidget::requestClearReferenceLine,
-                this, [this]() {
-                    m_view->clearReferenceLine();
-                    processAndDisplay();
-                });
-        connect(m_view, &ImageView::referenceLineDrawn,
-                tab, &LineDetectTabWidget::setReferenceLine);
-    }
-    else if (tabName == "目标检测") {
-        auto* tab = qobject_cast<ObjectDetectionTabWidget*>(widget);
-        connect(tab, &ObjectDetectionTabWidget::detectionConfigChanged,
-                this, [this]() {
-            // 用户点击"应用"按钮加载模型成功后，设置标志并触发处理
-            // 这样 pipeline 完成后会自动执行目标检测
-            m_objectDetectionRequested = true;
-            processAndDisplay();
-        });
+    // 委托给 SignalConnector 处理
+    // 保留此方法以兼容 TabManager::tabCreated 信号签名
+    if (m_signalConnector) {
+        m_signalConnector->connectTabSignals(tabName, widget);
     }
 }
 

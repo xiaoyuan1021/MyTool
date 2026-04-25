@@ -1,6 +1,7 @@
 #include "filter_tab_widget.h"
 #include "ui_filter_tab.h"
 #include "logger.h"
+#include "config/constants.h"
 #include <QDebug>
 
 FilterTabWidget::FilterTabWidget(PipelineManager* pipelineManager, QWidget* parent)
@@ -85,7 +86,7 @@ FilterTabWidget::FilterTabWidget(PipelineManager* pipelineManager, QWidget* pare
 
     // 设置防抖定时器
     m_debounceTimer->setSingleShot(true);
-    m_debounceTimer->setInterval(50);
+    m_debounceTimer->setInterval(AppConstants::DEBOUNCE_FILTER_MS);
     connect(m_debounceTimer, &QTimer::timeout, this, [this]() {
         emit filterConfigChanged();
     });

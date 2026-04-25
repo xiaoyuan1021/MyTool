@@ -453,3 +453,54 @@ void AutoDetectionController::finishDetection()
 
     emit detectionFinished(m_stats);
 }
+
+void AutoDetectionController::setupUiConnections(
+    QPushButton* startBtn, QPushButton* stopBtn,
+    QStatusBar* statusBar, QLabel* statusLabel)
+{
+    // 日志消息
+    connect(this, &AutoDetectionController::logMessage,
+            this, [](const QString& msg) { Logger::instance()->info(msg); });
+
+    // 检测开始：禁用开始按钮，启用停止按钮
+    connect(this, &AutoDetectionController::detectionStarted,
+            this, [=](int totalCount) {
+        startBtn->setEnabled(false);
+        stopBtn->setEnabled(true);
+        statusBar->showMessage(QString("批量检测中... 0/%1").arg(totalCount));
+    });
+
+    // 检测完成：启用开始按钮，禁用停止按钮
+    connect(this, &AutoDetectionController::detectionFinished,
+            this, [=](const DetectionStats& stats) {
+        startBtn->setEnabled(true);
+        stopBtn->setEnabled(false);
+        statusBar->showMessage(
+            QString("检测完成 | 总计:%1 合格:%2 不合格:%3 合格率:%4%")
+                .arg(stats.totalCount).arg(stats.passCount)
+                .arg(stats.failCount).arg(stats.passRate(), 0, 'f', 1), 10000);
+    });
+
+    // 检测停止
+    connect(this, &AutoDetectionController::detectionStopped,
+            this, [=]() {
+        startBtn->setEnabled(true);
+        stopBtn->setEnabled(false);
+        statusBar->showMessage("检测已停止", 5000);
+    });
+
+    // 进度更新
+    connect(this, &AutoDetectionController::progressUpdated,
+            this, [=](int current, int total) {
+        statusBar->showMessage(QString("批量检测中... %1/%2").arg(current).arg(total));
+    });
+
+    // 统计更新
+    connect(this, &AutoDetectionController::statsUpdated,
+            this, [=](const DetectionStats& stats) {
+        QString statusText = QString("已处理: %1 | 合格: %2 | 不合格: %3 | 合格率: %4%")
+            .arg(stats.processedCount).arg(stats.passCount)
+            .arg(stats.failCount).arg(stats.passRate(), 0, 'f', 1);
+        statusLabel->setText(statusText);
+    });
+}

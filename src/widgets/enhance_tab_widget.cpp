@@ -1,5 +1,6 @@
 #include "enhance_tab_widget.h"
 #include "ui_enhance_tab.h"
+#include "config/constants.h"
 
 EnhanceTabWidget::EnhanceTabWidget(PipelineManager* pipelineManager, QWidget* parent)
     : QWidget(parent)
@@ -40,7 +41,7 @@ EnhanceTabWidget::EnhanceTabWidget(PipelineManager* pipelineManager, QWidget* pa
 
     m_enhancementHistory.push(captureState());
     updateUndoUi();
-    m_debounceTimer->setInterval(200);
+    m_debounceTimer->setInterval(AppConstants::DEBOUNCE_ENHANCE_MS);
     connect(m_debounceTimer, &QTimer::timeout, this, [this]()
     {
         emit processRequested();

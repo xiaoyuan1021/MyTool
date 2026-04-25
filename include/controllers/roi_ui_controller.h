@@ -17,6 +17,7 @@
 
 // 前向声明
 class RoiListWidget;
+class TabManager;
 
 QT_BEGIN_NAMESPACE
 class QStatusBar;
@@ -79,6 +80,9 @@ public:
     
     // 设置RoiListWidget并建立信号连接
     void setupRoiListWidget(RoiListWidget* roiListWidget);
+
+    /// 将MainWindow相关的信号连接移入Controller（从MainWindow迁移）
+    void setupMainWindowConnections(TabManager* tabManager);
 
     // 同步当前图片的ROI配置到RoiListWidget（图片切换时调用）
     void syncRoiConfigsToWidget();

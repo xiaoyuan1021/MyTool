@@ -6,10 +6,10 @@
 #include "pipeline.h"
 #include "pipeline_manager.h"
 #include "widgets/tab_manager.h"
-#include "ui/roi_manager.h"
-#include "ui/image_view.h"
+#include "roi_manager.h"
+#include "image_view.h"
 #include "data/detection_result_report.h"
-#include "../algorithm/dnn_inference.h"
+#include "algorithm/dnn_inference.h"
 
 class PipelineResultHandler : public QObject
 {

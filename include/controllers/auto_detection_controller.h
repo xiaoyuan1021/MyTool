@@ -5,6 +5,9 @@
 #include <QTimer>
 #include <QElapsedTimer>
 #include <QPointer>
+#include <QPushButton>
+#include <QStatusBar>
+#include <QLabel>
 #include "core/pipeline_manager.h"
 #include "core/pipeline.h"
 #include "ui/roi_manager.h"
@@ -115,6 +118,12 @@ public:
 
     /// 获取检测结果摘要
     QString summaryString() const;
+
+    // ==================== UI连接 ====================
+
+    /// 将UI信号连接到Controller（从MainWindow迁移）
+    void setupUiConnections(QPushButton* startBtn, QPushButton* stopBtn,
+                            QStatusBar* statusBar, QLabel* statusLabel);
 
 signals:
     /// 检测开始
