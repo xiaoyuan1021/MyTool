@@ -44,135 +44,101 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
     
-    // 设置窗口最大化启动
+    // 基础窗口设置
     setWindowState(Qt::WindowMaximized);
     showMaximized();
 
-    m_processDebounceTimer =new QTimer(this);
-    m_processDebounceTimer ->setSingleShot(true);
-    m_processDebounceTimer ->setInterval(AppConstants::DEBOUNCE_PROCESS_MS);
+    setupBasicInfrastructure();
+    setupManagers();
+    setupControllers();
+    setupResultHandler();
+}
 
-    connect(m_processDebounceTimer, &QTimer::timeout,this,&MainWindow::processAndDisplay);
+void MainWindow::setupBasicInfrastructure()
+{
+    // 防抖定时器
+    m_processDebounceTimer = new QTimer(this);
+    m_processDebounceTimer->setSingleShot(true);
+    m_processDebounceTimer->setInterval(AppConstants::DEBOUNCE_PROCESS_MS);
+    connect(m_processDebounceTimer, &QTimer::timeout, this, &MainWindow::processAndDisplay);
 
     setupUI();
     setupConnections();
-
     setupSystemMonitor();
 
-    // 设置日志文件路径（使用项目根目录）
+    // 日志初始化
     QString logDir = PROJECT_ROOT_DIR "/logs";
-    QDir dir(logDir);
-    if (!dir.exists()) {
-        dir.mkpath(".");
-    }
-    QString logPath = logDir + "/test.log";
-    Logger::instance()->setLogFile(logPath);
+    QDir(logDir).mkpath(".");
+    Logger::instance()->setLogFile(logDir + "/test.log");
     Logger::instance()->enableFileLog(true);
     
-    // 初始化日志页面
     ui->page_log->initialize();
-    
-    // 连接日志页面的返回主页信号
     connect(ui->page_log, &LogPage::requestGoHome, this, [this]() {
         ui->stackedWidget_main->setCurrentIndex(0);
     });
-    
-    // ========== Tab懒加载：启动时不创建任何Tab Widget ==========
-    // 初始化TabManager
+}
+
+void MainWindow::setupManagers()
+{
+    // Tab管理器
     m_tabManager = new TabManager(ui->tabWidget, m_pipelineManager, &m_roiManager,
                                   m_view, m_processDebounceTimer, this);
 
-    // 初始化Controller对象
-    m_roiUiController = new RoiUiController(m_roiManager, m_pipelineManager, m_view, ui->statusbar, this);
-    m_detectionUiController = new DetectionUiController(m_roiManager, ui->tabWidget, this);
-    m_configController = new ConfigController(m_pipelineManager, m_roiManager, this);
-
-    // 初始化自动检测控制器
-    m_autoDetectionController = new AutoDetectionController(m_pipelineManager, &m_roiManager, this);
-    m_autoDetectionController->setupUiConnections(
-        ui->btn_startAutoDetection, ui->btn_stopAutoDetection,
-        ui->statusbar, ui->label_imageList);
-    
-    // 设置Controller的Tab名称列表（初始为空，后续动态添加）
-    m_detectionUiController->setTabNames(m_tabNames);
-    
-    // 设置ConfigController的Tab Widget（初始为nullptr，Tab创建后更新）
-    m_configController->setTabWidgets(nullptr, nullptr, nullptr, nullptr, nullptr);
-    
-    // 初始化ROI UI Controller的TreeView
-    m_roiUiController->setupTreeView(ui->treeView);
-    
-    // 连接Controller信号（从各Controller的setupConnections中建立）
-    // 【P1修复】roiChanged 仅用于需要重新Pipeline处理的场景（添加/删除/修改ROI配置）
-    connect(m_roiUiController, &RoiUiController::roiChanged, this, &MainWindow::processAndDisplay);
-    connect(m_configController, &ConfigController::configApplied, this, &MainWindow::processAndDisplay);
-
-    // 各Controller内部信号连接（从MainWindow迁移）
-    m_roiUiController->setupMainWindowConnections(m_tabManager);
-    m_detectionUiController->setupConnections(m_roiUiController,
-        [this](const QString& tabName) { ensureTabExists(tabName); });
-
-    // 初始化信号连接器
+    // 信号连接器
     m_signalConnector = new SignalConnector(this, m_pipelineManager, &m_roiManager,
                                            m_view, m_tabManager, m_roiUiController,
                                            m_detectionUiController, this);
-
-    // 连接TabManager的tabCreated信号，委托给SignalConnector建立信号连接
     connect(m_tabManager, &TabManager::tabCreated,
             m_signalConnector, &SignalConnector::connectTabSignals);
 
-    // 初始化图片列表管理器
+    // 图片列表管理器
     m_imageListManager = new ImageListManager(m_roiManager, m_fileManager, this, this);
     m_imageListManager->init(ui->listWidget_images, ui->btn_addImage, ui->btn_removeImage);
     connect(m_imageListManager, &ImageListManager::imageDisplayRequested, this, &MainWindow::showImage);
     connect(m_imageListManager, &ImageListManager::processRequested, this, &MainWindow::processAndDisplay);
 
-    // 连接图片切换信号：当切换图片时，自动同步ROI配置到UI
-    connect(&m_roiManager, &RoiManager::currentImageChanged, this, [this](const QString& imageId) {
-        Q_UNUSED(imageId);
+    // 图片切换同步
+    connect(&m_roiManager, &RoiManager::currentImageChanged, this, [this](const QString&) {
         m_roiUiController->syncRoiConfigsToWidget();
     });
+}
 
-    // 连接检测项选中信号到Tab切换逻辑
+void MainWindow::setupControllers()
+{
+    // 初始化所有控制器
+    m_roiUiController = new RoiUiController(m_roiManager, m_pipelineManager, m_view, ui->statusbar, this);
+    m_detectionUiController = new DetectionUiController(m_roiManager, ui->tabWidget, this);
+    m_configController = new ConfigController(m_pipelineManager, m_roiManager, this);
+    m_autoDetectionController = new AutoDetectionController(m_pipelineManager, &m_roiManager, this);
+
+    // 控制器UI绑定
+    m_autoDetectionController->setupUiConnections(
+        ui->btn_startAutoDetection, ui->btn_stopAutoDetection,
+        ui->statusbar, ui->label_imageList);
+    m_roiUiController->setupTreeView(ui->treeView);
+
+    // 控制器内部连接
+    m_roiUiController->setupMainWindowConnections(m_tabManager);
+    m_detectionUiController->setupConnections(m_roiUiController,
+        [this](const QString& tabName) { ensureTabExists(tabName); });
+
+    // 全局信号连接
+    connect(m_roiUiController, &RoiUiController::roiChanged, this, &MainWindow::processAndDisplay);
+    connect(m_configController, &ConfigController::configApplied, this, &MainWindow::processAndDisplay);
+
+    // 检测项选中跳转
     connect(m_roiUiController, &RoiUiController::detectionItemSelected, 
-            this, [this](const QString& roiId, const QString& detectionId) {
-        // 获取ROI和检测项
-        RoiConfig* roi = m_roiManager.getRoiConfig(roiId);
-        if (roi) {
-            for (const auto& detection : roi->detectionItems) {
-                if (detection.itemId == detectionId) {
-                    TabConfig config = TabConfig::getConfigForType(detection.type);
-                    m_detectionUiController->switchToTabConfig(config);
+            this, &MainWindow::onDetectionItemSelected);
 
-                    // 【Bug1修复补充】当选中Blob检测项时，将DetectionItem.config中的BlobAnalysisConfig
-                    // 加载到JudgeTabWidget，确保判定Tab的min/max值与DetectionItem.config同步
-                    if (detection.type == DetectionType::Blob) {
-                        BlobAnalysisConfig blobConfig;
-                        blobConfig.fromJson(detection.config);
-                        if (auto* judgeTab = m_tabManager->getJudgeTab()) {
-                            judgeTab->setJudgeConfig(
-                                blobConfig.minBlobCount,
-                                blobConfig.maxBlobCount,
-                                m_pipelineManager->getLastContext().currentRegions
-                            );
-                            Logger::instance()->info(QString("[MainWindow] 从DetectionItem加载Blob判定配置到JudgeTab: min=%1, max=%2")
-                                .arg(blobConfig.minBlobCount).arg(blobConfig.maxBlobCount));
-                        }
-                    }
-                    break;
-                }
-            }
-        }
-    });
-    
-    // 连接添加/删除检测项按钮
+    // 工具栏按钮
     connect(ui->btn_addDetection, &QPushButton::clicked, this, [this]() {
         m_detectionUiController->onAddDetectionClicked(m_roiUiController->getCurrentSelectedRoiId());
     });
     connect(ui->btn_deleteDetection, &QPushButton::clicked, this, &MainWindow::onDeleteDetectionClicked);
+}
 
-    // ✅ 修复：PipelineResultHandler 放在最后初始化
-    // 此时 m_view, m_tabManager, m_pipelineManager 全部已经初始化完成
+void MainWindow::setupResultHandler()
+{
     m_pipelineResultHandler = new PipelineResultHandler(this);
     m_pipelineResultHandler->setDependencies(m_tabManager, &m_roiManager, m_view, m_pipelineManager);
     m_pipelineResultHandler->watchPipeline(&m_pipelineWatcher);
@@ -182,14 +148,38 @@ MainWindow::MainWindow(QWidget *parent)
             
     connect(m_pipelineResultHandler, &PipelineResultHandler::processingFinished,
             this, [this]() {
-                m_isProcessing = false;
-                // 检查是否有pending的处理请求
-                if (m_hasPendingProcess) {
-                    qDebug() << "检测到pending处理请求，重新触发processAndDisplay";
-                    m_hasPendingProcess = false;
-                    QTimer::singleShot(AppConstants::PENDING_PROCESS_DELAY_MS, this, &MainWindow::processAndDisplay);
-                }
-            });
+        m_isProcessing = false;
+        if (m_hasPendingProcess) {
+            m_hasPendingProcess = false;
+            QTimer::singleShot(AppConstants::PENDING_PROCESS_DELAY_MS, this, &MainWindow::processAndDisplay);
+        }
+    });
+}
+
+void MainWindow::onDetectionItemSelected(const QString& roiId, const QString& detectionId)
+{
+    RoiConfig* roi = m_roiManager.getRoiConfig(roiId);
+    if (!roi) return;
+
+    for (const auto& detection : roi->detectionItems) {
+        if (detection.itemId != detectionId) continue;
+        
+        TabConfig config = TabConfig::getConfigForType(detection.type);
+        m_detectionUiController->switchToTabConfig(config);
+
+        if (detection.type == DetectionType::Blob) {
+            BlobAnalysisConfig blobConfig;
+            blobConfig.fromJson(detection.config);
+            if (auto* judgeTab = m_tabManager->getJudgeTab()) {
+                judgeTab->setJudgeConfig(
+                    blobConfig.minBlobCount,
+                    blobConfig.maxBlobCount,
+                    m_pipelineManager->getLastContext().currentRegions
+                );
+            }
+        }
+        break;
+    }
 }
 
 MainWindow::~MainWindow()

@@ -78,21 +78,23 @@ private slots:
     void on_btn_startAutoDetection_clicked();
     void on_btn_stopAutoDetection_clicked();
 private:
+    // 初始化方法
+    void setupBasicInfrastructure();
+    void setupManagers();
+    void setupControllers();
+    void setupResultHandler();
+    
     void setupUI();
     void setupConnections();
+    void setupSystemMonitor();
+    
     void processAndDisplay();
     void showImage(const cv::Mat& img);
     void setDisplayModeForCurrentTab();
     
-    // 检测项管理相关
-    void setupDetectionManager();
-    void setupTreeView();
-    void onAddDetectionClicked();
-    void onDetectionItemClicked(const QModelIndex& index);
+    // 事件处理
+    void onDetectionItemSelected(const QString& roiId, const QString& detectionId);
     void onDeleteDetectionClicked();
-    void updateTreeView();
-    void switchToTabConfig(const TabConfig& config);
-    void onRoiDetectionConfigRequested(const QString& roiId);
     
     // Tab懒加载（委托给TabManager）
     void ensureTabExists(const QString& tabName);
@@ -110,8 +112,6 @@ private:
 
     int m_currentTabIndex;
     bool m_isDestroying = false;
-
-    void setupSystemMonitor();
 
     void saveConfig();
     void loadConfig();
