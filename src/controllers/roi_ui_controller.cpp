@@ -46,8 +46,8 @@ void RoiUiController::setupTreeView(QTreeWidget* treeView)
     
     // 连接绘制ROI完成信号
     connect(m_view, &ImageView::roiSelected, this, [this](const QRectF& rect) {
-        // 创建新的ROI配置
-        QString roiName = QString("ROI_%1").arg(m_roiManager.getRoiConfigCount() + 1);
+        // 创建新的ROI配置（名称由RoiManager统一生成，基于现有ROI最大编号）
+        QString roiName = m_roiManager.generateNextRoiName();
         RoiConfig roi(roiName, rect);
         
         // 新ROI继承当前PipelineManager的配置
@@ -60,9 +60,9 @@ void RoiUiController::setupTreeView(QTreeWidget* treeView)
         // 更新当前选中的ROI为新创建的ROI
         m_currentSelectedRoiId = roi.roiId;
         
-        // 【Bug修复】激活新绘制的ROI在图像视图中
+        // 【Bug修复】通过ID直接激活，避免setRoi的矩形匹配导致重复创建
         m_view->clearRoi();
-        m_roiManager.setRoi(roi.roiRect);
+        m_roiManager.setActiveRoi(roi.roiId);
         
         // 【P1修复】退出ROI绘制模式
         m_view->finishRoiMode();
@@ -208,11 +208,12 @@ void RoiUiController::onSwitchRoiClicked()
         
         // 切换到ROI模式
         m_view->clearRoi();
-        m_roiManager.setRoi(roi->roiRect);
+        // 已知ROI ID时直接使用setActiveRoi，避免setRoi的矩形匹配问题
+        m_roiManager.setActiveRoi(m_currentSelectedRoiId);
         
         // 【P1修复】纯显示切换，不触发Pipeline处理
         emit roiDisplayChanged(m_currentSelectedRoiId);
-        Logger::instance()->info(QString("已切换到ROI模式: %1").arg(roi->roiName));
+        Logger::instance()->info(QString("已切换到ROI模式: %1 (通过ID激活)").arg(roi->roiName));
     }
 }
 
@@ -334,7 +335,8 @@ void RoiUiController::refreshRoiTreeView()
         RoiConfig* roi = m_roiManager.getRoiConfig(m_currentSelectedRoiId);
         if (roi) {
             m_view->clearRoi();
-            m_roiManager.setRoi(roi->roiRect);
+            // 已知ROI ID时直接使用setActiveRoi，避免setRoi的矩形匹配问题
+            m_roiManager.setActiveRoi(roi->roiId);
             emit roiDisplayChanged(m_currentSelectedRoiId);
         }
     }
@@ -368,7 +370,8 @@ void RoiUiController::onRoiTreeItemClicked(QTreeWidgetItem* item, int column)
             RoiConfig* roi = m_roiManager.getRoiConfig(m_currentSelectedRoiId);
             if (roi) {
                 m_view->clearRoi();
-                m_roiManager.setRoi(roi->roiRect);
+                // 已知ROI ID时直接使用setActiveRoi，避免setRoi的矩形匹配问题
+                m_roiManager.setActiveRoi(roi->roiId);
                 
                 // 纯显示切换，不触发Pipeline处理
                 emit roiDisplayChanged(m_currentSelectedRoiId);
@@ -396,11 +399,12 @@ void RoiUiController::onRoiTreeItemClicked(QTreeWidgetItem* item, int column)
         RoiConfig* roi = m_roiManager.getRoiConfig(m_currentSelectedRoiId);
         if (roi) {
             m_view->clearRoi();
-            m_roiManager.setRoi(roi->roiRect);
+            // 【Bug修复】已知ROI ID时直接使用setActiveRoi，避免setRoi的矩形匹配问题
+            m_roiManager.setActiveRoi(roi->roiId);
             
             // 【P1修复】纯显示切换，不触发Pipeline处理
             emit roiDisplayChanged(m_currentSelectedRoiId);
-            Logger::instance()->info(QString("已选中ROI: %1").arg(roi->roiName));
+            Logger::instance()->info(QString("已选中ROI: %1 (通过ID激活)").arg(roi->roiName));
         } else {
             Logger::instance()->info(QString("选中ROI: %1").arg(itemId));
         }
@@ -643,11 +647,12 @@ void RoiUiController::handleRoiSelectionChanged(const QString& roiId)
     RoiConfig* roi = m_roiManager.getRoiConfig(roiId);
     if (roi) {
         m_view->clearRoi();
-        m_roiManager.setRoi(roi->roiRect);
+        // 已知ROI ID时直接使用setActiveRoi，避免setRoi的矩形匹配问题
+        m_roiManager.setActiveRoi(roi->roiId);
         
         // 【P1修复】纯显示切换，不触发Pipeline处理
         emit roiDisplayChanged(roiId);
-        Logger::instance()->info(QString("已选中ROI: %1").arg(roi->roiName));
+        Logger::instance()->info(QString("已选中ROI: %1 (通过ID激活)").arg(roi->roiName));
     }
 }
 

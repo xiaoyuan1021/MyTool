@@ -1,7 +1,6 @@
 #include "roi_manager.h"
 #include "logger.h"
 #include "image_view.h"
-#include "../data/roi_item.h"
 #include <QStatusBar>
 #include <QDebug>
 #include <algorithm>
@@ -18,17 +17,16 @@ RoiManager::RoiManager(QObject* parent)
 
 void RoiManager::setFullImage(const cv::Mat &img)
 {
-    // 如果没有当前图片，添加到图片管理器
+    if (img.empty()) return;
+
     if (m_currentImageId.isEmpty()) {
         QString imageId = addImage(img, generateDefaultImageName());
         switchToImage(imageId);
     } else {
-        // 更新当前图片
         auto it = m_imageRoisMap.find(m_currentImageId);
         if (it != m_imageRoisMap.end()) {
             it.value().image = img.clone();
-            it.value().isRoiActive = false;
-            it.value().roiImage.release();
+            it.value().activeRoiId.clear();  // 切换图片时清除激活状态
         }
     }
 }
@@ -39,8 +37,6 @@ const cv::Mat& RoiManager::getFullImage() const
     if (it != m_imageRoisMap.end()) {
         return it.value().image;
     }
-    
-    // 返回空图像作为后备
     static cv::Mat emptyImage;
     return emptyImage;
 }
@@ -66,22 +62,16 @@ QString RoiManager::addImage(const cv::Mat &img, const QString &name, const QStr
         return QString();
     }
 
-    // 生成图片ID
     QString imageId = QString("img_%1_%2")
         .arg(QDateTime::currentMSecsSinceEpoch())
         .arg(m_imageCounter++);
 
-    // 创建图片ROI数据
     ImageRois imageRois;
     imageRois.image = img.clone();
     imageRois.name = name.isEmpty() ? generateDefaultImageName() : name;
     imageRois.filePath = filePath;
-    imageRois.selectedRoiId.clear();
     imageRois.roiCounter = 0;
-    imageRois.isRoiActive = false;
-    imageRois.lastRoi = cv::Rect();
-    imageRois.roiImage.release();
-    // 初始化缩放状态
+    imageRois.activeRoiId.clear();
     imageRois.scaleFactor = 1.0;
     imageRois.viewRect = QRectF(0, 0, img.cols, img.rows);
 
@@ -102,10 +92,8 @@ bool RoiManager::switchToImage(const QString &imageId)
     }
 
     m_currentImageId = imageId;
-    
-    // 触发信号
     emit currentImageChanged(imageId);
-    
+
     Logger::instance()->info(QString("[RoiManager] 切换到图片: id=%1").arg(imageId));
     return true;
 }
@@ -119,7 +107,6 @@ bool RoiManager::removeImage(const QString &imageId)
 
     m_imageRoisMap.remove(imageId);
 
-    // 如果删除的是当前图片，切换到其他图片
     if (m_currentImageId == imageId) {
         if (!m_imageRoisMap.isEmpty()) {
             m_currentImageId = m_imageRoisMap.firstKey();
@@ -131,7 +118,7 @@ bool RoiManager::removeImage(const QString &imageId)
 
     Logger::instance()->info(QString("[RoiManager] 图片已移除: id=%1").arg(imageId));
     emit imageRemoved(imageId);
-    
+
     return true;
 }
 
@@ -168,17 +155,42 @@ int RoiManager::imageCount() const
     return m_imageRoisMap.size();
 }
 
-// ==================== 单ROI模式（向后兼容） ====================
+// ==================== 单ROI模式（基于 RoiConfig）====================
 
-const cv::Mat& RoiManager::getCurrentImage() const
+cv::Mat RoiManager::getCurrentImage() const
 {
     auto it = m_imageRoisMap.find(m_currentImageId);
-    if (it != m_imageRoisMap.end()) {
-        return it.value().isRoiActive ? it.value().roiImage : it.value().image;
+    if (it == m_imageRoisMap.end()) {
+        return cv::Mat();
     }
-    
-    static cv::Mat emptyImage;
-    return emptyImage;
+
+    const ImageRois& imageRois = it.value();
+    if (imageRois.image.empty()) {
+        return cv::Mat();
+    }
+
+    // 没有激活的ROI，返回完整图像
+    if (imageRois.activeRoiId.isEmpty()) {
+        return imageRois.image;
+    }
+
+    // 查找激活的ROI配置并裁剪
+    for (const auto& cfg : imageRois.roiConfigs) {
+        if (cfg.roiId == imageRois.activeRoiId) {
+            int x = std::max(0, (int)std::floor(cfg.roiRect.x()));
+            int y = std::max(0, (int)std::floor(cfg.roiRect.y()));
+            int w = std::min((int)std::ceil(cfg.roiRect.width()), imageRois.image.cols - x);
+            int h = std::min((int)std::ceil(cfg.roiRect.height()), imageRois.image.rows - y);
+
+            if (w > 0 && h > 0) {
+                return imageRois.image(cv::Rect(x, y, w, h)).clone();
+            }
+            break;
+        }
+    }
+
+    // 激活的ROI无效，返回完整图像
+    return imageRois.image;
 }
 
 bool RoiManager::setRoi(const QRectF &roiRectF)
@@ -190,7 +202,6 @@ bool RoiManager::setRoi(const QRectF &roiRectF)
     }
 
     ImageRois& imageRois = it.value();
-    
     if (imageRois.image.empty()) {
         qDebug() << "[RoiManager] 完整图像为空";
         return false;
@@ -199,25 +210,39 @@ bool RoiManager::setRoi(const QRectF &roiRectF)
     // 转换并验证ROI区域
     int x = std::max(0, (int)std::floor(roiRectF.x()));
     int y = std::max(0, (int)std::floor(roiRectF.y()));
-    int w = std::min((int)std::ceil(roiRectF.width()),
-                     imageRois.image.cols - x);
-    int h = std::min((int)std::ceil(roiRectF.height()),
-                     imageRois.image.rows - y);
+    int w = std::min((int)std::ceil(roiRectF.width()), imageRois.image.cols - x);
+    int h = std::min((int)std::ceil(roiRectF.height()), imageRois.image.rows - y);
 
     if (w <= 0 || h <= 0) {
         qDebug() << "[RoiManager] ROI区域无效";
         return false;
     }
 
-    // 裁剪ROI
-    cv::Rect roi(x, y, w, h);
-    imageRois.roiImage = imageRois.image(roi).clone();
-    imageRois.isRoiActive = true;
-    imageRois.lastRoi = roi;
+    QRectF normalizedRect(x, y, w, h);
 
-    Logger::instance()->info(QString("[RoiManager] ROI已应用: x=%1 y=%2 w=%3 h=%4")
-                                 .arg(x).arg(y).arg(w).arg(h));
+    // 在现有roiConfigs中查找匹配的ROI（通过矩形匹配，带容差）
+    for (auto& cfg : imageRois.roiConfigs) {
+        double tolerance = 2.0; // 2像素容差
+        if (qAbs(cfg.roiRect.x() - normalizedRect.x()) <= tolerance &&
+            qAbs(cfg.roiRect.y() - normalizedRect.y()) <= tolerance &&
+            qAbs(cfg.roiRect.width() - normalizedRect.width()) <= tolerance &&
+            qAbs(cfg.roiRect.height() - normalizedRect.height()) <= tolerance) {
+            imageRois.activeRoiId = cfg.roiId;
+            Logger::instance()->info(QString("[RoiManager] ROI已激活(矩形匹配): %1 (原始矩形与存储矩形差异在容差范围内)").arg(cfg.roiName));
+            return true;
+        }
+    }
 
+    // 未找到匹配的ROI，创建新的RoiConfig
+    QString roiName = generateDefaultRoiName();
+    RoiConfig newCfg(roiName, normalizedRect);
+    imageRois.roiConfigs.append(newCfg);
+    imageRois.activeRoiId = newCfg.roiId;
+
+    Logger::instance()->info(QString("[RoiManager] ROI已创建并激活: %1 (x=%2 y=%3 w=%4 h=%5)")
+                                 .arg(roiName).arg(x).arg(y).arg(w).arg(h));
+
+    emit roiConfigChanged();
     return true;
 }
 
@@ -228,10 +253,7 @@ void RoiManager::resetRoi()
         return;
     }
 
-    ImageRois& imageRois = it.value();
-    imageRois.roiImage.release();
-    imageRois.isRoiActive = false;
-    
+    it.value().activeRoiId.clear();
     Logger::instance()->info("[RoiManager] ROI已重置");
 }
 
@@ -241,7 +263,7 @@ bool RoiManager::isRoiActive() const
     if (it == m_imageRoisMap.end()) {
         return false;
     }
-    return it.value().isRoiActive;
+    return !it.value().activeRoiId.isEmpty();
 }
 
 cv::Rect RoiManager::getLastRoi() const
@@ -250,449 +272,34 @@ cv::Rect RoiManager::getLastRoi() const
     if (it == m_imageRoisMap.end()) {
         return cv::Rect();
     }
-    return it.value().lastRoi;
+
+    const ImageRois& imageRois = it.value();
+    if (imageRois.activeRoiId.isEmpty()) {
+        return cv::Rect();
+    }
+
+    for (const auto& cfg : imageRois.roiConfigs) {
+        if (cfg.roiId == imageRois.activeRoiId) {
+            int x = std::max(0, (int)std::floor(cfg.roiRect.x()));
+            int y = std::max(0, (int)std::floor(cfg.roiRect.y()));
+            int w = std::min((int)std::ceil(cfg.roiRect.width()), imageRois.image.cols - x);
+            int h = std::min((int)std::ceil(cfg.roiRect.height()), imageRois.image.rows - y);
+            if (w > 0 && h > 0) {
+                return cv::Rect(x, y, w, h);
+            }
+            break;
+        }
+    }
+
+    return cv::Rect();
 }
 
 cv::Rect RoiManager::getRoiPosition() const
 {
-    auto it = m_imageRoisMap.find(m_currentImageId);
-    if (it == m_imageRoisMap.end() || !it.value().isRoiActive) {
-        return cv::Rect();
-    }
-    return it.value().lastRoi;
+    return getLastRoi();
 }
 
-// ==================== 多ROI模式（新增） ====================
-
-QString RoiManager::addRoi(const QString &name, const QRectF &rect)
-{
-    auto it = m_imageRoisMap.find(m_currentImageId);
-    if (it == m_imageRoisMap.end()) {
-        qDebug() << "[RoiManager] 没有当前图片，无法添加ROI";
-        return QString();
-    }
-
-    ImageRois& imageRois = it.value();
-    
-    if (imageRois.image.empty()) {
-        qDebug() << "[RoiManager] 完整图像为空，无法添加ROI";
-        return QString();
-    }
-
-    RoiItem item(name.isEmpty() ? generateDefaultRoiName() : name, rect);
-    if (!item.isValid()) {
-        qDebug() << "[RoiManager] ROI区域无效";
-        return QString();
-    }
-
-    // 确保ROI在图像范围内
-    cv::Rect roiRect = item.rect();
-    if (roiRect.x >= imageRois.image.cols || roiRect.y >= imageRois.image.rows) {
-        qDebug() << "[RoiManager] ROI超出图像范围";
-        return QString();
-    }
-
-    // 调整ROI大小以适应图像
-    int w = std::min(roiRect.width, imageRois.image.cols - roiRect.x);
-    int h = std::min(roiRect.height, imageRois.image.rows - roiRect.y);
-    item.setRect(cv::Rect(roiRect.x, roiRect.y, w, h));
-
-    QString roiId = item.id();
-    imageRois.rois.insert(roiId, item);
-
-    Logger::instance()->info(QString("[RoiManager] 多ROI已添加: id=%1, name=%2, rect=(%3,%4,%5,%6)")
-                                 .arg(roiId).arg(name)
-                                 .arg(item.rect().x).arg(item.rect().y)
-                                 .arg(item.rect().width).arg(item.rect().height));
-
-    return roiId;
-}
-
-bool RoiManager::addRoiItem(const RoiItem &item)
-{
-    auto it = m_imageRoisMap.find(m_currentImageId);
-    if (it == m_imageRoisMap.end()) {
-        qDebug() << "[RoiManager] 没有当前图片";
-        return false;
-    }
-
-    if (!item.isValid()) {
-        qDebug() << "[RoiManager] RoiItem无效";
-        return false;
-    }
-
-    QString roiId = item.id();
-    ImageRois& imageRois = it.value();
-    
-    if (imageRois.rois.contains(roiId)) {
-        qDebug() << "[RoiManager] ROI ID已存在:" << roiId;
-        return false;
-    }
-
-    imageRois.rois.insert(roiId, item);
-
-    Logger::instance()->info(QString("[RoiManager] RoiItem已添加: %1").arg(item.toString()));
-
-    return true;
-}
-
-bool RoiManager::removeRoi(const QString &roiId)
-{
-    auto it = m_imageRoisMap.find(m_currentImageId);
-    if (it == m_imageRoisMap.end()) {
-        qDebug() << "[RoiManager] 没有当前图片";
-        return false;
-    }
-
-    ImageRois& imageRois = it.value();
-    
-    if (!imageRois.rois.contains(roiId)) {
-        qDebug() << "[RoiManager] ROI不存在:" << roiId;
-        return false;
-    }
-
-    imageRois.rois.remove(roiId);
-
-    // 如果删除的是选中的ROI，清除选中状态
-    if (imageRois.selectedRoiId == roiId) {
-        imageRois.selectedRoiId.clear();
-    }
-
-    Logger::instance()->info(QString("[RoiManager] ROI已移除: id=%1").arg(roiId));
-
-    return true;
-}
-
-bool RoiManager::updateRoiRect(const QString &roiId, const QRectF &rect)
-{
-    auto it = m_imageRoisMap.find(m_currentImageId);
-    if (it == m_imageRoisMap.end()) {
-        qDebug() << "[RoiManager] 没有当前图片";
-        return false;
-    }
-
-    ImageRois& imageRois = it.value();
-    
-    if (!imageRois.rois.contains(roiId)) {
-        qDebug() << "[RoiManager] ROI不存在:" << roiId;
-        return false;
-    }
-
-    RoiItem &item = imageRois.rois[roiId];
-    item.setRectFromQRectF(rect);
-
-    if (!item.isValid()) {
-        qDebug() << "[RoiManager] 更新的ROI区域无效";
-        return false;
-    }
-
-    Logger::instance()->info(QString("[RoiManager] ROI矩形已更新: id=%1, rect=(%2,%3,%4,%5)")
-                                 .arg(roiId)
-                                 .arg(item.rect().x).arg(item.rect().y)
-                                 .arg(item.rect().width).arg(item.rect().height));
-
-    return true;
-}
-
-bool RoiManager::updateRoiName(const QString &roiId, const QString &name)
-{
-    auto it = m_imageRoisMap.find(m_currentImageId);
-    if (it == m_imageRoisMap.end()) {
-        qDebug() << "[RoiManager] 没有当前图片";
-        return false;
-    }
-
-    ImageRois& imageRois = it.value();
-    
-    if (!imageRois.rois.contains(roiId)) {
-        qDebug() << "[RoiManager] ROI不存在:" << roiId;
-        return false;
-    }
-
-    imageRois.rois[roiId].setName(name);
-
-    Logger::instance()->info(QString("[RoiManager] ROI名称已更新: id=%1, name=%2")
-                                 .arg(roiId).arg(name));
-
-    return true;
-}
-
-const RoiItem* RoiManager::getRoi(const QString &roiId) const
-{
-    auto it = m_imageRoisMap.find(m_currentImageId);
-    if (it == m_imageRoisMap.end()) {
-        return nullptr;
-    }
-
-    const ImageRois& imageRois = it.value();
-    auto roiIt = imageRois.rois.find(roiId);
-    if (roiIt == imageRois.rois.end()) {
-        return nullptr;
-    }
-    return &(*roiIt);
-}
-
-RoiItem* RoiManager::getMutableRoi(const QString &roiId)
-{
-    auto it = m_imageRoisMap.find(m_currentImageId);
-    if (it == m_imageRoisMap.end()) {
-        return nullptr;
-    }
-
-    ImageRois& imageRois = it.value();
-    auto roiIt = imageRois.rois.find(roiId);
-    if (roiIt == imageRois.rois.end()) {
-        return nullptr;
-    }
-    return &(*roiIt);
-}
-
-QVector<RoiItem> RoiManager::getAllRois() const
-{
-    auto it = m_imageRoisMap.find(m_currentImageId);
-    if (it == m_imageRoisMap.end()) {
-        return QVector<RoiItem>();
-    }
-
-    const ImageRois& imageRois = it.value();
-    return imageRois.rois.values().toVector();
-}
-
-QStringList RoiManager::getRoiIds() const
-{
-    auto it = m_imageRoisMap.find(m_currentImageId);
-    if (it == m_imageRoisMap.end()) {
-        return QStringList();
-    }
-
-    const ImageRois& imageRois = it.value();
-    return imageRois.rois.keys();
-}
-
-int RoiManager::roiCount() const
-{
-    auto it = m_imageRoisMap.find(m_currentImageId);
-    if (it == m_imageRoisMap.end()) {
-        return 0;
-    }
-
-    const ImageRois& imageRois = it.value();
-    return imageRois.rois.size();
-}
-
-bool RoiManager::hasRoi(const QString &roiId) const
-{
-    auto it = m_imageRoisMap.find(m_currentImageId);
-    if (it == m_imageRoisMap.end()) {
-        return false;
-    }
-
-    const ImageRois& imageRois = it.value();
-    return imageRois.rois.contains(roiId);
-}
-
-void RoiManager::clearAllRois()
-{
-    auto it = m_imageRoisMap.find(m_currentImageId);
-    if (it == m_imageRoisMap.end()) {
-        return;
-    }
-
-    ImageRois& imageRois = it.value();
-    imageRois.rois.clear();
-    imageRois.selectedRoiId.clear();
-    imageRois.roiCounter = 0;
-
-    Logger::instance()->info("[RoiManager] 所有ROI已清空");
-}
-
-void RoiManager::setSelectedRoi(const QString &roiId)
-{
-    auto it = m_imageRoisMap.find(m_currentImageId);
-    if (it == m_imageRoisMap.end()) {
-        return;
-    }
-
-    ImageRois& imageRois = it.value();
-    
-    if (roiId.isEmpty() || imageRois.rois.contains(roiId)) {
-        imageRois.selectedRoiId = roiId;
-
-        if (!roiId.isEmpty()) {
-            Logger::instance()->info(QString("[RoiManager] ROI已选中: id=%1").arg(roiId));
-        }
-    }
-}
-
-QString RoiManager::getSelectedRoiId() const
-{
-    auto it = m_imageRoisMap.find(m_currentImageId);
-    if (it == m_imageRoisMap.end()) {
-        return QString();
-    }
-
-    const ImageRois& imageRois = it.value();
-    return imageRois.selectedRoiId;
-}
-
-cv::Mat RoiManager::cropRoi(const QString &roiId) const
-{
-    auto it = m_imageRoisMap.find(m_currentImageId);
-    if (it == m_imageRoisMap.end()) {
-        qDebug() << "[RoiManager] 没有当前图片";
-        return cv::Mat();
-    }
-
-    const ImageRois& imageRois = it.value();
-    
-    if (!imageRois.rois.contains(roiId)) {
-        qDebug() << "[RoiManager] ROI不存在:" << roiId;
-        return cv::Mat();
-    }
-
-    const RoiItem &item = imageRois.rois[roiId];
-    return item.cropFromImage(imageRois.image);
-}
-
-QString RoiManager::generateDefaultRoiName()
-{
-    auto it = m_imageRoisMap.find(m_currentImageId);
-    if (it == m_imageRoisMap.end()) {
-        return QString("ROI_001");
-    }
-
-    ImageRois& imageRois = it.value();
-    imageRois.roiCounter++;
-    return QString("ROI_%1").arg(imageRois.roiCounter, 3, 10, QChar('0'));
-}
-
-QString RoiManager::generateDefaultImageName()
-{
-    return QString("图片_%1").arg(m_imageCounter + 1);
-}
-
-// ==================== UI交互相关方法 ====================
-
-void RoiManager::enableDrawRoiMode(ImageView *view, QStatusBar *statusBar)
-{
-    auto it = m_imageRoisMap.find(m_currentImageId);
-    if (it == m_imageRoisMap.end() || it.value().image.empty()) {
-        return;
-    }
-
-    view->setRoiMode(true);
-    view->setDragMode(QGraphicsView::NoDrag);
-    if (statusBar) {
-        statusBar->showMessage("请按下左键绘制ROI");
-    }
-}
-
-bool RoiManager::handleRoiSelected(const QRectF &roiImgRectF, QStatusBar *statusBar)
-{
-    if (!setRoi(roiImgRectF)) {
-        if (statusBar) {
-            statusBar->showMessage("ROI应用失败", 2000);
-        }
-        return false;
-    }
-
-    cv::Rect roi = getLastRoi();
-    if (statusBar) {
-        statusBar->showMessage(
-            QString("ROI已选择：x=%1 y=%2 w=%3 h=%4")
-                .arg(roi.x).arg(roi.y).arg(roi.width).arg(roi.height),
-            2000
-        );
-    }
-
-    return true;
-}
-
-QString RoiManager::handleMultiRoiSelected(const QRectF &roiImgRectF, const QString &roiName, QStatusBar *statusBar)
-{
-    QString roiId = addRoi(roiName, roiImgRectF);
-
-    if (roiId.isEmpty()) {
-        if (statusBar) {
-            statusBar->showMessage("多ROI添加失败", 2000);
-        }
-        return QString();
-    }
-
-    const RoiItem *item = getRoi(roiId);
-    if (item && statusBar) {
-        cv::Rect roi = item->rect();
-        statusBar->showMessage(
-            QString("ROI已添加：%1 (x=%2 y=%3 w=%4 h=%5)")
-                .arg(item->name())
-                .arg(roi.x).arg(roi.y).arg(roi.width).arg(roi.height),
-            2000
-        );
-    }
-
-    return roiId;
-}
-
-void RoiManager::resetRoiWithUI(ImageView *view, QStatusBar *statusBar)
-{
-    auto it = m_imageRoisMap.find(m_currentImageId);
-    if (it == m_imageRoisMap.end() || it.value().image.empty()) {
-        return;
-    }
-
-    resetRoi();
-    view->clearRoi();
-
-    if (statusBar) {
-        statusBar->showMessage("ROI已重置，处理使用完整图像", 2000);
-    }
-    Logger::instance()->info("ROI已重置");
-}
-
-// ==================== 缩放状态管理方法实现 ====================
-
-void RoiManager::saveZoomState(double scaleFactor, const QRectF& viewRect)
-{
-    auto it = m_imageRoisMap.find(m_currentImageId);
-    if (it == m_imageRoisMap.end()) {
-        return;
-    }
-
-    it.value().scaleFactor = scaleFactor;
-    it.value().viewRect = viewRect;
-    
-    Logger::instance()->info(QString("[RoiManager] 保存缩放状态: scale=%1, viewRect=(%2,%3,%4,%5)")
-                                 .arg(scaleFactor)
-                                 .arg(viewRect.x()).arg(viewRect.y())
-                                 .arg(viewRect.width()).arg(viewRect.height()));
-}
-
-bool RoiManager::getZoomState(const QString& imageId, double& scaleFactor, QRectF& viewRect) const
-{
-    auto it = m_imageRoisMap.find(imageId);
-    if (it == m_imageRoisMap.end()) {
-        return false;
-    }
-
-    scaleFactor = it.value().scaleFactor;
-    viewRect = it.value().viewRect;
-    return true;
-}
-
-void RoiManager::clearZoomState(const QString& imageId)
-{
-    auto it = m_imageRoisMap.find(imageId);
-    if (it == m_imageRoisMap.end()) {
-        return;
-    }
-
-    it.value().scaleFactor = 1.0;
-    it.value().viewRect = QRectF(0, 0, it.value().image.cols, it.value().image.rows);
-    
-    Logger::instance()->info(QString("[RoiManager] 清除缩放状态: imageId=%1").arg(imageId));
-}
-
-// ==================== ROI配置管理（替代MultiRoiConfig） ====================
+// ==================== ROI配置管理（统一数据源）====================
 
 void RoiManager::addRoiConfig(const RoiConfig& config)
 {
@@ -703,75 +310,12 @@ void RoiManager::addRoiConfig(const RoiConfig& config)
     }
 
     it.value().roiConfigs.append(config);
-    Logger::instance()->info(QString("[RoiManager] ROI配置已添加: %1").arg(config.roiName));
-    emit roiConfigChanged();
-}
-
-// ==================== 全量配置导出/导入 ====================
-
-QJsonDocument RoiManager::exportAllConfigsToJson() const
-{
-    QJsonObject root;
-    root["version"] = "1.0";
-    root["currentImageId"] = m_currentImageId;
-
-    QJsonObject imagesObj;
-    for (auto it = m_imageRoisMap.constBegin(); it != m_imageRoisMap.constEnd(); ++it) {
-        QJsonObject imageObj;
-        imageObj["name"] = it.value().name;
-        imageObj["filePath"] = it.value().filePath;
-
-        QJsonArray configsArray;
-        for (const auto& config : it.value().roiConfigs) {
-            configsArray.append(config.toJson());
-        }
-        imageObj["roiConfigs"] = configsArray;
-        imageObj["selectedRoiId"] = it.value().selectedRoiId;
-
-        imagesObj[it.key()] = imageObj;
-    }
-    root["images"] = imagesObj;
-
-    return QJsonDocument(root);
-}
-
-void RoiManager::importAllConfigsFromJson(const QJsonDocument& doc)
-{
-    QJsonObject root = doc.object();
-
-    if (root.contains("images")) {
-        QJsonObject imagesObj = root["images"].toObject();
-        for (auto it = imagesObj.begin(); it != imagesObj.end(); ++it) {
-            QString imageId = it.key();
-            QJsonObject imageObj = it.value().toObject();
-
-            // 如果该图片在内存中已存在，恢复其ROI配置
-            if (m_imageRoisMap.contains(imageId)) {
-                ImageRois& imageRois = m_imageRoisMap[imageId];
-                imageRois.roiConfigs.clear();
-
-                QJsonArray configsArray = imageObj["roiConfigs"].toArray();
-                for (const auto& val : configsArray) {
-                    RoiConfig config;
-                    config.fromJson(val.toObject());
-                    imageRois.roiConfigs.append(config);
-                }
-                imageRois.selectedRoiId = imageObj["selectedRoiId"].toString();
-
-                Logger::instance()->info(QString("[RoiManager] 已恢复图片ROI配置: imageId=%1, count=%2")
-                                             .arg(imageId).arg(imageRois.roiConfigs.size()));
-            }
-        }
-    }
-
-    // 恢复当前图片ID
-    if (root.contains("currentImageId")) {
-        QString savedImageId = root["currentImageId"].toString();
-        if (m_imageRoisMap.contains(savedImageId)) {
-            switchToImage(savedImageId);
-        }
-    }
-
+    Logger::instance()->info(QString("[RoiManager] ROI配置已添加: %1 (id=%2, rect=%3,%4,%5,%6)")
+        .arg(config.roiName).arg(config.roiId)
+        .arg(config.roiRect.x(), 0, 'f', 1)
+        .arg(config.roiRect.y(), 0, 'f', 1)
+        .arg(config.roiRect.width(), 0, 'f', 1)
+        .arg(config.roiRect.height(), 0, 'f', 1));
     emit roiConfigChanged();
 }
 
@@ -782,11 +326,18 @@ bool RoiManager::removeRoiConfig(const QString& roiId)
         return false;
     }
 
-    QList<RoiConfig>& configs = it.value().roiConfigs;
-    for (int i = 0; i < configs.size(); ++i) {
-        if (configs[i].roiId == roiId) {
-            Logger::instance()->info(QString("[RoiManager] ROI配置已移除: %1").arg(configs[i].roiName));
-            configs.removeAt(i);
+    ImageRois& imageRois = it.value();
+    for (int i = 0; i < imageRois.roiConfigs.size(); ++i) {
+        if (imageRois.roiConfigs[i].roiId == roiId) {
+            Logger::instance()->info(QString("[RoiManager] ROI配置已移除: %1")
+                                         .arg(imageRois.roiConfigs[i].roiName));
+            imageRois.roiConfigs.removeAt(i);
+
+            // 如果删除的是当前激活的ROI，清除激活状态
+            if (imageRois.activeRoiId == roiId) {
+                imageRois.activeRoiId.clear();
+            }
+
             emit roiConfigChanged();
             return true;
         }
@@ -869,41 +420,248 @@ void RoiManager::clearRoiConfigs()
         return;
     }
     it.value().roiConfigs.clear();
+    it.value().activeRoiId.clear();
     emit roiConfigChanged();
 }
 
-QJsonDocument RoiManager::exportRoiConfigsToJson() const
-{
-    QJsonArray rois;
-    for (const auto& config : getRoiConfigs()) {
-        rois.append(config.toJson());
-    }
+// ==================== 激活ROI管理 ====================
 
-    QJsonObject root;
-    root["version"] = "1.0";
-    root["roiCount"] = rois.size();
-    root["rois"] = rois;
-
-    return QJsonDocument(root);
-}
-
-void RoiManager::importRoiConfigsFromJson(const QJsonDocument& doc)
+void RoiManager::setActiveRoi(const QString& roiId)
 {
     auto it = m_imageRoisMap.find(m_currentImageId);
     if (it == m_imageRoisMap.end()) {
         return;
     }
 
-    it.value().roiConfigs.clear();
+    ImageRois& imageRois = it.value();
 
+    if (roiId.isEmpty()) {
+        imageRois.activeRoiId.clear();
+        return;
+    }
+
+    for (const auto& cfg : imageRois.roiConfigs) {
+        if (cfg.roiId == roiId) {
+            imageRois.activeRoiId = roiId;
+            Logger::instance()->info(QString("[RoiManager] ROI已激活: id=%1").arg(roiId));
+            return;
+        }
+    }
+
+    qDebug() << "[RoiManager] ROI不存在:" << roiId;
+}
+
+QString RoiManager::getActiveRoiId() const
+{
+    auto it = m_imageRoisMap.find(m_currentImageId);
+    if (it == m_imageRoisMap.end()) {
+        return QString();
+    }
+    return it.value().activeRoiId;
+}
+
+void RoiManager::clearActiveRoi()
+{
+    auto it = m_imageRoisMap.find(m_currentImageId);
+    if (it == m_imageRoisMap.end()) {
+        return;
+    }
+    it.value().activeRoiId.clear();
+}
+
+// ==================== UI交互相关方法 ====================
+
+void RoiManager::enableDrawRoiMode(ImageView *view, QStatusBar *statusBar)
+{
+    auto it = m_imageRoisMap.find(m_currentImageId);
+    if (it == m_imageRoisMap.end() || it.value().image.empty()) {
+        return;
+    }
+
+    view->setRoiMode(true);
+    view->setDragMode(QGraphicsView::NoDrag);
+    if (statusBar) {
+        statusBar->showMessage("请按下左键绘制ROI");
+    }
+}
+
+bool RoiManager::handleRoiSelected(const QRectF &roiImgRectF, QStatusBar *statusBar)
+{
+    if (!setRoi(roiImgRectF)) {
+        if (statusBar) {
+            statusBar->showMessage("ROI应用失败", 2000);
+        }
+        return false;
+    }
+
+    cv::Rect roi = getLastRoi();
+    if (statusBar) {
+        statusBar->showMessage(
+            QString("ROI已选择：x=%1 y=%2 w=%3 h=%4")
+                .arg(roi.x).arg(roi.y).arg(roi.width).arg(roi.height),
+            2000
+        );
+    }
+
+    return true;
+}
+
+void RoiManager::resetRoiWithUI(ImageView *view, QStatusBar *statusBar)
+{
+    auto it = m_imageRoisMap.find(m_currentImageId);
+    if (it == m_imageRoisMap.end() || it.value().image.empty()) {
+        return;
+    }
+
+    resetRoi();
+    view->clearRoi();
+
+    if (statusBar) {
+        statusBar->showMessage("ROI已重置，处理使用完整图像", 2000);
+    }
+    Logger::instance()->info("ROI已重置");
+}
+
+// ==================== 缩放状态管理方法实现 ====================
+
+void RoiManager::saveZoomState(double scaleFactor, const QRectF& viewRect)
+{
+    auto it = m_imageRoisMap.find(m_currentImageId);
+    if (it == m_imageRoisMap.end()) {
+        return;
+    }
+
+    it.value().scaleFactor = scaleFactor;
+    it.value().viewRect = viewRect;
+
+    Logger::instance()->info(QString("[RoiManager] 保存缩放状态: scale=%1, viewRect=(%2,%3,%4,%5)")
+                                 .arg(scaleFactor)
+                                 .arg(viewRect.x()).arg(viewRect.y())
+                                 .arg(viewRect.width()).arg(viewRect.height()));
+}
+
+bool RoiManager::getZoomState(const QString& imageId, double& scaleFactor, QRectF& viewRect) const
+{
+    auto it = m_imageRoisMap.find(imageId);
+    if (it == m_imageRoisMap.end()) {
+        return false;
+    }
+
+    scaleFactor = it.value().scaleFactor;
+    viewRect = it.value().viewRect;
+    return true;
+}
+
+void RoiManager::clearZoomState(const QString& imageId)
+{
+    auto it = m_imageRoisMap.find(imageId);
+    if (it == m_imageRoisMap.end()) {
+        return;
+    }
+
+    it.value().scaleFactor = 1.0;
+    it.value().viewRect = QRectF(0, 0, it.value().image.cols, it.value().image.rows);
+
+    Logger::instance()->info(QString("[RoiManager] 清除缩放状态: imageId=%1").arg(imageId));
+}
+
+// ==================== 全量配置导出/导入 ====================
+
+QJsonDocument RoiManager::exportAllConfigsToJson() const
+{
+    QJsonObject root;
+    root["version"] = "1.0";
+    root["currentImageId"] = m_currentImageId;
+
+    QJsonObject imagesObj;
+    for (auto it = m_imageRoisMap.constBegin(); it != m_imageRoisMap.constEnd(); ++it) {
+        QJsonObject imageObj;
+        imageObj["name"] = it.value().name;
+        imageObj["filePath"] = it.value().filePath;
+
+        QJsonArray configsArray;
+        for (const auto& config : it.value().roiConfigs) {
+            configsArray.append(config.toJson());
+        }
+        imageObj["roiConfigs"] = configsArray;
+        imageObj["activeRoiId"] = it.value().activeRoiId;
+
+        imagesObj[it.key()] = imageObj;
+    }
+    root["images"] = imagesObj;
+
+    return QJsonDocument(root);
+}
+
+void RoiManager::importAllConfigsFromJson(const QJsonDocument& doc)
+{
     QJsonObject root = doc.object();
-    QJsonArray rois = root["rois"].toArray();
 
-    for (const auto& val : rois) {
-        RoiConfig config;
-        config.fromJson(val.toObject());
-        it.value().roiConfigs.append(config);
+    if (root.contains("images")) {
+        QJsonObject imagesObj = root["images"].toObject();
+        for (auto it = imagesObj.begin(); it != imagesObj.end(); ++it) {
+            QString imageId = it.key();
+            QJsonObject imageObj = it.value().toObject();
+
+            if (m_imageRoisMap.contains(imageId)) {
+                ImageRois& imageRois = m_imageRoisMap[imageId];
+                imageRois.roiConfigs.clear();
+
+                QJsonArray configsArray = imageObj["roiConfigs"].toArray();
+                for (const auto& val : configsArray) {
+                    RoiConfig config;
+                    config.fromJson(val.toObject());
+                    imageRois.roiConfigs.append(config);
+                }
+                imageRois.activeRoiId = imageObj["activeRoiId"].toString();
+
+                Logger::instance()->info(QString("[RoiManager] 已恢复图片ROI配置: imageId=%1, count=%2")
+                                             .arg(imageId).arg(imageRois.roiConfigs.size()));
+            }
+        }
+    }
+
+    if (root.contains("currentImageId")) {
+        QString savedImageId = root["currentImageId"].toString();
+        if (m_imageRoisMap.contains(savedImageId)) {
+            switchToImage(savedImageId);
+        }
     }
 
     emit roiConfigChanged();
+}
+
+// ==================== 命名生成 ====================
+
+QString RoiManager::generateNextRoiName() const
+{
+    auto it = m_imageRoisMap.find(m_currentImageId);
+    if (it == m_imageRoisMap.end() || it.value().roiConfigs.isEmpty()) {
+        return QString("ROI_1");
+    }
+
+    int maxNum = 0;
+    for (const auto& cfg : it.value().roiConfigs) {
+        QString name = cfg.roiName;
+        if (name.startsWith("ROI_")) {
+            QString numStr = name.mid(4);
+            bool ok = false;
+            int num = numStr.toInt(&ok);
+            if (ok && num > maxNum) {
+                maxNum = num;
+            }
+        }
+    }
+    return QString("ROI_%1").arg(maxNum + 1);
+}
+
+QString RoiManager::generateDefaultRoiName()
+{
+    // 【Bug修复】统一使用generateNextRoiName，避免删除后编号重复
+    return generateNextRoiName();
+}
+
+QString RoiManager::generateDefaultImageName()
+{
+    return QString("图片_%1").arg(m_imageCounter + 1);
 }
