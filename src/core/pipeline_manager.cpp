@@ -118,6 +118,9 @@ PipelineContext PipelineManager::execute(const cv::Mat& inputImage, const Pipeli
     // 标记后台Pipeline开始运行
     m_pipelineRunning.storeRelease(1);
 
+    // 标记是否需要发送重置相关信号（必须在锁外发送）
+    bool shouldEmitPipelineReset = false;
+
     // 在锁内执行所有操作：修改m_lastContext、执行Pipeline、处理pending
     {
         QMutexLocker locker(&m_configMutex);
@@ -155,7 +158,7 @@ PipelineContext PipelineManager::execute(const cv::Mat& inputImage, const Pipeli
             m_hasPendingConfig.storeRelease(0);
         }
 
-        // 处理延迟的Pipeline重置
+        // 处理延迟的Pipeline重置（信号在锁外发送）
         if (m_hasPendingReset.loadAcquire()) {
             m_algorithmQueue.clear();
             m_config.shapeFilter.clear();
@@ -163,14 +166,18 @@ PipelineContext PipelineManager::execute(const cv::Mat& inputImage, const Pipeli
             m_overlayAlpha = 0.3f;
             initPipeline();
             m_hasPendingReset.storeRelease(0);
-            // 重置信号需要在锁外发送，但这里为简化直接发送
-            emit pipelineReset();
-            emit algorithmQueueChanged(0);
+            shouldEmitPipelineReset = true;
         }
     }
 
     // 标记后台Pipeline运行结束
     m_pipelineRunning.storeRelease(0);
+
+    // 发送Pipeline重置信号（必须在锁外，避免死锁）
+    if (shouldEmitPipelineReset) {
+        emit pipelineReset();
+        emit algorithmQueueChanged(0);
+    }
 
     // 发出完成信号（在锁外，避免死锁）
     QString message = m_lastContext.reason.isEmpty()

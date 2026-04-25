@@ -31,7 +31,7 @@ public:
     // ==================== 图像管理 ====================
 
     void setFullImage(const cv::Mat &img);
-    const cv::Mat &getFullImage() const;
+    cv::Mat getFullImage() const;
     void clear();
 
     // ==================== 多图片管理 ====================
@@ -86,8 +86,7 @@ public:
     bool removeRoiConfig(const QString& roiId);
     RoiConfig* getRoiConfig(const QString& roiId);
     const RoiConfig* getRoiConfig(const QString& roiId) const;
-    QList<RoiConfig>& getRoiConfigs();
-    const QList<RoiConfig>& getRoiConfigs() const;
+    QList<RoiConfig> getRoiConfigs() const;
     QList<RoiConfig> getRoiConfigsForImage(const QString& imageId) const;
     int getRoiConfigCount() const;
     void clearRoiConfigs();

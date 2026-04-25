@@ -4,6 +4,7 @@
 #include <QStringList>
 #include <QTimer>
 #include <QElapsedTimer>
+#include <QPointer>
 #include "core/pipeline_manager.h"
 #include "core/pipeline.h"
 #include "ui/roi_manager.h"
@@ -150,7 +151,7 @@ private:
     /// 完成检测
     void finishDetection();
 
-    PipelineManager* m_pipeline;
+    QPointer<PipelineManager> m_pipeline;
     RoiManager* m_roiManager;
 
     QList<ImageDetectionTask> m_tasks;    ///< 待检测任务列表

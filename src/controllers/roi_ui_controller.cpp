@@ -244,7 +244,7 @@ void RoiUiController::refreshRoiTreeView()
     m_treeView->clear();
     m_treeView->blockSignals(false);
     
-    const QList<RoiConfig>& rois = m_roiManager.getRoiConfigs();
+    const QList<RoiConfig> rois = m_roiManager.getRoiConfigs();
     
     QTreeWidgetItem* itemToSelect = nullptr;  // 要选中的项目
     

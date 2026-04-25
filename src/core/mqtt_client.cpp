@@ -69,12 +69,12 @@ void MqttClient::connect()
         // 执行连接
         m_client->connect(connOpts)->wait();
 
-        m_connected = true;
+        m_connected.store(true, std::memory_order_release);
         m_reconnectCount = 0;
         emit connected();
 
     } catch (const mqtt::exception& ex) {
-        m_connected = false;
+        m_connected.store(false, std::memory_order_release);
         emit connectionError(QString::fromStdString(ex.what()));
 
         // 启动自动重连
@@ -99,14 +99,14 @@ void MqttClient::disconnect()
         // 忽略断开时的异常
     }
 
-    m_connected = false;
+    m_connected.store(false, std::memory_order_release);
     m_client.reset();
     emit disconnected();
 }
 
 void MqttClient::publish(const QString& topic, const QString& payload, int qos, bool retained)
 {
-    if (!m_connected || !m_client) {
+    if (!m_connected.load(std::memory_order_acquire) || !m_client) {
         return;
     }
 
@@ -126,7 +126,7 @@ void MqttClient::publish(const QString& topic, const QString& payload, int qos, 
 
 void MqttClient::subscribe(const QString& topic, int qos)
 {
-    if (!m_connected || !m_client) {
+    if (!m_connected.load(std::memory_order_acquire) || !m_client) {
         return;
     }
 
@@ -139,7 +139,7 @@ void MqttClient::subscribe(const QString& topic, int qos)
 
 void MqttClient::unsubscribe(const QString& topic)
 {
-    if (!m_connected || !m_client) {
+    if (!m_connected.load(std::memory_order_acquire) || !m_client) {
         return;
     }
 
@@ -152,7 +152,7 @@ void MqttClient::unsubscribe(const QString& topic)
 
 void MqttClient::updateConfig(const MqttConfig& config)
 {
-    bool wasConnected = m_connected;
+    bool wasConnected = m_connected.load(std::memory_order_acquire);
     if (wasConnected) {
         disconnect();
     }
@@ -181,7 +181,7 @@ void MqttClient::setupCallbacks()
 
     // 连接丢失回调
     m_client->set_connection_lost_handler([this](const std::string& cause) mutable {
-        m_connected = false;
+        m_connected.store(false, std::memory_order_release);
         QMetaObject::invokeMethod(this, [this, cause]() {
             emit disconnected();
             emit connectionError(QString("连接丢失: %1").arg(QString::fromStdString(cause)));

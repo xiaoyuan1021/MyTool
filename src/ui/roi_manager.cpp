@@ -31,14 +31,13 @@ void RoiManager::setFullImage(const cv::Mat &img)
     }
 }
 
-const cv::Mat& RoiManager::getFullImage() const
+cv::Mat RoiManager::getFullImage() const
 {
     auto it = m_imageRoisMap.find(m_currentImageId);
     if (it != m_imageRoisMap.end()) {
         return it.value().image;
     }
-    static cv::Mat emptyImage;
-    return emptyImage;
+    return cv::Mat();
 }
 
 void RoiManager::clear()
@@ -375,22 +374,11 @@ const RoiConfig* RoiManager::getRoiConfig(const QString& roiId) const
     return nullptr;
 }
 
-QList<RoiConfig>& RoiManager::getRoiConfigs()
+QList<RoiConfig> RoiManager::getRoiConfigs() const
 {
-    static QList<RoiConfig> emptyList;
     auto it = m_imageRoisMap.find(m_currentImageId);
     if (it == m_imageRoisMap.end()) {
-        return emptyList;
-    }
-    return it.value().roiConfigs;
-}
-
-const QList<RoiConfig>& RoiManager::getRoiConfigs() const
-{
-    static const QList<RoiConfig> emptyList;
-    auto it = m_imageRoisMap.find(m_currentImageId);
-    if (it == m_imageRoisMap.end()) {
-        return emptyList;
+        return QList<RoiConfig>();
     }
     return it.value().roiConfigs;
 }

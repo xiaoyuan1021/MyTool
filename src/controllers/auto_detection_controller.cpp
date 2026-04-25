@@ -194,7 +194,7 @@ void AutoDetectionController::processNextTask()
 void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
 {
     // 捕获需要的指针和数据（按值），避免在后台线程中捕获 this
-    PipelineManager* pipeline = m_pipeline;
+    QPointer<PipelineManager> pipelinePtr = m_pipeline;
     QList<RoiConfig> roiConfigs = task.roiConfigs;  // 值拷贝，线程安全
     QString imagePath = task.imagePath;
     QString imageName = task.imageName;
@@ -205,7 +205,16 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
     // 使用 QtConcurrent 在后台线程执行，避免阻塞 UI
     // 注意：lambda中无法使用emit logMessage（无this指针），使用Logger::instance()代替
     QFuture<PipelineContext> future = QtConcurrent::run(
-        [pipeline, imagePath, roiConfigs]() -> PipelineContext {
+        [pipelinePtr, imagePath, roiConfigs]() -> PipelineContext {
+            // 【P0修复】检查PipelineManager是否已被释放
+            if (!pipelinePtr) {
+                Logger::instance()->error(QString("[检测] PipelineManager已被释放，跳过处理: %1").arg(imagePath));
+                PipelineContext emptyCtx;
+                emptyCtx.pass = false;
+                emptyCtx.reason = QString("PipelineManager已被释放: %1").arg(imagePath);
+                return emptyCtx;
+            }
+
             Logger::instance()->info(QString("[检测] 开始处理图片: %1").arg(imagePath));
 
             // 加载图片
@@ -220,7 +229,7 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
             Logger::instance()->info(QString("[检测] 图片加载成功: %1x%2").arg(image.cols).arg(image.rows));
 
             // 保存PipelineManager当前全局配置（执行完毕后恢复）
-            PipelineConfig savedGlobalConfig = pipeline->getConfigSnapshot();
+            PipelineConfig savedGlobalConfig = pipelinePtr->getConfigSnapshot();
 
             bool allPassed = true;
             QString failReason;
@@ -277,7 +286,7 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
 
                 // 执行Pipeline（传入ROI专属配置，线程安全）
                 Logger::instance()->info("[检测] 开始执行Pipeline...");
-                PipelineContext ctx = pipeline->execute(roiImage, roiConfig.pipelineConfig);
+                PipelineContext ctx = pipelinePtr->execute(roiImage, roiConfig.pipelineConfig);
                 Logger::instance()->info(QString("[检测] Pipeline执行完成: currentRegions=%1, barcodeResults=%2, matchedLines=%3, totalLines=%4")
                     .arg(ctx.currentRegions)
                     .arg(ctx.barcodeResults.size())

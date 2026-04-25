@@ -4,6 +4,7 @@
 #include <QString>
 #include <QTimer>
 #include <memory>
+#include <atomic>
 #include <mqtt/async_client.h>
 #include "config/mqtt_config.h"
 
@@ -83,7 +84,7 @@ private:
 
     MqttConfig m_config;
     std::unique_ptr<mqtt::async_client> m_client;
-    bool m_connected = false;
+    std::atomic<bool> m_connected{false};
     int m_reconnectCount = 0;
     QTimer m_reconnectTimer;
 };
