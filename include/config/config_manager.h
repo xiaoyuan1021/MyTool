@@ -1,15 +1,16 @@
 #pragma once
 
 #include <QString>
-#include <QRect>
+#include <QRectF>
 #include <QMap>
 #include <QJsonObject>
 #include <QJsonDocument>
-#include "image_processor.h"
-#include "roi_manager.h"
+#include <QVector>
 #include "roi_config.h"
 #include "shape_filter_types.h"
 #include "mqtt_config.h"
+#include "../algorithm/image_processor.h"
+
 struct AppConfig
 {
     // ROI 配置（单ROI模式，向后兼容）

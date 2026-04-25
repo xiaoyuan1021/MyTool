@@ -52,86 +52,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(m_processDebounceTimer, &QTimer::timeout,this,&MainWindow::processAndDisplay);
 
-    // 连接多线程处理完成信号
-    connect(&m_pipelineWatcher, &QFutureWatcher<PipelineContext>::finished, 
-            this, [this]() {
-                m_isProcessing = false;
-                PipelineContext result = m_pipelineWatcher.result();
-                // 获取Pipeline输出的干净图像（副本）
-                cv::Mat displayImage = result.getFinalDisplay();
-
-                // 更新判定Tab显示
-                int count = result.currentRegions;
-                if (auto* judgeTab = m_tabManager->getJudgeTab()) {
-                    judgeTab->setCurrentRegionCount(count);
-                }
-                
-                // 更新直线检测Tab匹配结果
-                if (auto* lineTab = m_tabManager->getLineDetectTab(); lineTab && result.totalLineCount > 0) {
-                    PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
-                    lineTab->updateMatchResultStatus(
-                        result.matchedLineCount, 
-                        result.totalLineCount, 
-                        cfg.angleThreshold, 
-                        cfg.distanceThreshold
-                    );
-                }
-                
-                // 更新条码Tab识别结果
-                if (auto* barcodeTab = m_tabManager->getBarcodeTab()) {
-                    barcodeTab->updateResultsTable(result.barcodeResults);
-                    barcodeTab->updateStatus(result.barcodeStatus);
-                }
-
-                // 仅在用户主动请求目标检测时才执行（避免每次 pipeline 处理后都重复检测）
-                if (m_objectDetectionRequested) {
-                    if (auto* objTab = m_tabManager->getObjectDetectionTab(); objTab && objTab->isModelLoaded()) {
-                        cv::Mat detectImage = m_roiManager.getCurrentImage();
-                        if (!detectImage.empty()) {
-                            std::vector<DetectionResult> detResults = objTab->runDetection(detectImage);
-                            objTab->updateDetectionResults(detResults);
-
-                            // 在干净的displayImage上绘制检测框
-                            for (const auto& det : detResults) {
-                                cv::rectangle(displayImage, det.box, cv::Scalar(0, 255, 0), 2);
-
-                                std::string label = det.className + " " + cv::format("%.2f", det.confidence);
-                                int baseline = 0;
-                                cv::Size textSize = cv::getTextSize(label, cv::FONT_HERSHEY_SIMPLEX, 0.6, 1, &baseline);
-
-                                cv::Point textOrg(det.box.x, det.box.y - 5);
-                                if (textOrg.y - textSize.height < 0) {
-                                    textOrg.y = det.box.y + textSize.height + 5;
-                                }
-                                cv::rectangle(displayImage,
-                                    cv::Point(textOrg.x, textOrg.y - textSize.height - 2),
-                                    cv::Point(textOrg.x + textSize.width + 2, textOrg.y + 4),
-                                    cv::Scalar(0, 255, 0), -1);
-
-                                cv::putText(displayImage, label, textOrg,
-                                    cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 0, 0), 1);
-                            }
-                        }
-                    }
-                    // 执行完后重置标志，避免后续 pipeline 处理时重复执行
-                    m_objectDetectionRequested = false;
-                }
-
-                // 绘制完成后再显示图像
-                showImage(displayImage);
-                
-                // 恢复状态栏
-                ui->statusbar->showMessage("处理完成", 2000);
-                
-                // 检查是否有pending的处理请求（避免滑条快速拖动时丢失处理）
-                if (m_hasPendingProcess) {
-                    qDebug() << "检测到pending处理请求，重新触发processAndDisplay";
-                    m_hasPendingProcess = false;
-                    // 使用单次定时器确保UI更新完成后再处理
-                    QTimer::singleShot(50, this, &MainWindow::processAndDisplay);
-                }
-            });
-
     setupUI();
     setupConnections();
 
@@ -316,6 +236,25 @@ MainWindow::MainWindow(QWidget *parent)
     });
     connect(ui->btn_deleteDetection, &QPushButton::clicked, this, &MainWindow::onDeleteDetectionClicked);
 
+    // ✅ 修复：PipelineResultHandler 放在最后初始化
+    // 此时 m_view, m_tabManager, m_pipelineManager 全部已经初始化完成
+    m_pipelineResultHandler = new PipelineResultHandler(this);
+    m_pipelineResultHandler->setDependencies(m_tabManager, &m_roiManager, m_view, m_pipelineManager);
+    m_pipelineResultHandler->watchPipeline(&m_pipelineWatcher);
+    
+    connect(m_pipelineResultHandler, &PipelineResultHandler::statusMessage,
+            ui->statusbar, &QStatusBar::showMessage);
+            
+    connect(m_pipelineResultHandler, &PipelineResultHandler::processingFinished,
+            this, [this]() {
+                m_isProcessing = false;
+                // 检查是否有pending的处理请求
+                if (m_hasPendingProcess) {
+                    qDebug() << "检测到pending处理请求，重新触发processAndDisplay";
+                    m_hasPendingProcess = false;
+                    QTimer::singleShot(50, this, &MainWindow::processAndDisplay);
+                }
+            });
 }
 
 MainWindow::~MainWindow()

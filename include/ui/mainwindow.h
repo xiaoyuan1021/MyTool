@@ -32,6 +32,7 @@
 #include "controllers/detection_ui_controller.h"
 #include "controllers/config_controller.h"
 #include "controllers/auto_detection_controller.h"
+#include "core/pipeline_result_handler.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -137,6 +138,9 @@ private:
 
     // 自动检测控制器
     AutoDetectionController* m_autoDetectionController = nullptr;
+    
+    // Pipeline结果处理器
+    PipelineResultHandler* m_pipelineResultHandler = nullptr;
 
     // 目标检测请求标志：仅在用户主动触发时才执行目标检测
     bool m_objectDetectionRequested = false;
