@@ -3,11 +3,7 @@
 #include <QString>
 #include <QMap>
 #include <QList>
-#include <QImage>
-#include <QDebug>
-#include <QLabel>
 #include <QVector>
-#include <QDir>
 
 #include <opencv2/opencv.hpp>
 

@@ -1,5 +1,6 @@
 #include "pipeline_manager.h"
 #include "barcode_step.h"
+#include "config/pipeline_config_mapper.h"
 #include <QDebug>
 #include <algorithm>
 
@@ -7,7 +8,7 @@ PipelineManager::PipelineManager(QObject* parent)
     : QObject(parent)
     , m_processor(std::make_unique<ImageProcessor>())
 {
-    m_config.resetEnhancement();
+    PipelineConfigMapper::resetEnhancement(m_config);
     initPipeline();
 }
 
@@ -17,13 +18,13 @@ void PipelineManager::syncFromUI(QSlider* brightness, QSlider* contrast,
                                  QSlider* gamma, QSlider* sharpen,
                                  QSlider* grayLow, QSlider* grayHigh)
 {
-    m_config.syncConfigFromUI(brightness, contrast, gamma,
-                              sharpen, grayLow, grayHigh);
+    PipelineConfigMapper::syncConfigFromUI(m_config, brightness, contrast, gamma,
+                                           sharpen, grayLow, grayHigh);
 }
 
 void PipelineManager::resetEnhancement()
 {
-    m_config.resetEnhancement();
+    PipelineConfigMapper::resetEnhancement(m_config);
 }
 
 void PipelineManager::setGrayFilterEnabled(bool enabled)
@@ -140,7 +141,7 @@ PipelineContext PipelineManager::execute(const cv::Mat& inputImage, const Pipeli
         m_lastContext.displayConfig.mode = m_displayMode;
         m_lastContext.displayConfig.overlayAlpha = m_overlayAlpha;
 
-        // 临时设置config用于Pipeline执行
+    // 临时设置config用于Pipeline执行（在锁内操作，确保线程安全）
         PipelineConfig savedConfig = m_config;
         m_config = config;
         m_lastConfigSnapshot = config;

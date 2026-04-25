@@ -1,5 +1,6 @@
 #include "image_processor.h"
 #include "opencv_algorithm.h"
+#include <QDebug>
 
 ImageProcessor::ImageProcessor() {}
 

@@ -8,6 +8,7 @@ Logger* Logger::instance()
 
 void Logger::setTextEdit(QTextEdit *textdEdit)
 {
+    QMutexLocker locker(&m_mutex);
     m_textEdit=textdEdit;
     
     // 创建 spdlog qt color logger
@@ -45,6 +46,7 @@ void Logger::setTextEdit(QTextEdit *textdEdit)
 
 void Logger::setLogFile(const QString &filePath)
 {
+    QMutexLocker locker(&m_mutex);
     m_logFilePath=filePath;
 
     if(m_logFile && m_logFile->isOpen())
@@ -69,11 +71,13 @@ void Logger::setLogFile(const QString &filePath)
 
 void Logger::enableFileLog(bool enable)
 {
+    QMutexLocker locker(&m_mutex);
     m_fileLogEnabled = enable;
 }
 
 void Logger::writeToFile(const QString &log)
 {
+    // 调用者已持有锁（info/warning/error 中已加锁）
     if(m_fileLogEnabled && m_logStream)
     {
         *m_logStream <<log<<"\n";
@@ -110,6 +114,7 @@ bool Logger::openLogFolder(bool selectFile)
 
 void Logger::info(const QString &message)
 {
+    QMutexLocker locker(&m_mutex);
     QString time = QDateTime::currentDateTime().toString("MM-dd hh:mm:ss");
     QString log = QString("%1 [info] %2").arg(time, message);
     
@@ -128,6 +133,7 @@ void Logger::info(const QString &message)
 
 void Logger::warning(const QString &message)
 {
+    QMutexLocker locker(&m_mutex);
     QString time = QDateTime::currentDateTime().toString("MM-dd hh:mm:ss");
     QString log = QString("%1 [warning] %2").arg(time, message);
     
@@ -146,6 +152,7 @@ void Logger::warning(const QString &message)
 
 void Logger::error(const QString &message)
 {
+    QMutexLocker locker(&m_mutex);
     QString time = QDateTime::currentDateTime().toString("MM-dd hh:mm:ss");
     QString log = QString("%1 [error] %2").arg(time, message);
     
@@ -164,6 +171,7 @@ void Logger::error(const QString &message)
 
 void Logger::clear()
 {
+    QMutexLocker locker(&m_mutex);
     if(m_textEdit)
     {
         m_textEdit->clear();
@@ -172,6 +180,7 @@ void Logger::clear()
 
 QStringList Logger::getRecentLogs(int count) const
 {
+    QMutexLocker locker(&m_mutex);
     QStringList logs;
     
     // 如果有日志文件，从文件中读取最近的日志
@@ -204,6 +213,7 @@ QStringList Logger::getRecentLogs(int count) const
 
 void Logger::outputLogsWithColor(const QStringList& logs)
 {
+    QMutexLocker locker(&m_mutex);
     if (!m_colorLogger) {
         return;
     }

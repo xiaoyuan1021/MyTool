@@ -10,6 +10,8 @@
 #include <QDesktopServices>
 #include <QFileInfo>
 #include <QDir>
+#include <QMutex>
+#include <QMutexLocker>
 
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/qt_sinks.h"
@@ -53,6 +55,9 @@ private:
 
     // spdlog logger with color support
     std::shared_ptr<spdlog::logger> m_colorLogger;
+
+    // 线程安全保护：Logger 可能在多线程中被调用（如 AutoDetectionController 的后台线程）
+    mutable QMutex m_mutex;
 
 };
 

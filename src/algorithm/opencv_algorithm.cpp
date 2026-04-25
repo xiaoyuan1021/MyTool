@@ -238,13 +238,13 @@ cv::Mat OpenCVAlgorithm::connection(const cv::Mat& region)
     cv::threshold(binary, binary, 127, 255, cv::THRESH_BINARY);
     
     cv::Mat labels;
-    cv::connectedComponents(binary, labels, 8);
+    int numLabels = cv::connectedComponents(binary, labels, 8);
     
     // ✅ 正确：生成二值图像，每个连通域为255，背景为0
     cv::Mat result = cv::Mat::zeros(binary.size(), CV_8UC1);
     
     // 跳过背景标签0，从1开始
-    for (int i = 1; i < cv::connectedComponents(binary, labels, 8); ++i) {
+    for (int i = 1; i < numLabels; ++i) {
         result.setTo(cv::Scalar(255), labels == i);
     }
     

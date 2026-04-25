@@ -43,15 +43,16 @@ public:
     // 设置面积筛选范围
     void setAreaRange(double minArea, double maxArea);
 
-    // 获取当前配置快照（永不阻塞UI线程）
-    // m_config仅在UI线程读写，直接返回拷贝
+    // 获取当前配置快照（线程安全：加锁后返回拷贝）
     PipelineConfig getConfigSnapshot() const {
+        QMutexLocker locker(&m_configMutex);
         return m_config;
     }
 
-    // 设置配置（永不阻塞UI线程）
+    // 设置配置（线程安全：加锁后写入）
     // 如果Pipeline正在执行，将配置存入pending队列
     void setConfig(const PipelineConfig& config) {
+        QMutexLocker locker(&m_configMutex);
         m_config = config;
         m_lastConfigSnapshot = config;
         // 如果后台线程正在执行Pipeline，标记pending让worker完成后应用
@@ -85,8 +86,11 @@ public:
     // 内部会加锁，确保执行期间Pipeline状态不被并发修改
     PipelineContext execute(const cv::Mat& inputImage, const PipelineConfig& config);
 
-    // 获取最后一次执行的上下文
-    const PipelineContext& getLastContext() const { return m_lastContext; }
+    // 获取最后一次执行的上下文（返回拷贝，避免多线程数据竞争）
+    PipelineContext getLastContext() const {
+        QMutexLocker locker(&m_configMutex);
+        return m_lastContext;
+    }
 
     void addFilterCondition(const FilterCondition& condition);
     void setFilterMode(FilterMode mode);

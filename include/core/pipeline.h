@@ -2,8 +2,6 @@
 #include <opencv2/opencv.hpp>
 #include <QVector>
 #include <QVariantMap>
-#include <QSlider>
-#include <QSpinBox>
 #include <QPointF>
 #include <QString>
 #include <QRectF>
@@ -93,36 +91,9 @@ struct PipelineConfig
     double distanceThreshold = 50.0;   // 距离容差（像素）
     int searchRegionWidth = 100;       // 搜索区域宽度（像素）
     
-    // ========== 条码识别参数 ==========
-    BarcodeConfig barcode;
-
-    void syncConfigFromUI(QSlider* brightness,QSlider* contrast,QSlider* gamma,
-                          QSlider* sharpen,QSlider* grayLow,QSlider* grayHigh)
-    {
-        // 添加空指针检查，防止访问已删除的对象
-        // if (!brightness || !contrast || !gamma || !sharpen || !grayLow || !grayHigh)
-        //     return;
-
-        this->brightness = brightness->value();
-        this->contrast   = contrast->value() / 100.0;
-        this->gamma      = gamma->value() / 100.0;
-        this->sharpen    = sharpen->value() / 100.0;
-        this->grayLow    = grayLow->value();
-        this->grayHigh   = grayHigh->value();
-
-        // 防呆：避免 low > high
-        if (this->grayLow > this->grayHigh)
-            std::swap(this->grayLow, this->grayHigh);
-    }
-    void resetEnhancement()
-    {
-        brightness=0;
-        contrast=1.0;
-        gamma=1.0;
-        sharpen=1.0;
-        enableGrayFilter=false;
-    }
-};
+     // ========== 条码识别参数 ==========
+     BarcodeConfig barcode;
+ };
 
 struct PipelineContext
 {

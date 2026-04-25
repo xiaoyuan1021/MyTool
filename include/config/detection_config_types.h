@@ -5,6 +5,7 @@
 #include <QVariantMap>
 #include <QJsonObject>
 #include <QJsonArray>
+#include "config/json_serializable.h"
 
 /**
  * @brief 检测配置类型定义
@@ -15,7 +16,7 @@
 /**
  * @brief Blob分析配置参数
  */
-struct BlobAnalysisConfig {
+struct BlobAnalysisConfig : public IJsonSerializable {
     // 图像增强参数
     int brightness = 0;          // 亮度 (-100 ~ 100)
     int contrast = 100;          // 对比度 (0 ~ 200)
