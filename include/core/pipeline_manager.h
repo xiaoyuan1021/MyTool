@@ -102,6 +102,12 @@ public:
 
     void setOverlayAlpha(float alpha);
 
+    // 快速重新渲染上次Pipeline结果（仅改变显示模式，不重新执行Pipeline）
+    cv::Mat getLastDisplayWithMode(DisplayConfig::Mode mode) const;
+
+    // 上次Pipeline结果是否存在（可用于判断是否可以快速渲染）
+    bool hasLastResult() const;
+
     // ========== 颜色过滤控制 ==========
 
     // 设置颜色过滤开关

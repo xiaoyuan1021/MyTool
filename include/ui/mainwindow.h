@@ -88,6 +88,7 @@ private:
 
     /// 获取指定Tab的显示模式
     DisplayConfig::Mode getDisplayModeForTab(int index) const;
+    void displayCurrentResult();  // 用当前显示模式重新渲染已有结果
     /// 当前显示模式，用于判断Tab切换是否需要刷新
     DisplayConfig::Mode m_lastDisplayMode = DisplayConfig::Mode::Original;
 

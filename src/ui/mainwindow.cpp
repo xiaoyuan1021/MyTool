@@ -137,12 +137,6 @@ void MainWindow::setupManagers()
     m_tabManager = new TabManager(ui->tabWidget, m_pipelineManager, &m_roiManager,
                                   m_view, m_processDebounceTimer, this);
 
-    m_signalConnector = new SignalConnector(this, m_pipelineManager, &m_roiManager,
-                                           m_view, m_tabManager, m_roiUiController,
-                                           m_detectionUiController, this);
-    connect(m_tabManager, &TabManager::tabCreated,
-            m_signalConnector, &SignalConnector::connectTabSignals);
-
     m_imageListManager = new ImageListManager(m_roiManager, m_fileManager, this, this);
     m_imageListManager->init(ui->listWidget_images, ui->btn_addImage, ui->btn_removeImage);
     connect(m_imageListManager, &ImageListManager::imageDisplayRequested, this, &MainWindow::showImage);
@@ -171,6 +165,13 @@ void MainWindow::setupControllers()
     // 全局信号连接（统一走防抖 + 脏标记）
     connect(m_roiUiController, &RoiUiController::roiChanged, this, [this]() { requestRefresh(); });
     connect(m_configController, &ConfigController::configApplied, this, [this]() { requestRefresh(); });
+
+    // 【修复】SignalConnector 必须在 controller 创建之后才能创建（需要有效的 roiUiController 指针）
+    m_signalConnector = new SignalConnector(this, m_pipelineManager, &m_roiManager,
+                                           m_view, m_tabManager, m_roiUiController,
+                                           m_detectionUiController, this);
+    connect(m_tabManager, &TabManager::tabCreated,
+            m_signalConnector, &SignalConnector::connectTabSignals);
 
     // Tab懒加载时，更新ConfigController的tab指针
     connect(m_tabManager, &TabManager::tabCreated, this, [this](const QString& name, QWidget*) {
@@ -391,11 +392,12 @@ void MainWindow::on_tabWidget_currentChanged(int index)
     if (m_isDestroying) return;
     if (m_roiManager.getFullImage().empty()) return;
 
-    // 只有显示模式变化时才标记脏，避免无意义的Pipeline执行
+    // 只有显示模式变化时才需要刷新显示
     DisplayConfig::Mode newMode = getDisplayModeForTab(index);
     if (newMode != m_lastDisplayMode) {
         m_lastDisplayMode = newMode;
-        requestRefresh();
+        // 优先使用快速渲染（不重新执行Pipeline），如果没有上次结果才触发Pipeline
+        displayCurrentResult();
     }
 }
 
@@ -528,4 +530,18 @@ DisplayConfig::Mode MainWindow::getDisplayModeForTab(int index) const
     }
     QString tabName = ui->tabWidget->tabText(index);
     return s_tabDisplayMode.value(tabName, DisplayConfig::Mode::Original);
+}
+
+void MainWindow::displayCurrentResult()
+{
+    if (!m_pipelineManager->hasLastResult()) {
+        // 没有上次Pipeline结果，需要触发完整处理
+        requestRefresh();
+        return;
+    }
+    DisplayConfig::Mode mode = getDisplayModeForTab(ui->tabWidget->currentIndex());
+    cv::Mat displayImage = m_pipelineManager->getLastDisplayWithMode(mode);
+    if (!displayImage.empty()) {
+        m_view->setImage(ImageUtils::matToQImage(displayImage));
+    }
 }

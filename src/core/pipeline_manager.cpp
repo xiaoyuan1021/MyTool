@@ -278,6 +278,23 @@ PipelineConfig::FilterMode PipelineManager::getCurrentFilterMode() const
     return m_config.currentFilterMode;
 }
 
+cv::Mat PipelineManager::getLastDisplayWithMode(DisplayConfig::Mode mode) const
+{
+    QMutexLocker locker(&m_configMutex);
+    if (m_lastContext.srcBgr.empty()) return cv::Mat();
+
+    // 创建一个副本，临时修改显示模式
+    PipelineContext ctxCopy = m_lastContext;
+    ctxCopy.displayConfig.mode = mode;
+    return ctxCopy.getFinalDisplay();
+}
+
+bool PipelineManager::hasLastResult() const
+{
+    QMutexLocker locker(&m_configMutex);
+    return !m_lastContext.srcBgr.empty();
+}
+
 void PipelineManager::resetPipeline()
 {
     // 如果后台Pipeline正在运行，标记延迟重置，等execute完成后自动执行
