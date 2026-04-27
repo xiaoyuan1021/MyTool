@@ -85,7 +85,6 @@ void StepGrayFilter::run(PipelineContext& ctx)
             gray = gray.clone();
         }
 
-        // 使用OpenCV的inRange替代Halcon的Threshold
         // 灰度范围 [grayLow, grayHigh] 内的像素设为255（绿色/目标），其余为0（白色/背景）
         cv::inRange(gray, cv::Scalar(cfg_->grayLow), cv::Scalar(cfg_->grayHigh), ctx.mask);
 
@@ -414,12 +413,6 @@ void StepLineDetect::run(PipelineContext &ctx)
         {
             detectLinesEDlines(src, lines);
         }
-        else if (cfg_->lineDetectAlgorithm == 3)
-        {
-            // ⚠️ EdgesSubPix 功能已禁用（依赖 Halcon）
-            qDebug() << "[LineDetect] EdgesSubPix 算法已禁用，请选择其他算法";
-        }
-
         // 绘制直线到lineDetect
         ctx.lineDetect = src.clone();
 
@@ -439,17 +432,6 @@ void StepLineDetect::run(PipelineContext &ctx)
         {
             cv::Ptr<cv::ximgproc::EdgeDrawing> ed;
             EDdrawing(gray, ed, ctx);
-        }
-        // EdgesSubPix用端点连线
-        else if (cfg_->lineDetectAlgorithm == 3)
-        {
-            for (const auto& line : lines)
-            {
-                cv::line(ctx.lineDetect,
-                        cv::Point(line[0], line[1]),
-                        cv::Point(line[2], line[3]),
-                        cv::Scalar(0, 255, 0), 2);
-            }
         }
     }
 
@@ -610,11 +592,8 @@ void StepReferenceLineFilter::run(PipelineContext& ctx)
         detectLinesLSD(maskedGray, allLines);
     } else if (cfg_->lineDetectAlgorithm == 2) {
         detectLinesEDlines(maskedGray, allLines);
-    } else if (cfg_->lineDetectAlgorithm == 3) {
-        // ⚠️ EdgesSubPix 功能已禁用（依赖 Halcon）
-        qDebug() << "[ReferenceLineFilter] EdgesSubPix 算法已禁用，请选择其他算法";
     }
-    
+
     // 计算参考线角度
     double refAngle = calculateReferenceLineAngle(cfg_);
     

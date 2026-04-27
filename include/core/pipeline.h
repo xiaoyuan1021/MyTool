@@ -68,19 +68,13 @@ struct PipelineConfig
     // int maxRegionCount = 0; // 例如：0 表示“不能有缺陷”
 
     // ========== 直线检测参数 ==========
-    int lineDetectAlgorithm = 0;  // 0=HoughP, 1=LSD, 2=EDline, 3=EdgesSubPix(Halcon)
+    int lineDetectAlgorithm = 0;  // 0=HoughP, 1=LSD, 2=EDline
     double lineRho = 1.0;
     double lineTheta = CV_PI / 180.0;
     int lineThreshold = 50;
     double lineMinLength = 30.0;
     double lineMaxGap = 10.0;
     bool enableLineDetect = false;
-    
-    // EdgesSubPix参数(Halcon)
-    QString edgeFilter = "canny";  // 滤波器类型: canny, lanser, deriche1, deriche2, shen
-    double edgeAlpha = 1.0;        // 平滑参数
-    int edgeLow = 20;              // 低阈值
-    int edgeHigh = 40;             // 高阈值
 
     // ========== 参考线匹配参数 ==========
     bool enableReferenceLineMatch = false;

@@ -55,11 +55,6 @@
          <string>EDLines</string>
         </property>
        </item>
-       <item>
-        <property name="text">
-         <string>EdgesSubPix(Halcon)</string>
-        </property>
-       </item>
       </widget>
      </item>
      <item>

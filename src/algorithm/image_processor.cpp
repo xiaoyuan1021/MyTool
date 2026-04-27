@@ -57,7 +57,6 @@ cv::Mat ImageProcessor::executeAlgorithmQueue(const cv::Mat &src, const QVector<
     }
 
     try {
-        // ✅ 使用OpenCV算法替代Halcon
         cv::Mat currentMat = gray.clone();
         int executedSteps = 0;
 

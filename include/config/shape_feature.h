@@ -4,8 +4,8 @@
 
 /**
  * 形状特征类型枚举
- * 
- * 对应Halcon的SelectShape算子支持的特征
+ *
+ * 用于筛选和描述连通区域几何属性
  */
 enum class ShapeFeature
 {
@@ -19,7 +19,7 @@ enum class ShapeFeature
 };
 
 /**
- * 获取特征的Halcon字符串名称
+ * 获取特征的字符串名称（OpenCV 兼容命名）
  */
 inline const char* getFeatureName(ShapeFeature feature)
 {

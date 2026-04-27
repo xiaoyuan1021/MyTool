@@ -103,9 +103,6 @@ void LineDetectTabWidget::onLineAlgorithmChanged(int value)
     case 2: // EDline
         m_ui->stackedWidget_LineDetect->setCurrentIndex(0);
         break;
-    case 3: // EdgesSubPix(Halcon)
-        m_ui->stackedWidget_LineDetect->setCurrentIndex(0);
-        break;
     default:
         m_ui->stackedWidget_LineDetect->setCurrentIndex(0);
     }
