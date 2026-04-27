@@ -142,9 +142,6 @@ void MainWindow::setupManagers()
     connect(m_imageListManager, &ImageListManager::imageDisplayRequested, this, &MainWindow::showImage);
     connect(m_imageListManager, &ImageListManager::processRequested, this, [this]() { requestRefresh(); });
 
-    connect(&m_roiManager, &RoiManager::currentImageChanged, this, [this](const QString&) {
-        m_roiUiController->syncRoiConfigsToWidget();
-    });
 }
 
 void MainWindow::setupControllers()
@@ -225,6 +222,11 @@ void MainWindow::setupControllers()
         } else {
             QMessageBox::warning(this, "警告", "请先选择要删除的检测项");
         }
+    });
+
+    // roiManager → roiUiController 同步连接（必须在所有 controller 创建完成后）
+    connect(&m_roiManager, &RoiManager::currentImageChanged, this, [this](const QString&) {
+        m_roiUiController->syncRoiConfigsToWidget();
     });
 }
 
