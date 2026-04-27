@@ -1,6 +1,7 @@
 #include "line_tab_widget.h"
 #include "ui_line_tab.h"
 #include "logger.h"
+#include "ui/slider_spinbox_binder.h"
 #include <QMessageBox>
 
 LineDetectTabWidget::LineDetectTabWidget(PipelineManager* pipelineManager,
@@ -57,21 +58,9 @@ void LineDetectTabWidget::initialize()
     connect(m_ui->SpinBox_HoughPMinLineLength, QOverload<int>::of(&QSpinBox::valueChanged), this, &LineDetectTabWidget::onLineMinLengthChanged);
     connect(m_ui->SpinBox_HoughPMaxLineGap, QOverload<int>::of(&QSpinBox::valueChanged), this, &LineDetectTabWidget::onLineMaxGapChanged);
 
-    // Slider改变时更新SpinBox
-    connect(m_ui->Slider_HoughPThreshold, &QSlider::valueChanged,
-            m_ui->SpinBox_HoughPThreshold, &QSpinBox::setValue);
-    connect(m_ui->Slider_HoughPMinLineLength, &QSlider::valueChanged,
-            m_ui->SpinBox_HoughPMinLineLength, &QSpinBox::setValue);
-    connect(m_ui->Slider_HoughPMaxLineGap, &QSlider::valueChanged,
-            m_ui->SpinBox_HoughPMaxLineGap, &QSpinBox::setValue);
-
-    // SpinBox改变时更新Slider
-    connect(m_ui->SpinBox_HoughPThreshold, QOverload<int>::of(&QSpinBox::valueChanged),
-            m_ui->Slider_HoughPThreshold, &QSlider::setValue);
-    connect(m_ui->SpinBox_HoughPMinLineLength, QOverload<int>::of(&QSpinBox::valueChanged),
-            m_ui->Slider_HoughPMinLineLength, &QSlider::setValue);
-    connect(m_ui->SpinBox_HoughPMaxLineGap, QOverload<int>::of(&QSpinBox::valueChanged),
-            m_ui->Slider_HoughPMaxLineGap, &QSlider::setValue);
+    bindSliderAndSpinBox(m_ui->Slider_HoughPThreshold, m_ui->SpinBox_HoughPThreshold);
+    bindSliderAndSpinBox(m_ui->Slider_HoughPMinLineLength, m_ui->SpinBox_HoughPMinLineLength);
+    bindSliderAndSpinBox(m_ui->Slider_HoughPMaxLineGap, m_ui->SpinBox_HoughPMaxLineGap);
 
     // ========== 参考线匹配信号连接 ==========
     connect(m_ui->chk_enableReferenceLine, &QCheckBox::toggled, this, &LineDetectTabWidget::onReferenceLineEnabledChanged);

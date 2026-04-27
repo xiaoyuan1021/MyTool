@@ -1,6 +1,7 @@
 #include "enhance_tab_widget.h"
 #include "ui_enhance_tab.h"
 #include "config/constants.h"
+#include "ui/slider_spinbox_binder.h"
 
 EnhanceTabWidget::EnhanceTabWidget(PipelineManager* pipelineManager, QWidget* parent)
     : QWidget(parent)
@@ -15,29 +16,25 @@ EnhanceTabWidget::EnhanceTabWidget(PipelineManager* pipelineManager, QWidget* pa
     m_ui->Slider_brightness->setValue(0);
     m_ui->spinBox_brightness->setRange(-100, 100);
     m_ui->spinBox_brightness->setValue(0);
-    connect(m_ui->Slider_brightness, &QSlider::valueChanged, m_ui->spinBox_brightness, &QSpinBox::setValue);
-    connect(m_ui->spinBox_brightness, QOverload<int>::of(&QSpinBox::valueChanged), m_ui->Slider_brightness, &QSlider::setValue);
+    bindSliderAndSpinBox(m_ui->Slider_brightness, m_ui->spinBox_brightness);
 
     m_ui->Slider_contrast->setRange(0, 300);
     m_ui->Slider_contrast->setValue(100);
     m_ui->spinBox_contrast->setRange(0, 300);
     m_ui->spinBox_contrast->setValue(100);
-    connect(m_ui->Slider_contrast, &QSlider::valueChanged, m_ui->spinBox_contrast, &QSpinBox::setValue);
-    connect(m_ui->spinBox_contrast, QOverload<int>::of(&QSpinBox::valueChanged), m_ui->Slider_contrast, &QSlider::setValue);
+    bindSliderAndSpinBox(m_ui->Slider_contrast, m_ui->spinBox_contrast);
 
     m_ui->Slider_gamma->setRange(10, 300);
     m_ui->Slider_gamma->setValue(100);
     m_ui->spinBox_gamma->setRange(10, 300);
     m_ui->spinBox_gamma->setValue(100);
-    connect(m_ui->Slider_gamma, &QSlider::valueChanged, m_ui->spinBox_gamma, &QSpinBox::setValue);
-    connect(m_ui->spinBox_gamma, QOverload<int>::of(&QSpinBox::valueChanged), m_ui->Slider_gamma, &QSlider::setValue);
+    bindSliderAndSpinBox(m_ui->Slider_gamma, m_ui->spinBox_gamma);
 
     m_ui->Slider_sharpen->setRange(0, 500);
     m_ui->Slider_sharpen->setValue(100);
     m_ui->spinBox_sharpen->setRange(0, 500);
     m_ui->spinBox_sharpen->setValue(100);
-    connect(m_ui->Slider_sharpen, &QSlider::valueChanged, m_ui->spinBox_sharpen, &QSpinBox::setValue);
-    connect(m_ui->spinBox_sharpen, QOverload<int>::of(&QSpinBox::valueChanged), m_ui->Slider_sharpen, &QSlider::setValue);
+    bindSliderAndSpinBox(m_ui->Slider_sharpen, m_ui->spinBox_sharpen);
 
     m_enhancementHistory.push(captureState());
     updateUndoUi();

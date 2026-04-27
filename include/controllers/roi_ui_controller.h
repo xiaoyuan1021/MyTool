@@ -81,6 +81,9 @@ public:
     // 设置RoiListWidget并建立信号连接
     void setupRoiListWidget(RoiListWidget* roiListWidget);
 
+    /// 更新当前选中ROI的 Blob 检测项判定阈值（由 JudgeTab 触发）
+    void updateBlobDetectionConfig(int minCount, int maxCount);
+
     /// 将MainWindow相关的信号连接移入Controller（从MainWindow迁移）
     void setupMainWindowConnections(TabManager* tabManager);
 

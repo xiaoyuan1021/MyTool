@@ -165,8 +165,7 @@ void MainWindow::setupControllers()
 
     // 【修复】SignalConnector 必须在 controller 创建之后才能创建（需要有效的 roiUiController 指针）
     m_signalConnector = new SignalConnector(this, m_pipelineManager, &m_roiManager,
-                                           m_view, m_tabManager, m_roiUiController,
-                                           m_detectionUiController, this);
+                                           m_view, m_roiUiController, this);
     connect(m_tabManager, &TabManager::tabCreated,
             m_signalConnector, &SignalConnector::connectTabSignals);
 

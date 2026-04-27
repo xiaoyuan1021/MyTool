@@ -4,6 +4,7 @@
 #include "logger.h"
 #include "image_utils.h"
 #include "widgets/enhance_tab_widget.h"
+#include "config/detection_config_types.h"
 
 #include "widgets/tab_manager.h"
 
@@ -756,4 +757,22 @@ void RoiUiController::setupMainWindowConnections(TabManager* tabManager)
             );
         }
     });
+}
+
+void RoiUiController::updateBlobDetectionConfig(int minCount, int maxCount)
+{
+    QString roiId = getCurrentSelectedRoiId();
+    RoiConfig* roi = m_roiManager.getRoiConfig(roiId);
+    if (!roi) return;
+    for (auto& detItem : roi->detectionItems) {
+        if (detItem.type == DetectionType::Blob && detItem.enabled) {
+            BlobAnalysisConfig blobConfig;
+            blobConfig.fromJson(detItem.config);
+            blobConfig.minBlobCount = minCount;
+            blobConfig.maxBlobCount = maxCount;
+            detItem.config = blobConfig.toJson();
+            Logger::instance()->info(QString("[RoiUiController] 判定阈值已更新: min=%1, max=%2").arg(minCount).arg(maxCount));
+            break;
+        }
+    }
 }

@@ -23,18 +23,14 @@ SignalConnector::SignalConnector(
     PipelineManager* pipelineManager,
     RoiManager* roiManager,
     ImageView* view,
-    TabManager* tabManager,
     RoiUiController* roiUiController,
-    DetectionUiController* detectionUiController,
     QObject* parent)
     : QObject(parent)
     , m_mainWindow(mainWindow)
     , m_pipelineManager(pipelineManager)
     , m_roiManager(roiManager)
     , m_view(view)
-    , m_tabManager(tabManager)
     , m_roiUiController(roiUiController)
-    , m_detectionUiController(detectionUiController)
 {
 }
 
@@ -152,26 +148,8 @@ void SignalConnector::connectExtractTab(QWidget* widget)
 void SignalConnector::connectJudgeTab(QWidget* widget)
 {
     auto* tab = qobject_cast<JudgeTabWidget*>(widget);
-    // 【Bug1修复补充】当判定Tab的min/max值变化时，同步写回当前选中ROI的DetectionItem.config
     connect(tab, &JudgeTabWidget::judgeConfigChanged,
-            m_mainWindow, [this](int minCount, int maxCount) {
-                QString roiId = m_roiUiController->getCurrentSelectedRoiId();
-                RoiConfig* roi = m_roiManager->getRoiConfig(roiId);
-                if (!roi) return;
-                // 找到当前选中的Blob检测项，更新其config中的minBlobCount/maxBlobCount
-                for (auto& detItem : roi->detectionItems) {
-                    if (detItem.type == DetectionType::Blob && detItem.enabled) {
-                        BlobAnalysisConfig blobConfig;
-                        blobConfig.fromJson(detItem.config);
-                        blobConfig.minBlobCount = minCount;
-                        blobConfig.maxBlobCount = maxCount;
-                        detItem.config = blobConfig.toJson();
-                        Logger::instance()->info(QString("[SignalConnector] 判定Tab值变化，同步到DetectionItem.config: min=%1, max=%2")
-                            .arg(minCount).arg(maxCount));
-                        break;
-                    }
-                }
-            });
+            m_roiUiController, &RoiUiController::updateBlobDetectionConfig);
 }
 
 void SignalConnector::connectLineTab(QWidget* widget)

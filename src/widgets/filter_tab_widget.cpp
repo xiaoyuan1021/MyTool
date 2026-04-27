@@ -2,6 +2,7 @@
 #include "ui_filter_tab.h"
 #include "logger.h"
 #include "config/constants.h"
+#include "ui/slider_spinbox_binder.h"
 #include <QDebug>
 
 FilterTabWidget::FilterTabWidget(PipelineManager* pipelineManager, QWidget* parent)
@@ -99,40 +100,21 @@ FilterTabWidget::~FilterTabWidget()
 
 void FilterTabWidget::setupConnections()
 {
-    // ========== Slider 和 SpinBox 同步 ==========
-    // 灰度
-    connect(m_ui->Slider_grayLow, &QSlider::valueChanged, m_ui->spinBox_grayLow, &QSpinBox::setValue);
-    connect(m_ui->spinBox_grayLow, QOverload<int>::of(&QSpinBox::valueChanged), m_ui->Slider_grayLow, &QSlider::setValue);
-    connect(m_ui->Slider_grayHigh, &QSlider::valueChanged, m_ui->spinBox_grayHigh, &QSpinBox::setValue);
-    connect(m_ui->spinBox_grayHigh, QOverload<int>::of(&QSpinBox::valueChanged), m_ui->Slider_grayHigh, &QSlider::setValue);
-
-    // RGB
-    connect(m_ui->Slider_rgb_R_Low, &QSlider::valueChanged, m_ui->spinBox_rgb_R_Low, &QSpinBox::setValue);
-    connect(m_ui->spinBox_rgb_R_Low, QOverload<int>::of(&QSpinBox::valueChanged), m_ui->Slider_rgb_R_Low, &QSlider::setValue);
-    connect(m_ui->Slider_rgb_R_High, &QSlider::valueChanged, m_ui->spinBox_rgb_R_High, &QSpinBox::setValue);
-    connect(m_ui->spinBox_rgb_R_High, QOverload<int>::of(&QSpinBox::valueChanged), m_ui->Slider_rgb_R_High, &QSlider::setValue);
-    connect(m_ui->Slider_rgb_G_Low, &QSlider::valueChanged, m_ui->spinBox_rgb_G_Low, &QSpinBox::setValue);
-    connect(m_ui->spinBox_rgb_G_Low, QOverload<int>::of(&QSpinBox::valueChanged), m_ui->Slider_rgb_G_Low, &QSlider::setValue);
-    connect(m_ui->Slider_rgb_G_High, &QSlider::valueChanged, m_ui->spinBox_rgb_G_High, &QSpinBox::setValue);
-    connect(m_ui->spinBox_rgb_G_High, QOverload<int>::of(&QSpinBox::valueChanged), m_ui->Slider_rgb_G_High, &QSlider::setValue);
-    connect(m_ui->Slider_rgb_B_Low, &QSlider::valueChanged, m_ui->spinBox_rgb_B_Low, &QSpinBox::setValue);
-    connect(m_ui->spinBox_rgb_B_Low, QOverload<int>::of(&QSpinBox::valueChanged), m_ui->Slider_rgb_B_Low, &QSlider::setValue);
-    connect(m_ui->Slider_rgb_B_High, &QSlider::valueChanged, m_ui->spinBox_rgb_B_High, &QSpinBox::setValue);
-    connect(m_ui->spinBox_rgb_B_High, QOverload<int>::of(&QSpinBox::valueChanged), m_ui->Slider_rgb_B_High, &QSlider::setValue);
-
-    // HSV
-    connect(m_ui->Slider_hsv_H_Low, &QSlider::valueChanged, m_ui->spinBox_hsv_H_Low, &QSpinBox::setValue);
-    connect(m_ui->spinBox_hsv_H_Low, QOverload<int>::of(&QSpinBox::valueChanged), m_ui->Slider_hsv_H_Low, &QSlider::setValue);
-    connect(m_ui->Slider_hsv_H_High, &QSlider::valueChanged, m_ui->spinBox_hsv_H_High, &QSpinBox::setValue);
-    connect(m_ui->spinBox_hsv_H_High, QOverload<int>::of(&QSpinBox::valueChanged), m_ui->Slider_hsv_H_High, &QSlider::setValue);
-    connect(m_ui->Slider_hsv_S_Low, &QSlider::valueChanged, m_ui->spinBox_hsv_S_Low, &QSpinBox::setValue);
-    connect(m_ui->spinBox_hsv_S_Low, QOverload<int>::of(&QSpinBox::valueChanged), m_ui->Slider_hsv_S_Low, &QSlider::setValue);
-    connect(m_ui->Slider_hsv_S_High, &QSlider::valueChanged, m_ui->spinBox_hsv_S_High, &QSpinBox::setValue);
-    connect(m_ui->spinBox_hsv_S_High, QOverload<int>::of(&QSpinBox::valueChanged), m_ui->Slider_hsv_S_High, &QSlider::setValue);
-    connect(m_ui->Slider_hsv_V_Low, &QSlider::valueChanged, m_ui->spinBox_hsv_V_Low, &QSpinBox::setValue);
-    connect(m_ui->spinBox_hsv_V_Low, QOverload<int>::of(&QSpinBox::valueChanged), m_ui->Slider_hsv_V_Low, &QSlider::setValue);
-    connect(m_ui->Slider_hsv_V_High, &QSlider::valueChanged, m_ui->spinBox_hsv_V_High, &QSpinBox::setValue);
-    connect(m_ui->spinBox_hsv_V_High, QOverload<int>::of(&QSpinBox::valueChanged), m_ui->Slider_hsv_V_High, &QSlider::setValue);
+    // ========== Slider ↔ SpinBox 双向同步 ==========
+    bindSliderAndSpinBox(m_ui->Slider_grayLow, m_ui->spinBox_grayLow);
+    bindSliderAndSpinBox(m_ui->Slider_grayHigh, m_ui->spinBox_grayHigh);
+    bindSliderAndSpinBox(m_ui->Slider_rgb_R_Low, m_ui->spinBox_rgb_R_Low);
+    bindSliderAndSpinBox(m_ui->Slider_rgb_R_High, m_ui->spinBox_rgb_R_High);
+    bindSliderAndSpinBox(m_ui->Slider_rgb_G_Low, m_ui->spinBox_rgb_G_Low);
+    bindSliderAndSpinBox(m_ui->Slider_rgb_G_High, m_ui->spinBox_rgb_G_High);
+    bindSliderAndSpinBox(m_ui->Slider_rgb_B_Low, m_ui->spinBox_rgb_B_Low);
+    bindSliderAndSpinBox(m_ui->Slider_rgb_B_High, m_ui->spinBox_rgb_B_High);
+    bindSliderAndSpinBox(m_ui->Slider_hsv_H_Low, m_ui->spinBox_hsv_H_Low);
+    bindSliderAndSpinBox(m_ui->Slider_hsv_H_High, m_ui->spinBox_hsv_H_High);
+    bindSliderAndSpinBox(m_ui->Slider_hsv_S_Low, m_ui->spinBox_hsv_S_Low);
+    bindSliderAndSpinBox(m_ui->Slider_hsv_S_High, m_ui->spinBox_hsv_S_High);
+    bindSliderAndSpinBox(m_ui->Slider_hsv_V_Low, m_ui->spinBox_hsv_V_Low);
+    bindSliderAndSpinBox(m_ui->Slider_hsv_V_High, m_ui->spinBox_hsv_V_High);
 
     // ========== 只有 Slider 变化才触发防抖和参数同步 ==========
     // 灰度滑块

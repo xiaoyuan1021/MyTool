@@ -7,9 +7,7 @@ class MainWindow;
 class PipelineManager;
 class RoiManager;
 class ImageView;
-class TabManager;
 class RoiUiController;
-class DetectionUiController;
 
 /**
  * 信号连接器 - 负责建立各模块之间的信号连接
@@ -31,9 +29,7 @@ public:
         PipelineManager* pipelineManager,
         RoiManager* roiManager,
         ImageView* view,
-        TabManager* tabManager,
         RoiUiController* roiUiController,
-        DetectionUiController* detectionUiController,
         QObject* parent = nullptr
     );
 
@@ -45,9 +41,7 @@ private:
     PipelineManager* m_pipelineManager;
     RoiManager* m_roiManager;
     ImageView* m_view;
-    TabManager* m_tabManager;
     RoiUiController* m_roiUiController;
-    DetectionUiController* m_detectionUiController;
 
     // 各 Tab 的独立连接方法
     void connectImageTab(QWidget* widget);
