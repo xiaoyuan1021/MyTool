@@ -100,7 +100,7 @@ void MainWindow::setupUI()
 
 void MainWindow::setupConnections()
 {
-    connect(ui->tabWidget, &QTabWidget::currentChanged, this, &MainWindow::on_tabWidget_currentChanged);
+    // 注意：on_tabWidget_currentChanged 已由 ui->setupUi 内部的 connectSlotsByName 自动连接，无需手动连接
 
     // FileManager信号
     connect(m_fileManager, &FileManager::imageLoaded, this, [this](const cv::Mat& img) {

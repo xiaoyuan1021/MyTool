@@ -216,5 +216,36 @@ void EnhanceTabWidget::setEnhanceConfig(int brightness, int contrast, int gamma,
     state.contrast = contrast;
     state.gamma = gamma;
     state.sharpen = sharpen;
-    applyState(state);
+    applyStateQuiet(state);
+}
+
+void EnhanceTabWidget::applyStateQuiet(const EnhancementState &state)
+{
+    // 阻断所有slider和spinbox信号，防止级联触发processRequested
+    const QSignalBlocker b1(m_ui->Slider_brightness);
+    const QSignalBlocker b2(m_ui->Slider_contrast);
+    const QSignalBlocker b3(m_ui->Slider_gamma);
+    const QSignalBlocker b4(m_ui->Slider_sharpen);
+    const QSignalBlocker sb1(m_ui->spinBox_brightness);
+    const QSignalBlocker sb2(m_ui->spinBox_contrast);
+    const QSignalBlocker sb3(m_ui->spinBox_gamma);
+    const QSignalBlocker sb4(m_ui->spinBox_sharpen);
+
+    m_ui->Slider_brightness->setValue(state.brightness);
+    m_ui->Slider_contrast->setValue(state.contrast);
+    m_ui->Slider_gamma->setValue(state.gamma);
+    m_ui->Slider_sharpen->setValue(state.sharpen);
+
+    m_ui->spinBox_brightness->setValue(state.brightness);
+    m_ui->spinBox_contrast->setValue(state.contrast);
+    m_ui->spinBox_gamma->setValue(state.gamma);
+    m_ui->spinBox_sharpen->setValue(state.sharpen);
+
+    // 仅同步参数到Pipeline，不触发处理
+    PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
+    cfg.brightness = state.brightness;
+    cfg.contrast = state.contrast / 100.0;
+    cfg.gamma = state.gamma / 100.0;
+    cfg.sharpen = state.sharpen / 100.0;
+    m_pipelineManager->setConfig(cfg);
 }

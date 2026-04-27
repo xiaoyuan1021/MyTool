@@ -62,7 +62,10 @@ private:
         }   
     };
     EnhancementState captureState() const;
+    /// 应用状态并触发处理（用户交互时使用）
     void applyState(const EnhancementState& state);
+    /// 仅设置UI值，不触发处理（外部同步配置时使用）
+    void applyStateQuiet(const EnhancementState& state);
     void pushSnapshot(const EnhancementState& state);
     void updateUndoUi();
     void syncConfigToPipeline();
