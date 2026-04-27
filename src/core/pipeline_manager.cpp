@@ -47,9 +47,8 @@ void PipelineManager::clearShapeFilter()
     m_config.shapeFilter.clear();
 }
 
-void PipelineManager::enableShapeFilter(bool enable)
+void PipelineManager::enableShapeFilter(bool /*enable*/)
 {
-    //m_config.shapeFilter.enabled = enable;
 }
 
 void PipelineManager::setFeatureRange(ShapeFeature feature, double minValue, double maxValue)
@@ -198,10 +197,8 @@ void PipelineManager::initPipeline()
     m_pipeline.add(std::make_unique<StepAlgorithmQueue>(m_processor.get(), &m_algorithmQueue));
     m_pipeline.add(std::make_unique<StepShapeFilter>(&m_config));
     m_pipeline.add(std::make_unique<StepLineDetect>(&m_config));
-    m_pipeline.add(std::make_unique<StepReferenceLineFilter>(&m_config));  // 添加参考线匹配步骤
-    m_pipeline.add(std::make_unique<StepBarcodeRecognition>(&m_config.barcode));  // 添加条码识别步骤
-
-    //qDebug() << "[PipelineManager] Pipeline初始化完成";
+    m_pipeline.add(std::make_unique<StepReferenceLineFilter>(&m_config));
+    m_pipeline.add(std::make_unique<StepBarcodeRecognition>(&m_config.barcode));
 }
 
 void PipelineManager::rebuildPipeline()

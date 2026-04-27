@@ -42,7 +42,6 @@ void TemplateTabWidget::initialize()
     connect(m_ui->btn_findTemplate, &QPushButton::clicked, this, &TemplateTabWidget::findTemplate);
     connect(m_ui->btn_saveTemplate, &QPushButton::clicked, this, &TemplateTabWidget::saveTemplate);
     connect(m_ui->btn_loadTemplate, &QPushButton::clicked, this, &TemplateTabWidget::loadTemplate);
-    //connect(m_ui->btn_clearAllTemplates, &QPushButton::clicked, this, &TemplateTabWidget::clearAllTemplates);
     connect(m_ui->comboBox_matchType, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &TemplateTabWidget::onMatchTypeChanged);
 }
@@ -196,19 +195,6 @@ void TemplateTabWidget::findTemplate()
         QMessageBox::information(m_parent, "匹配结果", resultText);
     }
 }
-
-// void TemplateTabWidget::clearAllTemplates()
-// {
-//     QMessageBox::StandardButton reply = QMessageBox::question(
-//         m_parent, "确认", "确定要清空所有模板吗？",
-//         QMessageBox::Yes | QMessageBox::No);
-
-//     if (reply == QMessageBox::Yes)
-//     {
-//         clearTemplate();
-//         Logger::instance()->info("已清空所有模板");
-//     }
-// }
 
 void TemplateTabWidget::clearMatchResults()
 {

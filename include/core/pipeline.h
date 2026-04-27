@@ -60,12 +60,6 @@ struct PipelineConfig
 
     // ✅ 形状筛选配置（替换原来的 minArea/maxArea）
     ShapeFilterConfig shapeFilter;
-    // 判定
-    // double minArea = 50.0;//最小区域
-    // double maxArea = 1e18;//最大区域
-    // double minCircularity = 0.0;//最小圆度
-    // double maxCircularity = 1.0;//最大圆度
-    // int maxRegionCount = 0; // 例如：0 表示“不能有缺陷”
 
     // ========== 直线检测参数 ==========
     int lineDetectAlgorithm = 0;  // 0=HoughP, 1=LSD, 2=EDline

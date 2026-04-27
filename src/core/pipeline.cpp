@@ -2,16 +2,12 @@
 
 // ========== Pipeline类实现 ==========
 
-Pipeline::Pipeline() 
-{
-    //qDebug() << "[Pipeline] Pipeline实例创建";
-}
+Pipeline::Pipeline() = default;
 
 void Pipeline::add(std::unique_ptr<IPipelineStep> step)
 {
     if (step) {
         steps_.push_back(std::move(step));
-        //qDebug() << "[Pipeline] 添加步骤，当前步骤数:" << steps_.size();
     } else {
         qDebug() << "[Pipeline] 警告：尝试添加空步骤";
     }
@@ -29,14 +25,11 @@ void Pipeline::run(PipelineContext& ctx)
     for (size_t i = 0; i < steps_.size(); ++i) {
         auto& step = steps_[i];
         if (step) {
-            //qDebug() << "[Pipeline] 执行步骤" << (i + 1);
             step->run(ctx);
         } else {
             qDebug() << "[Pipeline] 警告：步骤" << (i + 1) << "为空，跳过";
         }
     }
-    
-    //qDebug() << "[Pipeline] 执行完成";
 }
 
 size_t Pipeline::stepCount() const

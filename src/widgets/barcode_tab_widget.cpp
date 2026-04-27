@@ -150,6 +150,4 @@ void BarcodeTabWidget::handleApply()
     {
         m_processCallback();
     }
-    
-    //qDebug() << "[BarcodeTab] 应用条码识别设置";
 }

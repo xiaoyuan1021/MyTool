@@ -72,11 +72,7 @@ cv::Mat ImageProcessor::executeAlgorithmQueue(const cv::Mat &src, const QVector<
                 continue;
             }
 
-            // qDebug() << QString("  执行步骤 %1: %2")
-            //                 .arg(executedSteps + 1)
-            //                 .arg(step.name);
-
-            // ✅ 直接在cv::Mat上使用OpenCV算法
+            // 直接在cv::Mat上使用OpenCV算法
             currentMat = OpenCVAlgorithm::execute(currentMat, step);
             executedSteps++;
         }
@@ -115,7 +111,6 @@ cv::Mat ImageProcessor::adjustParameter(const cv::Mat &src, int brightness, doub
     {
         cv::Mat blur;
         cv::GaussianBlur(dst,blur,cv::Size(0,0),1.0);
-        // dst = dst + sharpen * (dst - blur)
         cv::addWeighted(dst, 1.0 + sharpen,
                     blur, -sharpen,
                     0, dst);

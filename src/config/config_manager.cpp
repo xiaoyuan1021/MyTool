@@ -310,7 +310,6 @@ bool ConfigManager::loadConfig(AppConfig& config, const QString& filePath)
 
 QString ConfigManager::getDefaultConfigPath() const
 {
-    //QString configDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     QString appPath = QCoreApplication::applicationDirPath();
     QString rawPath = appPath + "/../../app_config.json";
     return QDir::cleanPath(rawPath);

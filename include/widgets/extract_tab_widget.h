@@ -37,7 +37,6 @@ private slots:
     void drawRegion();
     void clearRegion();
     void onFilterListItemClicked(QListWidgetItem* item);
-    //void getFilterConditions(QVector<FilterCondition>& conditions) const;
 
 private:
     void setupConnections();

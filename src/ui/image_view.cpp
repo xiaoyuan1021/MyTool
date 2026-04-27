@@ -469,11 +469,8 @@ void ImageView::mouseReleaseEvent(QMouseEvent *event)
             // ⭐ rect 是 pixmapItem 本地坐标，即图像坐标
             m_roiRectImg = m_roiRectItem->rect();
             m_roiReady=(m_roiRectImg.width()>2 && m_roiRectImg.height()>2);
-            //emit roiSelected(m_roiRectImg);
-            //finishRoiMode();
             if(m_roiReady)
             {
-                //qDebug()<<"[ROI] ready. Right click to crop:" << m_roiRectImg;
             }
         }
         event->accept();

@@ -1,4 +1,3 @@
-// imagelabel.h
 #ifndef IMAGE_VIEW_H
 #define IMAGE_VIEW_H
 
@@ -99,7 +98,6 @@ private:
 
     QGraphicsScene *m_scene;
     QGraphicsPixmapItem *m_pixmapItem;
-    // QImage m_image;
     QSize getImageSize() const
     {
         QPixmap pixmap = m_pixmapItem->pixmap();

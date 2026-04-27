@@ -155,9 +155,6 @@ void ProcessTabWidget::onAlgorithmSelectionChanged(QListWidgetItem* current, QLi
         loadAlgorithmParameters(newIndex);
         m_editingAlgorithmIndex = newIndex;
 
-        // m_ui->statusbar->showMessage(
-        //     QString("正在编辑: %1 (修改参数后点击其他项自动保存)")
-        //         .arg(current->text()), 3000);
     } else {
         m_editingAlgorithmIndex = -1;
     }
@@ -191,9 +188,6 @@ void ProcessTabWidget::saveCurrentEdit()
 
     m_pipelineManager->updateAlgorithmStep(m_editingAlgorithmIndex, step);
     emit algorithmChanged();
-
-    // Logger::instance()->info(QString("已保存算法 #%1: %2 的参数修改")
-    //     .arg(m_editingAlgorithmIndex + 1).arg(step.name));
 }
 
 void ProcessTabWidget::loadAlgorithmParameters(int index)

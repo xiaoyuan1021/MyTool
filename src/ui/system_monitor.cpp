@@ -206,7 +206,6 @@ void SystemMonitor::initPlatformResources()
     // 第一次采集（需要两次采集才能计算百分比）
     PdhCollectQueryData((PDH_HQUERY)m_cpuQuery);
 
-    //qDebug() << "[SystemMonitor] Windows PDH 初始化成功";
 }
 
 void SystemMonitor::cleanupPlatformResources()
@@ -421,13 +420,13 @@ void SystemMonitor::cleanupPlatformResources()
 
 double SystemMonitor::getCpuUsage()
 {
-    // TODO: 使用 host_processor_info 或 sysctl
+    // 当前仅实现 Windows PDH 路径，macOS 暂未支持
     return 0.0;
 }
 
 double SystemMonitor::getMemoryUsage(double& usedMB, double& totalMB)
 {
-    // TODO: 使用 host_statistics 或 sysctl
+    // 当前仅实现 Windows PDH 路径，macOS 暂未支持
     usedMB = 0.0;
     totalMB = 0.0;
     return 0.0;
