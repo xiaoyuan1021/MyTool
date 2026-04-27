@@ -75,17 +75,10 @@ QJsonObject AppConfig::toJson() const
     }
     json["algorithms"] = algorithmArray;
 
-    // 多图片ROI配置
-    json["currentImageId"] = currentImageId;
-    QJsonObject multiRoiObj;
-    for (auto it = multiRoiConfigs.constBegin(); it != multiRoiConfigs.constEnd(); ++it) {
-        QJsonArray roiConfigsArray;
-        for (const auto& config : it.value()) {
-            roiConfigsArray.append(config.toJson());
-        }
-        multiRoiObj[it.key()] = roiConfigsArray;
+    // RoiManager 导出数据（保持原始 JSON 格式）
+    if (!roiExportData.isEmpty()) {
+        json["roiExport"] = roiExportData;
     }
-    json["multiRoiConfigs"] = multiRoiObj;
 
     // 图片文件路径列表
     QJsonArray imagePathsArray;
@@ -102,6 +95,17 @@ QJsonObject AppConfig::toJson() const
         }
         json["imageIdToFilePath"] = mappingObj;
     }
+
+    // 条码识别配置
+    QJsonObject barcodeObj;
+    barcodeObj["enableBarcode"] = barcodeConfig.enableBarcode;
+    QJsonArray codeTypesArray;
+    for (const auto& ct : barcodeConfig.codeTypes) {
+        codeTypesArray.append(ct);
+    }
+    barcodeObj["codeTypes"] = codeTypesArray;
+    barcodeObj["maxNumSymbols"] = barcodeConfig.maxNumSymbols;
+    json["barcode"] = barcodeObj;
 
     // MQTT 配置
     json["mqtt"] = mqttConfig.toJson();
@@ -195,23 +199,24 @@ void AppConfig::fromJson(const QJsonObject& json)
         }
     }
 
-    // 多图片ROI配置
-    if (json.contains("currentImageId")) {
-        currentImageId = json["currentImageId"].toString();
-    }
-    if (json.contains("multiRoiConfigs")) {
-        multiRoiConfigs.clear();
-        QJsonObject multiRoiObj = json["multiRoiConfigs"].toObject();
-        for (auto it = multiRoiObj.begin(); it != multiRoiObj.end(); ++it) {
-            QList<RoiConfig> configs;
-            QJsonArray configsArray = it.value().toArray();
-            for (const auto& val : configsArray) {
-                RoiConfig config;
-                config.fromJson(val.toObject());
-                configs.append(config);
-            }
-            multiRoiConfigs[it.key()] = configs;
+    // RoiManager 导出数据
+    if (json.contains("roiExport")) {
+        roiExportData = json["roiExport"].toObject();
+    } else if (json.contains("multiRoiConfigs")) {
+        // 向后兼容：旧格式 multiRoiConfigs + currentImageId → 新格式
+        QJsonObject exportObj;
+        exportObj["version"] = "1.0";
+        exportObj["currentImageId"] = json["currentImageId"].toString("");
+        QJsonObject imagesObj;
+        QJsonObject oldMultiRoi = json["multiRoiConfigs"].toObject();
+        for (auto it = oldMultiRoi.begin(); it != oldMultiRoi.end(); ++it) {
+            QJsonObject imageObj;
+            imageObj["roiConfigs"] = it.value().toArray();
+            imageObj["activeRoiId"] = "";
+            imagesObj[it.key()] = imageObj;
         }
+        exportObj["images"] = imagesObj;
+        roiExportData = exportObj;
     }
 
     // 图片文件路径列表
@@ -230,6 +235,18 @@ void AppConfig::fromJson(const QJsonObject& json)
         for (auto it = mappingObj.begin(); it != mappingObj.end(); ++it) {
             imageIdToFilePath[it.key()] = it.value().toString();
         }
+    }
+
+    // 条码识别配置
+    if (json.contains("barcode")) {
+        QJsonObject barcodeObj = json["barcode"].toObject();
+        barcodeConfig.enableBarcode = barcodeObj["enableBarcode"].toBool(false);
+        barcodeConfig.codeTypes.clear();
+        QJsonArray codeTypesArray = barcodeObj["codeTypes"].toArray();
+        for (const auto& val : codeTypesArray) {
+            barcodeConfig.codeTypes.append(val.toString());
+        }
+        barcodeConfig.maxNumSymbols = barcodeObj["maxNumSymbols"].toInt(0);
     }
 
     // MQTT 配置

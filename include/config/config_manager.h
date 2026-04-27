@@ -10,6 +10,7 @@
 #include "shape_filter_types.h"
 #include "mqtt_config.h"
 #include "../algorithm/image_processor.h"
+#include "../core/pipeline_types.h"
 
 struct AppConfig
 {
@@ -38,9 +39,8 @@ struct AppConfig
     int maxRegionCount = 1000;
     int currentRegionCount = 0;
 
-    // 多图片ROI配置（新）
-    QMap<QString, QList<RoiConfig>> multiRoiConfigs;  // 图片ID -> ROI配置列表
-    QString currentImageId;                            // 当前图片ID
+    // RoiManager 导出的完整配置（保持原始 JSON 格式，避免序列化往返）
+    QJsonObject roiExportData;
 
     // 图片文件路径列表（有序，用于导入时重新加载图片）
     QStringList imageFilePaths;
@@ -50,6 +50,9 @@ struct AppConfig
 
     // MQTT 配置
     MqttConfig mqttConfig;
+
+    // 条码识别配置
+    BarcodeConfig barcodeConfig;
 
     // 转换为 JSON
     QJsonObject toJson() const;

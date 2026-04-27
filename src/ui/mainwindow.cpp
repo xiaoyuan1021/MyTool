@@ -477,6 +477,7 @@ void MainWindow::ensureTabExists(const QString& tabName)
         m_tabManager->getFilterTab(),
         m_tabManager->getExtractTab(),
         m_tabManager->getJudgeTab(),
-        m_tabManager->getProcessTab()
+        m_tabManager->getProcessTab(),
+        m_tabManager->getBarcodeTab()
     );
 }

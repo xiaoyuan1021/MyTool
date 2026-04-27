@@ -13,6 +13,7 @@ class FilterTabWidget;
 class ExtractTabWidget;
 class JudgeTabWidget;
 class ProcessTabWidget;
+class BarcodeTabWidget;
 
 /**
  * 配置控制器 - 负责配置的保存和加载
@@ -41,7 +42,8 @@ public:
         FilterTabWidget* filterTab,
         ExtractTabWidget* extractTab,
         JudgeTabWidget* judgeTab,
-        ProcessTabWidget* processTab
+        ProcessTabWidget* processTab,
+        BarcodeTabWidget* barcodeTab
     );
 
     // 保存配置
@@ -70,6 +72,7 @@ private:
     ExtractTabWidget* m_extractTabWidget;
     JudgeTabWidget* m_judgeTabWidget;
     ProcessTabWidget* m_processTabWidget;
+    BarcodeTabWidget* m_barcodeTabWidget;
 };
 
 #endif // CONFIG_CONTROLLER_H

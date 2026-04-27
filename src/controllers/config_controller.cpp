@@ -5,6 +5,7 @@
 #include "widgets/extract_tab_widget.h"
 #include "widgets/judge_tab_widget.h"
 #include "widgets/process_tab_widget.h"
+#include "widgets/barcode_tab_widget.h"
 
 #include <QFileDialog>
 #include <QMessageBox>
@@ -23,6 +24,7 @@ ConfigController::ConfigController(
     , m_extractTabWidget(nullptr)
     , m_judgeTabWidget(nullptr)
     , m_processTabWidget(nullptr)
+    , m_barcodeTabWidget(nullptr)
 {
 }
 
@@ -35,13 +37,15 @@ void ConfigController::setTabWidgets(
     FilterTabWidget* filterTab,
     ExtractTabWidget* extractTab,
     JudgeTabWidget* judgeTab,
-    ProcessTabWidget* processTab)
+    ProcessTabWidget* processTab,
+    BarcodeTabWidget* barcodeTab)
 {
     m_enhanceTabWidget = enhanceTab;
     m_filterTabWidget = filterTab;
     m_extractTabWidget = extractTab;
     m_judgeTabWidget = judgeTab;
     m_processTabWidget = processTab;
+    m_barcodeTabWidget = barcodeTab;
 }
 
 void ConfigController::saveConfig(QWidget* parentWidget)
@@ -115,26 +119,8 @@ void ConfigController::collectConfigFromUI(AppConfig& config)
         }
     }
     
-    // 收集多图片ROI配置
-    config.currentImageId = m_roiManager.getCurrentImageId();
-    // 直接从RoiManager导出所有配置
-    QJsonDocument allConfigsDoc = m_roiManager.exportAllConfigsToJson();
-    QJsonObject allConfigsObj = allConfigsDoc.object();
-    if (allConfigsObj.contains("images")) {
-        QJsonObject imagesObj = allConfigsObj["images"].toObject();
-        for (auto it = imagesObj.begin(); it != imagesObj.end(); ++it) {
-            QString imageId = it.key();
-            QJsonObject imageObj = it.value().toObject();
-            QList<RoiConfig> configs;
-            QJsonArray configsArray = imageObj["roiConfigs"].toArray();
-            for (const auto& val : configsArray) {
-                RoiConfig cfg;
-                cfg.fromJson(val.toObject());
-                configs.append(cfg);
-            }
-            config.multiRoiConfigs[imageId] = configs;
-        }
-    }
+    // 收集多图片ROI配置（保持原始 JSON 格式，避免序列化往返）
+    config.roiExportData = m_roiManager.exportAllConfigsToJson().object();
     
     // 收集增强参数
     if (m_enhanceTabWidget) {
@@ -171,6 +157,9 @@ void ConfigController::collectConfigFromUI(AppConfig& config)
     
     // 收集算法队列
     config.algorithmQueue = m_pipelineManager->getAlgorithmQueue();
+
+    // 收集条码识别配置
+    config.barcodeConfig = m_pipelineManager->getConfigSnapshot().barcode;
 }
 
 void ConfigController::applyConfigToUI(const AppConfig& config)
@@ -215,66 +204,39 @@ void ConfigController::applyConfigToUI(const AppConfig& config)
     }
     
     // ====== 第三步：恢复多图片ROI配置 ======
-    if (!config.multiRoiConfigs.isEmpty()) {
-        // 关键修复：通过 imageIdToFilePath 映射，将旧 imageId 关联到新加载图片的 imageId
-        const QStringList newImageIds = m_roiManager.getImageIds();
-        
-        // 构建 filePath -> newImageId 的映射
-        QMap<QString, QString> filePathToNewId;
-        for (const QString& newId : newImageIds) {
-            QString filePath = m_roiManager.getImageFilePath(newId);
-            if (!filePath.isEmpty()) {
-                filePathToNewId[filePath] = newId;
-            }
-        }
-        
-        // 构建 oldImageId -> newImageId 的映射
+    if (!config.roiExportData.isEmpty()) {
+        // 通过 filePath 桥接 oldImageId → newImageId
         QMap<QString, QString> oldToNewId;
         for (auto it = config.imageIdToFilePath.constBegin(); it != config.imageIdToFilePath.constEnd(); ++it) {
-            QString oldId = it.key();
-            QString filePath = it.value();
-            if (filePathToNewId.contains(filePath)) {
-                oldToNewId[oldId] = filePathToNewId[filePath];
+            if (filePathToNewId.contains(it.value())) {
+                oldToNewId[it.key()] = filePathToNewId[it.value()];
             }
         }
-        
-        // 如果没有 imageIdToFilePath 映射（旧格式配置文件），尝试按顺序匹配
-        if (oldToNewId.isEmpty() && !config.multiRoiConfigs.isEmpty()) {
-            auto oldIt = config.multiRoiConfigs.constBegin();
-            for (int i = 0; i < newImageIds.size() && oldIt != config.multiRoiConfigs.constEnd(); ++i, ++oldIt) {
-                oldToNewId[oldIt.key()] = newImageIds[i];
+
+        // 旧配置无 imageIdToFilePath 时按顺序匹配
+        if (oldToNewId.isEmpty()) {
+            QStringList newIds = m_roiManager.getImageIds();
+            QJsonObject images = config.roiExportData["images"].toObject();
+            auto imgIt = images.begin();
+            for (int i = 0; i < newIds.size() && imgIt != images.end(); ++i, ++imgIt) {
+                oldToNewId[imgIt.key()] = newIds[i];
             }
         }
-        
-        // 构建 JSON 文档，使用新的 imageId
-        QJsonObject root;
-        root["version"] = "1.0";
-        
-        // 映射 currentImageId
-        if (oldToNewId.contains(config.currentImageId)) {
-            root["currentImageId"] = oldToNewId[config.currentImageId];
-        } else {
-            root["currentImageId"] = config.currentImageId;
+
+        // 重构 JSON：用新 imageId 替换旧 imageId
+        QJsonObject exportJson = config.roiExportData;
+        QJsonObject oldImages = exportJson["images"].toObject();
+        QJsonObject newImages;
+        for (auto it = oldImages.begin(); it != oldImages.end(); ++it) {
+            newImages[oldToNewId.value(it.key(), it.key())] = it.value();
         }
-        
-        QJsonObject imagesObj;
-        for (auto it = config.multiRoiConfigs.constBegin(); it != config.multiRoiConfigs.constEnd(); ++it) {
-            QString oldImageId = it.key();
-            QString newImageId = oldToNewId.value(oldImageId, oldImageId);
-            
-            QJsonObject imageObj;
-            QJsonArray configsArray;
-            for (const auto& cfg : it.value()) {
-                configsArray.append(cfg.toJson());
-            }
-            imageObj["roiConfigs"] = configsArray;
-            imageObj["selectedRoiId"] = "";
-            imagesObj[newImageId] = imageObj;
-        }
-        root["images"] = imagesObj;
-        
-        m_roiManager.importAllConfigsFromJson(QJsonDocument(root));
-        Logger::instance()->info(QString("已恢复多图片ROI配置，共%1张图片").arg(config.multiRoiConfigs.size()));
+        exportJson["images"] = newImages;
+
+        QString oldId = exportJson["currentImageId"].toString();
+        exportJson["currentImageId"] = oldToNewId.value(oldId, oldId);
+
+        m_roiManager.importAllConfigsFromJson(QJsonDocument(exportJson));
+        Logger::instance()->info("已恢复多图片ROI配置");
     }
     
     // ====== 第四步：恢复增强参数 ======
@@ -323,7 +285,16 @@ void ConfigController::applyConfigToUI(const AppConfig& config)
     
     // 同步Pipeline中的提取配置
     m_pipelineManager->setShapeFilterConfig(config.shapeFilterConfig);
-    
+
+    // 恢复条码识别配置
+    if (m_barcodeTabWidget) {
+        m_barcodeTabWidget->setBarcodeConfig(config.barcodeConfig);
+    } else {
+        PipelineConfig pc = m_pipelineManager->getConfigSnapshot();
+        pc.barcode = config.barcodeConfig;
+        m_pipelineManager->setConfig(pc);
+    }
+
     // 发出配置已应用信号
     emit configApplied();
 }

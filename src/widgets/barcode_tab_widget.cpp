@@ -36,6 +36,25 @@ BarcodeTabWidget::~BarcodeTabWidget()
     delete m_ui;
 }
 
+void BarcodeTabWidget::setBarcodeConfig(const BarcodeConfig& config)
+{
+    m_ui->chk_enableBarcode->setChecked(config.enableBarcode);
+
+    if (!config.codeTypes.isEmpty()) {
+        QString codeType = config.codeTypes.first();
+        if (codeType == "auto") {
+            m_ui->comboBox_codeType->setCurrentIndex(0);
+        } else {
+            int idx = m_ui->comboBox_codeType->findText(codeType);
+            if (idx >= 0) {
+                m_ui->comboBox_codeType->setCurrentIndex(idx);
+            }
+        }
+    }
+
+    m_ui->spinBox_maxNum->setValue(config.maxNumSymbols);
+}
+
 BarcodeConfig BarcodeTabWidget::getBarcodeConfig() const
 {
     BarcodeConfig config;

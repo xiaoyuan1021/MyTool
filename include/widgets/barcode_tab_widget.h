@@ -19,6 +19,9 @@ public:
                               QWidget* parent = nullptr);
     ~BarcodeTabWidget();
     
+    // 设置条码配置（从外部恢复状态）
+    void setBarcodeConfig(const BarcodeConfig& config);
+
     // 更新识别结果表格
     void updateResultsTable(const QVector<BarcodeResult>& results);
     
