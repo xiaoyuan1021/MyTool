@@ -1,6 +1,7 @@
 #include "widgets/barcode_tab_widget.h"
 #include "ui_barcode_tab.h"
 #include <QDebug>
+#include <QSignalBlocker>
 
 BarcodeTabWidget::BarcodeTabWidget(PipelineManager* pipelineManager,
                                    std::function<void()> processCallback,
@@ -38,6 +39,11 @@ BarcodeTabWidget::~BarcodeTabWidget()
 
 void BarcodeTabWidget::setBarcodeConfig(const BarcodeConfig& config)
 {
+    // 阻止信号，避免不完整的中间状态写入 PipelineManager
+    QSignalBlocker blocker1(m_ui->chk_enableBarcode);
+    QSignalBlocker blocker2(m_ui->comboBox_codeType);
+    QSignalBlocker blocker3(m_ui->spinBox_maxNum);
+
     m_ui->chk_enableBarcode->setChecked(config.enableBarcode);
 
     if (!config.codeTypes.isEmpty()) {
@@ -53,6 +59,10 @@ void BarcodeTabWidget::setBarcodeConfig(const BarcodeConfig& config)
     }
 
     m_ui->spinBox_maxNum->setValue(config.maxNumSymbols);
+
+    // 手动更新 groupBox 和 Pipeline（使用完整的新配置）
+    m_ui->groupBox_settings->setEnabled(config.enableBarcode);
+    updatePipelineConfig();
 }
 
 BarcodeConfig BarcodeTabWidget::getBarcodeConfig() const

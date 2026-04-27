@@ -21,19 +21,19 @@
     },
     "filter": {
         "enabled": false,
-        "grayHigh": 255,
+        "grayHigh": 120,
         "grayLow": 0,
         "mode": 0
     },
     "imageIdToFilePath": {
-        "img_1777270277453_0": "F:/QT/MyTool/images/1_1.jpg"
+        "img_1777271542064_0": "F:/QT/MyTool/images/1_1.jpg"
     },
     "imagePaths": [
         "F:/QT/MyTool/images/1_1.jpg"
     ],
     "judge": {
         "currentRegionCount": 0,
-        "maxRegionCount": 1000,
+        "maxRegionCount": 100,
         "minRegionCount": 0
     },
     "mqtt": {
@@ -71,18 +71,18 @@
         }
     },
     "roi": {
-        "height": 563,
-        "width": 517,
-        "x": 486,
-        "y": 1603
+        "height": 707,
+        "width": 685,
+        "x": 425,
+        "y": 1588
     },
     "roiExport": {
-        "currentImageId": "img_1777270277453_0",
+        "currentImageId": "img_1777271542064_0",
         "images": {
-            "img_1777270277453_0": {
-                "activeRoiId": "roi_1777259080034_3203",
+            "img_1777271542064_0": {
+                "activeRoiId": "roi_1777271556567_4900",
                 "filePath": "F:/QT/MyTool/images/1_1.jpg",
-                "name": "1_1.jpg",
+                "name": "1_1",
                 "roiConfigs": [
                     {
                         "color": "#FF6B6B",
@@ -119,7 +119,7 @@
                                 },
                                 "description": "",
                                 "enabled": true,
-                                "itemId": "det_1777259085466_4164",
+                                "itemId": "det_1777271561388_4756",
                                 "itemName": "Blob分析",
                                 "parameters": {
                                 },
@@ -135,13 +135,13 @@
                             "gamma": 1,
                             "sharpen": 1
                         },
-                        "roiId": "roi_1777259074218_5889",
+                        "roiId": "roi_1777271546897_4182",
                         "roiName": "ROI_1",
                         "roiRect": {
-                            "height": 615.6000000000001,
-                            "width": 486.4000000000001,
-                            "x": 1246.4,
-                            "y": 927.2
+                            "height": 478.79999999999995,
+                            "width": 395.20000000000005,
+                            "x": 1276.8000000000002,
+                            "y": 965.2
                         }
                     },
                     {
@@ -168,7 +168,7 @@
                                 },
                                 "description": "",
                                 "enabled": true,
-                                "itemId": "det_1777259092369_3313",
+                                "itemId": "det_1777271567469_5292",
                                 "itemName": "条码检测",
                                 "parameters": {
                                 },
@@ -184,13 +184,13 @@
                             "gamma": 1,
                             "sharpen": 1
                         },
-                        "roiId": "roi_1777259080034_3203",
+                        "roiId": "roi_1777271556567_4900",
                         "roiName": "ROI_2",
                         "roiRect": {
-                            "height": 562.3999999999999,
-                            "width": 516.8,
-                            "x": 486.40000000000003,
-                            "y": 1603.6000000000001
+                            "height": 706.8000000000002,
+                            "width": 684.0000000000001,
+                            "x": 425.6,
+                            "y": 1588.4
                         }
                     }
                 ]

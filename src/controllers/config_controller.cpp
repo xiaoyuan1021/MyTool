@@ -158,8 +158,12 @@ void ConfigController::collectConfigFromUI(AppConfig& config)
     // 收集算法队列
     config.algorithmQueue = m_pipelineManager->getAlgorithmQueue();
 
-    // 收集条码识别配置
-    config.barcodeConfig = m_pipelineManager->getConfigSnapshot().barcode;
+    // 收集条码识别配置（从 Widget 直接收集，与其他 Tab 一致）
+    if (m_barcodeTabWidget) {
+        config.barcodeConfig = m_barcodeTabWidget->getBarcodeConfig();
+    } else {
+        config.barcodeConfig = m_pipelineManager->getConfigSnapshot().barcode;
+    }
 }
 
 void ConfigController::applyConfigToUI(const AppConfig& config)

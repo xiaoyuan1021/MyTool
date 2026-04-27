@@ -22,6 +22,7 @@
 
 // Tab Widget头文件
 #include "widgets/video_tab_widget.h"
+#include "widgets/barcode_tab_widget.h"
 
 #include <QFile>
 #include <QDir>
@@ -170,6 +171,26 @@ void MainWindow::setupControllers()
     // 全局信号连接
     connect(m_roiUiController, &RoiUiController::roiChanged, this, &MainWindow::processAndDisplay);
     connect(m_configController, &ConfigController::configApplied, this, &MainWindow::processAndDisplay);
+
+    // Tab懒加载时，更新ConfigController的tab指针
+    connect(m_tabManager, &TabManager::tabCreated, this, [this](const QString& name, QWidget*) {
+        m_configController->setTabWidgets(
+            m_tabManager->getEnhanceTab(),
+            m_tabManager->getFilterTab(),
+            m_tabManager->getExtractTab(),
+            m_tabManager->getJudgeTab(),
+            m_tabManager->getProcessTab(),
+            m_tabManager->getBarcodeTab()
+        );
+        // 新创建的条码tab需要从PipelineManager同步配置到UI
+        if (name == "条码") {
+            auto* barcodeTab = m_tabManager->getBarcodeTab();
+            if (barcodeTab) {
+                PipelineConfig pc = m_pipelineManager->getConfigSnapshot();
+                barcodeTab->setBarcodeConfig(pc.barcode);
+            }
+        }
+    });
 
     // 批量检测完成提示
     connect(m_autoDetectionController, &AutoDetectionController::detectionFinished,

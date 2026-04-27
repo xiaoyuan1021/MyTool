@@ -28,13 +28,13 @@ public:
     // 更新状态显示
     void updateStatus(const QString& status);
 
+    // 从UI获取配置
+    BarcodeConfig getBarcodeConfig() const;
+
 private:
     PipelineManager* m_pipelineManager;
     std::function<void()> m_processCallback;
     Ui::BarcodeTabForm* m_ui;
-    
-    // 从UI获取配置
-    BarcodeConfig getBarcodeConfig() const;
     
     // 更新Pipeline配置
     void updatePipelineConfig();
