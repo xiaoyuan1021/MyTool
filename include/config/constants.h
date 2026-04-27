@@ -15,7 +15,7 @@ namespace AppConstants {
     // ========== 防抖定时器时间 (ms) ==========
     
     /// 主处理流程防抖时间（Tab切换、参数变化等）
-    constexpr int DEBOUNCE_PROCESS_MS = 150;
+    constexpr int DEBOUNCE_PROCESS_MS = 300;
     
     /// 过滤器Tab防抖时间
     constexpr int DEBOUNCE_FILTER_MS = 50;

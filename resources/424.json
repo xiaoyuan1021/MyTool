@@ -20,8 +20,8 @@
         "mode": 0
     },
     "imagePaths": [
-        "F:/QT/MyTool/images/zidane.jpg",
-        "F:/QT/MyTool/images/1_1.jpg"
+        "images/zidane.jpg",
+        "images/1_1.jpg"
     ],
     "judge": {
         "currentRegionCount": 0,

@@ -54,10 +54,10 @@
         "mode": 1
     },
     "imageIdToFilePath": {
-        "img_1777027676183_0": "F:/QT/MyTool/images/1_1.jpg"
+        "img_1777027676183_0": "images/1_1.jpg"
     },
     "imagePaths": [
-        "F:/QT/MyTool/images/1_1.jpg"
+        "images/1_1.jpg"
     ],
     "judge": {
         "currentRegionCount": 6,

@@ -26,11 +26,6 @@ list(APPEND CMAKE_AUTOUIC_SEARCH_PATHS
 )
 
 # ============================================================
-# 编译器配置 - 使用 Ninja 生成器
-# ============================================================
-set(CMAKE_MAKE_PROGRAM "F:/IDE/Qt/Tools/Ninja/ninja.exe" CACHE PATH "Path to Ninja" FORCE)
-
-# ============================================================
 # 查找 Qt6 库
 # ============================================================
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)

@@ -146,7 +146,7 @@ void MainWindow::setupManagers()
     m_imageListManager = new ImageListManager(m_roiManager, m_fileManager, this, this);
     m_imageListManager->init(ui->listWidget_images, ui->btn_addImage, ui->btn_removeImage);
     connect(m_imageListManager, &ImageListManager::imageDisplayRequested, this, &MainWindow::showImage);
-    connect(m_imageListManager, &ImageListManager::processRequested, this, &MainWindow::processAndDisplay);
+    connect(m_imageListManager, &ImageListManager::processRequested, this, [this]() { requestRefresh(); });
 
     connect(&m_roiManager, &RoiManager::currentImageChanged, this, [this](const QString&) {
         m_roiUiController->syncRoiConfigsToWidget();
@@ -168,9 +168,9 @@ void MainWindow::setupControllers()
     m_detectionUiController->setupConnections(m_roiUiController,
         [this](const QString& tabName) { ensureTabExists(tabName); });
 
-    // 全局信号连接
-    connect(m_roiUiController, &RoiUiController::roiChanged, this, &MainWindow::processAndDisplay);
-    connect(m_configController, &ConfigController::configApplied, this, &MainWindow::processAndDisplay);
+    // 全局信号连接（统一走防抖 + 脏标记）
+    connect(m_roiUiController, &RoiUiController::roiChanged, this, [this]() { requestRefresh(); });
+    connect(m_configController, &ConfigController::configApplied, this, [this]() { requestRefresh(); });
 
     // Tab懒加载时，更新ConfigController的tab指针
     connect(m_tabManager, &TabManager::tabCreated, this, [this](const QString& name, QWidget*) {
@@ -254,6 +254,10 @@ void MainWindow::processAndDisplay()
         m_hasPendingProcess = true;
         return;
     }
+
+    // 脏标记检查：没有变化时跳过Pipeline
+    if (!m_needRefresh) return;
+    m_needRefresh = false;
 
     setDisplayModeForCurrentTab();
 
@@ -386,7 +390,13 @@ void MainWindow::on_tabWidget_currentChanged(int index)
 {
     if (m_isDestroying) return;
     if (m_roiManager.getFullImage().empty()) return;
-    processAndDisplay();
+
+    // 只有显示模式变化时才标记脏，避免无意义的Pipeline执行
+    DisplayConfig::Mode newMode = getDisplayModeForTab(index);
+    if (newMode != m_lastDisplayMode) {
+        m_lastDisplayMode = newMode;
+        requestRefresh();
+    }
 }
 
 // ========== 页面导航 ==========
@@ -447,7 +457,7 @@ void MainWindow::setupMqtt()
             this, [this]() {
         m_toast->showMessage("收到云端指令: capture");
         Logger::instance()->info("[MQTT] 收到capture指令，执行采集检测");
-        processAndDisplay();
+        requestRefresh();
     });
     connect(m_mqttManager, &MqttManager::startDetectionRequested,
             this, [this]() {
@@ -501,4 +511,21 @@ void MainWindow::ensureTabExists(const QString& tabName)
         m_tabManager->getProcessTab(),
         m_tabManager->getBarcodeTab()
     );
+}
+
+// ========== 刷新请求 ==========
+
+void MainWindow::requestRefresh()
+{
+    m_needRefresh = true;
+    m_processDebounceTimer->start();
+}
+
+DisplayConfig::Mode MainWindow::getDisplayModeForTab(int index) const
+{
+    if (index < 0 || index >= ui->tabWidget->count()) {
+        return DisplayConfig::Mode::Original;
+    }
+    QString tabName = ui->tabWidget->tabText(index);
+    return s_tabDisplayMode.value(tabName, DisplayConfig::Mode::Original);
 }

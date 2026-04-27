@@ -80,7 +80,7 @@ void SignalConnector::connectImageTab(QWidget* widget)
                 PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
                 cfg.channel = static_cast<PipelineConfig::Channel>(channel);
                 m_pipelineManager->setConfig(cfg);
-                m_mainWindow->processAndDisplay();
+                m_mainWindow->requestRefresh();
             });
 }
 
@@ -101,7 +101,7 @@ void SignalConnector::connectEnhanceTab(QWidget* widget)
 {
     auto* tab = qobject_cast<EnhanceTabWidget*>(widget);
     connect(tab, &EnhanceTabWidget::processRequested,
-            m_mainWindow, [this]() { m_mainWindow->processAndDisplay(); });
+            m_mainWindow, [this]() { m_mainWindow->requestRefresh(); });
     // 增强参数变化时，实时回写到当前ROI，防止多ROI间亮度/对比度等参数串扰
     connect(tab, &EnhanceTabWidget::enhanceConfigChanged,
             m_mainWindow, [this]() {
@@ -113,7 +113,7 @@ void SignalConnector::connectFilterTab(QWidget* widget)
 {
     auto* tab = qobject_cast<FilterTabWidget*>(widget);
     connect(tab, &FilterTabWidget::filterConfigChanged,
-            m_mainWindow, [this]() { m_mainWindow->processAndDisplay(); });
+            m_mainWindow, [this]() { m_mainWindow->requestRefresh(); });
 }
 
 void SignalConnector::connectTemplateTab(QWidget* widget)
@@ -139,14 +139,14 @@ void SignalConnector::connectProcessTab(QWidget* widget)
 {
     auto* tab = qobject_cast<ProcessTabWidget*>(widget);
     connect(tab, &ProcessTabWidget::algorithmChanged,
-            m_mainWindow, [this]() { m_mainWindow->processAndDisplay(); });
+            m_mainWindow, [this]() { m_mainWindow->requestRefresh(); });
 }
 
 void SignalConnector::connectExtractTab(QWidget* widget)
 {
     auto* tab = qobject_cast<ExtractTabWidget*>(widget);
     connect(tab, &ExtractTabWidget::extractionChanged,
-            m_mainWindow, [this]() { m_mainWindow->processAndDisplay(); });
+            m_mainWindow, [this]() { m_mainWindow->requestRefresh(); });
 }
 
 void SignalConnector::connectJudgeTab(QWidget* widget)
@@ -195,6 +195,6 @@ void SignalConnector::connectObjectDetectionTab(QWidget* widget)
             m_mainWindow, [this]() {
                 // 用户点击"应用"按钮加载模型成功后，触发处理
                 // pipeline 完成后会自动检查模型是否已加载并执行目标检测
-                m_mainWindow->processAndDisplay();
+                m_mainWindow->requestRefresh();
             });
 }

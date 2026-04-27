@@ -11,6 +11,7 @@
 #include "roi_manager.h"
 #include "core/mqtt_manager.h"
 #include "ui/toast_notification.h"
+#include "config/display_config.h"
 
 // 前向声明
 class ImageView;
@@ -51,6 +52,8 @@ public:
     /// 供外部模块请求处理
     void processAndDisplay();
     void showImage(const cv::Mat& img);
+    /// 请求刷新Pipeline（防抖 + 脏标记），供外部模块调用
+    void requestRefresh();
 
 private slots:
     void on_btn_openImg_clicked();
@@ -83,6 +86,11 @@ private:
     void setDisplayModeForCurrentTab();
     void ensureTabExists(const QString& tabName);
 
+    /// 获取指定Tab的显示模式
+    DisplayConfig::Mode getDisplayModeForTab(int index) const;
+    /// 当前显示模式，用于判断Tab切换是否需要刷新
+    DisplayConfig::Mode m_lastDisplayMode = DisplayConfig::Mode::Original;
+
     Ui::MainWindow *ui;
     ImageView *m_view = nullptr;
 
@@ -101,6 +109,7 @@ private:
     QFutureWatcher<PipelineContext> m_pipelineWatcher;
     bool m_isProcessing = false;
     bool m_hasPendingProcess = false;
+    bool m_needRefresh = false;
 
     // Controller对象
     RoiUiController* m_roiUiController = nullptr;

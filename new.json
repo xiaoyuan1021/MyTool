@@ -26,10 +26,10 @@
         "mode": 0
     },
     "imageIdToFilePath": {
-        "img_1777271542064_0": "F:/QT/MyTool/images/1_1.jpg"
+        "img_1777271542064_0": "images/1_1.jpg"
     },
     "imagePaths": [
-        "F:/QT/MyTool/images/1_1.jpg"
+        "images/1_1.jpg"
     ],
     "judge": {
         "currentRegionCount": 0,
@@ -81,7 +81,7 @@
         "images": {
             "img_1777271542064_0": {
                 "activeRoiId": "roi_1777271556567_4900",
-                "filePath": "F:/QT/MyTool/images/1_1.jpg",
+                "filePath": "images/1_1.jpg",
                 "name": "1_1",
                 "roiConfigs": [
                     {
