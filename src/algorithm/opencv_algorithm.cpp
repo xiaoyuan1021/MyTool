@@ -1,6 +1,7 @@
 #include "opencv_algorithm.h"
 #include "image_processor.h"
 #include "logger.h"
+#include <QDebug>
 
 OpenCVAlgorithm::OpenCVAlgorithm() {}
 

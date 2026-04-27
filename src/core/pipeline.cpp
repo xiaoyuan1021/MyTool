@@ -1,4 +1,5 @@
 #include "pipeline.h"
+#include "logger.h"
 
 // ========== Pipeline类实现 ==========
 
@@ -47,103 +48,118 @@ cv::Mat maskToGreenWhite(const cv::Mat &mask)
 {
     if (mask.empty()) return cv::Mat();
 
-    cv::Mat m;
-    if (mask.type() != CV_8U) {
-        mask.convertTo(m, CV_8U);
-    } else {
-        m = mask;
-    }
+    try {
+        cv::Mat m;
+        if (mask.type() != CV_8U) {
+            mask.convertTo(m, CV_8U);
+        } else {
+            m = mask;
+        }
 
-    // 创建输出图像（BGR格式）
-    cv::Mat result(m.rows, m.cols, CV_8UC3);
+        cv::Mat result(m.rows, m.cols, CV_8UC3);
 
-    for (int y = 0; y < m.rows; y++)
-    {
-        const uchar* mp = m.ptr<uchar>(y);
-        cv::Vec3b* rp = result.ptr<cv::Vec3b>(y);
-        for (int x = 0; x < m.cols; ++x)
+        for (int y = 0; y < m.rows; y++)
         {
-            // ✅ 反转逻辑：0=绿色(目标), 255=白色(背景)
-            if (mp[x] == 0)  // HRegion 内部 = 目标区域（焊点）
+            const uchar* mp = m.ptr<uchar>(y);
+            cv::Vec3b* rp = result.ptr<cv::Vec3b>(y);
+            for (int x = 0; x < m.cols; ++x)
             {
-                rp[x][0] = 0;    // B
-                rp[x][1] = 255;  // G - 绿色
-                rp[x][2] = 0;    // R
-            }
-            else  // HRegion 外部 = 背景区域
-            {
-                rp[x][0] = 255;  // B
-                rp[x][1] = 255;  // G - 白色
-                rp[x][2] = 255;  // R
+                if (mp[x] == 0)
+                {
+                    rp[x][0] = 0;
+                    rp[x][1] = 255;
+                    rp[x][2] = 0;
+                }
+                else
+                {
+                    rp[x][0] = 255;
+                    rp[x][1] = 255;
+                    rp[x][2] = 255;
+                }
             }
         }
-    }
 
-    return result;
+        return result;
+    } catch (const cv::Exception& ex) {
+        qDebug() << "[maskToGreenWhite] OpenCV错误:" << ex.what();
+        Logger::instance()->error(QString("maskToGreenWhite转换错误: %1").arg(ex.what()));
+        return cv::Mat();
+    } catch (...) {
+        qDebug() << "[maskToGreenWhite] 未知异常";
+        Logger::instance()->error("maskToGreenWhite转换未知异常");
+        return cv::Mat();
+    }
 }
 
 cv::Mat PipelineContext::getFinalDisplay() const
 {
-    using Mode = DisplayConfig::Mode;
+    try {
+        using Mode = DisplayConfig::Mode;
 
-    switch (displayConfig.mode)
-    {
-    case Mode::Original:
-        return srcBgr.empty() ? cv::Mat() : srcBgr;
-    
-    case Mode::Channel:
-        if (!channelImg.empty()) 
+        switch (displayConfig.mode)
         {
-            return channelImg;
-        }
-        else
-        {
-            return srcBgr;
-        }
-    case Mode::Enhanced:
-        if (!enhanced.empty()) {
-            // 如果是单通道，转成彩色
-            if (enhanced.channels() == 1) {
-                cv::Mat bgr;
-                cv::cvtColor(enhanced, bgr, cv::COLOR_GRAY2BGR);
-                return bgr;
+        case Mode::Original:
+            return srcBgr.empty() ? cv::Mat() : srcBgr;
+
+        case Mode::Channel:
+            if (!channelImg.empty())
+            {
+                return channelImg;
             }
-            return enhanced;
-        }
-        return srcBgr;
+            else
+            {
+                return srcBgr;
+            }
+        case Mode::Enhanced:
+            if (!enhanced.empty()) {
+                if (enhanced.channels() == 1) {
+                    cv::Mat bgr;
+                    cv::cvtColor(enhanced, bgr, cv::COLOR_GRAY2BGR);
+                    return bgr;
+                }
+                return enhanced;
+            }
+            return srcBgr;
 
-    case Mode::MaskGreenWhite:
-        // 优先显示 mask（过滤结果），其次 processed
-        // 灰度过滤等场景下mask是主要结果，应该优先显示
-        if (!mask.empty()) {
-            return OpenCVAlgorithm::convertToGreenWhite(mask);
-        }
-        if (!processed.empty()) {
-            return OpenCVAlgorithm::convertToGreenWhite(processed);
-        }
-        return srcBgr;
-
-    case Mode::MaskOverlay:
-        if (!mask.empty()) {
-            return overlayMaskOnImage(srcBgr, mask);
-        }
-        return srcBgr;
-
-    case Mode::Processed:
-        if (!processed.empty()) {
-            if (processed.channels() == 1) {
+        case Mode::MaskGreenWhite:
+            if (!mask.empty()) {
+                return OpenCVAlgorithm::convertToGreenWhite(mask);
+            }
+            if (!processed.empty()) {
                 return OpenCVAlgorithm::convertToGreenWhite(processed);
             }
-            return processed;
+            return srcBgr;
+
+        case Mode::MaskOverlay:
+            if (!mask.empty()) {
+                return overlayMaskOnImage(srcBgr, mask);
+            }
+            return srcBgr;
+
+        case Mode::Processed:
+            if (!processed.empty()) {
+                if (processed.channels() == 1) {
+                    return OpenCVAlgorithm::convertToGreenWhite(processed);
+                }
+                return processed;
+            }
+            return srcBgr;
+        case Mode::LineDetect:
+            if (!lineDetect.empty())
+            {
+                return lineDetect;
+            }
+        default:
+            return srcBgr;
         }
-        return srcBgr;
-    case Mode::LineDetect:
-        if (!lineDetect.empty()) 
-        {
-            return lineDetect;
-        }
-    default:
-        return srcBgr;
+    } catch (const cv::Exception& ex) {
+        qDebug() << "[Pipeline] 显示图像转换错误:" << ex.what();
+        Logger::instance()->error(QString("显示图像转换错误: %1").arg(ex.what()));
+        return srcBgr.empty() ? cv::Mat() : srcBgr;
+    } catch (...) {
+        qDebug() << "[Pipeline] 显示图像转换未知异常";
+        Logger::instance()->error("显示图像转换未知异常");
+        return srcBgr.empty() ? cv::Mat() : srcBgr;
     }
 }
 
@@ -152,36 +168,43 @@ cv::Mat PipelineContext::overlayMaskOnImage(const cv::Mat &bgr, const cv::Mat &m
 {
     if (bgr.empty() || mask.empty()) return bgr;
 
-    // 确保尺寸匹配
-    if (bgr.size() != mask.size()) {
-        qDebug() << "[overlayMaskOnImage] 尺寸不匹配";
+    try {
+        if (bgr.size() != mask.size()) {
+            qDebug() << "[overlayMaskOnImage] 尺寸不匹配";
+            return bgr;
+        }
+
+        cv::Mat m;
+        if (mask.type() != CV_8U) {
+            mask.convertTo(m, CV_8U);
+        } else {
+            m = mask;
+        }
+
+        cv::Mat result = bgr.clone();
+
+        for (int y = 0; y < m.rows; y++)
+        {
+            const uchar* mp = m.ptr<uchar>(y);
+            cv::Vec3b* rp = result.ptr<cv::Vec3b>(y);
+
+            for (int x = 0; x < m.cols; ++x)
+            {
+                if (mp[x] == 0)
+                {
+                    rp[x] = cv::Vec3b(0, 255, 0);
+                }
+            }
+        }
+
+        return result;
+    } catch (const cv::Exception& ex) {
+        qDebug() << "[overlayMaskOnImage] OpenCV错误:" << ex.what();
+        Logger::instance()->error(QString("overlayMaskOnImage错误: %1").arg(ex.what()));
+        return bgr;
+    } catch (...) {
+        qDebug() << "[overlayMaskOnImage] 未知异常";
+        Logger::instance()->error("overlayMaskOnImage未知异常");
         return bgr;
     }
-
-    // 确保 mask 为 CV_8U 类型
-    cv::Mat m;
-    if (mask.type() != CV_8U) {
-        mask.convertTo(m, CV_8U);
-    } else {
-        m = mask;
-    }
-
-    cv::Mat result = bgr.clone();
-
-    for (int y = 0; y < m.rows; y++)
-    {
-        const uchar* mp = m.ptr<uchar>(y);
-        cv::Vec3b* rp = result.ptr<cv::Vec3b>(y);
-
-        for (int x = 0; x < m.cols; ++x)
-        {
-            if (mp[x] == 0)  // 目标区域 - 设为纯绿色
-            {
-                rp[x] = cv::Vec3b(0, 255, 0);  // 纯绿色
-            }
-            // else: 背景区域保持原图不变
-        }
-    }
-
-    return result;
 }

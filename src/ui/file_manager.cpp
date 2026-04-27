@@ -4,6 +4,7 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QCoreApplication>
+#include <QDebug>
 
 FileManager::FileManager(QObject *parent)
     : QObject(parent)
@@ -32,13 +33,24 @@ void FileManager::readImageFile(const QString& filePath)
         return;
     }
 
-    cv::Mat img = cv::imread(filePath.toStdString());
-    if (img.empty()) {
-        emit errorOccurred(QString("无法读取图像文件: %1").arg(filePath));
-        return;
+    try {
+        cv::Mat img = cv::imread(filePath.toStdString());
+        if (img.empty()) {
+            emit errorOccurred(QString("无法读取图像文件: %1").arg(filePath));
+            return;
+        }
+        emit imageLoaded(img);
+    } catch (const cv::Exception& ex) {
+        QString msg = QString("读取图像OpenCV错误: %1").arg(ex.what());
+        qDebug() << msg;
+        Logger::instance()->error(msg);
+        emit errorOccurred(msg);
+    } catch (const std::exception& ex) {
+        QString msg = QString("读取图像异常: %1").arg(ex.what());
+        qDebug() << msg;
+        Logger::instance()->error(msg);
+        emit errorOccurred(msg);
     }
-
-    emit imageLoaded(img);
 }
 
 bool FileManager::saveImageFile(const QString& filePath, const cv::Mat& image)
@@ -53,12 +65,26 @@ bool FileManager::saveImageFile(const QString& filePath, const cv::Mat& image)
         return false;
     }
 
-    bool success = cv::imwrite(filePath.toStdString(), image);
-    if (success) {
-        emit imageSaved(filePath);
-        return true;
-    } else {
-        emit errorOccurred(QString("保存图像失败: %1").arg(filePath));
+    try {
+        bool success = cv::imwrite(filePath.toStdString(), image);
+        if (success) {
+            emit imageSaved(filePath);
+            return true;
+        } else {
+            emit errorOccurred(QString("保存图像失败: %1").arg(filePath));
+            return false;
+        }
+    } catch (const cv::Exception& ex) {
+        QString msg = QString("保存图像OpenCV错误: %1").arg(ex.what());
+        qDebug() << msg;
+        Logger::instance()->error(msg);
+        emit errorOccurred(msg);
+        return false;
+    } catch (const std::exception& ex) {
+        QString msg = QString("保存图像异常: %1").arg(ex.what());
+        qDebug() << msg;
+        Logger::instance()->error(msg);
+        emit errorOccurred(msg);
         return false;
     }
 }

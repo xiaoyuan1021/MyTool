@@ -2,6 +2,7 @@
 #include "barcode_step.h"
 #include "config/pipeline_config_mapper.h"
 #include "config/constants.h"
+#include "logger.h"
 #include <QDebug>
 #include <algorithm>
 
@@ -114,11 +115,9 @@ PipelineContext PipelineManager::execute(const cv::Mat& inputImage, const Pipeli
     // 标记是否需要发送重置相关信号（必须在锁外发送）
     bool shouldEmitPipelineReset = false;
 
-    // 在锁内执行所有操作：修改m_lastContext、执行Pipeline、处理pending
-    {
+    try {
         QMutexLocker locker(&m_configMutex);
 
-        // 清空上次执行结果（在锁内，避免与主线程读取竞争）
         m_lastContext.srcBgr.release();
         m_lastContext.channelImg.release();
         m_lastContext.enhanced.release();
@@ -133,25 +132,20 @@ PipelineContext PipelineManager::execute(const cv::Mat& inputImage, const Pipeli
         m_lastContext.displayConfig.mode = m_displayMode;
         m_lastContext.displayConfig.overlayAlpha = m_overlayAlpha;
 
-    // 临时设置config用于Pipeline执行（在锁内操作，确保线程安全）
         PipelineConfig savedConfig = m_config;
         m_config = config;
         m_lastConfigSnapshot = config;
 
-        // 执行Pipeline
         m_pipeline.run(m_lastContext);
 
-        // 恢复m_config
         m_config = savedConfig;
 
-        // 处理延迟的配置更新（UI线程在Pipeline执行期间设置的新配置）
         if (m_hasPendingConfig.loadAcquire()) {
             m_config = m_pendingConfig;
             m_lastConfigSnapshot = m_pendingConfig;
             m_hasPendingConfig.storeRelease(0);
         }
 
-        // 处理延迟的Pipeline重置（信号在锁外发送）
         if (m_hasPendingReset.loadAcquire()) {
             m_algorithmQueue.clear();
             m_config.shapeFilter.clear();
@@ -161,6 +155,16 @@ PipelineContext PipelineManager::execute(const cv::Mat& inputImage, const Pipeli
             m_hasPendingReset.storeRelease(0);
             shouldEmitPipelineReset = true;
         }
+    } catch (const std::exception& ex) {
+        qDebug() << "[PipelineManager] Pipeline执行异常:" << ex.what();
+        Logger::instance()->error(QString("Pipeline执行异常: %1").arg(ex.what()));
+        m_pipelineRunning.storeRelease(0);
+        return PipelineContext();
+    } catch (...) {
+        qDebug() << "[PipelineManager] Pipeline执行未知异常";
+        Logger::instance()->error("Pipeline执行未知异常");
+        m_pipelineRunning.storeRelease(0);
+        return PipelineContext();
     }
 
     // 标记后台Pipeline运行结束

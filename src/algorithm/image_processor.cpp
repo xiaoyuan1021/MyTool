@@ -1,5 +1,6 @@
 #include "image_processor.h"
 #include "opencv_algorithm.h"
+#include "logger.h"
 #include <QDebug>
 
 ImageProcessor::ImageProcessor() {}
@@ -8,20 +9,30 @@ cv::Mat ImageProcessor::convertColorSpace(const cv::Mat &src, const QString &mod
 {
     if(src.empty()) return src;
 
-    cv::Mat displayMat;
-    if(mode=="Gray Mode")
-    {
-        cv::cvtColor(src,displayMat,cv::COLOR_BGR2GRAY);
+    try {
+        cv::Mat displayMat;
+        if(mode=="Gray Mode")
+        {
+            cv::cvtColor(src,displayMat,cv::COLOR_BGR2GRAY);
+        }
+        else if(mode=="HSV Mode")
+        {
+            cv::cvtColor(src,displayMat,cv::COLOR_BGR2HSV);
+        }
+        else if(mode=="RGB Mode")
+        {
+            displayMat=src;
+        }
+        return displayMat;
+    } catch (const cv::Exception& ex) {
+        qDebug() << "[convertColorSpace] OpenCV错误:" << ex.what();
+        Logger::instance()->error(QString("颜色空间转换错误: %1").arg(ex.what()));
+        return src;
+    } catch (...) {
+        qDebug() << "[convertColorSpace] 未知异常";
+        Logger::instance()->error("颜色空间转换未知异常");
+        return src;
     }
-    else if(mode=="HSV Mode")
-    {
-        cv::cvtColor(src,displayMat,cv::COLOR_BGR2HSV);
-    }
-    else if(mode=="RGB Mode")
-    {
-        displayMat=src;
-    }
-    return displayMat;
 }
 
 cv::Mat ImageProcessor::executeAlgorithmQueue(const cv::Mat &src, const QVector<AlgorithmStep> &queue)
@@ -98,24 +109,34 @@ cv::Mat ImageProcessor::executeAlgorithmQueue(const cv::Mat &src, const QVector<
 
 cv::Mat ImageProcessor::adjustParameter(const cv::Mat &src, int brightness, double contrast, double gamma,double sharpen)
 {
-    //CV_Assert(gamma>0);
-    cv::Mat dst;
     if(src.empty()) return src;
-    src.convertTo(dst,-1,contrast,brightness);
 
-    cv::Mat lut(1,256,CV_8U);
-    for(int i=0;i<256;i++)
-        lut.at<uchar>(i)=cv::saturate_cast<uchar>(pow(i/255.0,gamma)*255.0);
-    cv::LUT(dst,lut,dst);
-    if(sharpen>0.0)
-    {
-        cv::Mat blur;
-        cv::GaussianBlur(dst,blur,cv::Size(0,0),1.0);
-        cv::addWeighted(dst, 1.0 + sharpen,
-                    blur, -sharpen,
-                    0, dst);
+    try {
+        cv::Mat dst;
+        src.convertTo(dst,-1,contrast,brightness);
+
+        cv::Mat lut(1,256,CV_8U);
+        for(int i=0;i<256;i++)
+            lut.at<uchar>(i)=cv::saturate_cast<uchar>(pow(i/255.0,gamma)*255.0);
+        cv::LUT(dst,lut,dst);
+        if(sharpen>0.0)
+        {
+            cv::Mat blur;
+            cv::GaussianBlur(dst,blur,cv::Size(0,0),1.0);
+            cv::addWeighted(dst, 1.0 + sharpen,
+                        blur, -sharpen,
+                        0, dst);
+        }
+        return dst;
+    } catch (const cv::Exception& ex) {
+        qDebug() << "[adjustParameter] OpenCV错误:" << ex.what();
+        Logger::instance()->error(QString("图像增强参数调整错误: %1").arg(ex.what()));
+        return src;
+    } catch (...) {
+        qDebug() << "[adjustParameter] 未知异常";
+        Logger::instance()->error("图像增强参数调整未知异常");
+        return src;
     }
-    return dst;
 }
 
 cv::Mat ImageProcessor::filterRGB(const cv::Mat &src, int rLow, int rHigh, int gLow, int gHigh, int bLow, int bHigh)
@@ -125,69 +146,89 @@ cv::Mat ImageProcessor::filterRGB(const cv::Mat &src, int rLow, int rHigh, int g
         qDebug()<<"[filterRGB] 输入图像为空";
         return cv::Mat();
     }
-    cv::Mat bgr;
-    if (src.channels() == 1) {
-        // 灰度图 → BGR（三个通道都是相同值）
-        cv::cvtColor(src, bgr, cv::COLOR_GRAY2BGR);
-    } else if (src.channels() == 3) {
-        bgr = src;
-    } else {
-        qDebug() << "[filterRGB] 不支持的通道数:" << src.channels();
+
+    try {
+        cv::Mat bgr;
+        if (src.channels() == 1) {
+            cv::cvtColor(src, bgr, cv::COLOR_GRAY2BGR);
+        } else if (src.channels() == 3) {
+            bgr = src;
+        } else {
+            qDebug() << "[filterRGB] 不支持的通道数:" << src.channels();
+            return cv::Mat();
+        }
+
+        rLow=std::clamp(rLow,0,255);
+        rHigh=std::clamp(rHigh,rLow,255);
+        gLow=std::clamp(gLow,0,255);
+        gHigh=std::clamp(gHigh,gLow,255);
+        bLow=std::clamp(bLow,0,255);
+        bHigh=std::clamp(bHigh,bLow,255);
+
+        cv::Mat mask;
+        cv::Scalar lower(bLow,gLow,rLow);
+        cv::Scalar upper(bHigh,gHigh,rHigh);
+
+        cv::inRange(bgr,lower,upper,mask);
+
+        return mask;
+    } catch (const cv::Exception& ex) {
+        qDebug() << "[filterRGB] OpenCV错误:" << ex.what();
+        Logger::instance()->error(QString("RGB过滤错误: %1").arg(ex.what()));
+        return cv::Mat();
+    } catch (...) {
+        qDebug() << "[filterRGB] 未知异常";
+        Logger::instance()->error("RGB过滤未知异常");
         return cv::Mat();
     }
-
-    rLow=std::clamp(rLow,0,255);
-    rHigh=std::clamp(rHigh,rLow,255);
-    gLow=std::clamp(gLow,0,255);
-    gHigh=std::clamp(gHigh,gLow,255);
-    bLow=std::clamp(bLow,0,255);
-    bHigh=std::clamp(bHigh,bLow,255);
-
-    cv::Mat mask;
-    cv::Scalar lower(bLow,gLow,rLow);
-    cv::Scalar upper(bHigh,gHigh,rHigh);
-
-    cv::inRange(bgr,lower,upper,mask);
-
-    return mask;
 }
 
 cv::Mat ImageProcessor::filterHSV(const cv::Mat &src, int hLow, int hHigh, int sLow, int sHigh, int vLow, int vHigh)
 {
     if(src.empty())
     {
-        qDebug()<<"[filterRGB] 输入图像为空";
+        qDebug()<<"[filterHSV] 输入图像为空";
         return cv::Mat();
     }
 
-    cv::Mat hsv;
-    if(src.channels()==3)
-    {
-        cv::cvtColor(src,hsv, cv::COLOR_BGR2HSV);
-    }
-    else if(src.channels()==1)
-    {
-        cv::Mat bgr;
-        cv::cvtColor(src,bgr,cv::COLOR_GRAY2BGR);
-        cv::cvtColor(bgr,hsv,cv::COLOR_BGR2HSV);
-    }
-    else
-    {
-        qDebug() << "[filterHSV] 不支持的通道数:" << src.channels();
+    try {
+        cv::Mat hsv;
+        if(src.channels()==3)
+        {
+            cv::cvtColor(src,hsv, cv::COLOR_BGR2HSV);
+        }
+        else if(src.channels()==1)
+        {
+            cv::Mat bgr;
+            cv::cvtColor(src,bgr,cv::COLOR_GRAY2BGR);
+            cv::cvtColor(bgr,hsv,cv::COLOR_BGR2HSV);
+        }
+        else
+        {
+            qDebug() << "[filterHSV] 不支持的通道数:" << src.channels();
+            return cv::Mat();
+        }
+
+        hLow = std::clamp(hLow, 0, 179);
+        hHigh = std::clamp(hHigh, hLow, 179);
+        sLow = std::clamp(sLow, 0, 255);
+        sHigh = std::clamp(sHigh, sLow, 255);
+        vLow = std::clamp(vLow, 0, 255);
+        vHigh = std::clamp(vHigh, vLow, 255);
+
+        cv::Mat mask;
+        cv::Scalar lower(hLow,sLow,vLow);
+        cv::Scalar upper(hHigh,sHigh,vHigh);
+
+        cv::inRange(hsv,lower,upper,mask);
+        return mask;
+    } catch (const cv::Exception& ex) {
+        qDebug() << "[filterHSV] OpenCV错误:" << ex.what();
+        Logger::instance()->error(QString("HSV过滤错误: %1").arg(ex.what()));
+        return cv::Mat();
+    } catch (...) {
+        qDebug() << "[filterHSV] 未知异常";
+        Logger::instance()->error("HSV过滤未知异常");
         return cv::Mat();
     }
-
-    hLow = std::clamp(hLow, 0, 179);
-    hHigh = std::clamp(hHigh, hLow, 179);
-    sLow = std::clamp(sLow, 0, 255);
-    sHigh = std::clamp(sHigh, sLow, 255);
-    vLow = std::clamp(vLow, 0, 255);
-    vHigh = std::clamp(vHigh, vLow, 255);
-
-    cv::Mat mask;
-    cv::Scalar lower(hLow,sLow,vLow);
-    cv::Scalar upper(hHigh,sHigh,vHigh);
-
-    cv::inRange(hsv,lower,upper,mask);
-    return mask;
 }

@@ -207,6 +207,7 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
     // 注意：lambda中无法使用emit logMessage（无this指针），使用Logger::instance()代替
     QFuture<PipelineContext> future = QtConcurrent::run(
         [pipelinePtr, imagePath, roiConfigs]() -> PipelineContext {
+            try {
             // 【P0修复】检查PipelineManager是否已被释放
             if (!pipelinePtr) {
                 Logger::instance()->error(QString("[检测] PipelineManager已被释放，跳过处理: %1").arg(imagePath));
@@ -377,6 +378,19 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
             resultCtx.pass = allPassed;
             resultCtx.reason = failReason;
             return resultCtx;
+            } catch (const cv::Exception& ex) {
+                Logger::instance()->error(QString("[检测] OpenCV错误: %1").arg(ex.what()));
+                PipelineContext errCtx;
+                errCtx.pass = false;
+                errCtx.reason = QString("OpenCV错误: %1").arg(ex.what());
+                return errCtx;
+            } catch (const std::exception& ex) {
+                Logger::instance()->error(QString("[检测] 异常: %1").arg(ex.what()));
+                PipelineContext errCtx;
+                errCtx.pass = false;
+                errCtx.reason = QString("异常: %1").arg(ex.what());
+                return errCtx;
+            }
         }
     );
 

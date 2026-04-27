@@ -4,6 +4,7 @@
 #include "widgets/line_tab_widget.h"
 #include "widgets/barcode_tab_widget.h"
 #include "widgets/object_detection_tab_widget.h"
+#include "logger.h"
 
 PipelineResultHandler::PipelineResultHandler(QObject *parent)
     : QObject(parent)
@@ -28,21 +29,36 @@ void PipelineResultHandler::watchPipeline(QFutureWatcher<PipelineContext>* watch
 void PipelineResultHandler::onPipelineFinished()
 {
     if (!m_watcher) return;
-    
-    PipelineContext result = m_watcher->result();
-    cv::Mat displayImage = result.getFinalDisplay();
 
-    handleJudgeTabResult(result);
-    handleLineTabResult(result);
-    handleBarcodeTabResult(result);
-    handleObjectDetection(displayImage);
+    try {
+        PipelineContext result = m_watcher->result();
+        cv::Mat displayImage = result.getFinalDisplay();
 
-    if (m_imageView) {
-        QImage qimg = ImageUtils::matToQImage(displayImage);
-        m_imageView->setImage(qimg);
+        handleJudgeTabResult(result);
+        handleLineTabResult(result);
+        handleBarcodeTabResult(result);
+        handleObjectDetection(displayImage);
+
+        if (m_imageView) {
+            QImage qimg = ImageUtils::matToQImage(displayImage);
+            m_imageView->setImage(qimg);
+        }
+
+        emit statusMessage("处理完成", 2000);
+    } catch (const cv::Exception& ex) {
+        qDebug() << "[PipelineResult] OpenCV错误:" << ex.what();
+        Logger::instance()->error(QString("Pipeline结果处理错误: %1").arg(ex.what()));
+        emit statusMessage("处理失败", 3000);
+    } catch (const std::exception& ex) {
+        qDebug() << "[PipelineResult] 标准异常:" << ex.what();
+        Logger::instance()->error(QString("Pipeline结果处理异常: %1").arg(ex.what()));
+        emit statusMessage("处理失败", 3000);
+    } catch (...) {
+        qDebug() << "[PipelineResult] 未知异常";
+        Logger::instance()->error("Pipeline结果处理未知异常");
+        emit statusMessage("处理失败", 3000);
     }
 
-    emit statusMessage("处理完成", 2000);
     emit processingFinished();
 }
 
@@ -96,24 +112,34 @@ void PipelineResultHandler::handleObjectDetection(cv::Mat& displayImage)
 
 void PipelineResultHandler::drawDetectionResults(cv::Mat& image, const std::vector<DetectionResult>& results)
 {
-    for (const auto& det : results) {
-        cv::rectangle(image, det.box, cv::Scalar(0, 255, 0), 2);
+    if (image.empty()) return;
 
-        std::string label = det.className + " " + cv::format("%.2f", det.confidence);
-        int baseline = 0;
-        cv::Size textSize = cv::getTextSize(label, cv::FONT_HERSHEY_SIMPLEX, 0.6, 1, &baseline);
+    try {
+        for (const auto& det : results) {
+            cv::rectangle(image, det.box, cv::Scalar(0, 255, 0), 2);
 
-        cv::Point textOrg(det.box.x, det.box.y - 5);
-        if (textOrg.y - textSize.height < 0) {
-            textOrg.y = det.box.y + textSize.height + 5;
+            std::string label = det.className + " " + cv::format("%.2f", det.confidence);
+            int baseline = 0;
+            cv::Size textSize = cv::getTextSize(label, cv::FONT_HERSHEY_SIMPLEX, 0.6, 1, &baseline);
+
+            cv::Point textOrg(det.box.x, det.box.y - 5);
+            if (textOrg.y - textSize.height < 0) {
+                textOrg.y = det.box.y + textSize.height + 5;
+            }
+
+            cv::rectangle(image,
+                cv::Point(textOrg.x, textOrg.y - textSize.height - 2),
+                cv::Point(textOrg.x + textSize.width + 2, textOrg.y + 4),
+                cv::Scalar(0, 255, 0), -1);
+
+            cv::putText(image, label, textOrg,
+                cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 0, 0), 1);
         }
-        
-        cv::rectangle(image,
-            cv::Point(textOrg.x, textOrg.y - textSize.height - 2),
-            cv::Point(textOrg.x + textSize.width + 2, textOrg.y + 4),
-            cv::Scalar(0, 255, 0), -1);
-
-        cv::putText(image, label, textOrg,
-            cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 0, 0), 1);
+    } catch (const cv::Exception& ex) {
+        qDebug() << "[DrawResults] OpenCV错误:" << ex.what();
+        Logger::instance()->error(QString("绘制检测结果错误: %1").arg(ex.what()));
+    } catch (...) {
+        qDebug() << "[DrawResults] 未知异常";
+        Logger::instance()->error("绘制检测结果未知异常");
     }
 }

@@ -1,6 +1,7 @@
 #include "video_manager.h"
 #include "logger.h"
 #include <QFileInfo>
+#include <QDebug>
 
 VideoManager::VideoManager(QObject* parent)
     : QObject(parent)
@@ -52,6 +53,8 @@ bool VideoManager::openFile(const QString& filePath)
     // 先关闭当前视频
     close();
 
+    try {
+
     // 尝试打开视频文件
     Logger::instance()->info(QString("调用OpenCV打开视频文件..."));
     std::string stdPath = filePath.toLocal8Bit().constData();
@@ -85,8 +88,7 @@ bool VideoManager::openFile(const QString& filePath)
                             .arg(filePath).arg(m_frameRate).arg(m_totalFrames));
     
     emit videoOpened(filePath);
-    
-    // 读取第一帧
+
     cv::Mat frame;
     if (m_videoCapture.read(frame)) {
         m_currentFrame = frame;
@@ -94,12 +96,27 @@ bool VideoManager::openFile(const QString& filePath)
     }
 
     return true;
+    } catch (const cv::Exception& ex) {
+        QString msg = QString("打开视频文件OpenCV错误: %1").arg(ex.what());
+        qDebug() << msg;
+        Logger::instance()->error(msg);
+        emit errorOccurred(msg);
+        return false;
+    } catch (const std::exception& ex) {
+        QString msg = QString("打开视频文件异常: %1").arg(ex.what());
+        qDebug() << msg;
+        Logger::instance()->error(msg);
+        emit errorOccurred(msg);
+        return false;
+    }
 }
 
 bool VideoManager::openCamera(int cameraIndex)
 {
     // 先关闭当前视频
     close();
+
+    try {
 
     // 打开相机
     m_videoCapture.open(cameraIndex);
@@ -125,8 +142,7 @@ bool VideoManager::openCamera(int cameraIndex)
     Logger::instance()->info(QString("打开相机设备: %1").arg(cameraIndex));
     
     emit videoOpened(m_currentSource);
-    
-    // 读取第一帧
+
     cv::Mat frame;
     if (m_videoCapture.read(frame)) {
         m_currentFrame = frame;
@@ -134,6 +150,19 @@ bool VideoManager::openCamera(int cameraIndex)
     }
 
     return true;
+    } catch (const cv::Exception& ex) {
+        QString msg = QString("打开相机OpenCV错误: %1").arg(ex.what());
+        qDebug() << msg;
+        Logger::instance()->error(msg);
+        emit errorOccurred(msg);
+        return false;
+    } catch (const std::exception& ex) {
+        QString msg = QString("打开相机异常: %1").arg(ex.what());
+        qDebug() << msg;
+        Logger::instance()->error(msg);
+        emit errorOccurred(msg);
+        return false;
+    }
 }
 
 void VideoManager::close()
@@ -226,16 +255,25 @@ cv::Mat VideoManager::getNextFrame()
         return cv::Mat();
     }
 
-    cv::Mat frame;
-    if (m_videoCapture.read(frame)) {
-        m_currentFrame = frame;
-        m_currentFrameIndex++;
-        return frame.clone();
-    }
+    try {
+        cv::Mat frame;
+        if (m_videoCapture.read(frame)) {
+            m_currentFrame = frame;
+            m_currentFrameIndex++;
+            return frame.clone();
+        }
 
-    // 视频结束
-    if (m_sourceType == VideoSource::LocalFile) {
-        stop();
+        if (m_sourceType == VideoSource::LocalFile) {
+            stop();
+        }
+    } catch (const cv::Exception& ex) {
+        QString msg = QString("读取下一帧OpenCV错误: %1").arg(ex.what());
+        qDebug() << msg;
+        Logger::instance()->error(msg);
+    } catch (const std::exception& ex) {
+        QString msg = QString("读取下一帧异常: %1").arg(ex.what());
+        qDebug() << msg;
+        Logger::instance()->error(msg);
     }
 
     return cv::Mat();
@@ -282,16 +320,25 @@ void VideoManager::onTimeout()
         return;
     }
 
-    cv::Mat frame;
-    if (m_videoCapture.read(frame)) {
-        m_currentFrame = frame;
-        m_currentFrameIndex++;
-        emit frameReady(frame);
-    } else {
-        // 视频结束
-        if (m_sourceType == VideoSource::LocalFile) {
-            stop();
+    try {
+        cv::Mat frame;
+        if (m_videoCapture.read(frame)) {
+            m_currentFrame = frame;
+            m_currentFrameIndex++;
+            emit frameReady(frame);
+        } else {
+            if (m_sourceType == VideoSource::LocalFile) {
+                stop();
+            }
         }
+    } catch (const cv::Exception& ex) {
+        QString msg = QString("视频帧读取OpenCV错误: %1").arg(ex.what());
+        qDebug() << msg;
+        Logger::instance()->error(msg);
+    } catch (const std::exception& ex) {
+        QString msg = QString("视频帧读取异常: %1").arg(ex.what());
+        qDebug() << msg;
+        Logger::instance()->error(msg);
     }
 }
 
