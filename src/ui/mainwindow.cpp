@@ -43,6 +43,7 @@ MainWindow::MainWindow(QWidget *parent)
     setupManagers();
     setupControllers();
     setupResultHandler();
+    setupMqtt();
 }
 
 MainWindow::~MainWindow()
@@ -91,6 +92,9 @@ void MainWindow::setupUI()
     if (file.open(QFile::ReadOnly)) {
         qApp->setStyleSheet(QLatin1String(file.readAll()));
     }
+
+    // Toast 浮标（叠加在图像视图上）
+    m_toast = new ToastNotification(centralWidget());
 }
 
 void MainWindow::setupConnections()
@@ -167,6 +171,12 @@ void MainWindow::setupControllers()
     connect(m_roiUiController, &RoiUiController::roiChanged, this, &MainWindow::processAndDisplay);
     connect(m_configController, &ConfigController::configApplied, this, &MainWindow::processAndDisplay);
 
+    // 批量检测完成提示
+    connect(m_autoDetectionController, &AutoDetectionController::detectionFinished,
+            this, [this](const DetectionStats&) {
+        m_toast->showMessage("批量检测完成");
+    });
+
     // 检测项选中跳转
     connect(m_roiUiController, &RoiUiController::detectionItemSelected, this,
         [this](const QString& roiId, const QString& detectionId) {
@@ -207,6 +217,7 @@ void MainWindow::setupResultHandler()
     connect(m_pipelineResultHandler, &PipelineResultHandler::processingFinished,
             this, [this]() {
         m_isProcessing = false;
+        m_toast->showMessage("检测完成");
         if (m_hasPendingProcess) {
             m_hasPendingProcess = false;
             QTimer::singleShot(AppConstants::PENDING_PROCESS_DELAY_MS, this, &MainWindow::processAndDisplay);
@@ -385,6 +396,71 @@ void MainWindow::on_btn_startAutoDetection_clicked()
 void MainWindow::on_btn_stopAutoDetection_clicked()
 {
     m_autoDetectionController->stopDetection();
+}
+
+// ========== MQTT 边云协同 ==========
+
+void MainWindow::setupMqtt()
+{
+    // 加载 MQTT 配置（优先从默认配置文件读取）
+    AppConfig appConfig;
+    MqttConfig mqttCfg;
+    if (ConfigManager::instance().loadConfig(appConfig, ConfigManager::instance().getDefaultConfigPath())) {
+        mqttCfg = appConfig.mqttConfig;
+    }
+
+    m_mqttManager = new MqttManager(this);
+    m_mqttManager->initialize(mqttCfg);
+
+    // Feature 1: 自动检测逐张完成 → 上报检测结果
+    connect(m_autoDetectionController, &AutoDetectionController::imageProcessed,
+            this, [this](int index, const QString&, bool) {
+        const auto& results = m_autoDetectionController->results();
+        if (index >= 0 && index < results.size()) {
+            m_mqttManager->publishResult(results[index]);
+        }
+    });
+
+    // Feature 2: 云端指令 → 调用本地功能
+    connect(m_mqttManager, &MqttManager::captureRequested,
+            this, [this]() {
+        m_toast->showMessage("收到云端指令: capture");
+        Logger::instance()->info("[MQTT] 收到capture指令，执行采集检测");
+        processAndDisplay();
+    });
+    connect(m_mqttManager, &MqttManager::startDetectionRequested,
+            this, [this]() {
+        m_toast->showMessage("收到云端指令: 开始批量检测");
+        on_btn_startAutoDetection_clicked();
+    });
+    connect(m_mqttManager, &MqttManager::stopDetectionRequested,
+            this, [this]() {
+        m_toast->showMessage("收到云端指令: 停止批量检测");
+        on_btn_stopAutoDetection_clicked();
+    });
+    connect(m_mqttManager, &MqttManager::stopDetectionRequested,
+            this, [this]() {
+        m_toast->showMessage("收到云端指令: 停止批量检测");
+        on_btn_stopAutoDetection_clicked();
+    });
+
+    // Feature 3: 心跳由 MqttManager 内部定时器驱动，连接成功即自动开始
+
+    // 连接状态日志
+    connect(m_mqttManager, &MqttManager::mqttConnected, this, []() {
+        Logger::instance()->info("[MQTT] 已连接到云端");
+    });
+    connect(m_mqttManager, &MqttManager::mqttDisconnected, this, []() {
+        Logger::instance()->info("[MQTT] 已断开连接");
+    });
+    connect(m_mqttManager, &MqttManager::mqttError, this, [](const QString& msg) {
+        Logger::instance()->error(QString("[MQTT] %1").arg(msg));
+    });
+
+    Logger::instance()->info(QString("[MQTT] 初始化完成, enabled=%1, broker=%2:%3")
+        .arg(mqttCfg.enabled ? "true" : "false")
+        .arg(mqttCfg.brokerHost)
+        .arg(mqttCfg.brokerPort));
 }
 
 // ========== Tab懒加载 ==========

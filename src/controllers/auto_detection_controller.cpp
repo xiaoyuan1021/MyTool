@@ -329,23 +329,14 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
                             roiFailReason += "未检测到条码";
                             Logger::instance()->warning("[检测] 条码判定: NG! 未检测到条码");
                         } else {
-                            bool foundValid = false;
+                            // 只要检测到条码就算OK，不校验质量
+                            Logger::instance()->info(QString("[检测] 条码结果: 共%1个")
+                                .arg(ctx.barcodeResults.size()));
                             for (const BarcodeResult& br : ctx.barcodeResults) {
-                                Logger::instance()->info(QString("[检测] 条码结果: type=%1, data=%2, quality=%3")
+                                Logger::instance()->info(QString("  -> type=%1, data=%2, quality=%3")
                                     .arg(br.type).arg(br.data).arg(br.quality));
-                                if (br.quality >= barcodeConfig.minConfidence * 100.0) {
-                                    foundValid = true;
-                                    break;
-                                }
                             }
-                            if (!foundValid) {
-                                roiPassed = false;
-                                roiFailReason += QString("条码识别质量不足(共%1个)")
-                                    .arg(ctx.barcodeResults.size());
-                                Logger::instance()->warning(QString("[检测] 条码判定: NG! %1").arg(roiFailReason));
-                            } else {
-                                Logger::instance()->info("[检测] 条码判定: OK");
-                            }
+                            Logger::instance()->info("[检测] 条码判定: OK");
                         }
                     }
                     else if (detItem.type == DetectionType::Line) {

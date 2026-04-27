@@ -310,7 +310,6 @@ bool ConfigManager::loadConfig(AppConfig& config, const QString& filePath)
 
 QString ConfigManager::getDefaultConfigPath() const
 {
-    QString appPath = QCoreApplication::applicationDirPath();
-    QString rawPath = appPath + "/../../app_config.json";
-    return QDir::cleanPath(rawPath);
+    // 使用 CMake 编译时定义的项目根目录，比运行时相对路径更可靠
+    return QString(PROJECT_ROOT_DIR) + "/app_config.json";
 }

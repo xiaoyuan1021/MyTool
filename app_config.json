@@ -56,6 +56,40 @@
         "maxRegionCount": 1,
         "minRegionCount": 1
     },
+    "mqtt": {
+        "connection": {
+            "enabled": true,
+            "brokerHost": "broker.emqx.io",
+            "brokerPort": 1883,
+            "clientId": "VisionTool-001"
+        },
+        "auth": {
+            "useAuth": false,
+            "username": "",
+            "password": ""
+        },
+        "topic": {
+            "publishTopic": "visiontool/results",
+            "subscribeTopic": "visiontool/commands",
+            "qos": 1
+        },
+        "report": {
+            "reportIntervalMs": 0,
+            "reportOnStateChange": true,
+            "reportRegions": true,
+            "reportBarcodes": true
+        },
+        "edge": {
+            "heartbeatTopic": "visiontool/heartbeat",
+            "heartbeatIntervalMs": 30000,
+            "deviceId": "VisionTool-001"
+        },
+        "reconnect": {
+            "autoReconnect": true,
+            "reconnectIntervalMs": 5000,
+            "maxReconnectAttempts": 10
+        }
+    },
     "roi": {
         "height": 265,
         "width": 344,

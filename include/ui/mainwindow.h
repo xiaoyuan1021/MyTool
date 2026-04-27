@@ -9,6 +9,8 @@
 
 #include "pipeline_manager.h"
 #include "roi_manager.h"
+#include "core/mqtt_manager.h"
+#include "ui/toast_notification.h"
 
 // 前向声明
 class ImageView;
@@ -74,6 +76,7 @@ private:
     void setupManagers();
     void setupControllers();
     void setupResultHandler();
+    void setupMqtt();
     void setupUI();
     void setupConnections();
 
@@ -115,6 +118,12 @@ private:
 
     // Pipeline结果处理器
     PipelineResultHandler* m_pipelineResultHandler = nullptr;
+
+    // MQTT 边云协同管理器
+    MqttManager* m_mqttManager = nullptr;
+
+    // Toast 通知浮标
+    ToastNotification* m_toast = nullptr;
 };
 
 #endif // MAINWINDOW_H

@@ -34,6 +34,11 @@ struct MqttConfig
     bool reportRegions = true;          ///< 是否上报区域详情
     bool reportBarcodes = true;         ///< 是否上报条码结果
 
+    // ==================== 边云协同配置 ====================
+    QString heartbeatTopic = "visiontool/heartbeat";    ///< 心跳主题
+    int heartbeatIntervalMs = 30000;                     ///< 心跳间隔 (ms)
+    QString deviceId = clientId;                         ///< 设备标识
+
     // ==================== 重连配置 ====================
     bool autoReconnect = true;          ///< 自动重连
     int reconnectIntervalMs = 5000;     ///< 重连间隔 (ms)
@@ -77,6 +82,13 @@ struct MqttConfig
         reportObj["reportRegions"] = reportRegions;
         reportObj["reportBarcodes"] = reportBarcodes;
         json["report"] = reportObj;
+
+        // 边云协同配置
+        QJsonObject edgeObj;
+        edgeObj["heartbeatTopic"] = heartbeatTopic;
+        edgeObj["heartbeatIntervalMs"] = heartbeatIntervalMs;
+        edgeObj["deviceId"] = deviceId;
+        json["edge"] = edgeObj;
 
         // 重连配置
         QJsonObject reconnectObj;
@@ -125,6 +137,14 @@ struct MqttConfig
             reportOnStateChange = reportObj["reportOnStateChange"].toBool(true);
             reportRegions = reportObj["reportRegions"].toBool(true);
             reportBarcodes = reportObj["reportBarcodes"].toBool(true);
+        }
+
+        // 边云协同配置
+        if (json.contains("edge")) {
+            QJsonObject edgeObj = json["edge"].toObject();
+            heartbeatTopic = edgeObj["heartbeatTopic"].toString("visiontool/heartbeat");
+            heartbeatIntervalMs = edgeObj["heartbeatIntervalMs"].toInt(30000);
+            deviceId = edgeObj["deviceId"].toString(clientId);
         }
 
         // 重连配置
