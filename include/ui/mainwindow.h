@@ -4,6 +4,8 @@
 #include <QMainWindow>
 #include <QTimer>
 #include <QFutureWatcher>
+#include <QProcess>
+#include <QDesktopServices>
 
 #include <opencv2/opencv.hpp>
 
@@ -72,6 +74,7 @@ private slots:
     void on_btn_importConfig_clicked();
     void on_btn_startAutoDetection_clicked();
     void on_btn_stopAutoDetection_clicked();
+    void on_btn_cloudPlatform_clicked();
 
 private:
     // 初始化方法
@@ -131,6 +134,9 @@ private:
 
     // MQTT 边云协同管理器
     MqttManager* m_mqttManager = nullptr;
+
+    // 云平台看板进程
+    QProcess* m_cloudDashboardProcess = nullptr;
 
     // Toast 通知浮标
     ToastNotification* m_toast = nullptr;

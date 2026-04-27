@@ -58,6 +58,7 @@ void BarcodeTabWidget::setBarcodeConfig(const BarcodeConfig& config)
         }
     }
 
+    
     m_ui->spinBox_maxNum->setValue(config.maxNumSymbols);
 
     // 手动更新 groupBox 和 Pipeline（使用完整的新配置）

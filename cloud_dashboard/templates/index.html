@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EdgeVision 云平台 - 边云协同智能视觉检测</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js">
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <style>
+        /* ===== Reset & Base ===== */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg-primary: #0f1118;
+            --bg-secondary: #161923;
+            --bg-card: #1c2030;
+            --bg-card-hover: #242840;
+            --border: #2a2f45;
+            --text-primary: #e8eaf0;
+            --text-secondary: #8b90a5;
+            --text-muted: #5a5f75;
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --accent-green: #22c55e;
+            --accent-red: #ef4444;
+            --accent-yellow: #f59e0b;
+            --accent-purple: #8b5cf6;
+            --shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+            --radius: 12px;
+            --radius-sm: 8px;
+            --transition: 0.2s ease;
+        }
+
+        html {
+            font-size: 14px;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ===== Scrollbar ===== */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /* ===== Header ===== */
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 0 28px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .header-logo {
+            width: 34px;
+            height: 34px;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #fff;
+        }
+
+        .header-title {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .header-title span {
+            color: var(--accent-cyan);
+        }
+
+        .header-subtitle {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-left: 12px;
+            padding-left: 12px;
+            border-left: 1px solid var(--border);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .mqtt-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .mqtt-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            transition: var(--transition);
+        }
+
+        .mqtt-dot.online {
+            background: var(--accent-green);
+            box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
+        }
+
+        .mqtt-dot.offline {
+            background: var(--accent-red);
+            box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
+        }
+
+        .header-time {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* ===== Container ===== */
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px 28px 40px;
+        }
+
+        /* ===== Stats Row ===== */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px 24px;
+            transition: var(--transition);
+        }
+
+        .stat-card:hover {
+            border-color: var(--accent-blue);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow);
+        }
+
+        .stat-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .stat-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .stat-icon.blue {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--accent-blue);
+        }
+        .stat-icon.green {
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--accent-green);
+        }
+        .stat-icon.cyan {
+            background: rgba(6, 182, 212, 0.15);
+            color: var(--accent-cyan);
+        }
+        .stat-icon.amber {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--accent-yellow);
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .stat-value .unit {
+            font-size: 14px;
+            font-weight: 400;
+            color: var(--text-secondary);
+            margin-left: 4px;
+        }
+
+        .stat-footer {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* ===== Grid Layout ===== */
+        .grid-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .grid-3col {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .grid-2col-wide {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        /* ===== Card ===== */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-title i {
+            color: var(--accent-cyan);
+        }
+
+        .card-badge {
+            font-size: 11px;
+            padding: 2px 10px;
+            border-radius: 10px;
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--accent-blue);
+            font-weight: 500;
+        }
+
+        .card-body {
+            padding: 16px 20px;
+        }
+
+        /* ===== Table ===== */
+        .table-wrap {
+            overflow-x: auto;
+            max-height: 320px;
+            overflow-y: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        table thead {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+
+        table th {
+            text-align: left;
+            padding: 10px 14px;
+            font-weight: 600;
+            font-size: 12px;
+            color: var(--text-secondary);
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        table td {
+            padding: 10px 14px;
+            border-bottom: 1px solid rgba(42, 47, 69, 0.5);
+            white-space: nowrap;
+        }
+
+        table tr:hover td {
+            background: var(--bg-card-hover);
+        }
+
+        .badge-pass {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--accent-green);
+        }
+
+        .badge-fail {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--accent-red);
+        }
+
+        .device-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+
+        .device-dot.online {
+            background: var(--accent-green);
+        }
+        .device-dot.offline {
+            background: var(--text-muted);
+        }
+
+        .device-name {
+            font-weight: 500;
+        }
+
+        /* ===== Charts ===== */
+        .chart-wrap {
+            position: relative;
+            height: 240px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chart-wrap canvas {
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        .chart-empty {
+            color: var(--text-muted);
+            font-size: 13px;
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .chart-empty i {
+            font-size: 32px;
+            display: block;
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+
+        /* ===== Device List ===== */
+        .device-list {
+            max-height: 280px;
+            overflow-y: auto;
+        }
+
+        .device-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(42, 47, 69, 0.4);
+        }
+
+        .device-item:last-child {
+            border-bottom: none;
+        }
+
+        .device-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .device-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: rgba(6, 182, 212, 0.12);
+            color: var(--accent-cyan);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .device-meta .name {
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .device-meta .detail {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .device-status-badge {
+            font-size: 12px;
+            padding: 3px 12px;
+            border-radius: 10px;
+            font-weight: 500;
+        }
+
+        .device-status-badge.online {
+            background: rgba(34, 197, 94, 0.12);
+            color: var(--accent-green);
+        }
+
+        .device-status-badge.offline {
+            background: rgba(90, 95, 117, 0.15);
+            color: var(--text-muted);
+        }
+
+        /* ===== Command Panel ===== */
+        .cmd-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .cmd-btn {
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .cmd-btn:hover {
+            border-color: var(--accent-blue);
+            background: var(--bg-card-hover);
+            transform: translateY(-1px);
+        }
+
+        .cmd-btn:active {
+            transform: translateY(0);
+        }
+
+        .cmd-btn i {
+            font-size: 14px;
+        }
+
+        .cmd-btn.primary {
+            border-color: var(--accent-blue);
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .cmd-btn.primary:hover {
+            background: rgba(59, 130, 246, 0.2);
+        }
+
+        .cmd-btn.warning {
+            border-color: var(--accent-yellow);
+            background: rgba(245, 158, 11, 0.1);
+        }
+
+        .cmd-btn.warning:hover {
+            background: rgba(245, 158, 11, 0.2);
+        }
+
+        .cmd-btn.success {
+            border-color: var(--accent-green);
+            background: rgba(34, 197, 94, 0.1);
+        }
+
+        .cmd-btn.success:hover {
+            background: rgba(34, 197, 94, 0.2);
+        }
+
+        .cmd-btn.danger {
+            border-color: var(--accent-red);
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .cmd-btn.danger:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        .cmd-feedback {
+            margin-top: 10px;
+            padding: 8px 14px;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            color: var(--text-secondary);
+            background: rgba(42, 47, 69, 0.3);
+            min-height: 36px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .cmd-feedback i {
+            color: var(--accent-green);
+        }
+
+        /* ===== Simulate ===== */
+        .sim-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .sim-btn {
+            padding: 8px 20px;
+            border: 1px dashed var(--text-muted);
+            border-radius: var(--radius-sm);
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 12px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .sim-btn:hover {
+            border-color: var(--accent-purple);
+            color: var(--accent-purple);
+            background: rgba(139, 92, 246, 0.08);
+        }
+
+        /* ===== Toast ===== */
+        .toast-container {
+            position: fixed;
+            top: 70px;
+            right: 28px;
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .toast {
+            padding: 12px 20px;
+            border-radius: var(--radius-sm);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: slideIn 0.3s ease;
+            max-width: 380px;
+        }
+
+        .toast.pass {
+            border-left: 3px solid var(--accent-green);
+        }
+        .toast.fail {
+            border-left: 3px solid var(--accent-red);
+        }
+
+        .toast i.pass {
+            color: var(--accent-green);
+        }
+        .toast i.fail {
+            color: var(--accent-red);
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+            }
+            to {
+                opacity: 0;
+                transform: translateX(40px);
+            }
+        }
+
+        /* ===== Empty State ===== */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+        }
+
+        .empty-state i {
+            font-size: 36px;
+            opacity: 0.4;
+            margin-bottom: 12px;
+        }
+
+        .empty-state p {
+            font-size: 13px;
+        }
+
+        /* ===== Responsive ===== */
+        @media (max-width: 1200px) {
+            .stats-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .grid-3col {
+                grid-template-columns: 1fr;
+            }
+            .grid-2col,
+            .grid-2col-wide {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .stats-row {
+                grid-template-columns: 1fr;
+            }
+            .container {
+                padding: 12px 14px 30px;
+            }
+            .header {
+                padding: 0 14px;
+            }
+            .header-subtitle {
+                display: none;
+            }
+            .cmd-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ===== New result highlight ===== */
+        .row-new {
+            animation: highlightRow 1.5s ease;
+        }
+
+        @keyframes highlightRow {
+            0% {
+                background: rgba(59, 130, 246, 0.12);
+            }
+            100% {
+                background: transparent;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ============ Header ============ -->
+    <header class="header">
+        <div class="header-left">
+            <div class="header-logo">
+                <i class="fas fa-eye"></i>
+            </div>
+            <div class="header-title">Edge<span>Vision</span></div>
+            <div class="header-subtitle">边云协同智能视觉检测云平台</div>
+        </div>
+        <div class="header-right">
+            <div class="mqtt-status">
+                <span class="mqtt-dot" id="mqttDot"></span>
+                <span id="mqttLabel">连接中...</span>
+            </div>
+            <div class="header-time" id="headerTime"></div>
+        </div>
+    </header>
+
+    <!-- ============ Main ============ -->
+    <div class="container">
+
+        <!-- Stats -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">在线设备</span>
+                    <div class="stat-icon cyan"><i class="fas fa-server"></i></div>
+                </div>
+                <div class="stat-value"><span id="statDevices">0</span></div>
+                <div class="stat-footer">已注册 <span id="statTotalDevices">0</span> 台</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">总检测数</span>
+                    <div class="stat-icon blue"><i class="fas fa-chart-bar"></i></div>
+                </div>
+                <div class="stat-value"><span id="statTotal">0</span></div>
+                <div class="stat-footer">累计检测次数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">合格率</span>
+                    <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
+                </div>
+                <div class="stat-value"><span id="statPassRate">0</span><span class="unit">%</span></div>
+                <div class="stat-footer">通过 <span id="statPassed">0</span> / 失败 <span id="statFailed">0</span></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-label">今日检测</span>
+                    <div class="stat-icon amber"><i class="fas fa-calendar-day"></i></div>
+                </div>
+                <div class="stat-value"><span id="statToday">0</span></div>
+                <div class="stat-footer" id="statTodayLabel">今日累计</div>
+            </div>
+        </div>
+
+        <!-- Main Grid -->
+        <div class="grid-2col-wide">
+            <!-- Real-time Results -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-list"></i> 实时检测结果</div>
+                    <span class="card-badge" id="resultCount">0 条</span>
+                </div>
+                <div class="card-body" style="padding:0;">
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>时间</th>
+                                    <th>设备</th>
+                                    <th>ROI</th>
+                                    <th>结果</th>
+                                    <th>区域数</th>
+                                    <th>条码</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resultsBody">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="empty-state" id="resultsEmpty">
+                        <i class="fas fa-inbox"></i>
+                        <p>等待检测数据...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Device List -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-microchip"></i> 边缘设备</div>
+                    <span class="card-badge" id="deviceCount">0 台</span>
+                </div>
+                <div class="card-body" style="padding:0;">
+                    <div class="device-list" id="deviceList">
+                        <div class="empty-state">
+                            <i class="fas fa-plug"></i>
+                            <p>暂无设备上线</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="grid-2col">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-chart-line"></i> 合格率趋势</div>
+                </div>
+                <div class="card-body">
+                    <div class="chart-wrap">
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-chart-pie"></i> 按 ROI 分布</div>
+                </div>
+                <div class="card-body">
+                    <div class="chart-wrap">
+                        <canvas id="roiChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Row -->
+        <div class="grid-2col">
+            <!-- Command Panel -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-terminal"></i> 远程指令</div>
+                    <span class="card-badge">MQTT</span>
+                </div>
+                <div class="card-body">
+                    <div class="cmd-grid">
+                        <button class="cmd-btn primary" onclick="sendCommand('capture')">
+                            <i class="fas fa-camera"></i> 采集检测
+                        </button>
+                        <button class="cmd-btn success" onclick="sendCommand('start_detection')">
+                            <i class="fas fa-play"></i> 开始批量
+                        </button>
+                        <button class="cmd-btn danger" onclick="sendCommand('stop_detection')">
+                            <i class="fas fa-stop"></i> 停止批量
+                        </button>
+                        <button class="cmd-btn warning" onclick="sendCommand('ping')">
+                            <i class="fas fa-heartbeat"></i> Ping 设备
+                        </button>
+                    </div>
+                    <div class="cmd-feedback" id="cmdFeedback">
+                        <i class="fas fa-info-circle"></i>
+                        <span>点击按钮发送指令到边缘设备</span>
+                    </div>
+                    <div class="sim-row">
+                        <button class="sim-btn" onclick="simulateData(1)"><i class="fas fa-flask"></i> 模拟 1 条</button>
+                        <button class="sim-btn" onclick="simulateData(5)"><i class="fas fa-flask"></i> 模拟 5 条</button>
+                        <button class="sim-btn" onclick="simulateData(20)"><i class="fas fa-flask"></i> 模拟 20 条</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Defect type detail -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-exclamation-triangle"></i> ROI 合格率详情</div>
+                </div>
+                <div class="card-body" style="padding:0;">
+                    <div class="table-wrap" style="max-height:280px;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ROI 名称</th>
+                                    <th>总数</th>
+                                    <th>通过</th>
+                                    <th>失败</th>
+                                    <th>合格率</th>
+                                </tr>
+                            </thead>
+                            <tbody id="roiStatsBody">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="empty-state" id="roiStatsEmpty">
+                        <i class="fas fa-chart-simple"></i>
+                        <p>暂无 ROI 统计数据</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- ============ JavaScript ============ -->
+    <script>
+        // ===== Time =====
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('headerTime').textContent = now.toLocaleString('zh-CN', { hour12: false });
+        }
+        updateTime();
+        setInterval(updateTime, 1000);
+
+        // ===== Charts =====
+        let trendChart = null;
+        let roiChart = null;
+        let trendData = [];
+        let roiData = {};
+
+        function initCharts() {
+            const trendCtx = document.getElementById('trendChart').getContext('2d');
+            const roiCtx = document.getElementById('roiChart').getContext('2d');
+
+            trendChart = new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: '检测结果 (1=通过, 0=失败)',
+                        data: [],
+                        borderColor: '#22c55e',
+                        backgroundColor: 'rgba(34, 197, 94, 0.08)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 3,
+                        pointBackgroundColor: '#22c55e',
+                        borderWidth: 2,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { intersect: false, mode: 'index' },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1c2030',
+                            borderColor: '#2a2f45',
+                            borderWidth: 1,
+                            titleColor: '#e8eaf0',
+                            bodyColor: '#8b90a5',
+                        },
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            ticks: { color: '#5a5f75', maxTicksLimit: 10, font: { size: 10 } },
+                            grid: { color: 'rgba(42,47,69,0.3)' },
+                        },
+                        y: {
+                            min: -0.1,
+                            max: 1.1,
+                            ticks: {
+                                color: '#5a5f75',
+                                font: { size: 10 },
+                                callback: function(v) { return v === 0 ? 'FAIL' : v === 1 ? 'PASS' : ''; }
+                            },
+                            grid: { color: 'rgba(42,47,69,0.3)' },
+                        }
+                    },
+                    animation: { duration: 300 },
+                }
+            });
+
+            roiChart = new Chart(roiCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        backgroundColor: [
+                            '#22c55e', '#ef4444', '#3b82f6', '#f59e0b',
+                            '#8b5cf6', '#06b6d4', '#ec4899', '#14b8a6'
+                        ],
+                        borderColor: '#1c2030',
+                        borderWidth: 2,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '65%',
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                color: '#8b90a5',
+                                font: { size: 11 },
+                                usePointStyle: true,
+                                padding: 12,
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: '#1c2030',
+                            borderColor: '#2a2f45',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: function(ctx) {
+                                    const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                    const pct = total > 0 ? (ctx.parsed / total * 100).toFixed(1) : 0;
+                                    return ` ${ctx.label}: ${ctx.parsed} 次 (${pct}%)`;
+                                }
+                            }
+                        },
+                    },
+                    animation: { duration: 300 },
+                }
+            });
+        }
+
+        // ===== Update Trend Chart =====
+        function updateTrendChart(results) {
+            const recent = results.slice(-50);
+            const labels = recent.map((r, i) => {
+                const d = new Date(r.timestamp || Date.now());
+                return d.toLocaleTimeString('zh-CN', { hour12: false });
+            });
+            const data = recent.map(r => r.passed ? 1 : 0);
+
+            trendChart.data.labels = labels;
+            trendChart.data.datasets[0].data = data;
+            trendChart.update('none');
+        }
+
+        // ===== Update ROI Chart =====
+        function updateRoiChart(roiStats) {
+            const entries = Object.entries(roiStats);
+            if (entries.length === 0) return;
+
+            // Sort by total desc, take top 8
+            entries.sort((a, b) => b[1].total - a[1].total);
+            const top = entries.slice(0, 8);
+
+            roiChart.data.labels = top.map(([name]) => name.length > 10 ? name.slice(0, 10) + '..' : name);
+            roiChart.data.datasets[0].data = top.map(([, v]) => v.total);
+            roiChart.update('none');
+        }
+
+        // ===== Update ROI Stats Table =====
+        function updateRoiStatsTable(roiStats) {
+            const tbody = document.getElementById('roiStatsBody');
+            const empty = document.getElementById('roiStatsEmpty');
+            const entries = Object.entries(roiStats);
+
+            if (entries.length === 0) {
+                tbody.innerHTML = '';
+                empty.style.display = 'block';
+                return;
+            }
+            empty.style.display = 'none';
+            entries.sort((a, b) => b[1].total - a[1].total);
+
+            tbody.innerHTML = entries.map(([name, s]) => {
+                const rate = s.total > 0 ? (s.passed / s.total * 100).toFixed(1) : 0;
+                return `<tr>
+                    <td>${name}</td>
+                    <td>${s.total}</td>
+                    <td style="color:var(--accent-green)">${s.passed}</td>
+                    <td style="color:${s.failed > 0 ? 'var(--accent-red)' : 'var(--text-secondary)'}">${s.failed}</td>
+                    <td><span class="${rate >= 90 ? 'badge-pass' : 'badge-fail'}">${rate}%</span></td>
+                </tr>`;
+            }).join('');
+        }
+
+        // ===== SSE =====
+        let resultCount = 0;
+
+        function connectSSE() {
+            const evtSource = new EventSource('/stream');
+
+            evtSource.addEventListener('connected', function() {
+                console.log('[SSE] 已连接');
+            });
+
+            evtSource.addEventListener('mqtt_status', function(e) {
+                const data = JSON.parse(e.data);
+                const dot = document.getElementById('mqttDot');
+                const label = document.getElementById('mqttLabel');
+                if (data.connected) {
+                    dot.className = 'mqtt-dot online';
+                    label.textContent = 'MQTT 已连接';
+                } else {
+                    dot.className = 'mqtt-dot offline';
+                    label.textContent = 'MQTT 已断开';
+                }
+            });
+
+            evtSource.addEventListener('result', function(e) {
+                const data = JSON.parse(e.data);
+                resultCount++;
+                addResultRow(data);
+                updateStats(data);
+
+                // Toast
+                showToast(data);
+
+                // Refresh stats from server periodically
+                fetchStats();
+            });
+
+            evtSource.addEventListener('heartbeat', function(e) {
+                const data = JSON.parse(e.data);
+                fetchDevices();
+            });
+
+            evtSource.onerror = function() {
+                console.log('[SSE] 连接断开，5秒后重连...');
+                setTimeout(connectSSE, 5000);
+            };
+        }
+
+        // ===== Add Result Row =====
+        function addResultRow(data) {
+            const tbody = document.getElementById('resultsBody');
+            const empty = document.getElementById('resultsEmpty');
+            empty.style.display = 'none';
+
+            const time = data.dateTime ? data.dateTime.split('T')[1] || data.dateTime : '--';
+            const shortTime = time.length > 8 ? time.slice(11, 19) : time;
+
+            const badge = data.passed ?
+                '<span class="badge-pass"><i class="fas fa-check"></i> PASS</span>' :
+                '<span class="badge-fail"><i class="fas fa-times"></i> FAIL</span>';
+
+            const barcodeIcon = data.hasBarcode ? '<i class="fas fa-qrcode" style="color:var(--accent-cyan)"></i>' : '--';
+
+            const tr = document.createElement('tr');
+            tr.className = 'row-new';
+            tr.innerHTML = `
+                <td style="font-size:12px;color:var(--text-secondary);font-variant-numeric:tabular-nums">${shortTime || '--'}</td>
+                <td class="device-name" style="font-size:12px">${data.deviceId || '--'}</td>
+                <td>${data.roiName || '全图'}</td>
+                <td>${badge}</td>
+                <td>${data.totalRegionCount ?? '--'}</td>
+                <td>${barcodeIcon}</td>
+            `;
+            tbody.insertBefore(tr, tbody.firstChild);
+
+            // Keep max 100 rows in DOM
+            while (tbody.children.length > 100) {
+                tbody.removeChild(tbody.lastChild);
+            }
+
+            document.getElementById('resultCount').textContent = resultCount + ' 条';
+
+            // Remove highlight after animation
+            setTimeout(() => { tr.className = ''; }, 1500);
+        }
+
+        // ===== Update Stats =====
+        function updateStats(data) {
+            // Use server data for accurate stats
+        }
+
+        function fetchStats() {
+            fetch('/api/stats')
+                .then(r => r.json())
+                .then(s => {
+                    document.getElementById('statTotal').textContent = s.total;
+                    document.getElementById('statPassRate').textContent = s.passRate;
+                    document.getElementById('statPassed').textContent = s.passed;
+                    document.getElementById('statFailed').textContent = s.failed;
+                    document.getElementById('statDevices').textContent = s.onlineCount;
+                    document.getElementById('statTotalDevices').textContent = s.deviceCount;
+                    document.getElementById('statToday').textContent = s.total;
+                });
+        }
+
+        function fetchDevices() {
+            fetch('/api/devices')
+                .then(r => r.json())
+                .then(devices => {
+                    const list = document.getElementById('deviceList');
+                    const countEl = document.getElementById('deviceCount');
+                    countEl.textContent = devices.length + ' 台';
+
+                    if (devices.length === 0) {
+                        list.innerHTML = `
+                            <div class="empty-state">
+                                <i class="fas fa-plug"></i>
+                                <p>暂无设备上线</p>
+                            </div>`;
+                        return;
+                    }
+
+                    list.innerHTML = devices.map(d => {
+                        const status = d.status === 'online' ? 'online' : 'offline';
+                        const statusLabel = d.status === 'online' ? '在线' : '离线';
+                        const lastResult = d.last_result ? `
+                            <span style="color:${d.last_result.passed ? 'var(--accent-green)' : 'var(--accent-red)'}">
+                                ${d.last_result.passed ? 'PASS' : 'FAIL'} · ${d.last_result.roiName}
+                            </span>` : '暂无数据';
+                        return `
+                            <div class="device-item">
+                                <div class="device-info">
+                                    <div class="device-icon"><i class="fas fa-microchip"></i></div>
+                                    <div class="device-meta">
+                                        <div class="name"><span class="device-dot ${status}"></span>${d.device_id}</div>
+                                        <div class="detail">检测 ${d.result_count || 0} 次 · 最后: ${lastResult}</div>
+                                    </div>
+                                </div>
+                                <span class="device-status-badge ${status}">${statusLabel}</span>
+                            </div>`;
+                    }).join('');
+                });
+        }
+
+        function fetchResults() {
+            fetch('/api/results/recent?limit=50')
+                .then(r => r.json())
+                .then(results => {
+                    if (results.length > 0) {
+                        document.getElementById('resultsEmpty').style.display = 'none';
+                        updateTrendChart(results);
+                    }
+                });
+
+            fetch('/api/stats/by-roi')
+                .then(r => r.json())
+                .then(roiStats => {
+                    updateRoiChart(roiStats);
+                    updateRoiStatsTable(roiStats);
+                });
+        }
+
+        // ===== Show Toast =====
+        function showToast(data) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const cls = data.passed ? 'pass' : 'fail';
+            const icon = data.passed ? 'fa-check-circle' : 'fa-times-circle';
+            const label = data.passed ? 'PASS' : 'FAIL';
+            toast.className = `toast ${cls}`;
+            toast.innerHTML = `
+                <i class="fas ${icon} ${cls}"></i>
+                <div>
+                    <strong>${label}</strong> · ${data.roiName || '全图'}
+                    <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">${data.deviceId}</div>
+                </div>
+            `;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.animation = 'fadeOut 0.3s ease forwards';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+
+            // Keep max 5 toasts
+            while (container.children.length > 5) {
+                container.removeChild(container.firstChild);
+            }
+        }
+
+        // ===== Send Command =====
+        function sendCommand(cmd) {
+            const feedback = document.getElementById('cmdFeedback');
+            feedback.innerHTML = `<i class="fas fa-spinner fa-spin"></i><span>正在发送指令: ${cmd}...</span>`;
+
+            fetch('/api/command', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cmd: cmd }),
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.ok) {
+                        feedback.innerHTML = `<i class="fas fa-check-circle" style="color:var(--accent-green)"></i>
+                            <span>指令 <strong>${cmd}</strong> 已发送到边缘设备</span>`;
+                    } else {
+                        feedback.innerHTML = `<i class="fas fa-exclamation-circle" style="color:var(--accent-red)"></i>
+                            <span>发送失败: ${data.error}</span>`;
+                    }
+                })
+                .catch(err => {
+                    feedback.innerHTML = `<i class="fas fa-exclamation-circle" style="color:var(--accent-red)"></i>
+                        <span>网络错误: ${err.message}</span>`;
+                });
+        }
+
+        // ===== Simulate Data =====
+        function simulateData(count) {
+            const feedback = document.getElementById('cmdFeedback');
+            feedback.innerHTML = `<i class="fas fa-spinner fa-spin"></i><span>正在生成 ${count} 条模拟数据...</span>`;
+
+            fetch('/api/simulate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ count: count }),
+                })
+                .then(r => r.json())
+                .then(data => {
+                    feedback.innerHTML = `<i class="fas fa-flask" style="color:var(--accent-purple)"></i>
+                        <span>已生成 ${data.simulated} 条模拟数据</span>`;
+                })
+                .catch(err => {
+                    feedback.innerHTML = `<i class="fas fa-exclamation-circle" style="color:var(--accent-red)"></i>
+                        <span>模拟失败: ${err.message}</span>`;
+                });
+        }
+
+        // ===== Init =====
+        document.addEventListener('DOMContentLoaded', function() {
+            initCharts();
+            fetchStats();
+            fetchDevices();
+            fetchResults();
+            connectSSE();
+
+            // Periodic polling as backup
+            setInterval(fetchStats, 5000);
+            setInterval(fetchDevices, 5000);
+            setInterval(fetchResults, 8000);
+        });
+    </script>
+
+</body>
+</html>
