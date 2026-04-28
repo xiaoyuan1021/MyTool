@@ -211,17 +211,7 @@ struct RoiTemplate
         }
         obj["detectionItems"] = detections;
 
-        QJsonObject pipeConfig;
-        pipeConfig["brightness"] = pipelineConfig.brightness;
-        pipeConfig["contrast"] = pipelineConfig.contrast;
-        pipeConfig["gamma"] = pipelineConfig.gamma;
-        pipeConfig["sharpen"] = pipelineConfig.sharpen;
-        pipeConfig["channel"] = static_cast<int>(pipelineConfig.channel);
-        pipeConfig["barcode_enable"] = pipelineConfig.barcode.enableBarcode;
-        pipeConfig["barcode_codeTypes"] = pipelineConfig.barcode.codeTypes.join(",");
-        pipeConfig["barcode_maxNum"] = pipelineConfig.barcode.maxNumSymbols;
-        pipeConfig["barcode_returnQuality"] = pipelineConfig.barcode.returnQuality;
-        obj["pipelineConfig"] = pipeConfig;
+        obj["pipelineConfig"] = pipelineConfig.toJson();
 
         return obj;
     }
@@ -246,19 +236,16 @@ struct RoiTemplate
 
         QJsonObject pipeConfig = obj["pipelineConfig"].toObject();
         if (!pipeConfig.isEmpty()) {
-            pipelineConfig.brightness = pipeConfig["brightness"].toInt(0);
-            pipelineConfig.contrast = pipeConfig["contrast"].toDouble(1.0);
-            pipelineConfig.gamma = pipeConfig["gamma"].toDouble(1.0);
-            pipelineConfig.sharpen = pipeConfig["sharpen"].toDouble(1.0);
-            pipelineConfig.channel = static_cast<PipelineConfig::Channel>(
-                pipeConfig["channel"].toInt(0));
-            pipelineConfig.barcode.enableBarcode = pipeConfig["barcode_enable"].toBool(false);
-            QString codeTypesStr = pipeConfig["barcode_codeTypes"].toString();
-            if (!codeTypesStr.isEmpty()) {
-                pipelineConfig.barcode.codeTypes = codeTypesStr.split(",");
+            // 兼容旧格式：将扁平 barcode_* 字段转为嵌套格式
+            if (pipeConfig.contains("barcode_enable") && !pipeConfig.contains("barcode")) {
+                QJsonObject barcodeObj;
+                barcodeObj["enableBarcode"] = pipeConfig["barcode_enable"];
+                barcodeObj["codeTypes"] = pipeConfig["barcode_codeTypes"];
+                barcodeObj["maxNumSymbols"] = pipeConfig["barcode_maxNum"];
+                barcodeObj["returnQuality"] = pipeConfig["barcode_returnQuality"];
+                pipeConfig["barcode"] = barcodeObj;
             }
-            pipelineConfig.barcode.maxNumSymbols = pipeConfig["barcode_maxNum"].toInt(0);
-            pipelineConfig.barcode.returnQuality = pipeConfig["barcode_returnQuality"].toBool(true);
+            pipelineConfig.fromJson(pipeConfig);
         }
     }
 };
@@ -379,13 +366,7 @@ struct InspectionProfile
         obj["templates"] = tplArray;
 
         // 全局Pipeline配置
-        QJsonObject pipeConfig;
-        pipeConfig["brightness"] = globalPipelineConfig.brightness;
-        pipeConfig["contrast"] = globalPipelineConfig.contrast;
-        pipeConfig["gamma"] = globalPipelineConfig.gamma;
-        pipeConfig["sharpen"] = globalPipelineConfig.sharpen;
-        pipeConfig["channel"] = static_cast<int>(globalPipelineConfig.channel);
-        obj["globalPipelineConfig"] = pipeConfig;
+        obj["globalPipelineConfig"] = globalPipelineConfig.toJson();
 
         return obj;
     }
@@ -417,15 +398,7 @@ struct InspectionProfile
             templates.append(te);
         }
 
-        QJsonObject pipeConfig = obj["globalPipelineConfig"].toObject();
-        if (!pipeConfig.isEmpty()) {
-            globalPipelineConfig.brightness = pipeConfig["brightness"].toInt(0);
-            globalPipelineConfig.contrast = pipeConfig["contrast"].toDouble(1.0);
-            globalPipelineConfig.gamma = pipeConfig["gamma"].toDouble(1.0);
-            globalPipelineConfig.sharpen = pipeConfig["sharpen"].toDouble(1.0);
-            globalPipelineConfig.channel = static_cast<PipelineConfig::Channel>(
-                pipeConfig["channel"].toInt(0));
-        }
+        globalPipelineConfig.fromJson(obj["globalPipelineConfig"].toObject());
     }
 
     /**

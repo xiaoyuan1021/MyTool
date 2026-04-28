@@ -2,6 +2,7 @@
 #include <opencv2/opencv.hpp>
 #include <QVector>
 #include <QVariantMap>
+#include <QJsonObject>
 #include <QPointF>
 #include <QString>
 #include <QRectF>
@@ -81,6 +82,56 @@ struct PipelineConfig
     
      // ========== 条码识别参数 ==========
      BarcodeConfig barcode;
+
+     // ==================== JSON 序列化 ====================
+
+     /**
+      * @brief 将 PipelineConfig 序列化为 JSON
+      *        集中管理所有序列化字段，避免散落在各调用方
+      */
+     QJsonObject toJson() const {
+         QJsonObject obj;
+         obj["brightness"] = brightness;
+         obj["contrast"] = contrast;
+         obj["gamma"] = gamma;
+         obj["sharpen"] = sharpen;
+         obj["channel"] = static_cast<int>(channel);
+
+         // 条码参数
+         QJsonObject barcodeObj;
+         barcodeObj["enableBarcode"] = barcode.enableBarcode;
+         barcodeObj["codeTypes"] = barcode.codeTypes.join(",");
+         barcodeObj["maxNumSymbols"] = barcode.maxNumSymbols;
+         barcodeObj["returnQuality"] = barcode.returnQuality;
+         obj["barcode"] = barcodeObj;
+
+         return obj;
+     }
+
+     /**
+      * @brief 从 JSON 反序列化 PipelineConfig
+      *        忽略 JSON 中不存在的字段，保持当前值
+      */
+     void fromJson(const QJsonObject& obj) {
+         if (obj.isEmpty()) return;
+         brightness = obj["brightness"].toInt(0);
+         contrast   = obj["contrast"].toDouble(1.0);
+         gamma      = obj["gamma"].toDouble(1.0);
+         sharpen    = obj["sharpen"].toDouble(0.0);
+         channel    = static_cast<ChannelMode>(obj["channel"].toInt(0));
+
+         // 条码参数（兼容旧格式：字段名 "barcode" 内嵌对象）
+         QJsonObject barcodeObj = obj["barcode"].toObject();
+         if (!barcodeObj.isEmpty()) {
+             barcode.enableBarcode = barcodeObj["enableBarcode"].toBool(false);
+             QString codeTypesStr  = barcodeObj["codeTypes"].toString();
+             if (!codeTypesStr.isEmpty()) {
+                 barcode.codeTypes = codeTypesStr.split(",");
+             }
+             barcode.maxNumSymbols = barcodeObj["maxNumSymbols"].toInt(0);
+             barcode.returnQuality = barcodeObj["returnQuality"].toBool(true);
+         }
+     }
  };
 
 struct PipelineContext

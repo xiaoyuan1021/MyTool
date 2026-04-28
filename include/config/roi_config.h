@@ -367,14 +367,7 @@ struct RoiConfig {
         }
         obj["detectionItems"] = detections;
         
-        // 保存PipelineConfig
-        QJsonObject pipeConfig;
-        pipeConfig["brightness"] = pipelineConfig.brightness;
-        pipeConfig["contrast"] = pipelineConfig.contrast;
-        pipeConfig["gamma"] = pipelineConfig.gamma;
-        pipeConfig["sharpen"] = pipelineConfig.sharpen;
-        pipeConfig["channel"] = static_cast<int>(pipelineConfig.channel);
-        obj["pipelineConfig"] = pipeConfig;
+        obj["pipelineConfig"] = pipelineConfig.toJson();
         
         return obj;
     }
@@ -405,16 +398,7 @@ struct RoiConfig {
             detectionItems.append(item);
         }
         
-        // 加载PipelineConfig
-        QJsonObject pipeConfig = obj["pipelineConfig"].toObject();
-        if (!pipeConfig.isEmpty()) {
-            pipelineConfig.brightness = pipeConfig["brightness"].toInt(0);
-            pipelineConfig.contrast = pipeConfig["contrast"].toDouble(1.0);
-            pipelineConfig.gamma = pipeConfig["gamma"].toDouble(1.0);
-            pipelineConfig.sharpen = pipeConfig["sharpen"].toDouble(1.0);
-            pipelineConfig.channel = static_cast<PipelineConfig::Channel>(
-                pipeConfig["channel"].toInt(0));
-        }
+        pipelineConfig.fromJson(obj["pipelineConfig"].toObject());
     }
 };
 
