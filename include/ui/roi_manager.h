@@ -6,6 +6,7 @@
 #include <QMap>
 #include <QVector>
 #include "../config/roi_config.h"
+#include "data/inspection_profile.h"
 
 // 前向声明
 class ImageView;
@@ -121,6 +122,22 @@ public:
 
     QJsonDocument exportAllConfigsToJson() const;
     void importAllConfigsFromJson(const QJsonDocument& doc);
+
+    // ==================== 检测方案支持 ====================
+
+    /**
+     * @brief 从当前RoiManager状态导出为检测方案
+     * @param profileName 方案名称
+     * @param refImageSize 参考图像尺寸（用于坐标归一化）
+     */
+    InspectionProfile exportAsProfile(const QString& profileName, const QSize& refImageSize) const;
+
+    /**
+     * @brief 将检测方案应用到当前图片
+     * @param profile 检测方案
+     * @param currentImageSize 当前图像尺寸（用于坐标换算）
+     */
+    void applyProfile(const InspectionProfile& profile, const QSize& currentImageSize);
 
     // ==================== 缩放状态管理方法 ====================
 

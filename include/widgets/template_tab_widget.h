@@ -15,6 +15,7 @@ class TemplateTabWidget;
 class ImageView;
 class RoiManager;
 class BatchMatchDialog;
+class ProfileManager;
 
 enum class MatchType
 {
@@ -42,6 +43,11 @@ public:
     void clearTemplate();
     TemplateParams getDefaultParams() const { return m_defaultParams; }
 
+    // 方案模板操作
+    void setProfileManager(ProfileManager* pm) { m_profileManager = pm; }
+    void saveTemplateToProfile();
+    void loadTemplateFromProfile();
+
     // 批量操作
     void batchFindTemplate();
 
@@ -57,6 +63,11 @@ public slots:
 
     /// 导入文件夹中的所有图片
     void importFolder();
+
+    /// 保存到当前方案（快捷槽函数）
+    void onSaveToProfileClicked();
+    /// 从方案加载（快捷槽函数）
+    void onLoadFromProfileClicked();
 
     /// 显示批量匹配结果图片
     void showBatchResultImage(const QString& imageId, const cv::Mat& resultImage,
@@ -85,6 +96,9 @@ private:
     MatchType m_currentType;
     QMap<MatchType, std::shared_ptr<IMatchStrategy>> m_strategies;
     TemplateParams m_defaultParams;
+
+    // 方案管理器
+    ProfileManager* m_profileManager = nullptr;
 
     // 批量匹配对话框
     BatchMatchDialog* m_batchDialog = nullptr;

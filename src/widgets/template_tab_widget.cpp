@@ -3,6 +3,8 @@
 #include "image_view.h"
 #include "logger.h"
 #include "widgets/batch_match_dialog.h"
+#include "controllers/profile_manager.h"
+#include "data/inspection_profile.h"
 #include <QMessageBox>
 #include <QInputDialog>
 #include <QFileDialog>
@@ -57,6 +59,14 @@ void TemplateTabWidget::initialize()
     }
     if (m_ui->btn_importFolder) {
         connect(m_ui->btn_importFolder, &QPushButton::clicked, this, &TemplateTabWidget::importFolder);
+    }
+
+    // 方案模板按钮
+    if (m_ui->btn_saveToProfile) {
+        connect(m_ui->btn_saveToProfile, &QPushButton::clicked, this, &TemplateTabWidget::onSaveToProfileClicked);
+    }
+    if (m_ui->btn_loadFromProfile) {
+        connect(m_ui->btn_loadFromProfile, &QPushButton::clicked, this, &TemplateTabWidget::onLoadFromProfileClicked);
     }
 }
 
@@ -152,6 +162,7 @@ void TemplateTabWidget::createTemplateFromPolygon(const QVector<QPointF>& points
 {
     TemplateParams params = m_defaultParams;
     params.polygonPoints = points;
+    m_defaultParams.polygonPoints = points;
 
     Logger::instance()->info("========== 开始创建模板 ==========");
     Logger::instance()->info(QString("模板名称: %1").arg(name));
@@ -363,6 +374,110 @@ void TemplateTabWidget::showBatchResultImage(const QString& imageId,
         }
         Logger::instance()->info(msg);
     }
+}
+
+// ========== 方案模板操作 ==========
+
+void TemplateTabWidget::saveTemplateToProfile()
+{
+    if (!m_profileManager || !hasTemplate()) {
+        return;
+    }
+
+    // 获取当前活跃方案
+    QString profileId = m_profileManager->activeProfileId();
+    if (profileId.isEmpty()) {
+        QMessageBox::warning(m_parent, "提示",
+            "请先在「方案」Tab中加载或保存一个检测方案");
+        return;
+    }
+
+    bool ok;
+    QString templateName = QInputDialog::getText(
+        m_parent, "保存模板到方案", "模板名称:", QLineEdit::Normal, QString(), &ok);
+
+    if (!ok || templateName.trimmed().isEmpty()) {
+        return;
+    }
+
+    cv::Mat templateImage = m_currentStrategy->getTemplateImage();
+    if (templateImage.empty()) {
+        QMessageBox::warning(m_parent, "提示", "模板图像为空，无法保存");
+        return;
+    }
+
+    if (m_profileManager->saveTemplateToProfile(
+            profileId, templateName.trimmed(),
+            templateImage, m_defaultParams.polygonPoints,
+            m_defaultParams.matchMethod)) {
+        QMessageBox::information(m_parent, "成功",
+            QString("模板 '%1' 已保存到当前方案").arg(templateName.trimmed()));
+    } else {
+        QMessageBox::warning(m_parent, "失败", "保存模板到方案失败");
+    }
+}
+
+void TemplateTabWidget::loadTemplateFromProfile()
+{
+    if (!m_profileManager) {
+        QMessageBox::warning(m_parent, "提示", "方案管理器未初始化");
+        return;
+    }
+
+    QString profileId = m_profileManager->activeProfileId();
+    if (profileId.isEmpty()) {
+        QMessageBox::warning(m_parent, "提示",
+            "请先在「方案」Tab中加载一个检测方案");
+        return;
+    }
+
+    QStringList names = m_profileManager->getTemplateNames(profileId);
+    if (names.isEmpty()) {
+        QMessageBox::information(m_parent, "提示", "当前方案中没有保存的模板");
+        return;
+    }
+
+    // 弹出选择对话框
+    bool ok = false;
+    QString selectedName = QInputDialog::getItem(
+        m_parent, "从方案加载模板", "选择模板:", names, 0, false, &ok);
+
+    if (!ok || selectedName.isEmpty()) {
+        return;
+    }
+
+    cv::Mat templateImage;
+    QVector<QPointF> polygonPoints;
+    int matchMethod;
+
+    if (m_profileManager->loadTemplateFromProfile(
+            profileId, selectedName, templateImage, polygonPoints, matchMethod)) {
+        // 使用加载的模板创建匹配
+        TemplateParams params;
+        params.polygonPoints = polygonPoints;
+        params.matchMethod = matchMethod;
+
+        if (m_currentStrategy->createTemplate(
+                m_roiManager->getFullImage(), polygonPoints, params)) {
+            updateUIState(true);
+            QMessageBox::information(m_parent, "成功",
+                QString("模板 '%1' 已从方案加载").arg(selectedName));
+        } else {
+            QMessageBox::warning(m_parent, "失败", "模板创建失败");
+        }
+    } else {
+        QMessageBox::warning(m_parent, "失败", "从方案加载模板失败");
+    }
+}
+
+void TemplateTabWidget::onSaveToProfileClicked()
+{
+    saveTemplateToProfile();
+}
+
+void TemplateTabWidget::onLoadFromProfileClicked()
+{
+    loadTemplateFromProfile();
 }
 
 void TemplateTabWidget::updateUIState(bool hasTemplate)

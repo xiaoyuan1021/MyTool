@@ -712,3 +712,52 @@ QString RoiManager::generateDefaultImageName()
 {
     return QString("图片_%1").arg(m_imageCounter + 1);
 }
+
+// ==================== 检测方案支持 ====================
+
+InspectionProfile RoiManager::exportAsProfile(const QString& profileName, const QSize& refImageSize) const
+{
+    InspectionProfile profile;
+    profile.profileName = profileName;
+    profile.referenceImageSize = refImageSize;
+
+    // 收集当前图片的所有ROI配置，转为归一化坐标
+    auto it = m_imageRoisMap.find(m_currentImageId);
+    if (it != m_imageRoisMap.end()) {
+        for (const auto& roiConfig : it.value().roiConfigs) {
+            profile.roiTemplates.append(
+                RoiTemplate::fromRoiConfig(roiConfig, refImageSize)
+            );
+        }
+    }
+
+    return profile;
+}
+
+void RoiManager::applyProfile(const InspectionProfile& profile, const QSize& currentImageSize)
+{
+    auto it = m_imageRoisMap.find(m_currentImageId);
+    if (it == m_imageRoisMap.end()) {
+        return;
+    }
+
+    // 清除当前图片的ROI配置
+    it.value().roiConfigs.clear();
+    it.value().activeRoiId.clear();
+
+    // 从方案的归一化坐标还原为绝对坐标，创建RoiConfig
+    for (const auto& roiTemplate : profile.roiTemplates) {
+        RoiConfig rc = roiTemplate.toRoiConfig(currentImageSize);
+        it.value().roiConfigs.append(rc);
+    }
+
+    it.value().roiCounter = profile.roiTemplates.size();
+
+    Logger::instance()->info(
+        QString("[RoiManager] 已应用检测方案 '%1'，ROI数量: %2")
+            .arg(profile.profileName)
+            .arg(profile.roiTemplates.size())
+    );
+
+    emit roiConfigChanged();
+}

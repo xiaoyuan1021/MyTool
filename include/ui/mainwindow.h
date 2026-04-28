@@ -27,6 +27,7 @@ class DetectionUiController;
 class ConfigController;
 class AutoDetectionController;
 class PipelineResultHandler;
+class ProfileManager;
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -75,6 +76,9 @@ private slots:
     void on_btn_startAutoDetection_clicked();
     void on_btn_stopAutoDetection_clicked();
     void on_btn_cloudPlatform_clicked();
+    void on_btn_saveToProfile_clicked();
+    void on_btn_loadFromProfile_clicked();
+    void on_btn_importFolder_clicked();
 
 private:
     // 初始化方法
@@ -137,6 +141,9 @@ private:
 
     // 云平台看板进程
     QProcess* m_cloudDashboardProcess = nullptr;
+
+    // 检测方案管理器
+    ProfileManager* m_profileManager = nullptr;
 
     // Toast 通知浮标
     ToastNotification* m_toast = nullptr;

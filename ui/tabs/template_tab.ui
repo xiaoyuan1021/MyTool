@@ -435,6 +435,20 @@
        </widget>
       </item>
       <item>
+       <widget class="QPushButton" name="btn_saveToProfile">
+        <property name="text">
+         <string>保存到方案</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btn_loadFromProfile">
+        <property name="text">
+         <string>从方案加载</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <spacer name="horizontalSpacer_batch_mid">
         <property name="orientation">
          <enum>Qt::Orientation::Horizontal</enum>

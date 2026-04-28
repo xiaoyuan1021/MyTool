@@ -19,15 +19,19 @@
 #include "controllers/config_controller.h"
 #include "controllers/auto_detection_controller.h"
 #include "ui/pipeline_result_handler.h"
+#include "controllers/profile_manager.h"
 
 // Tab Widget头文件
 #include "widgets/video_tab_widget.h"
 #include "widgets/barcode_tab_widget.h"
+#include "widgets/template_tab_widget.h"
 
 #include <QFile>
 #include <QDir>
 #include <QTimer>
 #include <QFileDialog>
+#include <QInputDialog>
+#include <QLineEdit>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -144,7 +148,10 @@ void MainWindow::setupConnections()
 void MainWindow::setupManagers()
 {
     m_tabManager = new TabManager(ui->tabWidget, m_pipelineManager, &m_roiManager,
-                                  m_view, m_processDebounceTimer, this);
+                                   m_view, m_processDebounceTimer, this);
+
+    // 创建检测方案管理器
+    m_profileManager = new ProfileManager(&m_roiManager, m_pipelineManager, this);
 
     m_imageListManager = new ImageListManager(m_roiManager, m_fileManager, this, this);
     m_imageListManager->init(ui->listWidget_images, ui->btn_addImage, ui->btn_removeImage);
@@ -188,6 +195,13 @@ void MainWindow::setupControllers()
             m_tabManager->getProcessTab(),
             m_tabManager->getBarcodeTab()
         );
+        // 新创建的模板tab需要注入ProfileManager
+        if (name == "补正") {
+            auto* templateTab = m_tabManager->getTemplateTab();
+            if (templateTab) {
+                templateTab->setProfileManager(m_profileManager);
+            }
+        }
         // 新创建的条码tab需要从PipelineManager同步配置到UI
         if (name == "条码") {
             auto* barcodeTab = m_tabManager->getBarcodeTab();
@@ -625,5 +639,81 @@ void MainWindow::displayCurrentResult()
     cv::Mat displayImage = m_pipelineManager->getLastDisplayWithMode(mode);
     if (!displayImage.empty()) {
         m_view->setImage(ImageUtils::matToQImage(displayImage));
+    }
+}
+
+// ========== 方案操作 ==========
+
+void MainWindow::on_btn_saveToProfile_clicked()
+{
+    if (!m_profileManager) return;
+
+    cv::Mat currentImage = m_roiManager.getFullImage();
+    if (currentImage.empty()) {
+        QMessageBox::warning(this, "提示", "请先打开图片");
+        return;
+    }
+
+    bool ok;
+    QString name = QInputDialog::getText(this, "保存检测方案", "方案名称:",
+                                          QLineEdit::Normal, QString(), &ok);
+    if (!ok || name.trimmed().isEmpty()) return;
+
+    if (m_profileManager->saveCurrentAsProfile(name.trimmed())) {
+        m_toast->showMessage(QString("方案 '%1' 已保存").arg(name.trimmed()));
+        Logger::instance()->info(QString("[MainWindow] 方案已保存: %1").arg(name.trimmed()));
+    } else {
+        QMessageBox::warning(this, "保存失败", "保存方案失败，请查看日志");
+    }
+}
+
+void MainWindow::on_btn_loadFromProfile_clicked()
+{
+    if (!m_profileManager) return;
+
+    QList<ProfileManager::ProfileSummary> profiles = m_profileManager->getProfileList();
+    if (profiles.isEmpty()) {
+        QMessageBox::information(this, "提示", "没有已保存的检测方案\n请先点击「保存到方案」创建方案");
+        return;
+    }
+
+    QStringList names;
+    QList<QString> ids;
+    for (const auto& p : profiles) {
+        names.append(QString("%1 (ROI:%2, 模板:%3)").arg(p.profileName).arg(p.roiCount).arg(p.templateCount));
+        ids.append(p.profileId);
+    }
+
+    bool ok = false;
+    QString selected = QInputDialog::getItem(this, "加载检测方案", "选择方案:", names, 0, false, &ok);
+    if (!ok) return;
+
+    int idx = names.indexOf(selected);
+    if (idx < 0) return;
+
+    if (m_profileManager->loadProfile(ids[idx])) {
+        m_roiUiController->syncRoiConfigsToWidget();
+        m_toast->showMessage(QString("方案 '%1' 已加载").arg(profiles[idx].profileName));
+        requestRefresh();
+    } else {
+        QMessageBox::warning(this, "加载失败", "加载方案失败，请确保已打开图片");
+    }
+}
+
+void MainWindow::on_btn_importFolder_clicked()
+{
+    QString dir = QFileDialog::getExistingDirectory(this, "选择图片文件夹", QString(),
+        QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
+    if (dir.isEmpty()) return;
+
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    QStringList imported = m_roiManager.importImagesFromFolder(dir);
+    QApplication::restoreOverrideCursor();
+
+    if (imported.isEmpty()) {
+        QMessageBox::information(this, "导入结果", "未导入任何图片。\n请确保文件夹中含有支持格式: .jpg, .png, .bmp, .tiff");
+    } else {
+        m_toast->showMessage(QString("已导入 %1 张图片").arg(imported.size()));
+        Logger::instance()->info(QString("[MainWindow] 从文件夹导入 %1 张图片: %2").arg(imported.size()).arg(dir));
     }
 }
