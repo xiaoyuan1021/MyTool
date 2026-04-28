@@ -44,7 +44,18 @@ public:
     QStringList getImageIds() const;
     QString getImageName(const QString &imageId) const;
     QString getImageFilePath(const QString &imageId) const;
+    /// 根据图片ID获取图像数据
+    cv::Mat getImage(const QString &imageId) const;
     int imageCount() const;
+
+    /**
+     * @brief 从文件夹批量导入图片
+     * @param dirPath 文件夹路径
+     * @param supportedFormats 支持的文件格式列表，默认常见图像格式
+     * @return 成功导入的图片ID列表
+     */
+    QStringList importImagesFromFolder(const QString& dirPath,
+        const QStringList& supportedFormats = {"*.jpg","*.jpeg","*.png","*.bmp","*.tiff","*.tif"});
 
     // ==================== 单ROI模式（基于 RoiConfig）====================
 
@@ -122,6 +133,11 @@ signals:
     void imageAdded(const QString& imageId);
     void imageRemoved(const QString& imageId);
     void currentImageChanged(const QString& imageId);
+
+    /// 文件夹导入进度：当前文件序号，总文件数，当前文件名
+    void folderImportProgress(int current, int total, const QString& fileName);
+    /// 文件夹导入完成
+    void folderImportFinished(int importedCount);
 
 private:
     // 多图片数据结构

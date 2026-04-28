@@ -117,6 +117,8 @@ void SignalConnector::connectTemplateTab(QWidget* widget)
     auto* tab = qobject_cast<TemplateTabWidget*>(widget);
     connect(tab, &TemplateTabWidget::imageToShow,
             m_mainWindow, [this](const cv::Mat& img) { m_mainWindow->showImage(img); });
+    connect(tab, &TemplateTabWidget::requestShowImage,
+            m_mainWindow, [this](const cv::Mat& img) { m_mainWindow->showImage(img); });
     connect(tab, &TemplateTabWidget::templateCreated,
             m_mainWindow, [](const QString& n) {
                 Logger::instance()->info(QString("模板已创建: %1").arg(n));

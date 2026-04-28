@@ -7,15 +7,16 @@
 #include <opencv2/opencv.hpp>
 #include "../algorithm/match_strategy.h"
 
-namespace Ui 
+namespace Ui
 {
 class TemplateTabWidget;
 }
 
 class ImageView;
 class RoiManager;
+class BatchMatchDialog;
 
-enum class MatchType 
+enum class MatchType
 {
     OpenCVTM
 };
@@ -41,6 +42,9 @@ public:
     void clearTemplate();
     TemplateParams getDefaultParams() const { return m_defaultParams; }
 
+    // 批量操作
+    void batchFindTemplate();
+
 public slots:
     void drawTemplate();
     void clearTemplateDrawing();
@@ -51,10 +55,19 @@ public slots:
     void clearMatchResults();
     void onMatchTypeChanged(int index);
 
+    /// 导入文件夹中的所有图片
+    void importFolder();
+
+    /// 显示批量匹配结果图片
+    void showBatchResultImage(const QString& imageId, const cv::Mat& resultImage,
+                              const QVector<MatchResult>& matches);
 signals:
     void imageToShow(const cv::Mat& image);
     void templateCreated(const QString& name);
     void matchCompleted(int count);
+
+    /// 请求主窗口显示指定图片
+    void requestShowImage(const cv::Mat& image);
 
 private:
     void updateUIState(bool hasTemplate);
@@ -72,4 +85,11 @@ private:
     MatchType m_currentType;
     QMap<MatchType, std::shared_ptr<IMatchStrategy>> m_strategies;
     TemplateParams m_defaultParams;
+
+    // 批量匹配对话框
+    BatchMatchDialog* m_batchDialog = nullptr;
+
+    // 最近一次匹配结果缓存（用于双击查看）
+    cv::Mat m_lastResultImage;
+    QVector<MatchResult> m_lastMatches;
 };

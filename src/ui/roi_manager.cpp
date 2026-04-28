@@ -4,6 +4,8 @@
 #include "algorithm/image_utils.h"
 #include <QStatusBar>
 #include <QDebug>
+#include <QDir>
+#include <QFileInfo>
 #include <algorithm>
 
 // ==================== 构造函数 ====================
@@ -150,9 +152,75 @@ QString RoiManager::getImageFilePath(const QString &imageId) const
     return QString();
 }
 
+cv::Mat RoiManager::getImage(const QString &imageId) const
+{
+    auto it = m_imageRoisMap.find(imageId);
+    if (it != m_imageRoisMap.end()) {
+        return it.value().image;
+    }
+    return cv::Mat();
+}
+
 int RoiManager::imageCount() const
 {
     return m_imageRoisMap.size();
+}
+
+QStringList RoiManager::importImagesFromFolder(const QString& dirPath, const QStringList& supportedFormats)
+{
+    QStringList importedIds;
+    QDir dir(dirPath);
+
+    if (!dir.exists()) {
+        Logger::instance()->error(QString("[RoiManager] 文件夹不存在: %1").arg(dirPath));
+        return importedIds;
+    }
+
+    // 收集所有匹配的文件
+    QFileInfoList fileInfos;
+    for (const QString& format : supportedFormats) {
+        fileInfos.append(dir.entryInfoList({format}, QDir::Files, QDir::Name));
+    }
+
+    if (fileInfos.isEmpty()) {
+        Logger::instance()->warning(QString("[RoiManager] 文件夹中没有支持的图片文件: %1").arg(dirPath));
+        return importedIds;
+    }
+
+    Logger::instance()->info(QString("[RoiManager] 开始从文件夹导入图片: %1 (共%2个文件)")
+        .arg(dirPath).arg(fileInfos.size()));
+
+    int total = fileInfos.size();
+    for (int i = 0; i < total; ++i) {
+        const QFileInfo& fi = fileInfos[i];
+        QString filePath = fi.absoluteFilePath();
+
+        emit folderImportProgress(i + 1, total, fi.fileName());
+
+        cv::Mat img = cv::imread(filePath.toStdString());
+        if (img.empty()) {
+            Logger::instance()->warning(QString("[RoiManager] 跳过无法加载的图片: %1").arg(filePath));
+            continue;
+        }
+
+        QString imageName = fi.completeBaseName();
+        QString imageId = addImage(img, imageName, filePath);
+        if (!imageId.isEmpty()) {
+            importedIds.append(imageId);
+            Logger::instance()->info(QString("[RoiManager] 已导入: %1").arg(filePath));
+        }
+    }
+
+    // 自动切换到第一张导入的图片
+    if (!importedIds.isEmpty()) {
+        switchToImage(importedIds.first());
+    }
+
+    emit folderImportFinished(importedIds.size());
+    Logger::instance()->info(QString("[RoiManager] 文件夹导入完成: 成功%1张, 共%2个文件")
+        .arg(importedIds.size()).arg(total));
+
+    return importedIds;
 }
 
 // ==================== 单ROI模式（基于 RoiConfig）====================

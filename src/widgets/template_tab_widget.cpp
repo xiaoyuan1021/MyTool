@@ -2,9 +2,15 @@
 #include "ui_template_tab.h"
 #include "image_view.h"
 #include "logger.h"
+#include "widgets/batch_match_dialog.h"
 #include <QMessageBox>
 #include <QInputDialog>
 #include <QFileDialog>
+#include <QDir>
+#include <QFileInfo>
+#include <QApplication>
+#include <QDesktopServices>
+#include <QUrl>
 
 TemplateTabWidget::TemplateTabWidget(ImageView* view,
                                      RoiManager* roiManager,
@@ -44,6 +50,14 @@ void TemplateTabWidget::initialize()
     connect(m_ui->btn_loadTemplate, &QPushButton::clicked, this, &TemplateTabWidget::loadTemplate);
     connect(m_ui->comboBox_matchType, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &TemplateTabWidget::onMatchTypeChanged);
+
+    // 批量操作按钮
+    if (m_ui->btn_batchMatch) {
+        connect(m_ui->btn_batchMatch, &QPushButton::clicked, this, &TemplateTabWidget::batchFindTemplate);
+    }
+    if (m_ui->btn_importFolder) {
+        connect(m_ui->btn_importFolder, &QPushButton::clicked, this, &TemplateTabWidget::importFolder);
+    }
 }
 
 void TemplateTabWidget::initializeStrategies()
@@ -264,13 +278,102 @@ void TemplateTabWidget::onMatchTypeChanged(int index)
     setMatchType(MatchType::OpenCVTM);
 }
 
+// ========== 文件夹导入 ==========
+
+void TemplateTabWidget::importFolder()
+{
+    QString dirPath = QFileDialog::getExistingDirectory(this,
+        "选择图片文件夹",
+        QString(),
+        QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
+
+    if (dirPath.isEmpty()) return;
+
+    Logger::instance()->info(QString("[模板] 开始导入文件夹: %1").arg(dirPath));
+
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    QStringList imported = m_roiManager->importImagesFromFolder(dirPath);
+    QApplication::restoreOverrideCursor();
+
+    if (imported.isEmpty()) {
+        QMessageBox::information(this, "导入结果",
+            QString("未导入任何图片。\n"
+                    "请确保文件夹中含有支持的格式: .jpg, .png, .bmp, .tiff"));
+        return;
+    }
+
+    QMessageBox::information(this, "导入完成",
+        QString("成功导入 %1 张图片。\n"
+                "请在左侧图片列表中选择图片进行模板创建和匹配。")
+            .arg(imported.size()));
+
+    Logger::instance()->info(QString("[模板] 文件夹导入完成: %1 张图片").arg(imported.size()));
+}
+
+// ========== 批量模板匹配 ==========
+
+void TemplateTabWidget::batchFindTemplate()
+{
+    if (!hasTemplate()) {
+        QMessageBox::warning(this, "提示", "请先创建模板！\n\n"
+            "步骤：\n"
+            "1. 在任意图片上点击「绘制模板区域」\n"
+            "2. 框选模板区域\n"
+            "3. 点击「创建模板」");
+        return;
+    }
+
+    if (m_roiManager->imageCount() == 0) {
+        QMessageBox::warning(this, "提示",
+            "没有图片可处理。请先通过「导入文件夹」或主界面的添加图片按钮添加图片。");
+        return;
+    }
+
+    double minScore = m_ui->doubleSpinBox_minScore->value();
+    int maxMatches = m_ui->spinBox_matchNumber->value();
+
+    // 显示批量匹配对话框
+    if (!m_batchDialog) {
+        m_batchDialog = new BatchMatchDialog(m_roiManager, m_currentStrategy, this);
+        connect(m_batchDialog, &BatchMatchDialog::viewResultRequested,
+                this, &TemplateTabWidget::showBatchResultImage);
+    }
+
+    m_batchDialog->show();
+    m_batchDialog->raise();
+    m_batchDialog->startBatch(minScore, maxMatches);
+}
+
+// ========== 显示批量匹配结果 ==========
+
+void TemplateTabWidget::showBatchResultImage(const QString& imageId,
+                                              const cv::Mat& resultImage,
+                                              const QVector<MatchResult>& matches)
+{
+    if (!resultImage.empty()) {
+        m_lastResultImage = resultImage;
+        m_lastMatches = matches;
+        emit requestShowImage(resultImage);
+
+        QString msg = QString("批量结果 — 图片: %1 | 匹配数: %2")
+            .arg(m_roiManager->getImageName(imageId))
+            .arg(matches.size());
+        if (!matches.isEmpty()) {
+            msg += QString(" | 最高分: %1").arg(matches.first().score, 0, 'f', 4);
+        }
+        Logger::instance()->info(msg);
+    }
+}
+
 void TemplateTabWidget::updateUIState(bool hasTemplate)
 {
     m_ui->btn_findTemplate->setEnabled(hasTemplate);
-    //m_ui->btn_clearAllTemplates->setEnabled(hasTemplate);
+    if (m_ui->btn_batchMatch) {
+        m_ui->btn_batchMatch->setEnabled(hasTemplate);
+    }
 
-    if (hasTemplate) 
+    if (hasTemplate)
     {
         //m_ui->statusbar->showMessage(QString("✓ 已创建模板 [%1]").arg(getCurrentStrategyName()), 2000);
-    } 
+    }
 }
