@@ -60,11 +60,6 @@ public:
     /// 获取已创建的Tab名称列表
     QStringList createdTabNames() const { return m_tabOrder; }
 
-    // ========== 按名称获取 ==========
-
-    /// 按名称获取Tab Widget（未创建则返回nullptr）
-    QWidget* getTab(const QString& name) const;
-
     // ========== 类型安全的获取 ==========
 
     EnhanceTabWidget* getEnhanceTab() const;
@@ -76,7 +71,6 @@ public:
     BarcodeTabWidget* getBarcodeTab() const;
     ObjectDetectionTabWidget* getObjectDetectionTab() const;
     TemplateTabWidget* getTemplateTab() const;
-    ImageTabWidget* getImageTab() const;
     VideoTabWidget* getVideoTab() const;
 
 signals:
@@ -84,6 +78,7 @@ signals:
     void tabCreated(const QString& name, QWidget* widget);
 
 private:
+    QWidget* getTab(const QString& name) const;
     QWidget* createTab(const QString& name);
 
     QTabWidget* m_tabWidget;

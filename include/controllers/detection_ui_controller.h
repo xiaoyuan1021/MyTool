@@ -49,7 +49,6 @@ public:
 
     // Tab配置管理
     void switchToTabConfig(const TabConfig& config);
-    void switchToTabConfigByType(DetectionType type);
 
     // 设置Tab名称列表（用于动态切换）
     void setTabNames(const QStringList& tabNames) { m_tabNames = tabNames; }

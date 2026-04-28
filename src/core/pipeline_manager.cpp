@@ -48,20 +48,6 @@ void PipelineManager::clearShapeFilter()
     m_config.shapeFilter.clear();
 }
 
-void PipelineManager::enableShapeFilter(bool /*enable*/)
-{
-}
-
-void PipelineManager::setFeatureRange(ShapeFeature feature, double minValue, double maxValue)
-{
-    // 先清除旧条件（如果只想单特征筛选）
-    // 或者找到同类型条件并更新
-
-    // 简单实现：添加新条件
-    FilterCondition cond(feature, minValue, maxValue);
-    addFilterCondition(cond);
-}
-
 void PipelineManager::setShapeFilterConfig(const ShapeFilterConfig& config)
 {
     m_config.shapeFilter = config;
@@ -205,14 +191,6 @@ void PipelineManager::initPipeline()
     m_pipeline.add(std::make_unique<StepBarcodeRecognition>(&m_config.barcode));
 }
 
-void PipelineManager::rebuildPipeline()
-{
-    // 当算法队列变化时，可能需要重建Pipeline
-    // 目前的设计中，算法队列是引用传递，所以不需要重建
-    // 但保留这个接口以备将来扩展
-    qDebug() << "[PipelineManager] Pipeline重建（当前为引用传递，无需重建）";
-}
-
 void PipelineManager::setChannelMode(PipelineConfig::Channel channel)
 {
     m_config.channel=channel;
@@ -235,11 +213,6 @@ void PipelineManager::updateAlgorithmStep(int index, const AlgorithmStep &step)
 void PipelineManager::setDisplayMode(DisplayConfig::Mode mode)
 {
     m_displayMode = mode;
-}
-
-void PipelineManager::setOverlayAlpha(float alpha)
-{
-    Q_UNUSED(alpha);
 }
 
 void PipelineManager::setColorFilterEnabled(bool enabled)

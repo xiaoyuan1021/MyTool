@@ -33,17 +33,6 @@ void Pipeline::run(PipelineContext& ctx)
     }
 }
 
-size_t Pipeline::stepCount() const
-{
-    return steps_.size();
-}
-
-void Pipeline::clear()
-{
-    steps_.clear();
-    qDebug() << "[Pipeline] 已清空所有步骤";
-}
-
 cv::Mat maskToGreenWhite(const cv::Mat &mask)
 {
     if (mask.empty()) return cv::Mat();

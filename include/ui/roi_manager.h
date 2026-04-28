@@ -87,11 +87,6 @@ public:
      */
     cv::Rect getLastRoi() const;
 
-    /**
-     * @brief 获取ROI位置信息
-     */
-    cv::Rect getRoiPosition() const;
-
     // ==================== ROI配置管理（统一数据源）====================
 
     void addRoiConfig(const RoiConfig& config);
@@ -101,8 +96,6 @@ public:
     QList<RoiConfig> getRoiConfigs() const;
     QList<RoiConfig> getRoiConfigsForImage(const QString& imageId) const;
     int getRoiConfigCount() const;
-    void clearRoiConfigs();
-
     /// 生成下一个可用的默认ROI名称（基于现有ROI编号）
     QString generateNextRoiName() const;
 
@@ -110,7 +103,6 @@ public:
 
     void setActiveRoi(const QString& roiId);
     QString getActiveRoiId() const;
-    void clearActiveRoi();
 
     // ==================== UI交互相关方法 ====================
 
@@ -139,12 +131,6 @@ public:
      */
     void applyProfile(const InspectionProfile& profile, const QSize& currentImageSize);
 
-    // ==================== 缩放状态管理方法 ====================
-
-    void saveZoomState(double scaleFactor, const QRectF& viewRect);
-    bool getZoomState(const QString& imageId, double& scaleFactor, QRectF& viewRect) const;
-    void clearZoomState(const QString& imageId);
-
 signals:
     void roiConfigChanged();
     void imageAdded(const QString& imageId);
@@ -165,10 +151,6 @@ private:
         QList<RoiConfig> roiConfigs;  // 该图片的ROI配置列表（统一数据源）
         QString activeRoiId;        // 当前激活的ROI ID（替代旧的单ROI模式）
         int roiCounter;             // ROI计数器
-
-        // 缩放状态数据
-        double scaleFactor;         // 缩放因子
-        QRectF viewRect;            // 视图矩形
     };
 
     QMap<QString, ImageRois> m_imageRoisMap;  // 图片ID -> ROIs
@@ -177,7 +159,4 @@ private:
 
     QString generateDefaultRoiName();
     QString generateDefaultImageName();
-
-    // 辅助：根据矩形查找或创建ROI配置
-    RoiConfig* findOrCreateRoiByRect(const QRectF& rect);
 };

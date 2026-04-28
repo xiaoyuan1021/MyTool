@@ -101,10 +101,6 @@ TemplateTabWidget* TabManager::getTemplateTab() const {
     return dynamic_cast<TemplateTabWidget*>(getTab("补正"));
 }
 
-ImageTabWidget* TabManager::getImageTab() const {
-    return dynamic_cast<ImageTabWidget*>(getTab("图像"));
-}
-
 VideoTabWidget* TabManager::getVideoTab() const {
     return dynamic_cast<VideoTabWidget*>(getTab("视频"));
 }

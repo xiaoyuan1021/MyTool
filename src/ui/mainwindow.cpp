@@ -565,11 +565,6 @@ void MainWindow::setupMqtt()
         m_toast->showMessage("收到云端指令: 停止批量检测");
         on_btn_stopAutoDetection_clicked();
     });
-    connect(m_mqttManager, &MqttManager::stopDetectionRequested,
-            this, [this]() {
-        m_toast->showMessage("收到云端指令: 停止批量检测");
-        on_btn_stopAutoDetection_clicked();
-    });
 
     // Feature 3: 心跳由 MqttManager 内部定时器驱动，连接成功即自动开始
 

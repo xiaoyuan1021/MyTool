@@ -35,9 +35,6 @@ public:
 
     void setAreaFilterEnabled(bool enabled);
 
-    // 设置面积筛选范围
-    void setAreaRange(double minArea, double maxArea);
-
     // 获取当前配置快照（线程安全：加锁后返回拷贝）
     PipelineConfig getConfigSnapshot() const {
         QMutexLocker locker(&m_configMutex);
@@ -90,8 +87,6 @@ public:
     void addFilterCondition(const FilterCondition& condition);
     void setFilterMode(FilterMode mode);
     void clearShapeFilter();
-    void enableShapeFilter(bool enable);
-    void setFeatureRange(ShapeFeature feature, double minValue, double maxValue);
     void setShapeFilterConfig(const ShapeFilterConfig& config);
 
     void setChannelMode(PipelineConfig::Channel channel);
@@ -99,8 +94,6 @@ public:
     void updateAlgorithmStep(int index, const AlgorithmStep& step);
 
     void setDisplayMode(DisplayConfig::Mode mode);
-
-    void setOverlayAlpha(float alpha);
 
     // 快速重新渲染上次Pipeline结果（仅改变显示模式，不重新执行Pipeline）
     cv::Mat getLastDisplayWithMode(DisplayConfig::Mode mode) const;
@@ -141,9 +134,6 @@ signals:
 private:
     // 初始化Pipeline（创建所有步骤）
     void initPipeline();
-
-    // 重建Pipeline（当步骤变化时）
-    void rebuildPipeline();
 
 private:
     // 互斥锁：仅保护Pipeline执行期间的m_pipeline和m_lastContext

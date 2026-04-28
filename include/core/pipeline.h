@@ -186,12 +186,6 @@ public:
     
     // 执行所有步骤
     void run(PipelineContext& ctx);
-    
-    // 获取步骤数量
-    size_t stepCount() const;
-    
-    // 清空所有步骤
-    void clear();
 
 private:
     std::vector<std::unique_ptr<IPipelineStep>> steps_;

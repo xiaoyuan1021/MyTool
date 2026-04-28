@@ -74,8 +74,6 @@ QString RoiManager::addImage(const cv::Mat &img, const QString &name, const QStr
     imageRois.filePath = filePath;
     imageRois.roiCounter = 0;
     imageRois.activeRoiId.clear();
-    imageRois.scaleFactor = 1.0;
-    imageRois.viewRect = QRectF(0, 0, img.cols, img.rows);
 
     m_imageRoisMap.insert(imageId, imageRois);
 
@@ -352,11 +350,6 @@ cv::Rect RoiManager::getLastRoi() const
     return cv::Rect();
 }
 
-cv::Rect RoiManager::getRoiPosition() const
-{
-    return getLastRoi();
-}
-
 // ==================== ROI配置管理（统一数据源）====================
 
 void RoiManager::addRoiConfig(const RoiConfig& config)
@@ -460,17 +453,6 @@ int RoiManager::getRoiConfigCount() const
     return it.value().roiConfigs.size();
 }
 
-void RoiManager::clearRoiConfigs()
-{
-    auto it = m_imageRoisMap.find(m_currentImageId);
-    if (it == m_imageRoisMap.end()) {
-        return;
-    }
-    it.value().roiConfigs.clear();
-    it.value().activeRoiId.clear();
-    emit roiConfigChanged();
-}
-
 // ==================== 激活ROI管理 ====================
 
 void RoiManager::setActiveRoi(const QString& roiId)
@@ -505,15 +487,6 @@ QString RoiManager::getActiveRoiId() const
         return QString();
     }
     return it.value().activeRoiId;
-}
-
-void RoiManager::clearActiveRoi()
-{
-    auto it = m_imageRoisMap.find(m_currentImageId);
-    if (it == m_imageRoisMap.end()) {
-        return;
-    }
-    it.value().activeRoiId.clear();
 }
 
 // ==================== UI交互相关方法 ====================
@@ -567,49 +540,6 @@ void RoiManager::resetRoiWithUI(ImageView *view, QStatusBar *statusBar)
         statusBar->showMessage("ROI已重置，处理使用完整图像", 2000);
     }
     Logger::instance()->info("ROI已重置");
-}
-
-// ==================== 缩放状态管理方法实现 ====================
-
-void RoiManager::saveZoomState(double scaleFactor, const QRectF& viewRect)
-{
-    auto it = m_imageRoisMap.find(m_currentImageId);
-    if (it == m_imageRoisMap.end()) {
-        return;
-    }
-
-    it.value().scaleFactor = scaleFactor;
-    it.value().viewRect = viewRect;
-
-    Logger::instance()->info(QString("[RoiManager] 保存缩放状态: scale=%1, viewRect=(%2,%3,%4,%5)")
-                                 .arg(scaleFactor)
-                                 .arg(viewRect.x()).arg(viewRect.y())
-                                 .arg(viewRect.width()).arg(viewRect.height()));
-}
-
-bool RoiManager::getZoomState(const QString& imageId, double& scaleFactor, QRectF& viewRect) const
-{
-    auto it = m_imageRoisMap.find(imageId);
-    if (it == m_imageRoisMap.end()) {
-        return false;
-    }
-
-    scaleFactor = it.value().scaleFactor;
-    viewRect = it.value().viewRect;
-    return true;
-}
-
-void RoiManager::clearZoomState(const QString& imageId)
-{
-    auto it = m_imageRoisMap.find(imageId);
-    if (it == m_imageRoisMap.end()) {
-        return;
-    }
-
-    it.value().scaleFactor = 1.0;
-    it.value().viewRect = QRectF(0, 0, it.value().image.cols, it.value().image.rows);
-
-    Logger::instance()->info(QString("[RoiManager] 清除缩放状态: imageId=%1").arg(imageId));
 }
 
 // ==================== 全量配置导出/导入 ====================
