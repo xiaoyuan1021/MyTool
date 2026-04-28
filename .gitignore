@@ -35,3 +35,5 @@ build/*
 CMakeFiles/*
 3rdparty/*
 build_zxing/*
+.agents/*
+skills-lock.json
