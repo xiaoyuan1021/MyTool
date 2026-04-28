@@ -15,6 +15,7 @@
 #include "widgets/judge_tab_widget.h"
 #include "widgets/line_tab_widget.h"
 #include "widgets/object_detection_tab_widget.h"
+#include "widgets/barcode_tab_widget.h"
 
 #include <QShortcut>
 
@@ -65,6 +66,9 @@ void SignalConnector::connectTabSignals(const QString& tabName, QWidget* widget)
     }
     else if (tabName == "目标检测") {
         connectObjectDetectionTab(widget);
+    }
+    else if (tabName == "条码") {
+        connectBarcodeTab(widget);
     }
 }
 
@@ -175,6 +179,15 @@ void SignalConnector::connectObjectDetectionTab(QWidget* widget)
             m_mainWindow, [this]() {
                 // 用户点击"应用"按钮加载模型成功后，触发处理
                 // pipeline 完成后会自动检查模型是否已加载并执行目标检测
+                m_mainWindow->requestRefresh();
+            });
+}
+
+void SignalConnector::connectBarcodeTab(QWidget* widget)
+{
+    auto* tab = qobject_cast<BarcodeTabWidget*>(widget);
+    connect(tab, &BarcodeTabWidget::requestApplyBarcodeSettings,
+            m_mainWindow, [this]() {
                 m_mainWindow->requestRefresh();
             });
 }

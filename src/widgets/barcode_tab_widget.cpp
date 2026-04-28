@@ -175,9 +175,5 @@ void BarcodeTabWidget::onReturnQualityChanged(bool checked)
 void BarcodeTabWidget::handleApply()
 {
     updatePipelineConfig();
-    
-    if (m_processCallback)
-    {
-        m_processCallback();
-    }
+    emit requestApplyBarcodeSettings();
 }

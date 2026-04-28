@@ -217,6 +217,10 @@ struct RoiTemplate
         pipeConfig["gamma"] = pipelineConfig.gamma;
         pipeConfig["sharpen"] = pipelineConfig.sharpen;
         pipeConfig["channel"] = static_cast<int>(pipelineConfig.channel);
+        pipeConfig["barcode_enable"] = pipelineConfig.barcode.enableBarcode;
+        pipeConfig["barcode_codeTypes"] = pipelineConfig.barcode.codeTypes.join(",");
+        pipeConfig["barcode_maxNum"] = pipelineConfig.barcode.maxNumSymbols;
+        pipeConfig["barcode_returnQuality"] = pipelineConfig.barcode.returnQuality;
         obj["pipelineConfig"] = pipeConfig;
 
         return obj;
@@ -248,6 +252,13 @@ struct RoiTemplate
             pipelineConfig.sharpen = pipeConfig["sharpen"].toDouble(1.0);
             pipelineConfig.channel = static_cast<PipelineConfig::Channel>(
                 pipeConfig["channel"].toInt(0));
+            pipelineConfig.barcode.enableBarcode = pipeConfig["barcode_enable"].toBool(false);
+            QString codeTypesStr = pipeConfig["barcode_codeTypes"].toString();
+            if (!codeTypesStr.isEmpty()) {
+                pipelineConfig.barcode.codeTypes = codeTypesStr.split(",");
+            }
+            pipelineConfig.barcode.maxNumSymbols = pipeConfig["barcode_maxNum"].toInt(0);
+            pipelineConfig.barcode.returnQuality = pipeConfig["barcode_returnQuality"].toBool(true);
         }
     }
 };

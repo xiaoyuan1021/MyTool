@@ -693,6 +693,29 @@ void MainWindow::on_btn_loadFromProfile_clicked()
 
     if (m_profileManager->loadProfile(ids[idx])) {
         m_roiUiController->syncRoiConfigsToWidget();
+
+        // 从已加载的ROI中同步条码配置到全局和条码Tab UI
+        QList<RoiConfig> rois = m_roiManager.getRoiConfigs();
+        for (const auto& roi : rois) {
+            bool hasBarcode = false;
+            for (const auto& det : roi.detectionItems) {
+                if (det.type == DetectionType::Barcode && det.enabled) {
+                    hasBarcode = true;
+                    break;
+                }
+            }
+            if (hasBarcode) {
+                PipelineConfig pc = m_pipelineManager->getConfigSnapshot();
+                pc.barcode = roi.pipelineConfig.barcode;
+                m_pipelineManager->setConfig(pc);
+                auto* barcodeTab = m_tabManager->getBarcodeTab();
+                if (barcodeTab) {
+                    barcodeTab->setBarcodeConfig(pc.barcode);
+                }
+                break;
+            }
+        }
+
         m_toast->showMessage(QString("方案 '%1' 已加载").arg(profiles[idx].profileName));
         requestRefresh();
     } else {

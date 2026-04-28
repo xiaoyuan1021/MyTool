@@ -54,4 +54,5 @@ private:
     void connectJudgeTab(QWidget* widget);
     void connectLineTab(QWidget* widget);
     void connectObjectDetectionTab(QWidget* widget);
+    void connectBarcodeTab(QWidget* widget);
 };
