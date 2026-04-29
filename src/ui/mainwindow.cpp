@@ -21,6 +21,8 @@
 #include "ui/pipeline_result_handler.h"
 #include "core/profile_manager.h"
 #include "ui/cloud_dashboard_manager.h"
+#include "ui/display_mode_manager.h"
+#include "controllers/profile_controller.h"
 
 // Tab Widget头文件
 #include "widgets/video_tab_widget.h"
@@ -145,6 +147,10 @@ void MainWindow::setupManagers()
     // 创建云平台看板管理器
     m_cloudDashboardManager = new CloudDashboardManager(m_toast, this);
 
+    // 创建显示模式管理器
+    m_displayModeManager = new DisplayModeManager(ui->tabWidget, m_pipelineManager, m_view, this);
+    connect(m_displayModeManager, &DisplayModeManager::requestRefresh, this, &MainWindow::requestRefresh);
+
     // 创建检测方案管理器
     m_profileManager = new ProfileManager(&m_roiManager, m_pipelineManager, this);
 
@@ -169,6 +175,12 @@ void MainWindow::setupControllers()
     m_roiUiController->setupMainWindowConnections(m_tabManager);
     m_detectionUiController->setupConnections(m_roiUiController,
         [this](const QString& tabName) { ensureTabExists(tabName); });
+
+    // 创建方案控制器（需要 m_roiUiController，必须在 controller 创建之后）
+    m_profileController = new ProfileController(m_profileManager, &m_roiManager,
+                                                m_pipelineManager, m_tabManager,
+                                                m_roiUiController, m_toast, this, this);
+    connect(m_profileController, &ProfileController::requestRefresh, this, &MainWindow::requestRefresh);
 
     // 全局信号连接（统一走防抖 + 脏标记）
     connect(m_roiUiController, &RoiUiController::roiChanged, this, [this]() { requestRefresh(); });
@@ -283,7 +295,7 @@ void MainWindow::processAndDisplay()
     if (!m_needRefresh) return;
     m_needRefresh = false;
 
-    setDisplayModeForCurrentTab();
+    m_displayModeManager->applyModeForCurrentTab();
 
     cv::Mat currentImage = m_roiManager.getCurrentImage();
     if (currentImage.empty()) return;
@@ -299,39 +311,6 @@ void MainWindow::processAndDisplay()
         }
     );
     m_pipelineWatcher.setFuture(future);
-}
-
-// ========== Tab名称 → 显示模式 ==========
-
-static const QHash<QString, DisplayConfig::Mode> s_tabDisplayMode = {
-    {"图像",     DisplayConfig::Mode::Channel},
-    {"视频",     DisplayConfig::Mode::Channel},
-    {"增强",     DisplayConfig::Mode::Enhanced},
-    {"补正",     DisplayConfig::Mode::Original},
-    {"处理",     DisplayConfig::Mode::Processed},
-    {"提取",     DisplayConfig::Mode::Processed},
-    {"判定",     DisplayConfig::Mode::MaskOverlay},
-    {"直线",     DisplayConfig::Mode::LineDetect},
-    {"条码",     DisplayConfig::Mode::Original},
-    {"目标检测", DisplayConfig::Mode::Original},
-};
-
-void MainWindow::setDisplayModeForCurrentTab()
-{
-    int idx = ui->tabWidget->currentIndex();
-    if (idx < 0) return;
-    QString tabName = ui->tabWidget->tabText(idx);
-
-    DisplayConfig::Mode mode = s_tabDisplayMode.value(tabName, DisplayConfig::Mode::Original);
-
-    if (tabName == "过滤") {
-        PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
-        mode = (cfg.currentFilterMode == PipelineConfig::FilterMode::None)
-            ? DisplayConfig::Mode::Original
-            : DisplayConfig::Mode::MaskGreenWhite;
-    }
-
-    m_pipelineManager->setDisplayMode(mode);
 }
 
 void MainWindow::showImage(const cv::Mat &img)
@@ -424,13 +403,7 @@ void MainWindow::on_tabWidget_currentChanged(int index)
     if (m_isDestroying) return;
     if (m_roiManager.getFullImage().empty()) return;
 
-    // 只有显示模式变化时才需要刷新显示
-    DisplayConfig::Mode newMode = getDisplayModeForTab(index);
-    if (newMode != m_lastDisplayMode) {
-        m_lastDisplayMode = newMode;
-        // 优先使用快速渲染（不重新执行Pipeline），如果没有上次结果才触发Pipeline
-        displayCurrentResult();
-    }
+    m_displayModeManager->onTabChanged(index);
 }
 
 // ========== 页面导航 ==========
@@ -552,108 +525,16 @@ void MainWindow::requestRefresh()
     m_processDebounceTimer->start();
 }
 
-DisplayConfig::Mode MainWindow::getDisplayModeForTab(int index) const
-{
-    if (index < 0 || index >= ui->tabWidget->count()) {
-        return DisplayConfig::Mode::Original;
-    }
-    QString tabName = ui->tabWidget->tabText(index);
-    return s_tabDisplayMode.value(tabName, DisplayConfig::Mode::Original);
-}
-
-void MainWindow::displayCurrentResult()
-{
-    if (!m_pipelineManager->hasLastResult()) {
-        // 没有上次Pipeline结果，需要触发完整处理
-        requestRefresh();
-        return;
-    }
-    DisplayConfig::Mode mode = getDisplayModeForTab(ui->tabWidget->currentIndex());
-    cv::Mat displayImage = m_pipelineManager->getLastDisplayWithMode(mode);
-    if (!displayImage.empty()) {
-        m_view->setImage(ImageUtils::matToQImage(displayImage));
-    }
-}
-
 // ========== 方案操作 ==========
 
 void MainWindow::on_btn_saveToProfile_clicked()
 {
-    if (!m_profileManager) return;
-
-    cv::Mat currentImage = m_roiManager.getFullImage();
-    if (currentImage.empty()) {
-        QMessageBox::warning(this, "提示", "请先打开图片");
-        return;
-    }
-
-    bool ok;
-    QString name = QInputDialog::getText(this, "保存检测方案", "方案名称:",
-                                          QLineEdit::Normal, QString(), &ok);
-    if (!ok || name.trimmed().isEmpty()) return;
-
-    if (m_profileManager->saveCurrentAsProfile(name.trimmed())) {
-        m_toast->showMessage(QString("方案 '%1' 已保存").arg(name.trimmed()));
-        Logger::instance()->info(QString("[MainWindow] 方案已保存: %1").arg(name.trimmed()));
-    } else {
-        QMessageBox::warning(this, "保存失败", "保存方案失败，请查看日志");
-    }
+    m_profileController->saveToProfile();
 }
 
 void MainWindow::on_btn_loadFromProfile_clicked()
 {
-    if (!m_profileManager) return;
-
-    QList<ProfileManager::ProfileSummary> profiles = m_profileManager->getProfileList();
-    if (profiles.isEmpty()) {
-        QMessageBox::information(this, "提示", "没有已保存的检测方案\n请先点击「保存到方案」创建方案");
-        return;
-    }
-
-    QStringList names;
-    QList<QString> ids;
-    for (const auto& p : profiles) {
-        names.append(QString("%1 (ROI:%2, 模板:%3)").arg(p.profileName).arg(p.roiCount).arg(p.templateCount));
-        ids.append(p.profileId);
-    }
-
-    bool ok = false;
-    QString selected = QInputDialog::getItem(this, "加载检测方案", "选择方案:", names, 0, false, &ok);
-    if (!ok) return;
-
-    int idx = names.indexOf(selected);
-    if (idx < 0) return;
-
-    if (m_profileManager->loadProfile(ids[idx])) {
-        m_roiUiController->syncRoiConfigsToWidget();
-
-        // 从已加载的ROI中同步条码配置到全局和条码Tab UI
-        QList<RoiConfig> rois = m_roiManager.getRoiConfigs();
-        for (const auto& roi : rois) {
-            bool hasBarcode = false;
-            for (const auto& det : roi.detectionItems) {
-                if (det.type == DetectionType::Barcode && det.enabled) {
-                    hasBarcode = true;
-                    break;
-                }
-            }
-            if (hasBarcode) {
-                PipelineConfig pc = m_pipelineManager->getConfigSnapshot();
-                pc.barcode = roi.pipelineConfig.barcode;
-                m_pipelineManager->setConfig(pc);
-                auto* barcodeTab = m_tabManager->getBarcodeTab();
-                if (barcodeTab) {
-                    barcodeTab->setBarcodeConfig(pc.barcode);
-                }
-                break;
-            }
-        }
-
-        m_toast->showMessage(QString("方案 '%1' 已加载").arg(profiles[idx].profileName));
-        requestRefresh();
-    } else {
-        QMessageBox::warning(this, "加载失败", "加载方案失败，请确保已打开图片");
-    }
+    m_profileController->loadFromProfile();
 }
 
 void MainWindow::on_btn_importFolder_clicked()

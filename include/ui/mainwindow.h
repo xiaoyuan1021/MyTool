@@ -20,6 +20,8 @@ class SignalConnector;
 class SystemMonitor;
 class FileManager;
 class CloudDashboardManager;
+class DisplayModeManager;
+class ProfileController;
 class TabManager;
 class ImageListManager;
 class RoiUiController;
@@ -90,14 +92,7 @@ private:
     void setupUI();
     void setupConnections();
 
-    void setDisplayModeForCurrentTab();
     void ensureTabExists(const QString& tabName);
-
-    /// 获取指定Tab的显示模式
-    DisplayConfig::Mode getDisplayModeForTab(int index) const;
-    void displayCurrentResult();  // 用当前显示模式重新渲染已有结果
-    /// 当前显示模式，用于判断Tab切换是否需要刷新
-    DisplayConfig::Mode m_lastDisplayMode = DisplayConfig::Mode::Original;
 
     Ui::MainWindow *ui;
     ImageView *m_view = nullptr;
@@ -142,8 +137,13 @@ private:
     // 云平台看板管理器
     CloudDashboardManager* m_cloudDashboardManager = nullptr;
 
+    // 显示模式管理器
+    DisplayModeManager* m_displayModeManager = nullptr;
+
     // 检测方案管理器
     ProfileManager* m_profileManager = nullptr;
+    // 方案控制器
+    ProfileController* m_profileController = nullptr;
 
     // Toast 通知浮标
     ToastNotification* m_toast = nullptr;
