@@ -1,4 +1,4 @@
-#include "profile_manager.h"
+#include "core/profile_manager.h"
 #include "ui/roi_manager.h"
 #include "core/pipeline_manager.h"
 #include "ui/logger.h"

@@ -3,7 +3,8 @@
 #include <QObject>
 #include <QString>
 
-class MainWindow;
+#include <opencv2/opencv.hpp>
+
 class PipelineManager;
 class RoiManager;
 class ImageView;
@@ -25,7 +26,6 @@ class SignalConnector : public QObject
 
 public:
     explicit SignalConnector(
-        MainWindow* mainWindow,
         PipelineManager* pipelineManager,
         RoiManager* roiManager,
         ImageView* view,
@@ -33,11 +33,16 @@ public:
         QObject* parent = nullptr
     );
 
+signals:
+    void requestRefresh();
+    void processAndDisplay();
+    void showImage(const cv::Mat& img);
+
+public:
     /// 建立 Tab Widget 的信号连接（由 TabManager::tabCreated 信号触发）
     void connectTabSignals(const QString& tabName, QWidget* widget);
 
 private:
-    MainWindow* m_mainWindow;
     PipelineManager* m_pipelineManager;
     RoiManager* m_roiManager;
     ImageView* m_view;

@@ -19,7 +19,7 @@
 #include "controllers/config_controller.h"
 #include "controllers/auto_detection_controller.h"
 #include "ui/pipeline_result_handler.h"
-#include "controllers/profile_manager.h"
+#include "core/profile_manager.h"
 
 // Tab Widget头文件
 #include "widgets/video_tab_widget.h"
@@ -180,10 +180,14 @@ void MainWindow::setupControllers()
     connect(m_configController, &ConfigController::configApplied, this, [this]() { requestRefresh(); });
 
     // 【修复】SignalConnector 必须在 controller 创建之后才能创建（需要有效的 roiUiController 指针）
-    m_signalConnector = new SignalConnector(this, m_pipelineManager, &m_roiManager,
+    m_signalConnector = new SignalConnector(m_pipelineManager, &m_roiManager,
                                            m_view, m_roiUiController, this);
     connect(m_tabManager, &TabManager::tabCreated,
             m_signalConnector, &SignalConnector::connectTabSignals);
+    // 连接 SignalConnector 的信号到 MainWindow 的方法
+    connect(m_signalConnector, &SignalConnector::requestRefresh, this, &MainWindow::requestRefresh);
+    connect(m_signalConnector, &SignalConnector::processAndDisplay, this, &MainWindow::processAndDisplay);
+    connect(m_signalConnector, &SignalConnector::showImage, this, &MainWindow::showImage);
 
     // Tab懒加载时，更新ConfigController的tab指针
     connect(m_tabManager, &TabManager::tabCreated, this, [this](const QString& name, QWidget*) {

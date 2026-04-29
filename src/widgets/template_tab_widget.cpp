@@ -3,7 +3,7 @@
 #include "image_view.h"
 #include "logger.h"
 #include "widgets/batch_match_dialog.h"
-#include "controllers/profile_manager.h"
+#include "core/profile_manager.h"
 #include "data/inspection_profile.h"
 #include <QMessageBox>
 #include <QInputDialog>

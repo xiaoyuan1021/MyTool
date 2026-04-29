@@ -2,7 +2,7 @@
 #include "ui_batch_detection_tab.h"
 #include "ui/roi_manager.h"
 #include "core/pipeline_manager.h"
-#include "controllers/profile_manager.h"
+#include "core/profile_manager.h"
 #include "data/inspection_profile.h"
 #include "data/detection_result_report.h"
 #include "config/detection_config_types.h"

@@ -1,5 +1,4 @@
 #include "signal_connector.h"
-#include "mainwindow.h"
 #include "logger.h"
 #include "ui/image_view.h"
 #include "controllers/roi_ui_controller.h"
@@ -20,14 +19,12 @@
 #include <QShortcut>
 
 SignalConnector::SignalConnector(
-    MainWindow* mainWindow,
     PipelineManager* pipelineManager,
     RoiManager* roiManager,
     ImageView* view,
     RoiUiController* roiUiController,
     QObject* parent)
     : QObject(parent)
-    , m_mainWindow(mainWindow)
     , m_pipelineManager(pipelineManager)
     , m_roiManager(roiManager)
     , m_view(view)
@@ -76,11 +73,11 @@ void SignalConnector::connectImageTab(QWidget* widget)
 {
     auto* tab = qobject_cast<ImageTabWidget*>(widget);
     connect(tab, &ImageTabWidget::channelChanged,
-            m_mainWindow, [this](int channel) {
+            this, [this](int channel) {
                 PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
                 cfg.channel = static_cast<PipelineConfig::Channel>(channel);
                 m_pipelineManager->setConfig(cfg);
-                m_mainWindow->requestRefresh();
+                emit requestRefresh();
             });
 }
 
@@ -88,11 +85,11 @@ void SignalConnector::connectVideoTab(QWidget* widget)
 {
     auto* tab = qobject_cast<VideoTabWidget*>(widget);
     connect(tab, &VideoTabWidget::videoFrameReady,
-            m_mainWindow, [this](const cv::Mat& frame) {
+            this, [this](const cv::Mat& frame) {
                 if (!frame.empty()) {
                     m_roiManager->setFullImage(frame);
                     m_view->clearRoi();
-                    m_mainWindow->processAndDisplay();
+                    emit processAndDisplay();
                 }
             });
 }
@@ -101,10 +98,10 @@ void SignalConnector::connectEnhanceTab(QWidget* widget)
 {
     auto* tab = qobject_cast<EnhanceTabWidget*>(widget);
     connect(tab, &EnhanceTabWidget::processRequested,
-            m_mainWindow, [this]() { m_mainWindow->requestRefresh(); });
+            this, [this]() { emit requestRefresh(); });
     // 增强参数变化时，实时回写到当前ROI，防止多ROI间亮度/对比度等参数串扰
     connect(tab, &EnhanceTabWidget::enhanceConfigChanged,
-            m_mainWindow, [this]() {
+            this, [this]() {
                 m_roiUiController->saveCurrentRoiPipelineConfig();
             });
 }
@@ -113,26 +110,26 @@ void SignalConnector::connectFilterTab(QWidget* widget)
 {
     auto* tab = qobject_cast<FilterTabWidget*>(widget);
     connect(tab, &FilterTabWidget::filterConfigChanged,
-            m_mainWindow, [this]() { m_mainWindow->requestRefresh(); });
+            this, [this]() { emit requestRefresh(); });
 }
 
 void SignalConnector::connectTemplateTab(QWidget* widget)
 {
     auto* tab = qobject_cast<TemplateTabWidget*>(widget);
     connect(tab, &TemplateTabWidget::imageToShow,
-            m_mainWindow, [this](const cv::Mat& img) { m_mainWindow->showImage(img); });
+            this, [this](const cv::Mat& img) { emit showImage(img); });
     connect(tab, &TemplateTabWidget::requestShowImage,
-            m_mainWindow, [this](const cv::Mat& img) { m_mainWindow->showImage(img); });
+            this, [this](const cv::Mat& img) { emit showImage(img); });
     connect(tab, &TemplateTabWidget::templateCreated,
-            m_mainWindow, [](const QString& n) {
+            this, [](const QString& n) {
                 Logger::instance()->info(QString("模板已创建: %1").arg(n));
             });
     connect(tab, &TemplateTabWidget::matchCompleted,
-            m_mainWindow, [](int count) {
+            this, [](int count) {
                 Logger::instance()->info(
                     QString("匹配完成，找到 %1 个目标").arg(count));
             });
-    QShortcut* sc = new QShortcut(Qt::Key_Escape, m_mainWindow);
+    QShortcut* sc = new QShortcut(Qt::Key_Escape, this);
     connect(sc, &QShortcut::activated, tab,
             &TemplateTabWidget::clearMatchResults);
 }
@@ -141,14 +138,14 @@ void SignalConnector::connectProcessTab(QWidget* widget)
 {
     auto* tab = qobject_cast<ProcessTabWidget*>(widget);
     connect(tab, &ProcessTabWidget::algorithmChanged,
-            m_mainWindow, [this]() { m_mainWindow->requestRefresh(); });
+            this, [this]() { emit requestRefresh(); });
 }
 
 void SignalConnector::connectExtractTab(QWidget* widget)
 {
     auto* tab = qobject_cast<ExtractTabWidget*>(widget);
     connect(tab, &ExtractTabWidget::extractionChanged,
-            m_mainWindow, [this]() { m_mainWindow->requestRefresh(); });
+            this, [this]() { emit requestRefresh(); });
 }
 
 void SignalConnector::connectJudgeTab(QWidget* widget)
@@ -162,11 +159,11 @@ void SignalConnector::connectLineTab(QWidget* widget)
 {
     auto* tab = qobject_cast<LineDetectTabWidget*>(widget);
     connect(tab, &LineDetectTabWidget::requestDrawReferenceLine,
-            m_mainWindow, [this]() { m_view->startReferenceLineDrawing(); });
+            this, [this]() { m_view->startReferenceLineDrawing(); });
     connect(tab, &LineDetectTabWidget::requestClearReferenceLine,
-            m_mainWindow, [this]() {
+            this, [this]() {
                 m_view->clearReferenceLine();
-                m_mainWindow->processAndDisplay();
+                emit processAndDisplay();
             });
     connect(m_view, &ImageView::referenceLineDrawn,
             tab, &LineDetectTabWidget::setReferenceLine);
@@ -176,10 +173,8 @@ void SignalConnector::connectObjectDetectionTab(QWidget* widget)
 {
     auto* tab = qobject_cast<ObjectDetectionTabWidget*>(widget);
     connect(tab, &ObjectDetectionTabWidget::detectionConfigChanged,
-            m_mainWindow, [this]() {
-                // 用户点击"应用"按钮加载模型成功后，触发处理
-                // pipeline 完成后会自动检查模型是否已加载并执行目标检测
-                m_mainWindow->requestRefresh();
+            this, [this]() {
+                emit requestRefresh();
             });
 }
 
@@ -187,7 +182,7 @@ void SignalConnector::connectBarcodeTab(QWidget* widget)
 {
     auto* tab = qobject_cast<BarcodeTabWidget*>(widget);
     connect(tab, &BarcodeTabWidget::requestApplyBarcodeSettings,
-            m_mainWindow, [this]() {
-                m_mainWindow->requestRefresh();
+            this, [this]() {
+                emit requestRefresh();
             });
 }

@@ -1,6 +1,6 @@
 #include "profile_tab_widget.h"
 #include "ui_profile_tab.h"
-#include "controllers/profile_manager.h"
+#include "core/profile_manager.h"
 #include "ui/logger.h"
 #include <QInputDialog>
 #include <QMessageBox>
