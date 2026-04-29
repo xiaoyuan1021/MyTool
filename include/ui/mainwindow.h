@@ -4,7 +4,6 @@
 #include <QMainWindow>
 #include <QTimer>
 #include <QFutureWatcher>
-#include <QProcess>
 #include <QDesktopServices>
 
 #include <opencv2/opencv.hpp>
@@ -20,6 +19,7 @@ class ImageView;
 class SignalConnector;
 class SystemMonitor;
 class FileManager;
+class CloudDashboardManager;
 class TabManager;
 class ImageListManager;
 class RoiUiController;
@@ -139,8 +139,8 @@ private:
     // MQTT 边云协同管理器
     MqttManager* m_mqttManager = nullptr;
 
-    // 云平台看板进程
-    QProcess* m_cloudDashboardProcess = nullptr;
+    // 云平台看板管理器
+    CloudDashboardManager* m_cloudDashboardManager = nullptr;
 
     // 检测方案管理器
     ProfileManager* m_profileManager = nullptr;

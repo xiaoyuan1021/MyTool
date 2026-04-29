@@ -20,6 +20,7 @@
 #include "controllers/auto_detection_controller.h"
 #include "ui/pipeline_result_handler.h"
 #include "core/profile_manager.h"
+#include "ui/cloud_dashboard_manager.h"
 
 // Tab Widget头文件
 #include "widgets/video_tab_widget.h"
@@ -54,15 +55,6 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow()
 {
     m_isDestroying = true;
-    if (m_cloudDashboardProcess) {
-        if (m_cloudDashboardProcess->state() != QProcess::NotRunning) {
-            m_cloudDashboardProcess->terminate();
-            if (!m_cloudDashboardProcess->waitForFinished(3000)) {
-                m_cloudDashboardProcess->kill();
-                m_cloudDashboardProcess->waitForFinished(2000);
-            }
-        }
-    }
     if (m_isProcessing) {
         m_pipelineWatcher.waitForFinished();
     }
@@ -149,6 +141,9 @@ void MainWindow::setupManagers()
 {
     m_tabManager = new TabManager(ui->tabWidget, m_pipelineManager, &m_roiManager,
                                    m_view, m_processDebounceTimer, this);
+
+    // 创建云平台看板管理器
+    m_cloudDashboardManager = new CloudDashboardManager(m_toast, this);
 
     // 创建检测方案管理器
     m_profileManager = new ProfileManager(&m_roiManager, m_pipelineManager, this);
@@ -400,6 +395,11 @@ void MainWindow::on_btn_saveImg_clicked()
     m_fileManager->saveImageFileWithDialog(m_pipelineManager);
 }
 
+void MainWindow::on_btn_cloudPlatform_clicked()
+{
+    m_cloudDashboardManager->launch();
+}
+
 // ========== ROI操作 ==========
 
 void MainWindow::on_btn_drawRoi_clicked()
@@ -461,76 +461,6 @@ void MainWindow::on_btn_startAutoDetection_clicked()
 void MainWindow::on_btn_stopAutoDetection_clicked()
 {
     m_autoDetectionController->stopDetection();
-}
-
-// ========== 云平台看板 ==========
-
-void MainWindow::on_btn_cloudPlatform_clicked()
-{
-    // 检查进程是否已在运行
-    if (m_cloudDashboardProcess && m_cloudDashboardProcess->state() == QProcess::Running) {
-        QDesktopServices::openUrl(QUrl("http://127.0.0.1:5000"));
-        m_toast->showMessage("云平台已在运行，已打开浏览器");
-        return;
-    }
-
-    // 查找 cloud_dashboard 目录（相对于可执行文件的上级目录）
-    QString appDir = QCoreApplication::applicationDirPath();
-    QString dashboardDir;
-
-    // 搜索策略：依次尝试多个可能的相对路径
-    QStringList searchPaths = {
-        appDir + "/../cloud_dashboard",                    // 开发构建 (build/debug)
-        appDir + "/../../cloud_dashboard",                 // 开发构建 (build/)
-        QDir::currentPath() + "/cloud_dashboard",          // 当前工作目录
-        QCoreApplication::applicationDirPath() + "/cloud_dashboard",  // 可执行文件同目录
-    };
-
-    // 尝试从 PROJECT_ROOT_DIR 编译定义获取
-#ifdef PROJECT_ROOT_DIR
-    searchPaths.prepend(PROJECT_ROOT_DIR "/cloud_dashboard");
-#endif
-
-    for (const auto& dir : searchPaths) {
-        QDir d(dir);
-        if (d.exists("app.py")) {
-            dashboardDir = d.absolutePath();
-            break;
-        }
-    }
-
-    if (dashboardDir.isEmpty()) {
-        m_toast->showMessage("未找到 cloud_dashboard 目录");
-        Logger::instance()->error("[CloudDashboard] 找不到 cloud_dashboard/app.py");
-        return;
-    }
-
-    // 启动 Python 看板
-    m_cloudDashboardProcess = new QProcess(this);
-    m_cloudDashboardProcess->setWorkingDirectory(dashboardDir);
-    m_cloudDashboardProcess->setProcessChannelMode(QProcess::ForwardedChannels);
-
-    connect(m_cloudDashboardProcess, &QProcess::started, this, [this]() {
-        Logger::instance()->info("[CloudDashboard] 云平台进程已启动");
-        m_toast->showMessage("云平台启动中...");
-        // 等一会再打开浏览器，让服务先启动
-        QTimer::singleShot(3000, this, [this]() {
-            QDesktopServices::openUrl(QUrl("http://127.0.0.1:5000"));
-            m_toast->showMessage("☁ 云平台已启动");
-        });
-    });
-
-    connect(m_cloudDashboardProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, [this](int exitCode, QProcess::ExitStatus status) {
-        Logger::instance()->info(QString("[CloudDashboard] 进程退出 code=%1 status=%2")
-            .arg(exitCode).arg(status));
-        m_toast->showMessage("云平台已停止");
-        m_cloudDashboardProcess->deleteLater();
-        m_cloudDashboardProcess = nullptr;
-    });
-
-    Logger::instance()->info("[CloudDashboard] 启动云平台...");
-    m_cloudDashboardProcess->start("python", {"app.py"});
 }
 
 // ========== MQTT 边云协同 ==========
