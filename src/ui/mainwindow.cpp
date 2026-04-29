@@ -57,6 +57,22 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow()
 {
     m_isDestroying = true;
+
+    // 【修复退出崩溃】在所有值成员（如 m_roiManager）销毁前，
+    // 主动停止视频并断开信号，防止 VideoManager 定时器触发时访问已销毁的 m_roiManager
+    if (m_tabManager) {
+        VideoTabWidget* videoTab = m_tabManager->getVideoTab();
+        if (videoTab) {
+            VideoManager* vm = videoTab->getVideoManager();
+            if (vm) {
+                vm->stop();
+                // 断开 VideoTabWidget 的所有信号，防止 lambda 回调访问已释放的成员
+                videoTab->disconnect();
+                vm->disconnect();
+            }
+        }
+    }
+
     if (m_isProcessing) {
         m_pipelineWatcher.waitForFinished();
     }

@@ -3,6 +3,7 @@
 #include "logger.h"
 #include "roi_manager.h"
 #include "image_view.h"
+#include "image_utils.h"
 #include <QFileDialog>
 #include <QMessageBox>
 
@@ -276,6 +277,9 @@ void VideoTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
                 if (!frame.empty()) {
                     rm->setFullImage(frame);
                     view->clearRoi();
+                    // 直接将视频帧显示到画布上
+                    view->setImage(ImageUtils::matToQImage(frame));
+                    // 同时触发pipeline处理（如果启用了检测）
                     processAndDisplay();
                 }
             });
