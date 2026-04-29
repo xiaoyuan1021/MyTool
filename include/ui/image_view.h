@@ -37,6 +37,8 @@ class ImageView : public QGraphicsView
 public:
     explicit ImageView(QWidget *parent = nullptr);
     void setImage(const QImage &img);
+    /// 只更新图像内容，保持当前缩放比例不变（用于ROI切换等不需要重置zoom的场景）
+    void setImageKeepZoom(const QImage &img);
     void setRoiMode(bool enable);
     void clearRoi();
     void finishRoiMode();

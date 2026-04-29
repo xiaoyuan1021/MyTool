@@ -11,6 +11,7 @@
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QApplication>
+#include <QSignalBlocker>
 
 DetectionUiController::DetectionUiController(
     RoiManager& roiManager,
@@ -146,32 +147,37 @@ void DetectionUiController::onDetectionItemSelected(const QString& roiId, const 
 void DetectionUiController::switchToTabConfig(const TabConfig& config)
 {
     if (!m_tabWidget) return;
-    
-    // 隐藏所有Tab
-    for (int i = 0; i < m_tabWidget->count(); ++i) {
-        m_tabWidget->setTabVisible(i, false);
-    }
-    
-    // 显示配置中指定的Tab（懒加载：如果Tab尚未创建则通知MainWindow创建）
+
+    // 先确保所有需要的Tab都已创建（懒加载）
     for (const QString& tabName : config.tabNames) {
-        // 请求MainWindow确保此Tab已创建
         emit ensureTabNeeded(tabName);
-        
-        // 找到并显示对应的Tab
-        for (int i = 0; i < m_tabNames.size(); ++i) {
-            if (m_tabNames[i] == tabName) {
-                m_tabWidget->setTabVisible(i, true);
-                break;
-            }
-        }
     }
-    
+
+    // 阻塞信号，避免多次 setTabVisible / setCurrentIndex 触发中间状态的 onTabChanged
+    const QSignalBlocker blocker(m_tabWidget);
+
+    // 用 tabText 直接比较，不依赖 m_tabNames 索引（避免索引不同步问题）
+    for (int i = 0; i < m_tabWidget->count(); ++i) {
+        bool shouldShow = config.tabNames.contains(m_tabWidget->tabText(i));
+        m_tabWidget->setTabVisible(i, shouldShow);
+    }
+
     // 切换到第一个可见的Tab
     for (int i = 0; i < m_tabWidget->count(); ++i) {
         if (m_tabWidget->isTabVisible(i)) {
             m_tabWidget->setCurrentIndex(i);
             break;
         }
+    }
+
+    // blocker 析构后信号恢复，此时 QTabWidget 已处于正确状态
+    // 手动触发一次显示模式更新（因为 blockSignals 期间 onTabChanged 没有执行）
+    // 注意：这会在 DisplayModeManager 中根据当前 Tab 设置正确的显示模式
+    int currentIdx = m_tabWidget->currentIndex();
+    if (currentIdx >= 0) {
+        // 通过直接调用处理显示模式更新
+        QString tabName = m_tabWidget->tabText(currentIdx);
+        Logger::instance()->info(QString("[DetectionUi] Tab切换完成: %1").arg(tabName));
     }
 }
 

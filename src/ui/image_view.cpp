@@ -48,6 +48,26 @@ void ImageView::setImage(const QImage &img)
     }
 }
 
+void ImageView::setImageKeepZoom(const QImage &img)
+{
+    if(img.isNull()) return;
+
+    // 只更新图像内容，保留当前变换矩阵（缩放比例）
+    m_pixmapItem->setPixmap(QPixmap::fromImage(img));
+    m_pixmapItem->setPos(0, 0);
+    m_scene->setSceneRect(0, 0, img.width(), img.height());
+    setAlignment(Qt::AlignCenter);
+
+    // 清理旧 ROI
+    if (m_roiRectItem) {
+        delete m_roiRectItem;
+        m_roiRectItem = nullptr;
+    }
+    m_roiReady = false;
+    m_roiHandle = None;
+    // 不调用 resetTransform()，保持当前缩放
+}
+
 void ImageView::setRoiMode(bool enable)
 {
     m_roiMode = enable;

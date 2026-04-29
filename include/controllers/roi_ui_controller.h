@@ -56,6 +56,9 @@ public:
     void onSwitchRoiClicked();
     void onRoiSelected(const QRectF& roiRect);
     
+    // 统一的ROI选择逻辑（点击ROI/检测项时调用）
+    void handleRoiSelection(const QString& roiId);
+
     // ROI操作方法（供MainWindow委托调用）
     void handleRoiSelectedComplete(const QRectF& roiImgRectF);
     QString addRoiWithName(const QString& roiName);

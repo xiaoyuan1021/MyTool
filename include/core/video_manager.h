@@ -36,6 +36,7 @@ public:
     void play();
     void pause();
     void stop();
+    void seekToFrame(int frameIndex);
 
     // 帧获取
     cv::Mat getCurrentFrame();

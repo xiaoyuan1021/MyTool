@@ -323,9 +323,12 @@ void MainWindow::on_btn_openImg_clicked()
 
 void MainWindow::on_btn_openVideo_clicked()
 {
+    // 确保视频Tab已创建（懒加载）
+    ensureTabExists("视频");
+
     auto* videoTab = m_tabManager->getVideoTab();
     if (!videoTab) {
-        Logger::instance()->error("视频Tab组件不存在");
+        Logger::instance()->error("视频Tab组件创建失败");
         return;
     }
 

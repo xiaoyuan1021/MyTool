@@ -118,9 +118,7 @@ void VideoTabWidget::on_slider_progress_valueChanged(int value)
     if (m_videoManager->getSourceType() == VideoManager::VideoSource::LocalFile) {
         double progress = value / 100.0;
         int targetFrame = static_cast<int>(progress * m_videoManager->getTotalFrames());
-        
-        // 这里可以实现跳转到指定帧的功能
-        // 目前简单实现，后续可以扩展
+        m_videoManager->seekToFrame(targetFrame);
     }
 }
 

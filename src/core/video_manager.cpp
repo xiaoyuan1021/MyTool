@@ -342,6 +342,37 @@ void VideoManager::onTimeout()
     }
 }
 
+void VideoManager::seekToFrame(int frameIndex)
+{
+    if (!m_videoCapture.isOpened() || m_sourceType != VideoSource::LocalFile) {
+        return;
+    }
+
+    if (frameIndex < 0) frameIndex = 0;
+    if (m_totalFrames > 0 && frameIndex >= m_totalFrames) {
+        frameIndex = m_totalFrames - 1;
+    }
+
+    try {
+        m_videoCapture.set(cv::CAP_PROP_POS_FRAMES, static_cast<double>(frameIndex));
+        m_currentFrameIndex = frameIndex;
+
+        cv::Mat frame;
+        if (m_videoCapture.read(frame)) {
+            m_currentFrame = frame;
+            emit frameReady(frame);
+        }
+    } catch (const cv::Exception& ex) {
+        QString msg = QString("跳转帧OpenCV错误: %1").arg(ex.what());
+        qDebug() << msg;
+        Logger::instance()->error(msg);
+    } catch (const std::exception& ex) {
+        QString msg = QString("跳转帧异常: %1").arg(ex.what());
+        qDebug() << msg;
+        Logger::instance()->error(msg);
+    }
+}
+
 void VideoManager::updateFrameRate()
 {
     if (m_videoCapture.isOpened()) {

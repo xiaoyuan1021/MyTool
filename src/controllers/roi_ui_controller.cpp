@@ -366,72 +366,54 @@ void RoiUiController::refreshRoiTreeView()
     }
 }
 
+void RoiUiController::handleRoiSelection(const QString& roiId)
+{
+    if (roiId.isEmpty()) return;
+
+    // 如果切换了ROI，先保存旧ROI的配置，再加载新ROI的配置
+    if (roiId != m_currentSelectedRoiId) {
+        saveCurrentRoiPipelineConfig();
+        m_currentSelectedRoiId = roiId;
+        loadRoiPipelineConfig(m_currentSelectedRoiId);
+    } else {
+        m_currentSelectedRoiId = roiId;
+    }
+
+    // 激活ROI在图像视图中（纯显示切换，不触发Pipeline处理）
+    RoiConfig* roi = m_roiManager.getRoiConfig(m_currentSelectedRoiId);
+    if (roi) {
+        m_view->clearRoi();
+        m_roiManager.setActiveRoi(roi->roiId);
+        emit roiDisplayChanged(m_currentSelectedRoiId);
+        Logger::instance()->info(QString("已选中ROI: %1 (通过ID激活)").arg(roi->roiName));
+    }
+}
+
 void RoiUiController::onRoiTreeItemClicked(QTreeWidgetItem* item, int column)
 {
     Q_UNUSED(column);
-    
+
     if (!item) {
         return;
     }
-    
+
     QString itemId = item->data(0, Qt::UserRole).toString();
     QString itemType = item->data(0, Qt::UserRole + 1).toString();
-    
+
     if (itemType == "detection") {
-        // 点击的是检测项，找到父ROI
+        // 点击的是检测项，找到父ROI并统一处理选择逻辑
         QTreeWidgetItem* parentItem = item->parent();
         if (parentItem) {
-            QString newRoiId = parentItem->data(0, Qt::UserRole).toString();
-            
-            // 如果切换了ROI，先保存旧ROI的配置，再加载新ROI的配置
-            if (newRoiId != m_currentSelectedRoiId) {
-                saveCurrentRoiPipelineConfig();
-                m_currentSelectedRoiId = newRoiId;
-                loadRoiPipelineConfig(m_currentSelectedRoiId);
-            }
-            
-            // 【Bug修复】激活父ROI在图像视图中，确保Pipeline在ROI区域上处理
-            RoiConfig* roi = m_roiManager.getRoiConfig(m_currentSelectedRoiId);
-            if (roi) {
-                m_view->clearRoi();
-                // 已知ROI ID时直接使用setActiveRoi，避免setRoi的矩形匹配问题
-                m_roiManager.setActiveRoi(roi->roiId);
-                
-                // 纯显示切换，不触发Pipeline处理
-                emit roiDisplayChanged(m_currentSelectedRoiId);
-            }
-            
+            QString parentRoiId = parentItem->data(0, Qt::UserRole).toString();
+            handleRoiSelection(parentRoiId);
+
             // 发出检测项选中信号，用于触发Tab切换
             emit detectionItemSelected(m_currentSelectedRoiId, itemId);
         }
-        
         Logger::instance()->info(QString("选中检测项: %1").arg(item->text(0)));
     } else {
-        // 点击的是ROI
-        QString newRoiId = itemId;
-        
-        // 如果切换了ROI，先保存旧ROI的配置，再加载新ROI的配置
-        if (newRoiId != m_currentSelectedRoiId) {
-            saveCurrentRoiPipelineConfig();
-            m_currentSelectedRoiId = newRoiId;
-            loadRoiPipelineConfig(m_currentSelectedRoiId);
-        } else {
-            m_currentSelectedRoiId = newRoiId;
-        }
-        
-        // 在图像视图中显示对应的ROI
-        RoiConfig* roi = m_roiManager.getRoiConfig(m_currentSelectedRoiId);
-        if (roi) {
-            m_view->clearRoi();
-            // 【Bug修复】已知ROI ID时直接使用setActiveRoi，避免setRoi的矩形匹配问题
-            m_roiManager.setActiveRoi(roi->roiId);
-            
-            // 【P1修复】纯显示切换，不触发Pipeline处理
-            emit roiDisplayChanged(m_currentSelectedRoiId);
-            Logger::instance()->info(QString("已选中ROI: %1 (通过ID激活)").arg(roi->roiName));
-        } else {
-            Logger::instance()->info(QString("选中ROI: %1").arg(itemId));
-        }
+        // 点击的是ROI，统一处理选择逻辑
+        handleRoiSelection(itemId);
     }
 }
 
@@ -761,24 +743,26 @@ void RoiUiController::syncRoiConfigsToWidget()
 void RoiUiController::setupMainWindowConnections(TabManager* tabManager)
 {
     // 纯显示切换：切换到ROI区域图像，无需Pipeline重新处理
+    // 使用 setImageKeepZoom 保持当前缩放比例，避免切换时缩放重置
     connect(this, &RoiUiController::roiDisplayChanged,
             this, [this](const QString& roiId) {
         Q_UNUSED(roiId);
         cv::Mat currentImage = m_roiManager.getCurrentImage();
         if (!currentImage.empty()) {
             QImage qimg = ImageUtils::matToQImage(currentImage);
-            m_view->setImage(qimg);
+            m_view->setImageKeepZoom(qimg);
             if (m_statusBar) m_statusBar->showMessage("已切换显示", 2000);
         }
     });
 
     // 切换到原图显示，无需Pipeline重新处理
+    // 使用 setImageKeepZoom 保持当前缩放比例，避免切换时缩放重置
     connect(this, &RoiUiController::fullImageDisplayRequested,
             this, [this]() {
         cv::Mat fullImage = m_roiManager.getFullImage();
         if (!fullImage.empty()) {
             QImage qimg = ImageUtils::matToQImage(fullImage);
-            m_view->setImage(qimg);
+            m_view->setImageKeepZoom(qimg);
             if (m_statusBar) m_statusBar->showMessage("已切换到原图", 2000);
         }
     });
