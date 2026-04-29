@@ -5,12 +5,13 @@
 #include <QString>
 #include <QVector>
 #include "video_manager.h"
+#include "widgets/i_signal_connectable.h"
 
 namespace Ui {
 class VideoTabWidget;
 }
 
-class VideoTabWidget : public QWidget
+class VideoTabWidget : public QWidget, public ISignalConnectable
 {
     Q_OBJECT
 
@@ -20,6 +21,11 @@ public:
 
     // 获取视频管理器实例
     VideoManager* getVideoManager() const { return m_videoManager; }
+
+    void connectSignals(PipelineManager* pm, RoiManager* rm,
+                        ImageView* view, RoiUiController* roiCtrl,
+                        std::function<void()> requestRefresh,
+                        std::function<void()> processAndDisplay) override;
 
 signals:
     void videoFrameReady(const cv::Mat& frame);

@@ -10,7 +10,7 @@
 #include <QLabel>
 #include "core/pipeline_manager.h"
 #include "core/pipeline.h"
-#include "ui/roi_manager.h"
+#include "roi_manager.h"
 #include "data/detection_result_report.h"
 
 /**

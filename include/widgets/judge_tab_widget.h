@@ -2,12 +2,13 @@
 
 #include <QWidget>
 #include "pipeline_manager.h"
+#include "widgets/i_signal_connectable.h"
 
 namespace Ui {
     class Form_Judge;
 }
 
-class JudgeTabWidget : public QWidget
+class JudgeTabWidget : public QWidget, public ISignalConnectable
 {
     Q_OBJECT
 
@@ -18,6 +19,11 @@ public:
 
     void getJudgeConfig(int& minCount, int& maxCount, int& currentCount) const;
     void setJudgeConfig(int minCount, int maxCount, int currentCount);
+
+    void connectSignals(PipelineManager* pm, RoiManager* rm,
+                        ImageView* view, RoiUiController* roiCtrl,
+                        std::function<void()> requestRefresh,
+                        std::function<void()> processAndDisplay) override;
 
 signals:
     /// 判定参数变化信号（min/max值改变时触发，用于同步到DetectionItem.config）

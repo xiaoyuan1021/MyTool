@@ -2,6 +2,7 @@
 #include "ui_enhance_tab.h"
 #include "config/constants.h"
 #include "ui/slider_spinbox_binder.h"
+#include "controllers/roi_ui_controller.h"
 
 EnhanceTabWidget::EnhanceTabWidget(PipelineManager* pipelineManager, QWidget* parent)
     : QWidget(parent)
@@ -245,4 +246,16 @@ void EnhanceTabWidget::applyStateQuiet(const EnhancementState &state)
     cfg.gamma = state.gamma / 100.0;
     cfg.sharpen = state.sharpen / 100.0;
     m_pipelineManager->setConfig(cfg);
+}
+
+void EnhanceTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
+                                      ImageView* view, RoiUiController* roiCtrl,
+                                      std::function<void()> requestRefresh,
+                                      std::function<void()> processAndDisplay)
+{
+    Q_UNUSED(pm); Q_UNUSED(rm); Q_UNUSED(view); Q_UNUSED(processAndDisplay);
+    connect(this, &EnhanceTabWidget::processRequested,
+            this, [requestRefresh]() { requestRefresh(); });
+    connect(this, &EnhanceTabWidget::enhanceConfigChanged,
+            this, [roiCtrl]() { roiCtrl->saveCurrentRoiPipelineConfig(); });
 }

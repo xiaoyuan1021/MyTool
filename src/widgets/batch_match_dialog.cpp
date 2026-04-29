@@ -1,5 +1,5 @@
 #include "widgets/batch_match_dialog.h"
-#include "ui/roi_manager.h"
+#include "roi_manager.h"
 #include "logger.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>

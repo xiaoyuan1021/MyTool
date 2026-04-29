@@ -5,7 +5,7 @@
 #include <QString>
 #include <QMap>
 #include <QVector>
-#include "../config/roi_config.h"
+#include "config/roi_config.h"
 #include "data/inspection_profile.h"
 
 // 前向声明

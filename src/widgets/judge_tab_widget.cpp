@@ -1,5 +1,6 @@
 #include "judge_tab_widget.h"
 #include "ui_judge_tab.h"
+#include "controllers/roi_ui_controller.h"
 #include <QMessageBox>
 #include <QSignalBlocker>
 
@@ -83,4 +84,14 @@ void JudgeTabWidget::onJudgeValueChanged()
     int minCount = m_ui->lineEdit_minRegionCount->text().toInt();
     int maxCount = m_ui->lineEdit_maxRegionCount->text().toInt();
     emit judgeConfigChanged(minCount, maxCount);
+}
+
+void JudgeTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
+                                    ImageView* view, RoiUiController* roiCtrl,
+                                    std::function<void()> requestRefresh,
+                                    std::function<void()> processAndDisplay)
+{
+    Q_UNUSED(pm); Q_UNUSED(rm); Q_UNUSED(view); Q_UNUSED(requestRefresh); Q_UNUSED(processAndDisplay);
+    connect(this, &JudgeTabWidget::judgeConfigChanged,
+            roiCtrl, &RoiUiController::updateBlobDetectionConfig);
 }

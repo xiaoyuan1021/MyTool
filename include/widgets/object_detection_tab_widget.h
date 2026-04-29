@@ -5,12 +5,13 @@
 #include <QThread>
 #include "pipeline_manager.h"
 #include "algorithm/dnn_inference.h"
+#include "widgets/i_signal_connectable.h"
 
 namespace Ui {
 class ObjectDetectionTabForm;
 }
 
-class ObjectDetectionTabWidget : public QWidget {
+class ObjectDetectionTabWidget : public QWidget, public ISignalConnectable {
     Q_OBJECT
 
 public:
@@ -41,6 +42,11 @@ public:
      * 更新检测结果显示
      */
     void updateDetectionResults(const std::vector<DetectionResult>& results);
+
+    void connectSignals(PipelineManager* pm, RoiManager* rm,
+                        ImageView* view, RoiUiController* roiCtrl,
+                        std::function<void()> requestRefresh,
+                        std::function<void()> processAndDisplay) override;
 
 signals:
     void detectionConfigChanged();

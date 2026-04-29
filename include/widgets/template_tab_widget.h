@@ -6,6 +6,7 @@
 #include <memory>
 #include <opencv2/opencv.hpp>
 #include "../algorithm/match_strategy.h"
+#include "widgets/i_signal_connectable.h"
 
 namespace Ui
 {
@@ -16,13 +17,14 @@ class ImageView;
 class RoiManager;
 class BatchMatchDialog;
 class ProfileManager;
+class ISignalConnectable;
 
 enum class MatchType
 {
     OpenCVTM
 };
 
-class TemplateTabWidget : public QWidget
+class TemplateTabWidget : public QWidget, public ISignalConnectable
 {
     Q_OBJECT
 public:
@@ -32,6 +34,11 @@ public:
     ~TemplateTabWidget();
 
     void initialize();
+
+    void connectSignals(PipelineManager* pm, RoiManager* rm,
+                        ImageView* view, RoiUiController* roiCtrl,
+                        std::function<void()> requestRefresh,
+                        std::function<void()> processAndDisplay) override;
 
     // 策略管理
     void setMatchType(MatchType type);

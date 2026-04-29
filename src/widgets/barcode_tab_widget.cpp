@@ -177,3 +177,13 @@ void BarcodeTabWidget::handleApply()
     updatePipelineConfig();
     emit requestApplyBarcodeSettings();
 }
+
+void BarcodeTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
+                                      ImageView* view, RoiUiController* roiCtrl,
+                                      std::function<void()> requestRefresh,
+                                      std::function<void()> processAndDisplay)
+{
+    Q_UNUSED(pm); Q_UNUSED(rm); Q_UNUSED(view); Q_UNUSED(roiCtrl); Q_UNUSED(processAndDisplay);
+    connect(this, &BarcodeTabWidget::requestApplyBarcodeSettings,
+            this, [requestRefresh]() { requestRefresh(); });
+}

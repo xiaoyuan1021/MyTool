@@ -1,5 +1,6 @@
 #include "image_tab_widget.h"
 #include "ui_image_tab.h"
+#include "roi_manager.h"
 
 ImageTabWidget::ImageTabWidget(PipelineManager* pipelineManager, QWidget* parent)
     : QWidget(parent)
@@ -50,5 +51,19 @@ void ImageTabWidget::on_comboBox_channels_currentIndexChanged(int index)
     // 仅当下拉框索引改变时记录，但不发送信号
     // 信号只由按钮点击触发，避免重复
     
+}
+
+void ImageTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
+                                    ImageView* view, RoiUiController* roiCtrl,
+                                    std::function<void()> requestRefresh,
+                                    std::function<void()> processAndDisplay)
+{
+    connect(this, &ImageTabWidget::channelChanged,
+            this, [pm, requestRefresh](int channel) {
+                PipelineConfig cfg = pm->getConfigSnapshot();
+                cfg.channel = static_cast<PipelineConfig::Channel>(channel);
+                pm->setConfig(cfg);
+                requestRefresh();
+            });
 }
 

@@ -9,6 +9,7 @@ class PipelineManager;
 class RoiManager;
 class ImageView;
 class RoiUiController;
+class ISignalConnectable;
 
 /**
  * 信号连接器 - 负责建立各模块之间的信号连接
@@ -40,6 +41,7 @@ signals:
 
 public:
     /// 建立 Tab Widget 的信号连接（由 TabManager::tabCreated 信号触发）
+    /// 使用ISignalConnectable接口，不再依赖具体的Tab类型
     void connectTabSignals(const QString& tabName, QWidget* widget);
 
 private:
@@ -47,17 +49,4 @@ private:
     RoiManager* m_roiManager;
     ImageView* m_view;
     RoiUiController* m_roiUiController;
-
-    // 各 Tab 的独立连接方法
-    void connectImageTab(QWidget* widget);
-    void connectVideoTab(QWidget* widget);
-    void connectEnhanceTab(QWidget* widget);
-    void connectFilterTab(QWidget* widget);
-    void connectTemplateTab(QWidget* widget);
-    void connectProcessTab(QWidget* widget);
-    void connectExtractTab(QWidget* widget);
-    void connectJudgeTab(QWidget* widget);
-    void connectLineTab(QWidget* widget);
-    void connectObjectDetectionTab(QWidget* widget);
-    void connectBarcodeTab(QWidget* widget);
 };

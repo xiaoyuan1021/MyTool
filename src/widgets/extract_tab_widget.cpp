@@ -336,3 +336,13 @@ void ExtractTabWidget::saveCurrentFilterCondition()
     // 触发重新处理
     emit extractionChanged();
 }
+
+void ExtractTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
+                                      ImageView* view, RoiUiController* roiCtrl,
+                                      std::function<void()> requestRefresh,
+                                      std::function<void()> processAndDisplay)
+{
+    Q_UNUSED(pm); Q_UNUSED(rm); Q_UNUSED(view); Q_UNUSED(roiCtrl); Q_UNUSED(processAndDisplay);
+    connect(this, &ExtractTabWidget::extractionChanged,
+            this, [requestRefresh]() { requestRefresh(); });
+}

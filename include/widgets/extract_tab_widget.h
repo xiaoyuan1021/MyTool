@@ -4,13 +4,14 @@
 #include "pipeline_manager.h"
 #include "image_view.h"
 #include <QListWidgetItem>
+#include "widgets/i_signal_connectable.h"
 
 namespace Ui
 {
 class ExtractTabForm;
 }
 
-class ExtractTabWidget : public QWidget
+class ExtractTabWidget : public QWidget, public ISignalConnectable
 {
     Q_OBJECT
 public:
@@ -24,6 +25,11 @@ public:
     void getExtractConfig(ShapeFilterConfig& config) const;
     void setExtractConfig(const ShapeFilterConfig& config);
     void saveCurrentFilterCondition();
+
+    void connectSignals(PipelineManager* pm, RoiManager* rm,
+                        ImageView* view, RoiUiController* roiCtrl,
+                        std::function<void()> requestRefresh,
+                        std::function<void()> processAndDisplay) override;
     
 signals:
     void extractionChanged();

@@ -1,6 +1,8 @@
 #include "video_tab_widget.h"
 #include "ui_video_tab.h"
 #include "logger.h"
+#include "roi_manager.h"
+#include "image_view.h"
 #include <QFileDialog>
 #include <QMessageBox>
 
@@ -263,4 +265,20 @@ void VideoTabWidget::updateProgress()
     }
     
     m_isUpdatingProgress = false;
+}
+
+void VideoTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
+                                    ImageView* view, RoiUiController* roiCtrl,
+                                    std::function<void()> requestRefresh,
+                                    std::function<void()> processAndDisplay)
+{
+    Q_UNUSED(requestRefresh);
+    connect(this, &VideoTabWidget::videoFrameReady,
+            this, [rm, view, processAndDisplay](const cv::Mat& frame) {
+                if (!frame.empty()) {
+                    rm->setFullImage(frame);
+                    view->clearRoi();
+                    processAndDisplay();
+                }
+            });
 }

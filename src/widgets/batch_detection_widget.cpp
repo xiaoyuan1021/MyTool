@@ -1,6 +1,6 @@
 #include "batch_detection_widget.h"
 #include "ui_batch_detection_tab.h"
-#include "ui/roi_manager.h"
+#include "roi_manager.h"
 #include "core/pipeline_manager.h"
 #include "core/profile_manager.h"
 #include "data/inspection_profile.h"

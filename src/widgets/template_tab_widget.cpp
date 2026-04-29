@@ -13,6 +13,7 @@
 #include <QApplication>
 #include <QDesktopServices>
 #include <QUrl>
+#include <QShortcut>
 
 TemplateTabWidget::TemplateTabWidget(ImageView* view,
                                      RoiManager* roiManager,
@@ -491,4 +492,27 @@ void TemplateTabWidget::updateUIState(bool hasTemplate)
     {
         //m_ui->statusbar->showMessage(QString("✓ 已创建模板 [%1]").arg(getCurrentStrategyName()), 2000);
     }
+}
+
+void TemplateTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
+                                       ImageView* view, RoiUiController* roiCtrl,
+                                       std::function<void()> requestRefresh,
+                                       std::function<void()> processAndDisplay)
+{
+    Q_UNUSED(pm); Q_UNUSED(roiCtrl); Q_UNUSED(requestRefresh);
+    connect(this, &TemplateTabWidget::imageToShow,
+            this, [processAndDisplay](const cv::Mat& img) { processAndDisplay(); });
+    connect(this, &TemplateTabWidget::requestShowImage,
+            this, [processAndDisplay](const cv::Mat& img) { processAndDisplay(); });
+    connect(this, &TemplateTabWidget::templateCreated,
+            this, [](const QString& n) {
+                Logger::instance()->info(QString("模板已创建: %1").arg(n));
+            });
+    connect(this, &TemplateTabWidget::matchCompleted,
+            this, [](int count) {
+                Logger::instance()->info(
+                    QString("匹配完成，找到 %1 个目标").arg(count));
+            });
+    QShortcut* sc = new QShortcut(Qt::Key_Escape, this);
+    connect(sc, &QShortcut::activated, this, &TemplateTabWidget::clearMatchResults);
 }

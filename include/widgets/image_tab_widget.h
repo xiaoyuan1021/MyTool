@@ -4,17 +4,23 @@
 #include <QWidget>
 #include "pipeline_manager.h"
 #include "pipeline.h"
+#include "widgets/i_signal_connectable.h"
 
 namespace Ui {
 class ImageTabWidget;
 }
 
-class ImageTabWidget : public QWidget {
+class ImageTabWidget : public QWidget, public ISignalConnectable {
     Q_OBJECT
 
 public:
     explicit ImageTabWidget(PipelineManager* pipelineManager, QWidget* parent = nullptr);
     ~ImageTabWidget();
+
+    void connectSignals(PipelineManager* pm, RoiManager* rm,
+                        ImageView* view, RoiUiController* roiCtrl,
+                        std::function<void()> requestRefresh,
+                        std::function<void()> processAndDisplay) override;
 
 signals:
     void channelChanged(int channel);

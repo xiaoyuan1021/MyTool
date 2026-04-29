@@ -3,12 +3,13 @@
 #include <QObject>
 #include "pipeline_manager.h"
 #include <QListWidgetItem>
+#include "widgets/i_signal_connectable.h"
 
 namespace Ui {
     class Form_Process;
 }
 
-class ProcessTabWidget : public QWidget
+class ProcessTabWidget : public QWidget, public ISignalConnectable
 {
     Q_OBJECT
 
@@ -17,6 +18,11 @@ public:
     ~ProcessTabWidget();
     void initialize();
     void refreshAlgorithmListUI(const QVector<AlgorithmStep>& algorithmQueue);
+
+    void connectSignals(PipelineManager* pm, RoiManager* rm,
+                        ImageView* view, RoiUiController* roiCtrl,
+                        std::function<void()> requestRefresh,
+                        std::function<void()> processAndDisplay) override;
 
 signals:
     void algorithmChanged();

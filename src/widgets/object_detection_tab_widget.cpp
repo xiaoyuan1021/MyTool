@@ -1,5 +1,6 @@
 #include "widgets/object_detection_tab_widget.h"
 #include "ui_object_detection_tab.h"
+#include "ui/logger.h"
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QDebug>
@@ -181,4 +182,14 @@ void ObjectDetectionTabWidget::updateDetectionResults(const std::vector<Detectio
     
     // 更新状态
     m_ui->label_status->setText(QString("状态：检测到 %1 个目标").arg(results.size()));
+}
+
+void ObjectDetectionTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
+                                              ImageView* view, RoiUiController* roiCtrl,
+                                              std::function<void()> requestRefresh,
+                                              std::function<void()> processAndDisplay)
+{
+    Q_UNUSED(pm); Q_UNUSED(rm); Q_UNUSED(view); Q_UNUSED(roiCtrl); Q_UNUSED(processAndDisplay);
+    connect(this, &ObjectDetectionTabWidget::detectionConfigChanged,
+            this, [requestRefresh]() { requestRefresh(); });
 }

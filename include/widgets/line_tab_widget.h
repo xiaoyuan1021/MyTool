@@ -4,13 +4,14 @@
 #include <functional>
 #include <opencv2/core.hpp>
 #include "pipeline_manager.h"
+#include "widgets/i_signal_connectable.h"
 
 namespace Ui
 {
 class LineTabForm;
 }
 
-class LineDetectTabWidget : public QWidget
+class LineDetectTabWidget : public QWidget, public ISignalConnectable
 {
     Q_OBJECT
 
@@ -20,6 +21,11 @@ public:
                                  QWidget* parent = nullptr);
     ~LineDetectTabWidget();
     void initialize();
+
+    void connectSignals(PipelineManager* pm, RoiManager* rm,
+                        ImageView* view, RoiUiController* roiCtrl,
+                        std::function<void()> requestRefresh,
+                        std::function<void()> processAndDisplay) override;
 
 private:
     PipelineManager* m_pipelineManager;

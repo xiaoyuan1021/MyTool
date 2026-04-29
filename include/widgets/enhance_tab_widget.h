@@ -3,6 +3,7 @@
 #include <QWidget>
 #include "pipeline_manager.h"
 #include "pipeline.h"
+#include "widgets/i_signal_connectable.h"
 #include <QObject>
 #include <QStack>
 #include <QTimer>
@@ -15,7 +16,7 @@ namespace Ui {
 class EnhanceTabWidget;
 }
 
-class EnhanceTabWidget : public QWidget {
+class EnhanceTabWidget : public QWidget, public ISignalConnectable {
     Q_OBJECT
 
 public:
@@ -25,6 +26,11 @@ public:
     // 配置管理
     void getEnhanceConfig(int& brightness, int& contrast, int& gamma, int& sharpen) const;
     void setEnhanceConfig(int brightness, int contrast, int gamma, int sharpen);
+
+    void connectSignals(PipelineManager* pm, RoiManager* rm,
+                        ImageView* view, RoiUiController* roiCtrl,
+                        std::function<void()> requestRefresh,
+                        std::function<void()> processAndDisplay) override;
 
 signals:
     void brightnessChanged(int);

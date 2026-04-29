@@ -215,9 +215,19 @@ void ProcessTabWidget::loadAlgorithmParameters(int index)
         m_ui->stackedWidget_Algorithm->setCurrentIndex(3);
         QString shapeType = step.params.value("shapeType", "convex").toString();
         int comboIndex = m_ui->comboBox_shapeType->findData(shapeType);
-        if (comboIndex >= 0) {
+         if (comboIndex >= 0) {
             m_ui->comboBox_shapeType->setCurrentIndex(comboIndex);
         }
         break;
     }
+}
+
+void ProcessTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
+                                      ImageView* view, RoiUiController* roiCtrl,
+                                      std::function<void()> requestRefresh,
+                                      std::function<void()> processAndDisplay)
+{
+    Q_UNUSED(pm); Q_UNUSED(rm); Q_UNUSED(view); Q_UNUSED(roiCtrl); Q_UNUSED(processAndDisplay);
+    connect(this, &ProcessTabWidget::algorithmChanged,
+            this, [requestRefresh]() { requestRefresh(); });
 }

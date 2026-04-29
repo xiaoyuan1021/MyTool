@@ -2,6 +2,7 @@
 #include "ui_line_tab.h"
 #include "logger.h"
 #include "ui/slider_spinbox_binder.h"
+#include "image_view.h"
 #include <QMessageBox>
 
 LineDetectTabWidget::LineDetectTabWidget(PipelineManager* pipelineManager,
@@ -328,6 +329,23 @@ void LineDetectTabWidget::updateReferenceLineStatus()
     }
 
     m_ui->label_referenceLineStatus->setText(status);
+}
+
+void LineDetectTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
+                                         ImageView* view, RoiUiController* roiCtrl,
+                                         std::function<void()> requestRefresh,
+                                         std::function<void()> processAndDisplay)
+{
+    Q_UNUSED(pm); Q_UNUSED(rm); Q_UNUSED(roiCtrl);
+    connect(this, &LineDetectTabWidget::requestDrawReferenceLine,
+            view, &ImageView::startReferenceLineDrawing);
+    connect(this, &LineDetectTabWidget::requestClearReferenceLine,
+            view, [view, processAndDisplay]() {
+                view->clearReferenceLine();
+                processAndDisplay();
+            });
+    connect(view, &ImageView::referenceLineDrawn,
+            this, &LineDetectTabWidget::setReferenceLine);
 }
 
 void LineDetectTabWidget::setReferenceLine(const cv::Point2f& start, const cv::Point2f& end)

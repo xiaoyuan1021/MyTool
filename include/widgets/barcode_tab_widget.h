@@ -3,13 +3,14 @@
 #include <QWidget>
 #include <functional>
 #include "pipeline_manager.h"
+#include "widgets/i_signal_connectable.h"
 
 namespace Ui
 {
 class BarcodeTabForm;
 }
 
-class BarcodeTabWidget : public QWidget
+class BarcodeTabWidget : public QWidget, public ISignalConnectable
 {
     Q_OBJECT
 
@@ -30,6 +31,11 @@ public:
 
     // 从UI获取配置
     BarcodeConfig getBarcodeConfig() const;
+
+    void connectSignals(PipelineManager* pm, RoiManager* rm,
+                        ImageView* view, RoiUiController* roiCtrl,
+                        std::function<void()> requestRefresh,
+                        std::function<void()> processAndDisplay) override;
 
 private:
     PipelineManager* m_pipelineManager;
