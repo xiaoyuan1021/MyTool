@@ -73,15 +73,16 @@ void PipelineResultHandler::handleJudgeTabResult(const PipelineContext& result)
 
 void PipelineResultHandler::handleLineTabResult(const PipelineContext& result)
 {
-    if (!m_tabManager || result.totalLineCount <= 0) return;
-    
+    if (!m_tabManager) return;
+
     if (auto* lineTab = m_tabManager->getLineDetectTab()) {
         PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
         lineTab->updateMatchResultStatus(
-            result.matchedLineCount, 
-            result.totalLineCount, 
-            cfg.angleThreshold, 
-            cfg.distanceThreshold
+            result.matchedLineCount,
+            result.totalLineCount,
+            cfg.angleThreshold,
+            cfg.distanceThreshold,
+            cfg.enableReferenceLineMatch
         );
     }
 }
@@ -120,7 +121,7 @@ void PipelineResultHandler::drawDetectionResults(cv::Mat& image, const std::vect
 
             std::string label = det.className + " " + cv::format("%.2f", det.confidence);
             int baseline = 0;
-            cv::Size textSize = cv::getTextSize(label, cv::FONT_HERSHEY_SIMPLEX, 0.6, 1, &baseline);
+            cv::Size textSize = cv::getTextSize(label, cv::FONT_HERSHEY_SIMPLEX, 0.8, 2, &baseline);
 
             cv::Point textOrg(det.box.x, det.box.y - 5);
             if (textOrg.y - textSize.height < 0) {
@@ -133,7 +134,7 @@ void PipelineResultHandler::drawDetectionResults(cv::Mat& image, const std::vect
                 cv::Scalar(0, 255, 0), -1);
 
             cv::putText(image, label, textOrg,
-                cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 0, 0), 1);
+                cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 0, 0), 2);
         }
     } catch (const cv::Exception& ex) {
         qDebug() << "[DrawResults] OpenCV错误:" << ex.what();

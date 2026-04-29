@@ -100,30 +100,45 @@ void LineDetectTabWidget::onLineAlgorithmChanged(int value)
 
 void LineDetectTabWidget::onLineThresholdChanged(int value)
 {
-    Q_UNUSED(value);
-    if (m_pipelineManager && m_pipelineManager->getConfigSnapshot().enableLineDetect) {
-        if (m_processCallback) {
-            m_processCallback();
+    if (!m_pipelineManager) return;
+    {
+        PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
+        cfg.lineThreshold = value;
+        m_pipelineManager->setConfig(cfg);
+    }
+    if (m_pipelineManager->getConfigSnapshot().enableLineDetect) {
+        if (m_requestRefresh) {
+            m_requestRefresh();
         }
     }
 }
 
 void LineDetectTabWidget::onLineMinLengthChanged(int value)
 {
-    Q_UNUSED(value);
-    if (m_pipelineManager && m_pipelineManager->getConfigSnapshot().enableLineDetect) {
-        if (m_processCallback) {
-            m_processCallback();
+    if (!m_pipelineManager) return;
+    {
+        PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
+        cfg.lineMinLength = value;
+        m_pipelineManager->setConfig(cfg);
+    }
+    if (m_pipelineManager->getConfigSnapshot().enableLineDetect) {
+        if (m_requestRefresh) {
+            m_requestRefresh();
         }
     }
 }
 
 void LineDetectTabWidget::onLineMaxGapChanged(int value)
 {
-    Q_UNUSED(value);
-    if (m_pipelineManager && m_pipelineManager->getConfigSnapshot().enableLineDetect) {
-        if (m_processCallback) {
-            m_processCallback();
+    if (!m_pipelineManager) return;
+    {
+        PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
+        cfg.lineMaxGap = value;
+        m_pipelineManager->setConfig(cfg);
+    }
+    if (m_pipelineManager->getConfigSnapshot().enableLineDetect) {
+        if (m_requestRefresh) {
+            m_requestRefresh();
         }
     }
 }
@@ -159,9 +174,9 @@ void LineDetectTabWidget::handleApply()
     // 设置显示模式为LineDetect
     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::LineDetect);
 
-    if (m_processCallback)
+    if (m_requestRefresh)
     {
-        m_processCallback();
+        m_requestRefresh();
     }
 }
 
@@ -212,8 +227,8 @@ void LineDetectTabWidget::onReferenceLineEnabledChanged(bool enabled)
 
     updateReferenceLineStatus();
 
-    if (m_processCallback) {
-        m_processCallback();
+    if (m_requestRefresh) {
+        m_requestRefresh();
     }
 }
 
@@ -244,8 +259,8 @@ void LineDetectTabWidget::onClearReferenceLineClicked()
     // 发射信号请求清除绘制
     emit requestClearReferenceLine();
 
-    if (m_processCallback) {
-        m_processCallback();
+    if (m_requestRefresh) {
+        m_requestRefresh();
     }
 }
 
@@ -262,8 +277,8 @@ void LineDetectTabWidget::onAngleThresholdChanged(double value)
     {
         PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
         if (cfg.enableReferenceLineMatch && cfg.referenceLineValid) {
-            if (m_processCallback) {
-                m_processCallback();
+            if (m_requestRefresh) {
+                m_requestRefresh();
             }
         }
     }
@@ -282,8 +297,8 @@ void LineDetectTabWidget::onDistanceThresholdChanged(double value)
     {
         PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
         if (cfg.enableReferenceLineMatch && cfg.referenceLineValid) {
-            if (m_processCallback) {
-                m_processCallback();
+            if (m_requestRefresh) {
+                m_requestRefresh();
             }
         }
     }
@@ -302,8 +317,8 @@ void LineDetectTabWidget::onSearchRegionWidthChanged(int value)
     {
         PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
         if (cfg.enableReferenceLineMatch && cfg.referenceLineValid) {
-            if (m_processCallback) {
-                m_processCallback();
+            if (m_requestRefresh) {
+                m_requestRefresh();
             }
         }
     }
@@ -337,12 +352,14 @@ void LineDetectTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
                                          std::function<void()> processAndDisplay)
 {
     Q_UNUSED(pm); Q_UNUSED(rm); Q_UNUSED(roiCtrl);
+    Q_UNUSED(processAndDisplay);
+    m_requestRefresh = requestRefresh;
     connect(this, &LineDetectTabWidget::requestDrawReferenceLine,
             view, &ImageView::startReferenceLineDrawing);
     connect(this, &LineDetectTabWidget::requestClearReferenceLine,
-            view, [view, processAndDisplay]() {
+            view, [view, this]() {
                 view->clearReferenceLine();
-                processAndDisplay();
+                if (m_requestRefresh) m_requestRefresh();
             });
     connect(view, &ImageView::referenceLineDrawn,
             this, &LineDetectTabWidget::setReferenceLine);
@@ -365,27 +382,40 @@ void LineDetectTabWidget::setReferenceLine(const cv::Point2f& start, const cv::P
     // 自动启用参考线匹配
     m_ui->chk_enableReferenceLine->setChecked(true);
 
-    if (m_processCallback) {
-        m_processCallback();
+    if (m_requestRefresh) {
+        m_requestRefresh();
     }
 }
 
-void LineDetectTabWidget::updateMatchResultStatus(int matchedCount, int totalCount, double angleThreshold, double distanceThreshold)
+void LineDetectTabWidget::updateMatchResultStatus(int matchedCount, int totalCount, double angleThreshold, double distanceThreshold, bool isReferenceMode)
 {
     if (!m_ui) return;
 
     QString status;
-    
-    if (matchedCount > 0) {
-        status = QString("匹配结果: %1/%2 条直线匹配成功\n角度容差: %3°, 距离容差: %4px")
-                     .arg(matchedCount)
-                     .arg(totalCount)
-                     .arg(angleThreshold)
-                     .arg(distanceThreshold);
+
+    if (isReferenceMode) {
+        if (matchedCount > 0) {
+            status = QString("匹配结果: %1/%2 条直线匹配成功\n角度容差: %3°, 距离容差: %4px")
+                         .arg(matchedCount)
+                         .arg(totalCount)
+                         .arg(angleThreshold)
+                         .arg(distanceThreshold);
+        } else if (totalCount > 0) {
+            status = QString("匹配结果: 未找到匹配直线 (检测到 %1 条)\n角度容差: %2°, 距离容差: %3px")
+                         .arg(totalCount)
+                         .arg(angleThreshold)
+                         .arg(distanceThreshold);
+        } else {
+            status = QString("匹配结果: 未找到匹配直线\n角度容差: %1°, 距离容差: %2px")
+                         .arg(angleThreshold)
+                         .arg(distanceThreshold);
+        }
     } else {
-        status = QString("匹配结果: 未找到匹配直线\n角度容差: %1°, 距离容差: %2px")
-                     .arg(angleThreshold)
-                     .arg(distanceThreshold);
+        if (totalCount > 0) {
+            status = QString("直线检测完成: 共检测到 %1 条直线").arg(totalCount);
+        } else {
+            status = QString("未检测到直线");
+        }
     }
 
     m_ui->label_referenceLineStatus->setText(status);

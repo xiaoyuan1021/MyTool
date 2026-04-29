@@ -74,33 +74,41 @@ void ObjectDetectionTabWidget::onBrowseConfig()
 void ObjectDetectionTabWidget::onApplyClicked()
 {
     qDebug() << "[ObjectDetection] apply button clicked";
-    m_ui->label_status->setText("状态：正在加载模型...");
-    m_ui->btn_apply->setEnabled(false);
-    
-    // 使用QtConcurrent在后台线程加载模型，避免UI冻结
+
     QString modelPath = m_ui->lineEdit_modelPath->text().trimmed();
-    QString configPath = m_ui->lineEdit_configPath->text().trimmed();
-    
     if (modelPath.isEmpty()) {
         m_ui->label_status->setText("状态：请选择模型文件");
-        m_ui->btn_apply->setEnabled(true);
         return;
     }
+
+    // 如果模型已加载且路径相同，无需重新加载
+    if (m_dnnInference.isLoaded() && m_currentModelPath == modelPath) {
+        qDebug() << "[ObjectDetection] model already loaded, skip reloading";
+        m_ui->label_status->setText("状态：模型已就绪");
+        emit detectionConfigChanged();
+        return;
+    }
+
+    m_ui->label_status->setText("状态：正在加载模型...");
+    m_ui->btn_apply->setEnabled(false);
+
+    QString configPath = m_ui->lineEdit_configPath->text().trimmed();
 
     QFuture<bool> future = QtConcurrent::run(
         [this, modelPath, configPath]() -> bool {
             return m_dnnInference.loadModel(modelPath, configPath);
         }
     );
-    
+
     // 使用 QFutureWatcher 监听完成信号
     QFutureWatcher<bool>* watcher = new QFutureWatcher<bool>(this);
     connect(watcher, &QFutureWatcher<bool>::finished, this, [this, watcher, modelPath]() {
         bool success = watcher->result();
         watcher->deleteLater();
         m_ui->btn_apply->setEnabled(true);
-        
+
         if (success) {
+            m_currentModelPath = modelPath;
             emit modelLoadFinished(true, "状态：模型加载成功，等待检测");
             qDebug() << "[ObjectDetection] model loaded successfully";
         } else {

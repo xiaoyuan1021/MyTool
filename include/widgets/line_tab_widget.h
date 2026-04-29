@@ -30,6 +30,7 @@ public:
 private:
     PipelineManager* m_pipelineManager;
     std::function<void()> m_processCallback;
+    std::function<void()> m_requestRefresh;
     Ui::LineTabForm* m_ui;
 
     struct LineDetectState
@@ -75,7 +76,7 @@ public:
     void updateReferenceLineStatus();
     
     // 更新匹配结果状态
-    void updateMatchResultStatus(int matchedCount, int totalCount, double angleThreshold, double distanceThreshold);
+    void updateMatchResultStatus(int matchedCount, int totalCount, double angleThreshold, double distanceThreshold, bool isReferenceMode = false);
     
     // 设置参考线（供ImageView调用）
     void setReferenceLine(const cv::Point2f& start, const cv::Point2f& end);

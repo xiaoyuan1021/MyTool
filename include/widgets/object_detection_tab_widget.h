@@ -64,4 +64,5 @@ private:
     Ui::ObjectDetectionTabForm* m_ui;
     PipelineManager* m_pipelineManager;
     DnnInference m_dnnInference;
+    QString m_currentModelPath;  // 当前已加载的模型路径，用于避免重复加载
 };

@@ -442,29 +442,6 @@ static void detectLinesEDlines(const cv::Mat& src, std::vector<cv::Vec4f>& lines
     }
 }
 
-static void EDdrawing(const cv::Mat& src, cv::Ptr<cv::ximgproc::EdgeDrawing> ed, PipelineContext& ctx)
-{
-    if (src.empty()) return;
-    try {
-        ed = cv::ximgproc::createEdgeDrawing();
-        ed->detectEdges(src);
-        std::vector<std::vector<cv::Point>> segments = ed->getSegments();
-        for (const auto& seg : segments)
-            {
-                for (size_t i = 0; i < seg.size() - 1; i++)
-                {
-                cv::line(ctx.lineDetect, seg[i], seg[i+1], cv::Scalar(0, 255, 0), 1);
-                }
-            }
-    } catch (const cv::Exception& ex) {
-        qDebug() << "[EDdrawing] OpenCV错误:" << ex.what();
-    Logger::instance()->error(QString("EDdrawing OpenCV错误: %1").arg(ex.what()));
-    } catch (...) {
-        qDebug() << "[EDdrawing] 未知异常";
-    Logger::instance()->error(QString("EDdrawing 未知异常"));
-    }
-}
-
 void StepLineDetect::run(PipelineContext &ctx)
     {
         if (!cfg_ || !cfg_->enableLineDetect) return;
@@ -490,26 +467,20 @@ void StepLineDetect::run(PipelineContext &ctx)
             }
             else if (cfg_->lineDetectAlgorithm == 2)
             {
-                detectLinesEDlines(src, lines);
+                detectLinesEDlines(gray, lines);
             }
 
             ctx.lineDetect = src.clone();
 
-            if (cfg_->lineDetectAlgorithm == 0 || cfg_->lineDetectAlgorithm == 1)
+            for (const auto& line : lines)
             {
-                for (const auto& line : lines)
-                {
-                    cv::line(ctx.lineDetect,
-                            cv::Point(line[0], line[1]),
-                            cv::Point(line[2], line[3]),
-                            cv::Scalar(0, 255, 0), 1);
-                }
+                cv::line(ctx.lineDetect,
+                        cv::Point(line[0], line[1]),
+                        cv::Point(line[2], line[3]),
+                        cv::Scalar(0, 255, 0), 1);
             }
-            else if (cfg_->lineDetectAlgorithm == 2)
-            {
-                cv::Ptr<cv::ximgproc::EdgeDrawing> ed;
-                EDdrawing(gray, ed, ctx);
-            }
+
+            ctx.totalLineCount = static_cast<int>(lines.size());
         } catch (const cv::Exception& ex) {
             qDebug() << "[LineDetect] OpenCV错误:" << ex.what();
     Logger::instance()->error(QString("LineDetect OpenCV错误: %1").arg(ex.what()));
@@ -696,8 +667,8 @@ void StepReferenceLineFilter::run(PipelineContext& ctx)
                  cfg_->referenceLineEnd,
                  cv::Scalar(0, 255, 255), 4, cv::LINE_AA);
 
-        if (!matchedLines.empty()) {
-            const auto& line = matchedLines[0];
+        // 绘制所有匹配直线（洋红色）
+        for (const auto& line : matchedLines) {
             cv::line(ctx.lineDetect,
                      cv::Point(line[0], line[1]),
                      cv::Point(line[2], line[3]),

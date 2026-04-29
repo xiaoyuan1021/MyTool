@@ -3,6 +3,8 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/dnn.hpp>
 #include <QString>
+#include <vector>
+#include <string>
 
 /**
  * 单个检测结果
@@ -63,7 +65,21 @@ public:
      */
     std::vector<cv::String> getOutputNames() const;
 
+    /**
+     * 从文件加载类别名称（每行一个名称）
+     * 也支持 OpenCV 的 format: 'name1\nname2\n...'
+     * @param filePath 类别名称文件路径
+     * @return 是否加载成功
+     */
+    bool loadClassNames(const QString& filePath);
+
+    /**
+     * 直接设置类别名称列表
+     */
+    void setClassNames(const std::vector<std::string>& names);
+
 private:
     cv::dnn::Net net_;
     bool loaded_ = false;
+    std::vector<std::string> classNames_;
 };

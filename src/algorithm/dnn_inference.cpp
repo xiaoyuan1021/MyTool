@@ -1,4 +1,7 @@
 #include "dnn_inference.h"
+#include <QFileInfo>
+#include <QFile>
+#include <QDir>
 #include <spdlog/spdlog.h>
 
 bool DnnInference::loadModel(const QString& modelPath, const QString& configPath)
@@ -28,6 +31,16 @@ bool DnnInference::loadModel(const QString& modelPath, const QString& configPath
 
         loaded_ = true;
         spdlog::info("DnnInference: model loaded successfully");
+
+        // 自动加载同名的 .names 类别文件
+        // 例: model.onnx → 查找同目录下的 model.names
+        QFileInfo modelFileInfo(modelPath);
+        QString namesPath = modelFileInfo.dir().filePath(modelFileInfo.completeBaseName() + ".names");
+        if (QFile::exists(namesPath))
+        {
+            loadClassNames(namesPath);
+        }
+
         return true;
     }
     catch (const cv::Exception& e)
@@ -144,7 +157,14 @@ std::vector<DetectionResult> DnnInference::detect(const cv::Mat& input,
             det.box = cv::Rect(left, top, width, height);
             det.confidence = maxConf;
             det.classId = bestClassId;
-            det.className = "class_" + std::to_string(bestClassId);
+            if (bestClassId >= 0 && bestClassId < static_cast<int>(classNames_.size()))
+            {
+                det.className = classNames_[bestClassId];
+            }
+            else
+            {
+                det.className = "class_" + std::to_string(bestClassId);
+            }
             results.push_back(det);
         }
 
@@ -214,6 +234,38 @@ cv::Mat DnnInference::forward(const cv::Mat& input)
 bool DnnInference::isLoaded() const
 {
     return loaded_;
+}
+
+bool DnnInference::loadClassNames(const QString& filePath)
+{
+    classNames_.clear();
+
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+    {
+        spdlog::warn("DnnInference: cannot open class names file: {}",
+                      filePath.toStdString());
+        return false;
+    }
+
+    while (!file.atEnd())
+    {
+        QString line = QString::fromUtf8(file.readLine()).trimmed();
+        if (!line.isEmpty())
+        {
+            classNames_.push_back(line.toStdString());
+        }
+    }
+
+    file.close();
+    spdlog::info("DnnInference: loaded {} class names from {}",
+                  classNames_.size(), filePath.toStdString());
+    return !classNames_.empty();
+}
+
+void DnnInference::setClassNames(const std::vector<std::string>& names)
+{
+    classNames_ = names;
 }
 
 std::vector<cv::String> DnnInference::getOutputNames() const
