@@ -97,12 +97,20 @@ void RoiUiController::setupTreeView(QTreeWidget* treeView)
 
 void RoiUiController::onDrawRoiClicked()
 {
-    m_roiManager.enableDrawRoiMode(m_view, m_statusBar);
+    if (m_roiManager.getFullImage().empty()) return;
+    m_view->setRoiMode(true);
+    m_view->setDragMode(QGraphicsView::NoDrag);
+    if (m_statusBar) m_statusBar->showMessage("请按下左键绘制ROI");
 }
 
 void RoiUiController::onResetRoiClicked()
 {
-    m_roiManager.resetRoiWithUI(m_view, m_statusBar);
+    if (!m_roiManager.getFullImage().empty()) {
+        m_roiManager.resetRoi();
+        m_view->clearRoi();
+        if (m_statusBar) m_statusBar->showMessage("ROI已重置，处理使用完整图像", 2000);
+        Logger::instance()->info("ROI已重置");
+    }
     emit roiChanged();
 }
 
@@ -116,7 +124,9 @@ void RoiUiController::onAddRoiClicked()
     
     // 提示用户绘制ROI
     Logger::instance()->info("请在图像上绘制新的ROI");
-    m_roiManager.enableDrawRoiMode(m_view, m_statusBar);
+    m_view->setRoiMode(true);
+    m_view->setDragMode(QGraphicsView::NoDrag);
+    if (m_statusBar) m_statusBar->showMessage("请按下左键绘制ROI");
 }
 
 void RoiUiController::onDeleteRoiClicked()
@@ -165,7 +175,10 @@ void RoiUiController::onDeleteRoiClicked()
         refreshRoiTreeView();
         
         // 重置ROI管理器
-        m_roiManager.resetRoiWithUI(m_view, m_statusBar);
+        m_roiManager.resetRoi();
+        m_view->clearRoi();
+        if (m_statusBar) m_statusBar->showMessage("ROI已重置，处理使用完整图像", 2000);
+        Logger::instance()->info("ROI已重置");
         
         // 发出信号通知主窗口更新
         emit roiChanged();
@@ -223,13 +236,20 @@ void RoiUiController::onSwitchRoiClicked()
 
 void RoiUiController::onRoiSelected(const QRectF& roiRect)
 {
-    if (!m_roiManager.handleRoiSelected(roiRect, m_statusBar)) {
+    if (!m_roiManager.setRoi(roiRect)) {
+        if (m_statusBar) m_statusBar->showMessage("ROI应用失败", 2000);
         return;
     }
 
-    // 绘制完ROI后重置图像缩放，恢复到原始比例
-    m_view->resetZoom();
+    cv::Rect roi = m_roiManager.getLastRoi();
+    if (m_statusBar) {
+        m_statusBar->showMessage(
+            QString("ROI已选择：x=%1 y=%2 w=%3 h=%4")
+                .arg(roi.x).arg(roi.y).arg(roi.width).arg(roi.height),
+            2000);
+    }
 
+    m_view->resetZoom();
     emit roiChanged();
 }
 
@@ -430,8 +450,17 @@ void RoiUiController::onRoiTreeContextMenuRequested(const QPoint& pos)
 
 void RoiUiController::handleRoiSelectedComplete(const QRectF& roiImgRectF)
 {
-    if (!m_roiManager.handleRoiSelected(roiImgRectF, m_statusBar)) {
+    if (!m_roiManager.setRoi(roiImgRectF)) {
+        if (m_statusBar) m_statusBar->showMessage("ROI应用失败", 2000);
         return;
+    }
+    
+    cv::Rect roi = m_roiManager.getLastRoi();
+    if (m_statusBar) {
+        m_statusBar->showMessage(
+            QString("ROI已选择：x=%1 y=%2 w=%3 h=%4")
+                .arg(roi.x).arg(roi.y).arg(roi.width).arg(roi.height),
+            2000);
     }
     
     // 绘制完ROI后重置图像缩放，恢复到原始比例
@@ -449,7 +478,11 @@ QString RoiUiController::addRoiWithName(const QString& roiName)
     
     // 进入绘制模式
     Logger::instance()->info(QString("请在图像上绘制新的ROI: %1").arg(roiName));
-    m_roiManager.enableDrawRoiMode(m_view, m_statusBar);
+    if (!m_roiManager.getFullImage().empty()) {
+        m_view->setRoiMode(true);
+        m_view->setDragMode(QGraphicsView::NoDrag);
+        if (m_statusBar) m_statusBar->showMessage("请按下左键绘制ROI");
+    }
     
     return roiName;
 }
@@ -569,7 +602,9 @@ void RoiUiController::handleRoiAddRequested(const QString& roiName)
     
     // 进入绘制模式
     Logger::instance()->info("请在图像上绘制新的ROI");
-    m_roiManager.enableDrawRoiMode(m_view, m_statusBar);
+    m_view->setRoiMode(true);
+    m_view->setDragMode(QGraphicsView::NoDrag);
+    if (m_statusBar) m_statusBar->showMessage("请按下左键绘制ROI");
 }
 
 void RoiUiController::handleRoiDeleteRequested(const QString& roiId)
@@ -591,7 +626,10 @@ void RoiUiController::handleRoiDeleteRequested(const QString& roiId)
         // 如果删除的是当前选中的ROI，重置ROI状态
         if (wasSelected) {
             Logger::instance()->info("[RoiUI] 删除的是当前选中ROI，重置ROI状态");
-            m_roiManager.resetRoiWithUI(m_view, m_statusBar);
+            m_roiManager.resetRoi();
+            m_view->clearRoi();
+            if (m_statusBar) m_statusBar->showMessage("ROI已重置，处理使用完整图像", 2000);
+            Logger::instance()->info("ROI已重置");
             m_currentSelectedRoiId.clear();
         }
         

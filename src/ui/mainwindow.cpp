@@ -400,7 +400,11 @@ void MainWindow::on_btn_saveImg_clicked()
 
 void MainWindow::on_btn_drawRoi_clicked()
 {
-    m_roiManager.enableDrawRoiMode(m_view, ui->statusbar);
+    if (!m_roiManager.getFullImage().empty()) {
+        m_view->setRoiMode(true);
+        m_view->setDragMode(QGraphicsView::NoDrag);
+        ui->statusbar->showMessage("请按下左键绘制ROI");
+    }
 }
 
 void MainWindow::on_btn_resetROI_clicked()    { m_roiUiController->onResetRoiClicked(); }

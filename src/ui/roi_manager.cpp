@@ -489,59 +489,6 @@ QString RoiManager::getActiveRoiId() const
     return it.value().activeRoiId;
 }
 
-// ==================== UI交互相关方法 ====================
-
-void RoiManager::enableDrawRoiMode(ImageView *view, QStatusBar *statusBar)
-{
-    auto it = m_imageRoisMap.find(m_currentImageId);
-    if (it == m_imageRoisMap.end() || it.value().image.empty()) {
-        return;
-    }
-
-    view->setRoiMode(true);
-    view->setDragMode(QGraphicsView::NoDrag);
-    if (statusBar) {
-        statusBar->showMessage("请按下左键绘制ROI");
-    }
-}
-
-bool RoiManager::handleRoiSelected(const QRectF &roiImgRectF, QStatusBar *statusBar)
-{
-    if (!setRoi(roiImgRectF)) {
-        if (statusBar) {
-            statusBar->showMessage("ROI应用失败", 2000);
-        }
-        return false;
-    }
-
-    cv::Rect roi = getLastRoi();
-    if (statusBar) {
-        statusBar->showMessage(
-            QString("ROI已选择：x=%1 y=%2 w=%3 h=%4")
-                .arg(roi.x).arg(roi.y).arg(roi.width).arg(roi.height),
-            2000
-        );
-    }
-
-    return true;
-}
-
-void RoiManager::resetRoiWithUI(ImageView *view, QStatusBar *statusBar)
-{
-    auto it = m_imageRoisMap.find(m_currentImageId);
-    if (it == m_imageRoisMap.end() || it.value().image.empty()) {
-        return;
-    }
-
-    resetRoi();
-    view->clearRoi();
-
-    if (statusBar) {
-        statusBar->showMessage("ROI已重置，处理使用完整图像", 2000);
-    }
-    Logger::instance()->info("ROI已重置");
-}
-
 // ==================== 全量配置导出/导入 ====================
 
 QJsonDocument RoiManager::exportAllConfigsToJson() const

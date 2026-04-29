@@ -104,12 +104,6 @@ public:
     void setActiveRoi(const QString& roiId);
     QString getActiveRoiId() const;
 
-    // ==================== UI交互相关方法 ====================
-
-    void enableDrawRoiMode(ImageView *view, QStatusBar *statusBar);
-    bool handleRoiSelected(const QRectF &roiImgRectF, QStatusBar *statusBar);
-    void resetRoiWithUI(ImageView *view, QStatusBar *statusBar);
-
     // ==================== 全量配置导出/导入 ====================
 
     QJsonDocument exportAllConfigsToJson() const;
