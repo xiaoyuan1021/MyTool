@@ -63,7 +63,6 @@ public:
 private slots:
     void on_btn_openImg_clicked();
     void on_btn_openVideo_clicked();
-    void on_btn_saveImg_clicked();
     void on_btn_drawRoi_clicked();
     void on_btn_resetROI_clicked();
     void on_btn_addROI_clicked();

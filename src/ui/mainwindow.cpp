@@ -358,10 +358,7 @@ void MainWindow::on_btn_openVideo_clicked()
     }
 }
 
-void MainWindow::on_btn_saveImg_clicked()
-{
-    m_fileManager->saveImageFileWithDialog(m_pipelineManager);
-}
+
 
 void MainWindow::on_btn_cloudPlatform_clicked()
 {
