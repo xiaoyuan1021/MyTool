@@ -105,6 +105,9 @@ target_link_libraries(VisionTool PRIVATE
 # 第三方库配置 (OpenCV)
 # ============================================================
 set(OPENCV_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/opencv")
+set(OPENCV_DEBUG_LIB_DIR "${OPENCV_ROOT}/lib")
+set(OPENCV_RELEASE_LIB_DIR "${OPENCV_ROOT}/release/lib")
+set(OPENCV_RELEASE_BIN_DIR "${OPENCV_ROOT}/release/bin")
 
 # OpenCV 包含路径
 target_include_directories(VisionTool PRIVATE
@@ -112,84 +115,66 @@ target_include_directories(VisionTool PRIVATE
     "${OPENCV_ROOT}/include/opencv4/opencv2/ximgproc"
 )
 
-# OpenCV 库文件路径
-set(OPENCV_LIB_DIR "${OPENCV_ROOT}/lib")
-
-# OpenCV 库列表
-set(OPENCV_LIBS
-    opencv_core4d
-    opencv_imgcodecs4d
-    opencv_highgui4d
-    opencv_imgproc4d
-    opencv_videoio4d
-    opencv_dnn4d
-    opencv_photo4d
-    opencv_ximgproc4d
-    opencv_line_descriptor4d
-    opencv_features2d4d
-    opencv_calib3d4d
-    opencv_flann4d
-    opencv_video4d
+# OpenCV 模块列表
+set(OPENCV_MODULES
+    core imgcodecs highgui imgproc videoio dnn photo
+    ximgproc line_descriptor features2d calib3d flann video
 )
 
-foreach(OPENCV_LIB ${OPENCV_LIBS})
-    set(OPENCV_LIB_NAME "${OPENCV_LIB}${OPENCV_SUFFIX}")
-    find_library(OPENCV_${OPENCV_LIB}_PATH
-        NAMES ${OPENCV_LIB_NAME}
-        PATHS "${OPENCV_LIB_DIR}"
-        NO_DEFAULT_PATH
+# Debug 链 opencv_xxx4d.lib，Release 链 opencv_xxx4.lib
+foreach(MODULE ${OPENCV_MODULES})
+    target_link_libraries(VisionTool PRIVATE
+        debug "${OPENCV_DEBUG_LIB_DIR}/opencv_${MODULE}4d.lib"
+        optimized "${OPENCV_RELEASE_LIB_DIR}/opencv_${MODULE}4.lib"
     )
-    if(OPENCV_${OPENCV_LIB}_PATH)
-        target_link_libraries(VisionTool PRIVATE ${OPENCV_${OPENCV_LIB}_PATH})
-        message(STATUS "Found OpenCV library: ${OPENCV_LIB_NAME}")
-    else()
-        message(WARNING "OpenCV library not found: ${OPENCV_LIB_NAME}")
-    endif()
 endforeach()
 
-# ============================================================
-# 第三方库配置 (spdlog)
-# ============================================================
-set(SPDLOG_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/spdlog")
+# 收集 Release DLL 路径
+set(OPENCV_RELEASE_DLLS)
+foreach(MODULE ${OPENCV_MODULES})
+    list(APPEND OPENCV_RELEASE_DLLS "${OPENCV_RELEASE_BIN_DIR}/opencv_${MODULE}4.dll")
+endforeach()
 
-# spdlog 包含路径
+# 拷贝 Release DLL 到输出目录
+add_custom_command(TARGET VisionTool POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${OPENCV_RELEASE_DLLS}
+        $<TARGET_FILE_DIR:VisionTool>
+    COMMENT "Copying OpenCV Release DLLs..."
+)
+
+# OpenCV 传递依赖 DLL (仅 Release 拷贝，Debug 从 PATH 加载)
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    add_custom_command(TARGET VisionTool POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${OPENCV_RELEASE_BIN_DIR}/zlib1.dll"
+            "${OPENCV_RELEASE_BIN_DIR}/jpeg62.dll"
+            "${OPENCV_RELEASE_BIN_DIR}/libwebp.dll"
+            "${OPENCV_RELEASE_BIN_DIR}/libwebpdecoder.dll"
+            "${OPENCV_RELEASE_BIN_DIR}/libwebpdemux.dll"
+            "${OPENCV_RELEASE_BIN_DIR}/libwebpmux.dll"
+            "${OPENCV_RELEASE_BIN_DIR}/libpng16.dll"
+            "${OPENCV_RELEASE_BIN_DIR}/tiff.dll"
+            "${OPENCV_RELEASE_BIN_DIR}/libsharpyuv.dll"
+            "${OPENCV_RELEASE_BIN_DIR}/liblzma.dll"
+            "${OPENCV_RELEASE_BIN_DIR}/libprotobuf.dll"
+            "${OPENCV_RELEASE_BIN_DIR}/abseil_dll.dll"
+            "${OPENCV_RELEASE_BIN_DIR}/lz4.dll"
+            "${OPENCV_RELEASE_BIN_DIR}/zstd.dll"
+            "${OPENCV_RELEASE_BIN_DIR}/bz2.dll"
+            $<TARGET_FILE_DIR:VisionTool>
+        COMMENT "Copying OpenCV vcpkg dependency DLLs..."
+    )
+endif()
+
+
+# ============================================================
+# 第三方库配置 (spdlog, header-only)
+# ============================================================
 target_include_directories(VisionTool PRIVATE
-    "${SPDLOG_ROOT}/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/spdlog/include"
 )
-
-# spdlog 库文件路径
-set(SPDLOG_LIB_DIR "${SPDLOG_ROOT}/lib")
-
-# 查找并链接 spdlog 库
-find_library(SPDLOG_LIB
-    NAMES spdlogd spdlog
-    PATHS "${SPDLOG_LIB_DIR}"
-    NO_DEFAULT_PATH
-)
-
-if(SPDLOG_LIB)
-    target_link_libraries(VisionTool PRIVATE ${SPDLOG_LIB})
-    message(STATUS "Found spdlog library: ${SPDLOG_LIB}")
-else()
-    message(WARNING "spdlog library not found at ${SPDLOG_LIB_DIR}")
-endif()
-
-# 查找并链接 fmt 库
-find_library(FMT_LIB
-    NAMES fmtd fmt
-    PATHS "${SPDLOG_LIB_DIR}"
-    NO_DEFAULT_PATH
-)
-
-if(FMT_LIB)
-    target_link_libraries(VisionTool PRIVATE ${FMT_LIB})
-    message(STATUS "Found fmt library: ${FMT_LIB}")
-else()
-    message(WARNING "fmt library not found at ${SPDLOG_LIB_DIR}")
-endif()
-
-# 添加 SPDLOG_FMT_EXTERNAL 宏定义
-target_compile_definitions(VisionTool PRIVATE SPDLOG_FMT_EXTERNAL)
+target_compile_definitions(VisionTool PRIVATE SPDLOG_USE_STD_FORMAT)
 
 # =========================
 # ZXing
@@ -202,7 +187,8 @@ target_include_directories(VisionTool PRIVATE
 )
 
 target_link_libraries(VisionTool PRIVATE
-    "${ZXING_ROOT}/lib/ZXing.lib"
+    debug "${ZXING_ROOT}/lib/ZXingd.lib"
+    optimized "${ZXING_ROOT}/release/lib/ZXing.lib"
 )
 
 
@@ -221,44 +207,32 @@ target_compile_definitions(VisionTool PRIVATE
     PAHO_MQTT_IMPORTS
 )
 
-set(PAHO_MQTT_LIB_DIR "${PAHO_MQTT_ROOT}/lib")
-
-# Paho MQTT C++ wrapper
-find_library(PAHO_MQTT_CPP_LIB
-    NAMES paho-mqttpp3
-    PATHS "${PAHO_MQTT_LIB_DIR}"
-    NO_DEFAULT_PATH
+# Paho MQTT C++ wrapper + C core
+target_link_libraries(VisionTool PRIVATE
+    debug "${PAHO_MQTT_ROOT}/lib/paho-mqttpp3d.lib"
+    optimized "${PAHO_MQTT_ROOT}/release/lib/paho-mqttpp3.lib"
+    debug "${PAHO_MQTT_ROOT}/lib/paho-mqtt3asd.lib"
+    optimized "${PAHO_MQTT_ROOT}/release/lib/paho-mqtt3as.lib"
 )
-if(PAHO_MQTT_CPP_LIB)
-    target_link_libraries(VisionTool PRIVATE ${PAHO_MQTT_CPP_LIB})
-    message(STATUS "Found Paho MQTT C++ library: ${PAHO_MQTT_CPP_LIB}")
-else()
-    message(WARNING "Paho MQTT C++ library not found at ${PAHO_MQTT_LIB_DIR}")
+
+# 拷贝 Paho MQTT + OpenSSL DLL (仅 Release，Debug 通过 PATH 加载)
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    add_custom_command(TARGET VisionTool POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${PAHO_MQTT_ROOT}/release/bin/paho-mqttpp3.dll"
+            $<TARGET_FILE_DIR:VisionTool>
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${PAHO_MQTT_ROOT}/release/bin/paho-mqtt3as.dll"
+            $<TARGET_FILE_DIR:VisionTool>
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${PAHO_MQTT_ROOT}/release/bin/libssl-3-x64.dll"
+            $<TARGET_FILE_DIR:VisionTool>
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${PAHO_MQTT_ROOT}/release/bin/libcrypto-3-x64.dll"
+            $<TARGET_FILE_DIR:VisionTool>
+        COMMENT "Copying Paho MQTT + OpenSSL DLLs..."
+    )
 endif()
-
-# Paho MQTT C core
-find_library(PAHO_MQTT_C_LIB
-    NAMES paho-mqtt3a
-    PATHS "${PAHO_MQTT_LIB_DIR}"
-    NO_DEFAULT_PATH
-)
-if(PAHO_MQTT_C_LIB)
-    target_link_libraries(VisionTool PRIVATE ${PAHO_MQTT_C_LIB})
-    message(STATUS "Found Paho MQTT C library: ${PAHO_MQTT_C_LIB}")
-else()
-    message(WARNING "Paho MQTT C library not found at ${PAHO_MQTT_LIB_DIR}")
-endif()
-
-# 自动拷贝 Paho MQTT DLL 到 exe 输出目录
-add_custom_command(TARGET VisionTool POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${PAHO_MQTT_ROOT}/bin/paho-mqttpp3.dll"
-        $<TARGET_FILE_DIR:VisionTool>
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${PAHO_MQTT_ROOT}/bin/paho-mqtt3a.dll"
-        $<TARGET_FILE_DIR:VisionTool>
-    COMMENT "Copying Paho MQTT DLLs..."
-)
 
 # ============================================================
 # 编译器特定选项 (MSVC)
