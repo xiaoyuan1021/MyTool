@@ -1,5 +1,6 @@
 #include "core/mqtt_manager.h"
 #include "logger.h"
+#include "config_manager.h"
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QDateTime>
@@ -13,6 +14,31 @@ MqttManager::MqttManager(QObject* parent)
 MqttManager::~MqttManager()
 {
     stopHeartbeat();
+}
+
+void MqttManager::initializeFromConfig()
+{
+    AppConfig appConfig;
+    MqttConfig mqttCfg;
+    if (ConfigManager::instance().loadConfig(appConfig, ConfigManager::instance().getDefaultConfigPath())) {
+        mqttCfg = appConfig.mqttConfig;
+    }
+    initialize(mqttCfg);
+}
+
+void MqttManager::setupLogging()
+{
+    connect(this, &MqttManager::mqttConnected, this, []() {
+        Logger::instance()->info("[MQTT] 已连接到云端");
+    });
+    connect(this, &MqttManager::mqttDisconnected, this, []() {
+        Logger::instance()->info("[MQTT] 已断开连接");
+    });
+    connect(this, &MqttManager::mqttError, this, [](const QString& msg) {
+        Logger::instance()->error(QString("[MQTT] %1").arg(msg));
+    });
+
+    Logger::instance()->info("[MQTT] 日志绑定完成");
 }
 
 void MqttManager::initialize(const MqttConfig& config)

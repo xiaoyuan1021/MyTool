@@ -43,6 +43,11 @@ public:
     void onAddDetectionClicked(const QString& roiId);
     void onDeleteDetectionClicked(const QString& roiId, const QString& detectionId);
 
+    /// 从QTreeView中获取当前选中的检测项并执行删除（封装Tree节点解析逻辑）
+    /// @param treeWidget 树控件
+    /// @return true表示成功执行了删除操作，false表示没有选中有效检测项
+    bool handleDeleteFromTree(QTreeWidget* treeWidget);
+
     // 检测项选中跳转
     void onDetectionItemSelected(const QString& roiId, const QString& detectionId,
                                  TabManager* tabManager, PipelineManager* pipelineManager);

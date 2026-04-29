@@ -240,21 +240,7 @@ void MainWindow::setupControllers()
         m_detectionUiController->onAddDetectionClicked(m_roiUiController->getCurrentSelectedRoiId());
     });
     connect(ui->btn_deleteDetection, &QPushButton::clicked, this, [this]() {
-        QTreeWidgetItem* currentItem = ui->treeView->currentItem();
-        if (!currentItem) {
-            QMessageBox::warning(this, "警告", "请先选择要删除的检测项");
-            return;
-        }
-        if (currentItem->data(0, Qt::UserRole + 1).toString() == "detection") {
-            QTreeWidgetItem* parentItem = currentItem->parent();
-            if (parentItem) {
-                m_detectionUiController->onDeleteDetectionClicked(
-                    parentItem->data(0, Qt::UserRole).toString(),
-                    currentItem->data(0, Qt::UserRole).toString());
-            }
-        } else {
-            QMessageBox::warning(this, "警告", "请先选择要删除的检测项");
-        }
+        m_detectionUiController->handleDeleteFromTree(ui->treeView);
     });
 
     // roiManager → roiUiController 同步连接（必须在所有 controller 创建完成后）
@@ -440,15 +426,9 @@ void MainWindow::on_btn_stopAutoDetection_clicked()
 
 void MainWindow::setupMqtt()
 {
-    // 加载 MQTT 配置（优先从默认配置文件读取）
-    AppConfig appConfig;
-    MqttConfig mqttCfg;
-    if (ConfigManager::instance().loadConfig(appConfig, ConfigManager::instance().getDefaultConfigPath())) {
-        mqttCfg = appConfig.mqttConfig;
-    }
-
     m_mqttManager = new MqttManager(this);
-    m_mqttManager->initialize(mqttCfg);
+    m_mqttManager->initializeFromConfig();
+    m_mqttManager->setupLogging();
 
     // Feature 1: 自动检测逐张完成 → 上报检测结果
     connect(m_autoDetectionController, &AutoDetectionController::imageProcessed,
@@ -463,7 +443,6 @@ void MainWindow::setupMqtt()
     connect(m_mqttManager, &MqttManager::captureRequested,
             this, [this]() {
         m_toast->showMessage("收到云端指令: capture");
-        Logger::instance()->info("[MQTT] 收到capture指令，执行采集检测");
         requestRefresh();
     });
     connect(m_mqttManager, &MqttManager::startDetectionRequested,
@@ -476,26 +455,6 @@ void MainWindow::setupMqtt()
         m_toast->showMessage("收到云端指令: 停止批量检测");
         on_btn_stopAutoDetection_clicked();
     });
-
-    // Feature 3: 心跳由 MqttManager 内部定时器驱动，连接成功即自动开始
-
-    // 连接状态日志
-    connect(m_mqttManager, &MqttManager::mqttConnected, this, []() {
-        Logger::instance()->info("[MQTT] 已连接到云端");
-    });
-    connect(m_mqttManager, &MqttManager::mqttDisconnected, this, []() {
-        Logger::instance()->info("[MQTT] 已断开连接");
-    });
-    connect(m_mqttManager, &MqttManager::mqttError, this, [](const QString& msg) {
-        Logger::instance()->error(QString("[MQTT] %1").arg(msg));
-    });
-
-    Logger::instance()->info(QString("[MQTT] 初始化完成, enabled=%1, broker=%2:%3")
-        .arg(mqttCfg.enabled ? "true" : "false")
-        .arg(mqttCfg.brokerHost)
-        .arg(mqttCfg.brokerPort));
-
-    // 云平台按钮由 Qt 自动连接 (on_btn_cloudPlatform_clicked)
 }
 
 // ========== Tab懒加载 ==========

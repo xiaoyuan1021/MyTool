@@ -26,6 +26,12 @@ public:
     /// 初始化（连接、订阅、启动心跳）
     void initialize(const MqttConfig& config);
 
+    /// 从 ConfigManager 加载配置并初始化，简化外部调用
+    void initializeFromConfig();
+
+    /// 绑定连接状态日志（将 mqttConnected/mqttDisconnected/mqttError 连接到 Logger）
+    void setupLogging();
+
     bool isInitialized() const { return m_initialized; }
     bool isConnected() const { return m_client && m_client->isConnected(); }
 

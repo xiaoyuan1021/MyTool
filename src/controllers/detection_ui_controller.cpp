@@ -177,6 +177,30 @@ void DetectionUiController::switchToTabConfig(const TabConfig& config)
 
 // ========== UI信号连接（从MainWindow迁移） ==========
 
+bool DetectionUiController::handleDeleteFromTree(QTreeWidget* treeWidget)
+{
+    if (!treeWidget) return false;
+
+    QTreeWidgetItem* currentItem = treeWidget->currentItem();
+    if (!currentItem) {
+        QMessageBox::warning(nullptr, "警告", "请先选择要删除的检测项");
+        return false;
+    }
+
+    if (currentItem->data(0, Qt::UserRole + 1).toString() == "detection") {
+        QTreeWidgetItem* parentItem = currentItem->parent();
+        if (parentItem) {
+            onDeleteDetectionClicked(
+                parentItem->data(0, Qt::UserRole).toString(),
+                currentItem->data(0, Qt::UserRole).toString());
+            return true;
+        }
+    } else {
+        QMessageBox::warning(nullptr, "警告", "请先选择要删除的检测项");
+    }
+    return false;
+}
+
 void DetectionUiController::setupConnections(
     RoiUiController* roiController, std::function<void(const QString&)> ensureTabFunc)
 {
