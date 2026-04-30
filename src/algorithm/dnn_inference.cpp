@@ -4,9 +4,10 @@
 #include <QDir>
 #include <spdlog/spdlog.h>
 
-bool DnnInference::loadModel(const QString& modelPath, const QString& configPath)
+bool DnnInference::loadModel(const QString& modelPath, const QString& configPath, bool useGpu)
 {
     loaded_ = false;
+    usingGpu_ = false;
 
     try
     {
@@ -29,8 +30,47 @@ bool DnnInference::loadModel(const QString& modelPath, const QString& configPath
             return false;
         }
 
+        // 尝试启用GPU加速
+        if (useGpu)
+        {
+            try
+            {
+                net_.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
+                net_.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
+                
+                // 执行测试前向推理验证CUDA是否真正可用
+                // (setPreferableBackend延迟验证，forward时才真正检查)
+                cv::Mat testBlob = cv::dnn::blobFromImage(
+                    cv::Mat(640, 640, CV_8UC3, cv::Scalar(114, 114, 114)),
+                    1.0 / 255.0, cv::Size(640, 640), cv::Scalar(0, 0, 0), true, false);
+                net_.setInput(testBlob);
+                net_.forward();
+                
+                usingGpu_ = true;
+                spdlog::info("DnnInference: using GPU (CUDA) backend");
+            }
+            catch (const cv::Exception& e)
+            {
+                spdlog::warn("DnnInference: CUDA not available, falling back to CPU: {}", e.what());
+                // 重新加载模型以清除CUDA状态
+                if (config.empty())
+                    net_ = cv::dnn::readNet(model);
+                else
+                    net_ = cv::dnn::readNet(model, config);
+                net_.setPreferableBackend(cv::dnn::DNN_BACKEND_OPENCV);
+                net_.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);
+                usingGpu_ = false;
+            }
+        }
+        else
+        {
+            net_.setPreferableBackend(cv::dnn::DNN_BACKEND_OPENCV);
+            net_.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);
+            spdlog::info("DnnInference: using CPU backend");
+        }
+
         loaded_ = true;
-        spdlog::info("DnnInference: model loaded successfully");
+        spdlog::info("DnnInference: model loaded successfully (backend: {})", usingGpu_ ? "CUDA" : "CPU");
 
         // 自动加载同名的 .names 类别文件
         // 例: model.onnx → 查找同目录下的 model.names

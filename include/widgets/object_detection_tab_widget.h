@@ -5,6 +5,7 @@
 #include <QThread>
 #include "pipeline_manager.h"
 #include "algorithm/dnn_inference.h"
+#include "algorithm/ort_inference.h"
 #include "widgets/i_signal_connectable.h"
 
 namespace Ui {
@@ -62,6 +63,8 @@ private:
 
     Ui::ObjectDetectionTabForm* m_ui;
     PipelineManager* m_pipelineManager;
-    DnnInference m_dnnInference;
-    QString m_currentModelPath;  // 当前已加载的模型路径，用于避免重复加载
+    DnnInference m_dnnInference;   // OpenCV DNN (CPU 回退)
+    OrtInference m_ortInference;   // ONNX Runtime (GPU 加速)
+    bool m_useOrt = true;          // 是否优先使用 ONNX Runtime
+    QString m_currentModelPath;    // 当前已加载的模型路径，用于避免重复加载
 };

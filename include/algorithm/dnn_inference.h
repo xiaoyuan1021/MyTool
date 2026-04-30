@@ -31,7 +31,7 @@ public:
      * @param configPath 配置文件路径（可选）
      * @return 是否加载成功
      */
-    bool loadModel(const QString& modelPath, const QString& configPath = "");
+    bool loadModel(const QString& modelPath, const QString& configPath = "", bool useGpu = true);
 
     /**
      * 执行目标检测（YOLO系列）
@@ -61,6 +61,11 @@ public:
     bool isLoaded() const;
 
     /**
+     * 获取当前推理后端是否为GPU
+     */
+    bool isUsingGpu() const { return usingGpu_; }
+
+    /**
      * 获取输出层名称
      */
     std::vector<cv::String> getOutputNames() const;
@@ -81,5 +86,6 @@ public:
 private:
     cv::dnn::Net net_;
     bool loaded_ = false;
+    bool usingGpu_ = false;
     std::vector<std::string> classNames_;
 };

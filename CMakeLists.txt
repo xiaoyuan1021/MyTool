@@ -169,6 +169,34 @@ endif()
 
 
 # ============================================================
+# 第三方库配置 (ONNX Runtime GPU)
+# ============================================================
+set(ONNXRT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/onnxruntime")
+
+target_include_directories(VisionTool PRIVATE
+    "${ONNXRT_ROOT}/include"
+)
+
+target_link_libraries(VisionTool PRIVATE
+    debug "${ONNXRT_ROOT}/lib/onnxruntime.lib"
+    optimized "${ONNXRT_ROOT}/lib/onnxruntime.lib"
+)
+
+# 拷贝 ONNX Runtime DLL 到输出目录
+add_custom_command(TARGET VisionTool POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${ONNXRT_ROOT}/lib/onnxruntime.dll"
+        $<TARGET_FILE_DIR:VisionTool>
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${ONNXRT_ROOT}/lib/onnxruntime_providers_cuda.dll"
+        $<TARGET_FILE_DIR:VisionTool>
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${ONNXRT_ROOT}/lib/onnxruntime_providers_shared.dll"
+        $<TARGET_FILE_DIR:VisionTool>
+    COMMENT "Copying ONNX Runtime DLLs..."
+)
+
+# ============================================================
 # 第三方库配置 (spdlog, header-only)
 # ============================================================
 target_include_directories(VisionTool PRIVATE

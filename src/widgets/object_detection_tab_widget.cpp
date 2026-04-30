@@ -82,7 +82,7 @@ void ObjectDetectionTabWidget::onApplyClicked()
     }
 
     // 如果模型已加载且路径相同，无需重新加载
-    if (m_dnnInference.isLoaded() && m_currentModelPath == modelPath) {
+    if ((m_ortInference.isLoaded() || m_dnnInference.isLoaded()) && m_currentModelPath == modelPath) {
         qDebug() << "[ObjectDetection] model already loaded, skip reloading";
         m_ui->label_status->setText("状态：模型已就绪");
         emit detectionConfigChanged();
@@ -94,26 +94,46 @@ void ObjectDetectionTabWidget::onApplyClicked()
 
     QString configPath = m_ui->lineEdit_configPath->text().trimmed();
 
-    QFuture<bool> future = QtConcurrent::run(
-        [this, modelPath, configPath]() -> bool {
-            return m_dnnInference.loadModel(modelPath, configPath);
+    QFuture<QString> future = QtConcurrent::run(
+        [this, modelPath, configPath]() -> QString {
+            // 优先尝试 ONNX Runtime GPU
+            if (m_ortInference.loadModel(modelPath, true)) {
+                spdlog::info("[ObjectDetection] ONNX Runtime GPU loaded");
+                return "ort_gpu";
+            }
+            spdlog::warn("[ObjectDetection] ONNX Runtime GPU failed, trying OpenCV DNN CPU");
+
+            // 回退到 OpenCV DNN CPU
+            if (m_dnnInference.loadModel(modelPath, configPath)) {
+                spdlog::info("[ObjectDetection] OpenCV DNN CPU loaded");
+                return "dnn_cpu";
+            }
+
+            spdlog::error("[ObjectDetection] all backends failed");
+            return "none";
         }
     );
 
     // 使用 QFutureWatcher 监听完成信号
-    QFutureWatcher<bool>* watcher = new QFutureWatcher<bool>(this);
-    connect(watcher, &QFutureWatcher<bool>::finished, this, [this, watcher, modelPath]() {
-        bool success = watcher->result();
+    QFutureWatcher<QString>* watcher = new QFutureWatcher<QString>(this);
+    connect(watcher, &QFutureWatcher<QString>::finished, this, [this, watcher, modelPath]() {
+        QString result = watcher->result();
         watcher->deleteLater();
         m_ui->btn_apply->setEnabled(true);
 
-        if (success) {
+        if (result == "ort_gpu") {
+            m_useOrt = true;
             m_currentModelPath = modelPath;
-            emit modelLoadFinished(true, "状态：模型加载成功，等待检测");
-            qDebug() << "[ObjectDetection] model loaded successfully";
+            emit modelLoadFinished(true, "状态：模型加载成功 (ONNX Runtime GPU)");
+            qDebug() << "[ObjectDetection] ONNX Runtime GPU loaded successfully";
+        } else if (result == "dnn_cpu") {
+            m_useOrt = false;
+            m_currentModelPath = modelPath;
+            emit modelLoadFinished(true, "状态：模型加载成功 (OpenCV DNN CPU)");
+            qDebug() << "[ObjectDetection] OpenCV DNN CPU loaded successfully";
         } else {
-            emit modelLoadFinished(false, "状态：模型加载失败");
-            qDebug() << "[ObjectDetection] model load failed";
+            emit modelLoadFinished(false, "状态：所有推理后端均失败");
+            qDebug() << "[ObjectDetection] all backends failed";
         }
     });
     watcher->setFuture(future);
@@ -121,20 +141,34 @@ void ObjectDetectionTabWidget::onApplyClicked()
 
 std::vector<DetectionResult> ObjectDetectionTabWidget::runDetection(const cv::Mat& image)
 {
-    if (!m_dnnInference.isLoaded() || image.empty()) {
+    if (image.empty()) {
         return {};
     }
-    
-    return m_dnnInference.detect(image,
-        getConfidenceThreshold(),
-        getNmsThreshold(),
-        getInputWidth(),
-        getInputHeight());
+
+    // 优先使用 ONNX Runtime
+    if (m_useOrt && m_ortInference.isLoaded()) {
+        return m_ortInference.detect(image,
+            getConfidenceThreshold(),
+            getNmsThreshold(),
+            getInputWidth(),
+            getInputHeight());
+    }
+
+    // 回退到 OpenCV DNN
+    if (m_dnnInference.isLoaded()) {
+        return m_dnnInference.detect(image,
+            getConfidenceThreshold(),
+            getNmsThreshold(),
+            getInputWidth(),
+            getInputHeight());
+    }
+
+    return {};
 }
 
 bool ObjectDetectionTabWidget::isModelLoaded() const
 {
-    return m_dnnInference.isLoaded();
+    return m_ortInference.isLoaded() || m_dnnInference.isLoaded();
 }
 
 float ObjectDetectionTabWidget::getConfidenceThreshold() const

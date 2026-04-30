@@ -158,6 +158,8 @@ bool VideoManager::openCamera(int cameraIndex)
 
     cv::Mat frame;
     if (m_videoCapture.read(frame)) {
+        // 相机源左右翻转，提升体验
+        cv::flip(frame, frame, 1);
         m_currentFrame = frame;
         emit frameReady(frame);
     }
@@ -357,6 +359,10 @@ void VideoManager::onTimeout()
     try {
         cv::Mat frame;
         if (m_videoCapture.read(frame)) {
+            // 相机源左右翻转，提升体验
+            if (m_sourceType == VideoSource::Camera) {
+                cv::flip(frame, frame, 1);
+            }
             m_currentFrame = frame;
             m_currentFrameIndex++;
             emit frameReady(frame);
