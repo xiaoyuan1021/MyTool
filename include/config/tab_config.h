@@ -54,7 +54,7 @@ struct TabConfig {
     }
     
     /**
-     * @brief 获取视频源的Tab配置
+     * @brief 获取视频源的Tab配置（简化版，视频源功能已集成到目标检测）
      */
     static TabConfig getVideoConfig() {
         return TabConfig({
@@ -69,12 +69,29 @@ struct TabConfig {
     }
     
     /**
-     * @brief 获取目标检测的Tab配置
+     * @brief 获取目标检测的Tab配置（包含视频源、预处理、检测、判定）
      */
     static TabConfig getObjectDetectionConfig() {
         return TabConfig({
-            "图像",
-            "目标检测"
+            "图像",           // 图像显示
+            "视频",           // 视频源配置（复用视频Tab）
+            "增强",           // 图像预处理
+            "目标检测",       // 检测方法配置
+            "判定"            // 结果判定
+        });
+    }
+    
+    /**
+     * @brief 获取视觉检测的通用Tab配置（适用于所有需要视频源的检测类型）
+     */
+    static TabConfig getVisionInspectionConfig() {
+        return TabConfig({
+            "图像",           // 图像显示
+            "视频",           // 视频源配置
+            "增强",           // 图像预处理
+            "过滤",           // 过滤
+            "处理",           // 处理
+            "判定"            // 结果判定
         });
     }
     

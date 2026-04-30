@@ -1,18 +1,23 @@
 #include "widgets/object_detection_tab_widget.h"
 #include "ui_object_detection_tab.h"
 #include "ui/logger.h"
+#include "widgets/video_source_widget.h"
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QDebug>
 #include <QtConcurrent/QtConcurrent>
+#include <QVBoxLayout>
+#include <QTabWidget>
 
 ObjectDetectionTabWidget::ObjectDetectionTabWidget(PipelineManager* pipelineManager, QWidget* parent)
     : QWidget(parent)
     , m_ui(new Ui::ObjectDetectionTabForm)
     , m_pipelineManager(pipelineManager)
+    , m_videoSourceWidget(nullptr)
 {
     m_ui->setupUi(this);
     setupConnections();
+    setupVideoSourceTab();
 }
 
 ObjectDetectionTabWidget::~ObjectDetectionTabWidget()
@@ -47,6 +52,53 @@ void ObjectDetectionTabWidget::setupConnections()
                 emit detectionConfigChanged();
             }
         });
+}
+
+void ObjectDetectionTabWidget::setupVideoSourceTab()
+{
+    // 动态创建视频源组件
+    m_videoSourceWidget = new VideoSourceWidget(this);
+    
+    // 获取主布局并添加视频源组件
+    QVBoxLayout* mainLayout = qobject_cast<QVBoxLayout*>(layout());
+    if (mainLayout) {
+        // 在第一个item之后插入（即在启用目标检测复选框之后）
+        if (mainLayout->count() > 0) {
+            mainLayout->insertWidget(1, m_videoSourceWidget);
+        } else {
+            mainLayout->addWidget(m_videoSourceWidget);
+        }
+    }
+    
+    // 连接视频源组件信号
+    connect(m_videoSourceWidget, &VideoSourceWidget::sourceTypeChanged,
+            this, &ObjectDetectionTabWidget::onVideoSourceTypeChanged);
+}
+
+void ObjectDetectionTabWidget::setVisionConfig(const VisionInspectionConfig& config)
+{
+    m_visionConfig = config;
+    
+    // 更新视频源组件
+    if (m_videoSourceWidget) {
+        m_videoSourceWidget->loadFromConfig(config);
+    }
+    
+    // 更新检测参数UI
+    m_ui->slider_confidenceThreshold->setValue(static_cast<int>(config.detectionConfig["confidenceThreshold"].toDouble(0.5) * 100));
+    m_ui->slider_nmsThreshold->setValue(static_cast<int>(config.detectionConfig["nmsThreshold"].toDouble(0.4) * 100));
+    m_ui->spinBox_inputWidth->setValue(config.detectionConfig["inputWidth"].toInt(640));
+    m_ui->spinBox_inputHeight->setValue(config.detectionConfig["inputHeight"].toInt(640));
+    
+    // 更新模型路径
+    m_ui->lineEdit_modelPath->setText(config.detectionConfig["modelPath"].toString());
+    m_ui->lineEdit_configPath->setText(config.detectionConfig["configPath"].toString());
+}
+
+void ObjectDetectionTabWidget::onVideoSourceTypeChanged(VisionInspectionConfig::VideoSourceType type)
+{
+    m_visionConfig.videoSourceType = type;
+    emit videoSourceChanged(type);
 }
 
 void ObjectDetectionTabWidget::onBrowseModel()

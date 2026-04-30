@@ -6,12 +6,15 @@
 #include <QJsonArray>
 #include "detection_type.h"
 #include "detection_config_types.h"
+#include "vision_inspection_config.h"
 
 /**
  * @brief 检测项配置结构
  *
  * 使用 QJsonObject 存储具体检测类型的配置，新增检测类型时
  * 无需修改此结构体，只需在对应类型中实现 toJson/fromJson 即可。
+ * 
+ * 对于目标检测等需要视频源的类型，使用visionConfig统一管理。
  */
 struct DetectionItem {
     QString itemId;             // 检测项唯一ID
@@ -21,6 +24,10 @@ struct DetectionItem {
     bool enabled;               // 是否启用
     QString description;        // 描述信息
     QJsonObject config;         // 检测类型的专属配置（通用JSON存储）
+    
+    // 视觉检测配置（用于需要视频源的检测类型，如目标检测）
+    VisionInspectionConfig visionConfig;
+    bool useVisionConfig = false;  // 是否使用视觉检测配置
 
     DetectionItem() 
         : type(DetectionType::Blob), enabled(true) {}
@@ -44,11 +51,39 @@ struct DetectionItem {
                 config = VideoSourceConfig().toJson();
                 break;
             case DetectionType::ObjectDetection:
+                // 目标检测使用视觉检测配置
+                useVisionConfig = true;
+                visionConfig.detectionMethod = DetectionType::ObjectDetection;
+                visionConfig.detectionConfig = ObjectDetectionConfig().toJson();
                 config = ObjectDetectionConfig().toJson();
                 break;
             default:
                 break;
         }
+    }
+    
+    /**
+     * @brief 创建目标检测项（使用视觉检测配置）
+     */
+    static DetectionItem createObjectDetectionItem(const QString& name = "目标检测") {
+        DetectionItem item(name, DetectionType::ObjectDetection);
+        item.useVisionConfig = true;
+        item.visionConfig = VisionInspectionConfig();
+        item.visionConfig.detectionMethod = DetectionType::ObjectDetection;
+        item.visionConfig.detectionConfig = ObjectDetectionConfig().toJson();
+        return item;
+    }
+    
+    /**
+     * @brief 创建视频源检测项（使用视觉检测配置）
+     */
+    static DetectionItem createVideoSourceItem(const QString& name = "视频源") {
+        DetectionItem item(name, DetectionType::VideoSource);
+        item.useVisionConfig = true;
+        item.visionConfig = VisionInspectionConfig();
+        item.visionConfig.videoSourceType = VisionInspectionConfig::VideoSourceType::Camera;
+        item.visionConfig.detectionMethod = DetectionType::Blob;
+        return item;
     }
 
     /**
@@ -69,6 +104,12 @@ struct DetectionItem {
         obj["parameters"] = params;
         obj["config"] = config;
         
+        // 视觉检测配置
+        if (useVisionConfig) {
+            obj["useVisionConfig"] = true;
+            obj["visionConfig"] = visionConfig.toJson();
+        }
+        
         return obj;
     }
 
@@ -88,6 +129,14 @@ struct DetectionItem {
         }
         
         config = obj["config"].toObject();
+        
+        // 加载视觉检测配置
+        if (obj.contains("useVisionConfig")) {
+            useVisionConfig = obj["useVisionConfig"].toBool(false);
+            if (useVisionConfig && obj.contains("visionConfig")) {
+                visionConfig.fromJson(obj["visionConfig"].toObject());
+            }
+        }
         
         // 兼容旧版本：如果config为空，尝试从旧字段加载
         if (config.isEmpty()) {
