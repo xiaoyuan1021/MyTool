@@ -62,9 +62,13 @@ public:
 
     // 重置缩放到原始比例
     void resetZoom();
-    
+
     // 清空显示
     void clear();
+
+    // 控制缩放是否启用（视频检测时禁用，避免画面抖动）
+    void setZoomEnabled(bool enabled) { m_zoomEnabled = enabled; }
+    bool isZoomEnabled() const { return m_zoomEnabled; }
 
 
 signals:
@@ -106,6 +110,7 @@ private:
         return pixmap.isNull() ? QSize(0, 0) : pixmap.size();
     }
     double m_scaleFactor = 1.0;
+    bool m_zoomEnabled = true;
 
     bool m_isDrawingRoi = false;
     QPointF m_roiStartPosImg;                   // ⭐ 起点：图像坐标

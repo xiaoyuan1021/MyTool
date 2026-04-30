@@ -390,3 +390,58 @@ struct ObjectDetectionConfig {
         lineWidth = obj["lineWidth"].toInt(2);
     }
 };
+
+/**
+ * @brief 视频检测配置参数（视频源 + 目标检测）
+ */
+struct VideoDetectionConfig {
+    // 视频源参数
+    QString videoSource;           // 视频源类型: "camera", "file"
+    int cameraIndex = 0;           // 相机索引
+    QString videoFilePath = "";    // 视频文件路径
+    
+    // 播放控制
+    bool autoPlay = true;          // 自动播放
+    double playbackSpeed = 1.0;    // 播放速度
+    bool loopPlayback = true;      // 循环播放
+    
+    // 检测参数
+    QString modelPath = "";        // 模型文件路径
+    QString configPath = "";       // 配置文件路径
+    float confidenceThreshold = 0.5f;
+    float nmsThreshold = 0.4f;
+    int inputWidth = 640;
+    int inputHeight = 640;
+    
+    QJsonObject toJson() const {
+        QJsonObject obj;
+        obj["videoSource"] = videoSource;
+        obj["cameraIndex"] = cameraIndex;
+        obj["videoFilePath"] = videoFilePath;
+        obj["autoPlay"] = autoPlay;
+        obj["playbackSpeed"] = playbackSpeed;
+        obj["loopPlayback"] = loopPlayback;
+        obj["modelPath"] = modelPath;
+        obj["configPath"] = configPath;
+        obj["confidenceThreshold"] = static_cast<double>(confidenceThreshold);
+        obj["nmsThreshold"] = static_cast<double>(nmsThreshold);
+        obj["inputWidth"] = inputWidth;
+        obj["inputHeight"] = inputHeight;
+        return obj;
+    }
+    
+    void fromJson(const QJsonObject& obj) {
+        videoSource = obj["videoSource"].toString("camera");
+        cameraIndex = obj["cameraIndex"].toInt(0);
+        videoFilePath = obj["videoFilePath"].toString();
+        autoPlay = obj["autoPlay"].toBool(true);
+        playbackSpeed = obj["playbackSpeed"].toDouble(1.0);
+        loopPlayback = obj["loopPlayback"].toBool(true);
+        modelPath = obj["modelPath"].toString();
+        configPath = obj["configPath"].toString();
+        confidenceThreshold = static_cast<float>(obj["confidenceThreshold"].toDouble(0.5));
+        nmsThreshold = static_cast<float>(obj["nmsThreshold"].toDouble(0.4));
+        inputWidth = obj["inputWidth"].toInt(640);
+        inputHeight = obj["inputHeight"].toInt(640);
+    }
+};

@@ -75,16 +75,24 @@ void VideoTabWidget::on_btn_openFile_clicked()
 
 void VideoTabWidget::on_btn_openCamera_clicked()
 {
+    Logger::instance()->info(QString("[VideoTab] 打开相机按钮被点击"));
     int currentIndex = m_ui->comboBox_camera->currentIndex();
+    Logger::instance()->info(QString("[VideoTab] ComboBox当前索引: %1, 相机列表大小: %2").arg(currentIndex).arg(m_cameraList.size()));
+    
     if (currentIndex < 0 || currentIndex >= m_cameraList.size()) {
         QMessageBox::warning(this, "警告", "请先选择相机设备");
+        Logger::instance()->warning(QString("[VideoTab] 相机索引无效，中止"));
         return;
     }
 
     // 从相机列表中提取相机索引
     int cameraIndex = currentIndex;
+    Logger::instance()->info(QString("[VideoTab] 准备打开相机设备索引: %1").arg(cameraIndex));
     if (m_videoManager->openCamera(cameraIndex)) {
         m_ui->label_status->setText(QString("相机 %1 已启动").arg(cameraIndex));
+        Logger::instance()->info(QString("[VideoTab] 相机 %1 打开成功").arg(cameraIndex));
+    } else {
+        Logger::instance()->error(QString("[VideoTab] 相机 %1 打开失败").arg(cameraIndex));
     }
 }
 
@@ -218,19 +226,18 @@ void VideoTabWidget::updateUIState()
 
 void VideoTabWidget::updateCameraList()
 {
-    m_cameraList = VideoManager::getAvailableCameras();
+    // 直接放固定选项，不枚举（枚举会导致摄像头闪烁）
+    m_cameraList.clear();
+    for (int i = 0; i < 4; ++i) {
+        m_cameraList.append(QString("Camera %1").arg(i));
+    }
     
     m_ui->comboBox_camera->clear();
     for (const QString& camera : m_cameraList) {
         m_ui->comboBox_camera->addItem(camera);
     }
     
-    if (m_cameraList.isEmpty()) {
-        m_ui->comboBox_camera->addItem("无可用相机");
-        m_ui->btn_openCamera->setEnabled(false);
-    } else {
-        m_ui->btn_openCamera->setEnabled(true);
-    }
+    m_ui->btn_openCamera->setEnabled(true);
 }
 
 void VideoTabWidget::updateProgress()
@@ -271,15 +278,15 @@ void VideoTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
                                     std::function<void()> requestRefresh,
                                     std::function<void()> processAndDisplay)
 {
-    Q_UNUSED(requestRefresh);
     connect(this, &VideoTabWidget::videoFrameReady,
-            this, [rm, view, processAndDisplay](const cv::Mat& frame) {
+            this, [rm, view, requestRefresh, processAndDisplay](const cv::Mat& frame) {
                 if (!frame.empty()) {
                     rm->setFullImage(frame);
                     view->clearRoi();
                     // 直接将视频帧显示到画布上
                     view->setImage(ImageUtils::matToQImage(frame));
-                    // 同时触发pipeline处理（如果启用了检测）
+                    // 设置脏标记并立即触发Pipeline处理
+                    requestRefresh();
                     processAndDisplay();
                 }
             });

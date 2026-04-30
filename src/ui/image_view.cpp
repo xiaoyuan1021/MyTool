@@ -96,6 +96,11 @@ void ImageView::finishRoiMode()
 // =================== 缩放 ===================
 void ImageView::wheelEvent(QWheelEvent *event)
 {
+    if (!m_zoomEnabled) {
+        event->accept();
+        return;
+    }
+
     constexpr double scaleFactorStep = 1.25;
     if (event->angleDelta().y() > 0) {
         scale(scaleFactorStep, scaleFactorStep);

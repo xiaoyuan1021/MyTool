@@ -2,6 +2,7 @@
 #include "logger.h"
 #include <QFileInfo>
 #include <QDebug>
+#include <chrono>
 
 VideoManager::VideoManager(QObject* parent)
     : QObject(parent)
@@ -113,23 +114,35 @@ bool VideoManager::openFile(const QString& filePath)
 
 bool VideoManager::openCamera(int cameraIndex)
 {
+    Logger::instance()->info(QString("========== 打开相机操作开始 (设备 %1) ==========").arg(cameraIndex));
+    Logger::instance()->info(QString("[调用栈] openCamera(%1) 被调用").arg(cameraIndex));
+    
     // 先关闭当前视频
     close();
 
     try {
 
-    // 打开相机
-    m_videoCapture.open(cameraIndex);
+    // 打开相机 - 使用DirectShow后端避免MSMF兼容性问题
+    Logger::instance()->info(QString("尝试打开相机设备: %1 (使用DirectShow后端)").arg(cameraIndex));
+    auto startTime = std::chrono::steady_clock::now();
+    m_videoCapture.open(cameraIndex, cv::CAP_DSHOW);
+    auto endTime = std::chrono::steady_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+    Logger::instance()->info(QString("DirectShow打开结果: %1 (耗时 %2 ms)").arg(m_videoCapture.isOpened() ? "成功" : "失败").arg(duration));
+    
+    if (!m_videoCapture.isOpened()) {
+        // 如果DirectShow失败，尝试MSMF后端
+        Logger::instance()->warning(QString("DirectShow打开相机失败，尝试MSMF后端"));
+        m_videoCapture.open(cameraIndex);
+    }
+    
     if (!m_videoCapture.isOpened()) {
         Logger::instance()->error(QString("无法打开相机设备: %1").arg(cameraIndex));
         emit errorOccurred(QString("无法打开相机设备: %1").arg(cameraIndex));
         return false;
     }
 
-    // 设置相机参数
-    m_videoCapture.set(cv::CAP_PROP_FRAME_WIDTH, 1280);
-    m_videoCapture.set(cv::CAP_PROP_FRAME_HEIGHT, 720);
-    m_videoCapture.set(cv::CAP_PROP_FPS, 30);
+    // 不设置分辨率和帧率，使用相机默认值，避免DirectShow二次初始化导致闪烁
 
     // 获取相机信息
     m_frameRate = m_videoCapture.get(cv::CAP_PROP_FPS);
@@ -167,6 +180,9 @@ bool VideoManager::openCamera(int cameraIndex)
 
 void VideoManager::close()
 {
+    Logger::instance()->info(QString("[VideoManager] close() 被调用, 当前状态: %1, 是否已打开: %2")
+        .arg(static_cast<int>(m_playbackState))
+        .arg(m_videoCapture.isOpened() ? "是" : "否"));
     if (m_videoCapture.isOpened()) {
         stop();
         releaseCapture();
@@ -291,14 +307,32 @@ QVector<QString> VideoManager::getAvailableCameras()
 {
     QVector<QString> cameras;
     
+    Logger::instance()->info("========== 相机枚举开始 ==========");
+    auto startTime = std::chrono::steady_clock::now();
+    
     // 检测可用的相机设备
     for (int i = 0; i < 10; ++i) {
+        Logger::instance()->info(QString("尝试检测相机设备 %1...").arg(i));
+        auto deviceStart = std::chrono::steady_clock::now();
+        
         cv::VideoCapture cap(i);
+        
+        auto deviceEnd = std::chrono::steady_clock::now();
+        auto deviceDuration = std::chrono::duration_cast<std::chrono::milliseconds>(deviceEnd - deviceStart).count();
+        
         if (cap.isOpened()) {
             cameras.append(QString("Camera %1").arg(i));
+            Logger::instance()->info(QString("  相机 %1 可用 (耗时 %2 ms)").arg(i).arg(deviceDuration));
             cap.release();
+        } else {
+            Logger::instance()->info(QString("  相机 %1 不可用 (耗时 %2 ms)").arg(i).arg(deviceDuration));
         }
     }
+    
+    auto endTime = std::chrono::steady_clock::now();
+    auto totalDuration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+    Logger::instance()->info(QString("相机枚举完成: 发现 %1 个相机 (总耗时 %2 ms)").arg(cameras.size()).arg(totalDuration));
+    Logger::instance()->info("========== 相机枚举结束 ==========");
     
     return cameras;
 }

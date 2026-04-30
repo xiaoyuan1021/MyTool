@@ -68,6 +68,7 @@ void DetectionUiController::onAddDetectionClicked(const QString& roiId)
     comboBox->addItem("直线检测", static_cast<int>(DetectionType::Line));
     comboBox->addItem("条码识别", static_cast<int>(DetectionType::Barcode));
     comboBox->addItem("目标检测", static_cast<int>(DetectionType::ObjectDetection));
+    comboBox->addItem("视频检测", static_cast<int>(DetectionType::VideoDetection));
     comboBox->setMinimumWidth(150);
     layout->addWidget(comboBox);
     
@@ -125,7 +126,7 @@ void DetectionUiController::onDetectionItemSelected(const QString& roiId, const 
 
     for (const auto& detection : roi->detectionItems) {
         if (detection.itemId != detectionId) continue;
-        
+
         TabConfig config = TabConfig::getConfigForType(detection.type);
         switchToTabConfig(config);
 
@@ -140,6 +141,7 @@ void DetectionUiController::onDetectionItemSelected(const QString& roiId, const 
                 );
             }
         }
+
         break;
     }
 }

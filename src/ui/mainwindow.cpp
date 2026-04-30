@@ -249,6 +249,19 @@ void MainWindow::setupControllers()
     connect(m_roiUiController, &RoiUiController::detectionItemSelected, this,
         [this](const QString& roiId, const QString& detectionId) {
             m_detectionUiController->onDetectionItemSelected(roiId, detectionId, m_tabManager, m_pipelineManager);
+
+            // 检查检测类型，控制画布缩放
+            if (auto* roi = m_roiManager.getRoiConfig(roiId)) {
+                for (const auto& item : roi->detectionItems) {
+                    if (item.itemId == detectionId) {
+                        bool isVideoDetect = (item.type == DetectionType::VideoDetection);
+                        m_view->setZoomEnabled(!isVideoDetect);
+                        Logger::instance()->info(
+                            QString("画布缩放: %1").arg(isVideoDetect ? "已禁用(视频检测模式)" : "已启用"));
+                        break;
+                    }
+                }
+            }
         });
 
     // 工具栏按钮

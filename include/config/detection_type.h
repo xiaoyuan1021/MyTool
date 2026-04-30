@@ -13,7 +13,8 @@ enum class DetectionType {
     Line,           // 直线检测
     Blob,           // Blob分析
     VideoSource,     // 视频源
-    ObjectDetection  // 目标检测
+    ObjectDetection,  // 目标检测
+    VideoDetection   // 视频检测（视频源 + 目标检测）
 };
 
 /**
@@ -27,6 +28,7 @@ inline QString detectionTypeToString(DetectionType type) {
         case DetectionType::Blob: return "Blob分析";
         case DetectionType::VideoSource: return "视频源";
         case DetectionType::ObjectDetection: return "目标检测";
+        case DetectionType::VideoDetection: return "视频检测";
         default: return "未知类型";
     }
 }
@@ -41,6 +43,7 @@ inline DetectionType stringToDetectionType(const QString& str) {
     if (str == "Blob分析") return DetectionType::Blob;
     if (str == "视频源") return DetectionType::VideoSource;
     if (str == "目标检测") return DetectionType::ObjectDetection;
+    if (str == "视频检测") return DetectionType::VideoDetection;
     return DetectionType::Blob; // 默认值
 }
 
