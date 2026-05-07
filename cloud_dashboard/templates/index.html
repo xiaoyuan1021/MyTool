@@ -728,6 +728,10 @@
             <div class="header-subtitle">边云协同智能视觉检测云平台</div>
         </div>
         <div class="header-right">
+            <div class="mqtt-status" id="lanInfo" style="display:none;cursor:pointer" title="点击复制地址">
+                <i class="fas fa-network-wired" style="color:var(--accent-cyan);font-size:13px"></i>
+                <span id="lanAddress" style="font-size:12px;color:var(--text-secondary)"></span>
+            </div>
             <div class="mqtt-status">
                 <span class="mqtt-dot" id="mqttDot"></span>
                 <span id="mqttLabel">连接中...</span>
@@ -875,10 +879,13 @@
                         <i class="fas fa-info-circle"></i>
                         <span>点击按钮发送指令到边缘设备</span>
                     </div>
-                    <div class="sim-row">
-                        <button class="sim-btn" onclick="simulateData(1)"><i class="fas fa-flask"></i> 模拟 1 条</button>
-                        <button class="sim-btn" onclick="simulateData(5)"><i class="fas fa-flask"></i> 模拟 5 条</button>
-                        <button class="sim-btn" onclick="simulateData(20)"><i class="fas fa-flask"></i> 模拟 20 条</button>
+                    <div class="sim-row" style="border-top:1px solid var(--border);padding-top:10px;margin-top:6px">
+                        <span style="font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:6px;width:100%;margin-bottom:4px">
+                            <i class="fas fa-flask"></i> 调试模式（比赛演示时禁用）
+                        </span>
+                        <button class="sim-btn" onclick="simulateData(1)">模拟 1 条</button>
+                        <button class="sim-btn" onclick="simulateData(5)">模拟 5 条</button>
+                        <button class="sim-btn" onclick="simulateData(20)">模拟 20 条</button>
                     </div>
                 </div>
             </div>
@@ -1315,6 +1322,11 @@
                 })
                 .then(r => r.json())
                 .then(data => {
+                    if (data.error) {
+                        feedback.innerHTML = `<i class="fas fa-exclamation-triangle" style="color:var(--accent-yellow)"></i>
+                            <span>${data.error}</span>`;
+                        return;
+                    }
                     feedback.innerHTML = `<i class="fas fa-flask" style="color:var(--accent-purple)"></i>
                         <span>已生成 ${data.simulated} 条模拟数据</span>`;
                 })
@@ -1327,6 +1339,7 @@
         // ===== Init =====
         document.addEventListener('DOMContentLoaded', function() {
             initCharts();
+            fetchHostInfo();
             fetchStats();
             fetchDevices();
             fetchResults();
@@ -1337,6 +1350,26 @@
             setInterval(fetchDevices, 5000);
             setInterval(fetchResults, 8000);
         });
+
+        // ===== Host Info (LAN IP) =====
+        function fetchHostInfo() {
+            fetch('/api/host-info')
+                .then(r => r.json())
+                .then(info => {
+                    const addr = info.lanIp + ':' + info.port;
+                    const el = document.getElementById('lanAddress');
+                    const container = document.getElementById('lanInfo');
+                    el.textContent = 'http://' + addr;
+                    container.style.display = 'flex';
+                    container.onclick = function() {
+                        navigator.clipboard.writeText('http://' + addr).then(() => {
+                            const old = el.textContent;
+                            el.textContent = '已复制!';
+                            setTimeout(() => el.textContent = old, 1500);
+                        });
+                    };
+                });
+        }
     </script>
 
 </body>

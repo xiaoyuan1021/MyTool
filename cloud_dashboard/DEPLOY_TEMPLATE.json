@@ -1,0 +1,46 @@
+{
+    "_说明": "EdgeVision 边云协同部署配置文件模板",
+    "_环境": {
+        "local": "同一台机器本地演示（MQTT 走公网 broker）",
+        "cloud": "云服务器部署（推荐用于比赛演示，MQTT + 看板都在云上）",
+        "lan": "局域网内多设备协同"
+    },
+
+    "部署环境": "local",
+
+    "连接配置": {
+        "local": {
+            "brokerHost": "broker.emqx.io",
+            "brokerPort": 1883,
+            "dashboardUrl": "http://localhost:5000",
+            "说明": "本地运行看板，MQTT 走公共 broker"
+        },
+        "cloud": {
+            "brokerHost": "<你的云服务器IP>",
+            "brokerPort": 1883,
+            "dashboardUrl": "http://<你的云服务器IP>:5000",
+            "说明": "看板和 MQTT 都部署在云服务器，边缘端只需连接云 IP"
+        },
+        "lan": {
+            "brokerHost": "broker.emqx.io",
+            "brokerPort": 1883,
+            "dashboardUrl": "http://<看板所在电脑的局域网IP>:5000",
+            "说明": "看板在局域网某台机器上运行，其他设备通过 LAN IP 访问"
+        }
+    },
+
+    "MQTT 主题": {
+        "results": "visiontool/results",
+        "heartbeat": "visiontool/heartbeat",
+        "commands": "visiontool/commands"
+    },
+
+    "部署步骤 (云服务器)": [
+        "1. 将 cloud_dashboard/ 目录上传到云服务器",
+        "2. 安装 docker 和 docker-compose",
+        "3. 执行: docker compose up -d",
+        "4. 开放云服务器防火墙 1883(MQTT) 和 5000(看板) 端口",
+        "5. 修改边缘端 app_config.json 的 brokerHost 为云服务器 IP",
+        "6. 浏览器访问 http://<云服务器IP>:5000"
+    ]
+}

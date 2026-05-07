@@ -1,0 +1,44 @@
+version: "3.8"
+
+services:
+  # ===== MQTT Broker =====
+  mqtt:
+    image: emqx:5.8
+    container_name: edgevision-mqtt
+    restart: unless-stopped
+    ports:
+      - "1883:1883"   # MQTT TCP
+      - "18083:18083" # EMQX Dashboard (用于调试)
+    environment:
+      EMQX_DASHBOARD__DEFAULT_USERNAME: admin
+      EMQX_DASHBOARD__DEFAULT_PASSWORD: public
+    volumes:
+      - mqtt_data:/opt/emqx/data
+    healthcheck:
+      test: ["CMD", "emqx", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ===== Cloud Dashboard (Flask) =====
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: edgevision-dashboard
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      PORT: 5000
+      MQTT_BROKER_HOST: mqtt
+      MQTT_BROKER_PORT: 1883
+    depends_on:
+      mqtt:
+        condition: service_healthy
+    volumes:
+      - dashboard_data:/app/data
+
+volumes:
+  mqtt_data:
+  dashboard_data:

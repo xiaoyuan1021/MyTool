@@ -14,6 +14,11 @@ CloudDashboardManager::CloudDashboardManager(ToastNotification* toast, QWidget* 
 {
 }
 
+void CloudDashboardManager::setDashboardUrl(const QString& url)
+{
+    m_dashboardUrl = url;
+}
+
 CloudDashboardManager::~CloudDashboardManager()
 {
     if (m_process) {
@@ -58,7 +63,7 @@ void CloudDashboardManager::launch()
 {
     // 检查进程是否已在运行
     if (m_process && m_process->state() == QProcess::Running) {
-        QDesktopServices::openUrl(QUrl("http://127.0.0.1:5000"));
+        QDesktopServices::openUrl(QUrl(m_dashboardUrl));
         if (m_toast) m_toast->showMessage("云平台已在运行，已打开浏览器");
         return;
     }
@@ -82,7 +87,7 @@ void CloudDashboardManager::launch()
         if (m_toast) m_toast->showMessage("云平台启动中...");
         // 等一会再打开浏览器，让服务先启动
         QTimer::singleShot(3000, this, [this]() {
-            QDesktopServices::openUrl(QUrl("http://127.0.0.1:5000"));
+            QDesktopServices::openUrl(QUrl(m_dashboardUrl));
             if (m_toast) m_toast->showMessage("☁ 云平台已启动");
         });
     });

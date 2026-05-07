@@ -25,6 +25,9 @@ public:
     explicit CloudDashboardManager(ToastNotification* toast, QWidget* parent = nullptr);
     ~CloudDashboardManager();
 
+    /// 设置看板地址（默认 http://127.0.0.1:5000）
+    void setDashboardUrl(const QString& url);
+
 public slots:
     /// 启动云平台看板（或在已运行时打开浏览器）
     void launch();
@@ -35,6 +38,7 @@ private:
 
     QProcess* m_process = nullptr;
     ToastNotification* m_toast = nullptr;
+    QString m_dashboardUrl = "http://127.0.0.1:5000";
 };
 
 #endif // CLOUD_DASHBOARD_MANAGER_H

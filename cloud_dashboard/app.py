@@ -9,6 +9,7 @@ EdgeVision Cloud Dashboard
 import json
 import os
 import queue
+import socket
 import sqlite3
 import threading
 import time
@@ -24,8 +25,8 @@ from flask import Flask, jsonify, render_template, request, Response, stream_wit
 # =========================================================================
 
 MQTT_CONFIG = {
-    "host": "broker.emqx.io",
-    "port": 1883,
+    "host": os.environ.get("MQTT_BROKER_HOST", "broker.emqx.io"),
+    "port": int(os.environ.get("MQTT_BROKER_PORT", "1883")),
     "keepalive": 60,
     "client_id": f"cloud-dashboard-{uuid.uuid4().hex[:8]}",
     "topics": {
@@ -351,6 +352,22 @@ def now_str() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
+def get_lan_ip() -> str:
+    """获取本机局域网 IP 地址"""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.settimeout(0.1)
+        s.connect(("10.254.254.254", 1))  # 不需要真的连上
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        try:
+            return socket.gethostbyname(socket.gethostname())
+        except Exception:
+            return "127.0.0.1"
+
+
 # =========================================================================
 # MQTT 回调
 # =========================================================================
@@ -534,6 +551,14 @@ def api_status():
     })
 
 
+@app.route("/api/host-info")
+def api_host_info():
+    return jsonify({
+        "lanIp": get_lan_ip(),
+        "port": int(os.environ.get("PORT", 5000)),
+    })
+
+
 @app.route("/api/stats")
 def api_stats():
     pass_rate = round(stats["passed"] / stats["total"] * 100, 1) if stats["total"] else 0
@@ -670,10 +695,13 @@ def api_send_command():
     return jsonify({"ok": True, "cmd": cmd})
 
 
-# -------- API: 模拟数据 ----------
+# -------- API: 模拟数据 (仅在 ENABLE_SIMULATE=1 时可用) ----------
 
 @app.route("/api/simulate", methods=["POST"])
 def api_simulate():
+    if not os.environ.get("ENABLE_SIMULATE"):
+        return jsonify({"error": "模拟数据接口已禁用，启动时设置 ENABLE_SIMULATE=1 可启用"}), 403
+
     import random
 
     body = request.get_json(force=True) or {}
