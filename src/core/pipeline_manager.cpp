@@ -3,6 +3,7 @@
 #include "config/pipeline_config_mapper.h"
 #include "config/constants.h"
 #include "logger.h"
+#include "ui/display_renderer.h"
 #include <QDebug>
 #include <algorithm>
 
@@ -115,8 +116,6 @@ PipelineContext PipelineManager::execute(const cv::Mat& inputImage, const Pipeli
         m_lastContext.reason.clear();
 
         m_lastContext.srcBgr = inputImage;
-        m_lastContext.displayConfig.mode = m_displayMode;
-        m_lastContext.displayConfig.overlayAlpha = m_overlayAlpha;
 
         PipelineConfig savedConfig = m_config;
         m_config = config;
@@ -260,10 +259,7 @@ cv::Mat PipelineManager::getLastDisplayWithMode(DisplayConfig::Mode mode) const
     QMutexLocker locker(&m_configMutex);
     if (m_lastContext.srcBgr.empty()) return cv::Mat();
 
-    // 创建一个副本，临时修改显示模式
-    PipelineContext ctxCopy = m_lastContext;
-    ctxCopy.displayConfig.mode = mode;
-    return ctxCopy.getFinalDisplay();
+    return DisplayRenderer::render(m_lastContext, mode);
 }
 
 bool PipelineManager::hasLastResult() const

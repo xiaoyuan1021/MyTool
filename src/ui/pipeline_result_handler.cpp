@@ -1,5 +1,6 @@
 #include "pipeline_result_handler.h"
 #include "algorithm/image_utils.h"
+#include "ui/display_renderer.h"
 #include "widgets/judge_tab_widget.h"
 #include "widgets/line_tab_widget.h"
 #include "widgets/barcode_tab_widget.h"
@@ -32,7 +33,8 @@ void PipelineResultHandler::onPipelineFinished()
 
     try {
         PipelineContext result = m_watcher->result();
-        cv::Mat displayImage = result.getFinalDisplay();
+        cv::Mat displayImage = DisplayRenderer::render(
+            result, m_pipelineManager->getDisplayMode());
 
         handleJudgeTabResult(result);
         handleLineTabResult(result);

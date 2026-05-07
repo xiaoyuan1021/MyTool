@@ -94,6 +94,7 @@ public:
     void updateAlgorithmStep(int index, const AlgorithmStep& step);
 
     void setDisplayMode(DisplayConfig::Mode mode);
+    DisplayConfig::Mode getDisplayMode() const { return m_displayMode; }
 
     // 快速重新渲染上次Pipeline结果（仅改变显示模式，不重新执行Pipeline）
     cv::Mat getLastDisplayWithMode(DisplayConfig::Mode mode) const;
