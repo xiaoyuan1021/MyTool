@@ -31,7 +31,7 @@ DisplayConfig::Mode DisplayModeManager::getModeForTab(int index) const
         {"提取",     DisplayConfig::Mode::Processed},
         {"判定",     DisplayConfig::Mode::MaskOverlay},
         {"直线",     DisplayConfig::Mode::LineDetect},
-        {"条码",     DisplayConfig::Mode::Original},
+        {"条码",     DisplayConfig::Mode::BarcodeOverlay},
         {"目标检测", DisplayConfig::Mode::Original},
     };
 

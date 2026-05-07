@@ -131,8 +131,8 @@ QPointF ImageView::viewPosToImagePos(const QPoint &viewPos) const
 // =================== 鼠标按下 ===================
 void ImageView::mousePressEvent(QMouseEvent *event)
 {
-    // 检测是否点击了ROI把手（仅在ROI已准备好且不在绘制状态时）
-    if (m_roiReady && !m_isDrawingRoi && event->button() == Qt::LeftButton) {
+    // 检测是否点击了ROI把手（仅在ROI已准备好，且不在任何绘制模式时）
+    if (m_roiReady && !m_isDrawingRoi && !m_polygonMode && !m_rectangleMode && !m_referenceLineMode && event->button() == Qt::LeftButton) {
         QPointF imgPos = viewPosToImagePos(event->pos());
         RoiHandle handle = getRoiHandleAtPos(imgPos);
         
@@ -404,8 +404,8 @@ void ImageView::mouseMoveEvent(QMouseEvent *event)
         return;
     }
 
-    // 当没有拖拽时，检测鼠标位置以更新光标
-    if (m_roiReady && !m_isDrawingRoi) {
+    // 当没有拖拽且不在任何绘制模式时，检测鼠标位置以更新光标
+    if (m_roiReady && !m_isDrawingRoi && !m_polygonMode && !m_rectangleMode && !m_referenceLineMode) {
         QPointF imgPos = viewPosToImagePos(event->pos());
         RoiHandle handle = getRoiHandleAtPos(imgPos);
         setCursorForHandle(handle);

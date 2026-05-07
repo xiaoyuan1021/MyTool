@@ -19,7 +19,10 @@ struct DisplayConfig
         MaskGreenWhite,     // Mask显示为绿白
         MaskOverlay,        // Mask叠加在原图上
         Processed,          // 显示算法处理结果
-        LineDetect          // 显示直线检测结果
+        LineDetect,         // 显示直线检测结果
+        BarcodeOverlay,     // 在原图上叠加条码识别结果
+        MaskOnly,           // 直接显示二值Mask（黑白）
+        ProcessedOverlay    // 处理结果叠加到原图
     };
 
     Mode mode = Mode::Original;      // 当前显示模式
@@ -55,6 +58,30 @@ struct DisplayConfig
     bool shouldShowLineDetect() const
     {
         return mode == Mode::LineDetect;
+    }
+
+    /**
+     * 检查是否显示条码叠加
+     */
+    bool shouldShowBarcodeOverlay() const
+    {
+        return mode == Mode::BarcodeOverlay;
+    }
+
+    /**
+     * 检查是否显示原始Mask
+     */
+    bool shouldShowMaskOnly() const
+    {
+        return mode == Mode::MaskOnly;
+    }
+
+    /**
+     * 检查是否显示处理结果叠加
+     */
+    bool shouldShowProcessedOverlay() const
+    {
+        return mode == Mode::ProcessedOverlay;
     }
 
     /**

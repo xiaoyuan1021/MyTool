@@ -2,6 +2,7 @@
 #define CLOUD_DASHBOARD_MANAGER_H
 
 #include <QObject>
+#include <QPointer>
 #include <QProcess>
 
 class QWidget;
@@ -37,7 +38,7 @@ private:
     QString findDashboardDir() const;
 
     QProcess* m_process = nullptr;
-    ToastNotification* m_toast = nullptr;
+    QPointer<ToastNotification> m_toast;
     QString m_dashboardUrl = "http://127.0.0.1:5000";
 };
 

@@ -44,6 +44,7 @@ struct PipelineContext
 
 private:
     cv::Mat overlayMaskOnImage(const cv::Mat& bgr,const cv::Mat& mask) const;
+    cv::Mat drawBarcodeOverlay(const cv::Mat& bgr, const QVector<BarcodeResult>& barcodes) const;
 };
 
 class IPipelineStep

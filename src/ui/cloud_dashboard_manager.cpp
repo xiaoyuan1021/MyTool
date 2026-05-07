@@ -21,7 +21,9 @@ void CloudDashboardManager::setDashboardUrl(const QString& url)
 
 CloudDashboardManager::~CloudDashboardManager()
 {
+    // 先断开所有信号，防止 waitForFinished 处理事件时触发已失效的 lambda
     if (m_process) {
+        m_process->disconnect();
         if (m_process->state() != QProcess::NotRunning) {
             m_process->terminate();
             if (!m_process->waitForFinished(3000)) {

@@ -138,6 +138,40 @@ cv::Mat PipelineContext::getFinalDisplay() const
             {
                 return lineDetect;
             }
+            return srcBgr;
+
+        case Mode::BarcodeOverlay:
+            if (!barcodeResults.isEmpty() && !srcBgr.empty())
+            {
+                return drawBarcodeOverlay(srcBgr, barcodeResults);
+            }
+            return srcBgr;
+
+        case Mode::MaskOnly:
+            if (!mask.empty())
+            {
+                if (mask.channels() == 1) {
+                    cv::Mat bgr;
+                    cv::cvtColor(mask, bgr, cv::COLOR_GRAY2BGR);
+                    return bgr;
+                }
+                return mask;
+            }
+            return srcBgr;
+
+        case Mode::ProcessedOverlay:
+            if (!processed.empty() && !srcBgr.empty())
+            {
+                cv::Mat overlayMask;
+                if (processed.channels() == 1) {
+                    overlayMask = processed;
+                } else {
+                    cv::cvtColor(processed, overlayMask, cv::COLOR_BGR2GRAY);
+                }
+                return overlayMaskOnImage(srcBgr, overlayMask);
+            }
+            return srcBgr;
+
         default:
             return srcBgr;
         }
@@ -194,6 +228,53 @@ cv::Mat PipelineContext::overlayMaskOnImage(const cv::Mat &bgr, const cv::Mat &m
     } catch (...) {
         qDebug() << "[overlayMaskOnImage] 未知异常";
         Logger::instance()->error("overlayMaskOnImage未知异常");
+        return bgr;
+    }
+}
+
+cv::Mat PipelineContext::drawBarcodeOverlay(const cv::Mat& bgr, const QVector<BarcodeResult>& barcodes) const
+{
+    if (barcodes.isEmpty() || bgr.empty()) return bgr;
+
+    try {
+        cv::Mat result = bgr.clone();
+
+        for (const auto& bc : barcodes) {
+            QRectF rect = bc.location;
+            cv::Rect roi(cv::Point(static_cast<int>(rect.x()), static_cast<int>(rect.y())),
+                         cv::Size(static_cast<int>(rect.width()), static_cast<int>(rect.height())));
+
+            // 绘制绿色矩形框
+            cv::rectangle(result, roi, cv::Scalar(0, 255, 0), 2);
+
+            // 绘制标签背景
+            QString label = QString("[%1] %2").arg(bc.type).arg(bc.data);
+            if (bc.quality > 0) {
+                label += QString(" (%.0f%%)").arg(bc.quality);
+            }
+            std::string text = label.toStdString();
+
+            int baseline = 0;
+            cv::Size textSize = cv::getTextSize(text, cv::FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseline);
+            cv::Point labelOrigin(roi.x, std::max(roi.y - 5, textSize.height + 5));
+            cv::rectangle(result,
+                          cv::Rect(labelOrigin.x, labelOrigin.y - textSize.height - 4,
+                                   textSize.width + 6, textSize.height + 6),
+                          cv::Scalar(0, 0, 0), cv::FILLED);
+
+            // 绘制白色文字
+            cv::putText(result, text, cv::Point(labelOrigin.x + 3, labelOrigin.y - 3),
+                        cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 255), 1);
+        }
+
+        return result;
+    } catch (const cv::Exception& ex) {
+        qDebug() << "[drawBarcodeOverlay] OpenCV错误:" << ex.what();
+        Logger::instance()->error(QString("drawBarcodeOverlay错误: %1").arg(ex.what()));
+        return bgr;
+    } catch (...) {
+        qDebug() << "[drawBarcodeOverlay] 未知异常";
+        Logger::instance()->error("drawBarcodeOverlay未知异常");
         return bgr;
     }
 }
