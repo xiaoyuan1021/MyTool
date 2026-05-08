@@ -7,7 +7,7 @@
 #include "data/detection_result_report.h"
 #include "config/detection_config_types.h"
 #include "algorithm/image_utils.h"
-#include "ui/logger.h"
+#include "logger.h"
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QFile>

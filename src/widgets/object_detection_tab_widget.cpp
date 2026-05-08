@@ -1,6 +1,6 @@
 #include "widgets/object_detection_tab_widget.h"
 #include "ui_object_detection_tab.h"
-#include "ui/logger.h"
+#include "logger.h"
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QDebug>

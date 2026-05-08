@@ -1,7 +1,7 @@
 #include "core/profile_manager.h"
 #include "roi_manager.h"
 #include "core/pipeline_manager.h"
-#include "ui/logger.h"
+#include "logger.h"
 #include <QDir>
 #include <QCoreApplication>
 #include <QDateTime>
