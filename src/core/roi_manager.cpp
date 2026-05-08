@@ -18,18 +18,21 @@ RoiManager::RoiManager(QObject* parent)
 
 // ==================== 图像管理 ====================
 
-void RoiManager::setFullImage(const cv::Mat &img)
+void RoiManager::setFullImage(const cv::Mat &img, const QString &filePath)
 {
     if (img.empty()) return;
 
     if (m_currentImageId.isEmpty()) {
-        QString imageId = addImage(img, generateDefaultImageName());
+        QString imageId = addImage(img, generateDefaultImageName(), filePath);
         switchToImage(imageId);
     } else {
         auto it = m_imageRoisMap.find(m_currentImageId);
         if (it != m_imageRoisMap.end()) {
             it.value().image = img.clone();
-            it.value().activeRoiId.clear();  // 切换图片时清除激活状态
+            it.value().activeRoiId.clear();
+            if (!filePath.isEmpty()) {
+                it.value().filePath = filePath;
+            }
         }
     }
 }

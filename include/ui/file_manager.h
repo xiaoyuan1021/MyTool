@@ -63,8 +63,9 @@ signals:
      * @signal imageLoaded
      * @brief 图像加载成功时发出
      * @param image 加载的图像数据
+     * @param filePath 图像文件路径
      */
-    void imageLoaded(const cv::Mat& image);
+    void imageLoaded(const cv::Mat& image, const QString& filePath);
 
     /**
      * @signal imageSaved

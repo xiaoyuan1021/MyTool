@@ -126,8 +126,8 @@ void MainWindow::setupConnections()
     // 注意：on_tabWidget_currentChanged 已由 ui->setupUi 内部的 connectSlotsByName 自动连接，无需手动连接
 
     // FileManager信号
-    connect(m_fileManager, &FileManager::imageLoaded, this, [this](const cv::Mat& img) {
-        m_roiManager.setFullImage(img);
+    connect(m_fileManager, &FileManager::imageLoaded, this, [this](const cv::Mat& img, const QString& filePath) {
+        m_roiManager.setFullImage(img, filePath);
         m_view->clearRoi();
         m_pipelineManager->resetPipeline();
         showImage(img);

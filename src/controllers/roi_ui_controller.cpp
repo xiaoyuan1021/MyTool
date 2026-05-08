@@ -691,7 +691,7 @@ void RoiUiController::saveCurrentRoiPipelineConfig()
     RoiConfig* roi = m_roiManager.getRoiConfig(m_currentSelectedRoiId);
     if (roi) {
         roi->pipelineConfig = m_pipelineManager->getConfigSnapshot();
-        Logger::instance()->info(QString("[RoiUI] 已保存ROI [%1] 的Pipeline配置: brightness=%2, contrast=%3, gamma=%4")
+        Logger::instance()->debug(QString("[RoiUI] 已保存ROI [%1] 的Pipeline配置: brightness=%2, contrast=%3, gamma=%4")
             .arg(roi->roiName)
             .arg(roi->pipelineConfig.brightness)
             .arg(roi->pipelineConfig.contrast)

@@ -39,7 +39,7 @@ void FileManager::readImageFile(const QString& filePath)
             emit errorOccurred(QString("无法读取图像文件: %1").arg(filePath));
             return;
         }
-        emit imageLoaded(img);
+        emit imageLoaded(img, filePath);
     } catch (const cv::Exception& ex) {
         QString msg = QString("读取图像OpenCV错误: %1").arg(ex.what());
         qDebug() << msg;

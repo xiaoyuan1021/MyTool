@@ -31,7 +31,7 @@ public:
 
     // ==================== 图像管理 ====================
 
-    void setFullImage(const cv::Mat &img);
+    void setFullImage(const cv::Mat &img, const QString &filePath = QString());
     cv::Mat getFullImage() const;
     void clear();
 

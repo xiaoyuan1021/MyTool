@@ -23,7 +23,12 @@ void Logger::setTextEdit(QTextEdit *textdEdit)
         QTextCharFormat infoFormat;
         infoFormat.setForeground(Qt::black);
         sink->set_level_color(spdlog::level::info, infoFormat);
-        
+
+        // 设置debug颜色为灰色
+        QTextCharFormat debugFormat;
+        debugFormat.setForeground(QColor(128, 128, 128));
+        sink->set_level_color(spdlog::level::debug, debugFormat);
+
         // 设置warning颜色为橙色
         QTextCharFormat warnFormat;
         warnFormat.setForeground(QColor(255, 165, 0)); // 橙色
@@ -110,6 +115,23 @@ bool Logger::openLogFolder(bool selectFile)
     }
 
     return true;
+}
+
+void Logger::debug(const QString &message)
+{
+    QMutexLocker locker(&m_mutex);
+    QString time = QDateTime::currentDateTime().toString("MM-dd hh:mm:ss");
+    QString log = QString("%1 [debug] %2").arg(time, message);
+
+    if (m_colorLogger) {
+        m_colorLogger->debug(message.toStdString());
+    } else if(m_textEdit) {
+        m_textEdit->append(QString("<span style=\"color:gray;\">%1</span>").arg(log));
+    }
+
+    QString fileLog = QString("%1 [debug] %2").arg(time, message);
+    writeToFile(fileLog);
+    emit logMessage(fileLog);
 }
 
 void Logger::info(const QString &message)

@@ -30,6 +30,7 @@ public:
     bool openLogFolder(bool selectFile = true);
     void getLogFilePath() const;
     // 输出日志
+    void debug(const QString & message);
     void info(const QString & message);
     void warning(const QString & message);
     void error(const QString & message);
