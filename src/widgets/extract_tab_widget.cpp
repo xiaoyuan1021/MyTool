@@ -1,5 +1,6 @@
 #include "extract_tab_widget.h"
 #include "ui_extract_tab.h"
+#include "algorithm/opencv_algorithm.h"
 #include "logger.h"
 #include <QMessageBox>
 #include <QListWidgetItem>

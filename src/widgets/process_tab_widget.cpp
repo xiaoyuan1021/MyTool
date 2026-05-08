@@ -1,5 +1,6 @@
 #include "process_tab_widget.h"
 #include "ui_process_tab.h"
+#include "algorithm/opencv_algorithm.h"
 #include "logger.h"
 #include <QMessageBox>
 
