@@ -154,7 +154,7 @@ private:
     QAtomicInt m_hasPendingConfig{0};
 
     // 延迟重置标志
-    QAtomicInt m_hasPendingReset{0};
+    QAtomicInt m_hasPendingReset{0};//?
 
     // Pipeline实例
     Pipeline m_pipeline;
