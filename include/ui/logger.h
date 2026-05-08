@@ -4,8 +4,6 @@
 #include <QObject>
 #include <QTextEdit>
 #include <QDateTime>
-#include <QFile>
-#include <QTextStream>
 #include <QProcess>
 #include <QDesktopServices>
 #include <QFileInfo>
@@ -15,21 +13,19 @@
 
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/qt_sinks.h"
+#include "spdlog/sinks/basic_file_sink.h"
 
 class Logger :public QObject
 {
     Q_OBJECT
 public:
-    // 获取单例
     static Logger* instance();
-    // 设置日志显示控件
     void setTextEdit(QTextEdit* textdEdit);
-    //设置路径
     void setLogFile(const QString & filePath);
     void enableFileLog(bool enable);
     bool openLogFolder(bool selectFile = true);
-    void getLogFilePath() const;
-    // 输出日志
+    QString logFilePath() const;
+
     void debug(const QString & message);
     void info(const QString & message);
     void warning(const QString & message);
@@ -42,24 +38,19 @@ signals:
     void logMessage(const QString& message);
 
 private:
-    Logger();// 私有构造函数（单例模式）
+    Logger();
     ~Logger();
-
-    void writeToFile(const QString& log);
 
     QTextEdit * m_textEdit;
 
-    QFile * m_logFile;          //日志对象
-    QTextStream * m_logStream;  //文本流对象
-    bool m_fileLogEnabled;
+    // spdlog logger: qt_color_sink (UI) + basic_file_sink (file)
+    std::shared_ptr<spdlog::logger> m_colorLogger;
+    std::shared_ptr<spdlog::sinks::basic_file_sink_mt> m_fileSink;
+
     QString m_logFilePath;
 
-    // spdlog logger with color support
-    std::shared_ptr<spdlog::logger> m_colorLogger;
-
-    // 线程安全保护：Logger 可能在多线程中被调用（如 AutoDetectionController 的后台线程）
+    // 线程安全保护
     mutable QMutex m_mutex;
-
 };
 
 #endif // LOGGER_H
