@@ -49,7 +49,7 @@ void TabManager::ensureTab(const QString& tabName)
 
     emit tabCreated(tabName, widget);
 
-    Logger::instance()->info(QString("按需创建Tab: %1").arg(tabName));
+    // Logger::instance()->info(QString("按需创建Tab: %1").arg(tabName));
 }
 
 bool TabManager::isCreated(const QString& tabName) const
