@@ -10,7 +10,6 @@
 #include "data/barcode_result.h"
 #include "region_feature.h"
 #include "display_config.h"
-#include "algorithm/opencv_algorithm.h"
 
 struct PipelineContext
 {

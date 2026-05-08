@@ -13,7 +13,6 @@
 #include <QMouseEvent>
 
 #include <opencv2/opencv.hpp>
-#include "logger.h"
 #include "roi_manager.h"
 
 // ROI 交互状态

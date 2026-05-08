@@ -1,4 +1,5 @@
 #include "pipeline_manager.h"
+#include "image_processor.h"
 #include "barcode_step.h"
 #include "config/pipeline_config_mapper.h"
 #include "config/constants.h"
@@ -14,6 +15,8 @@ PipelineManager::PipelineManager(QObject* parent)
     PipelineConfigMapper::resetEnhancement(m_config);
     initPipeline();
 }
+
+PipelineManager::~PipelineManager() = default;
 
 // ========== 配置管理 ==========
 

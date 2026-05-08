@@ -2,13 +2,15 @@
 
 #include "pipeline.h"
 #include "pipeline_steps.h"
-#include "image_processor.h"
 #include "config/constants.h"
+
 #include <QObject>
 #include <QString>
 #include <QMutex>
 #include <QMutexLocker>
 #include <QAtomicInt>
+
+class ImageProcessor;
 
 /**
  * Pipeline管理器 - 负责Pipeline的创建、配置和执行
@@ -24,6 +26,7 @@ class PipelineManager : public QObject
 
 public:
     explicit PipelineManager(QObject* parent = nullptr);
+    ~PipelineManager();
 
     // ========== 配置管理（仅UI线程调用）==========
 

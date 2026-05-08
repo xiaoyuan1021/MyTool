@@ -12,7 +12,6 @@
 
 #include "roi_manager.h"
 #include "file_manager.h"
-#include "logger.h"
 
 /**
  * 图片列表管理器 - 负责多图片列表的UI交互和管理

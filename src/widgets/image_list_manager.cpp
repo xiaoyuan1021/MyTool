@@ -1,4 +1,5 @@
 #include "widgets/image_list_manager.h"
+#include "logger.h"
 #include "image_utils.h"
 
 ImageListManager::ImageListManager(

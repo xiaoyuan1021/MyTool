@@ -3,7 +3,6 @@
 #include "pipeline.h"
 #include "image_processor.h"
 #include "shape_filter_types.h"
-#include <opencv2/ximgproc.hpp>
 
 // 1) 颜色通道
 class StepColorChannel:public IPipelineStep

@@ -1,4 +1,5 @@
 #include "image_view.h"
+#include "logger.h"
 #include "qapplication.h"
 #include <algorithm>   // 为 std::clamp
 
