@@ -14,9 +14,9 @@
  * Pipeline管理器 - 负责Pipeline的创建、配置和执行
  *
  * 线程模型：
- * - 配置管理方法（setConfig/getConfigSnapshot等）仅在UI线程调用，无需加锁
- * - execute() 在后台线程调用，使用m_configMutex保护Pipeline执行期间的状态
- * - UI线程和后台线程之间通过值拷贝传递数据，避免共享可变状态
+ * - execute() 在后台线程调用，使用局部 PipelineContext，不共享可变状态
+ * - m_config 仅在UI线程读写，无需加锁
+ * - m_lastContext 由 m_contextMutex 保护，供UI线程读取上次结果
  */
 class PipelineManager : public QObject
 {
@@ -27,60 +27,36 @@ public:
 
     // ========== 配置管理（仅UI线程调用）==========
 
-    // 重置增强参数
     void resetEnhancement();
 
-    // 设置灰度过滤开关
     void setGrayFilterEnabled(bool enabled);
 
     void setAreaFilterEnabled(bool enabled);
 
-    // 获取当前配置快照（线程安全：加锁后返回拷贝）
-    PipelineConfig getConfigSnapshot() const {
-        QMutexLocker locker(&m_configMutex);
-        return m_config;
-    }
+    // 获取当前配置（仅UI线程调用，无需加锁）
+    PipelineConfig getConfigSnapshot() const { return m_config; }
 
-    // 设置配置（线程安全：加锁后写入）
-    // 如果Pipeline正在执行，将配置存入pending队列
-    void setConfig(const PipelineConfig& config) {
-        QMutexLocker locker(&m_configMutex);
-        m_config = config;
-        m_lastConfigSnapshot = config;
-        // 如果后台线程正在执行Pipeline，标记pending让worker完成后应用
-        if (m_pipelineRunning.loadAcquire()) {
-            m_pendingConfig = config;
-            m_hasPendingConfig.storeRelease(1);
-        }
-    }
+    // 设置配置（仅UI线程调用）
+    void setConfig(const PipelineConfig& config) { m_config = config; }
 
     // ========== 算法队列管理 ==========
 
-    // 添加算法步骤
     void addAlgorithmStep(const AlgorithmStep& step);
-
-    // 移除指定位置的算法步骤
     void removeAlgorithmStep(int index);
-
     void swapAlgorithmStep(int index1,int index2);
-
-    // 清空算法队列
     void clearAlgorithmQueue();
-
-    // 获取算法队列（只读）
     const QVector<AlgorithmStep>& getAlgorithmQueue() const { return m_algorithmQueue; }
 
     // ========== Pipeline执行 ==========
 
-    // 执行Pipeline处理（在后台线程调用）
-    // 输入：BGR图像 + 配置快照（值拷贝）
-    // 输出：处理结果上下文
-    // 内部会加锁，确保执行期间Pipeline状态不被并发修改
+    // 执行Pipeline处理（可在后台线程调用）
+    // 输入：BGR图像 + 配置（步骤通过 ctx.config 读取）
+    // 返回：处理结果上下文
     PipelineContext execute(const cv::Mat& inputImage, const PipelineConfig& config);
 
-    // 获取最后一次执行的上下文（返回拷贝，避免多线程数据竞争）
+    // 获取最后一次执行的上下文（线程安全，返回拷贝）
     PipelineContext getLastContext() const {
-        QMutexLocker locker(&m_configMutex);
+        QMutexLocker locker(&m_contextMutex);
         return m_lastContext;
     }
 
@@ -96,65 +72,42 @@ public:
     void setDisplayMode(DisplayConfig::Mode mode);
     DisplayConfig::Mode getDisplayMode() const { return m_displayMode; }
 
-    // 快速重新渲染上次Pipeline结果（仅改变显示模式，不重新执行Pipeline）
+    // 快速重新渲染上次Pipeline结果
     cv::Mat getLastDisplayWithMode(DisplayConfig::Mode mode) const;
 
-    // 上次Pipeline结果是否存在（可用于判断是否可以快速渲染）
     bool hasLastResult() const;
 
     // ========== 颜色过滤控制 ==========
 
-    // 设置颜色过滤开关
     void setColorFilterEnabled(bool enabled);
-
-    // 设置颜色过滤模式
     void setColorFilterMode(PipelineConfig::ColorFilterMode mode);
-
-    // 设置 RGB 过滤范围
     void setRGBRange(int rLow, int rHigh, int gLow, int gHigh, int bLow, int bHigh);
-
-    // 设置 HSV 过滤范围
     void setHSVRange(int hLow, int hHigh, int sLow, int sHigh, int vLow, int vHigh);
-
     void setCurrentFilterMode(PipelineConfig::FilterMode mode);
-
     PipelineConfig::FilterMode getCurrentFilterMode() const;
 
     void resetPipeline();
 
 signals:
-    // Pipeline执行完成
     void pipelineFinished(const QString& message);
-
-    // 算法队列变化
     void algorithmQueueChanged(int count);
-
-    // Pipeline重置完成
     void pipelineReset();
 
 private:
-    // 初始化Pipeline（创建所有步骤）
     void initPipeline();
 
 private:
-    // 互斥锁：仅保护Pipeline执行期间的m_pipeline和m_lastContext
-    mutable QMutex m_configMutex;
+    // 互斥锁：保护 m_lastContext（UI线程读取，execute写入）
+    mutable QMutex m_contextMutex;
 
     // 配置（仅在UI线程读写，不需要锁保护）
     PipelineConfig m_config;
 
-    // 缓存快照：供后台execute时使用
-    PipelineConfig m_lastConfigSnapshot;
-
-    // 原子标志：后台Pipeline是否正在运行
+    // 原子标志：后台Pipeline是否正在运行（仅用于reset安全）
     QAtomicInt m_pipelineRunning{0};
 
-    // 延迟应用的配置（后台线程正在执行时，UI线程写入的配置暂存于此）
-    PipelineConfig m_pendingConfig;
-    QAtomicInt m_hasPendingConfig{0};
-
-    // 延迟重置标志
-    QAtomicInt m_hasPendingReset{0};//?
+    // 延迟重置标志（execute正在执行时，UI线程请求reset暂存于此）
+    QAtomicInt m_hasPendingReset{0};
 
     // Pipeline实例
     Pipeline m_pipeline;

@@ -7,9 +7,9 @@
 
 void StepColorChannel::run(PipelineContext &ctx)
 {
-    if (ctx.srcBgr.empty() || !cfg_) return;
+    if (ctx.srcBgr.empty() || !ctx.config) return;
     try {
-        switch (cfg_->channel)
+        switch (ctx.config->channel)
         {
         case ChannelMode::Gray:
             cv::cvtColor(ctx.srcBgr, ctx.channelImg, cv::COLOR_BGR2GRAY);
@@ -46,16 +46,16 @@ void StepColorChannel::run(PipelineContext &ctx)
 void StepEnhance::run(PipelineContext& ctx)
 {
     {
-        if(ctx.srcBgr.empty() || !proc_ || !cfg_) return;
+        if(ctx.srcBgr.empty() || !proc_ || !ctx.config) return;
         if (ctx.channelImg.empty()) return;
 
         try {
             ctx.enhanced=proc_->adjustParameter(
                 ctx.channelImg,
-                cfg_->brightness,
-                cfg_->contrast,
-                cfg_->gamma,
-                cfg_->sharpen
+                ctx.config->brightness,
+                ctx.config->contrast,
+                ctx.config->gamma,
+                ctx.config->sharpen
                 );
         } catch (const cv::Exception& ex) {
             qDebug() << "[Enhance] OpenCV错误:" << ex.what();
@@ -72,14 +72,16 @@ void StepEnhance::run(PipelineContext& ctx)
 
 void StepGrayFilter::run(PipelineContext& ctx)
 {
+    if (!ctx.config) return;
+
     // 如果不是灰度过滤模式，释放mask并返回
-    if (cfg_->currentFilterMode != ImageFilterMode::Gray)
+    if (ctx.config->currentFilterMode != ImageFilterMode::Gray)
     {
         ctx.mask.release();
         return;
     }
 
-    if (!cfg_ || !cfg_->enableGrayFilter)
+    if (!ctx.config->enableGrayFilter)
     {
         ctx.mask.release();
         return;
@@ -107,11 +109,11 @@ void StepGrayFilter::run(PipelineContext& ctx)
         }
 
         // 灰度范围 [grayLow, grayHigh] 内的像素设为255（绿色/目标），其余为0（白色/背景）
-        cv::inRange(gray, cv::Scalar(cfg_->grayLow), cv::Scalar(cfg_->grayHigh), ctx.mask);
+        cv::inRange(gray, cv::Scalar(ctx.config->grayLow), cv::Scalar(ctx.config->grayHigh), ctx.mask);
 
         ctx.reason = QString("灰度过滤: 范围[%1,%2]")
-                         .arg(cfg_->grayLow)
-                         .arg(cfg_->grayHigh);
+                         .arg(ctx.config->grayLow)
+                         .arg(ctx.config->grayHigh);
     }
     catch (const cv::Exception& ex)
     {
@@ -175,14 +177,15 @@ void StepAlgorithmQueue::run(PipelineContext& ctx)
 
 void StepShapeFilter::run(PipelineContext& ctx)
     {
+        if (!ctx.config) return;
         // ✅ 修改后：优先使用processed，因为算法队列的结果存储在processed中
         cv::Mat inputMat = !ctx.processed.empty() ? ctx.processed : ctx.mask;
-        
-        if (!m_cfg || inputMat.empty()) {
+
+        if (inputMat.empty()) {
             return;
         }
 
-        const ShapeFilterConfig& filter = m_cfg->shapeFilter;
+        const ShapeFilterConfig& filter = ctx.config->shapeFilter;
 
         if (!filter.hasValidConditions()) {
             return;
@@ -305,19 +308,21 @@ cv::Mat StepShapeFilter::applyFilterOr(const cv::Mat& regions, const ShapeFilter
 
 void StepColorFilter::run(PipelineContext& ctx)
     {
+        if (!ctx.config) return;
+
         // 如果是灰度过滤模式，不处理（让StepGrayFilter处理mask）
-        if (m_cfg->currentFilterMode == ImageFilterMode::Gray) {
+        if (ctx.config->currentFilterMode == ImageFilterMode::Gray) {
             return;
         }
 
         // 如果不是颜色过滤模式（RGB/HSV），释放mask并返回
-        if (m_cfg->currentFilterMode != ImageFilterMode::RGB &&
-            m_cfg->currentFilterMode != ImageFilterMode::HSV) {
+        if (ctx.config->currentFilterMode != ImageFilterMode::RGB &&
+            ctx.config->currentFilterMode != ImageFilterMode::HSV) {
             ctx.mask.release();
             return;
         }
 
-        if (!m_cfg->enableColorFilter) {
+        if (!ctx.config->enableColorFilter) {
             ctx.mask.release();
             return;
         }
@@ -326,23 +331,23 @@ void StepColorFilter::run(PipelineContext& ctx)
             cv::Mat input = ctx.enhanced.empty() ? ctx.srcBgr : ctx.enhanced;
 
             cv::Mat filterMask;
-            switch (m_cfg->colorFilterMode)
+            switch (ctx.config->colorFilterMode)
             {
             case ColorFilterMode::RGB:
                 filterMask = m_processor->filterRGB(
                     input,
-                    m_cfg->rLow, m_cfg->rHigh,
-                    m_cfg->gLow, m_cfg->gHigh,
-                    m_cfg->bLow, m_cfg->bHigh
+                    ctx.config->rLow, ctx.config->rHigh,
+                    ctx.config->gLow, ctx.config->gHigh,
+                    ctx.config->bLow, ctx.config->bHigh
                     );
                 break;
 
             case ColorFilterMode::HSV:
                 filterMask = m_processor->filterHSV(
                     input,
-                    m_cfg->hLow, m_cfg->hHigh,
-                    m_cfg->sLow, m_cfg->sHigh,
-                    m_cfg->vLow, m_cfg->vHigh
+                    ctx.config->hLow, ctx.config->hHigh,
+                    ctx.config->sLow, ctx.config->sHigh,
+                    ctx.config->vLow, ctx.config->vHigh
                     );
                 break;
 
@@ -353,7 +358,7 @@ void StepColorFilter::run(PipelineContext& ctx)
             cv::bitwise_not(filterMask,ctx.mask);
 
             ctx.reason = QString("颜色过滤: %1 模式")
-                             .arg(m_cfg->colorFilterMode == ColorFilterMode::RGB ? "RGB" : "HSV");
+                             .arg(ctx.config->colorFilterMode == ColorFilterMode::RGB ? "RGB" : "HSV");
         } catch (const cv::Exception& ex) {
             qDebug() << "[ColorFilter] OpenCV错误:" << ex.what();
     Logger::instance()->error(QString("ColorFilter OpenCV错误: %1").arg(ex.what()));
@@ -444,7 +449,7 @@ static void detectLinesEDlines(const cv::Mat& src, std::vector<cv::Vec4f>& lines
 
 void StepLineDetect::run(PipelineContext &ctx)
     {
-        if (!cfg_ || !cfg_->enableLineDetect) return;
+        if (!ctx.config || !ctx.config->enableLineDetect) return;
         if (ctx.srcBgr.empty()) return;
 
         try {
@@ -457,15 +462,15 @@ void StepLineDetect::run(PipelineContext &ctx)
 
             std::vector<cv::Vec4f> lines;
 
-            if (cfg_->lineDetectAlgorithm == 0)
+            if (ctx.config->lineDetectAlgorithm == 0)
             {
-                detectLinesHoughP(edges, cfg_, lines);
+                detectLinesHoughP(edges, ctx.config, lines);
             }
-            else if (cfg_->lineDetectAlgorithm == 1)
+            else if (ctx.config->lineDetectAlgorithm == 1)
             {
                 detectLinesLSD(gray, lines);
             }
-            else if (cfg_->lineDetectAlgorithm == 2)
+            else if (ctx.config->lineDetectAlgorithm == 2)
             {
                 detectLinesEDlines(gray, lines);
             }
@@ -585,11 +590,11 @@ static double calculateReferenceLineAngle(const PipelineConfig* cfg)
 
 void StepReferenceLineFilter::run(PipelineContext& ctx)
 {
-    if (!cfg_ || !cfg_->enableReferenceLineMatch) {
+    if (!ctx.config || !ctx.config->enableReferenceLineMatch) {
         return;
     }
 
-    if (!cfg_->referenceLineValid) {
+    if (!ctx.config->referenceLineValid) {
         ctx.reason = "参考线未绘制";
         return;
     }
@@ -601,8 +606,8 @@ void StepReferenceLineFilter::run(PipelineContext& ctx)
     try {
         cv::Mat src = ctx.srcBgr;
 
-        cv::Point2f refStart = cfg_->referenceLineStart;
-        cv::Point2f refEnd = cfg_->referenceLineEnd;
+        cv::Point2f refStart = ctx.config->referenceLineStart;
+        cv::Point2f refEnd = ctx.config->referenceLineEnd;
 
         cv::Point2f lineDir = refEnd - refStart;
         double lineLength = cv::norm(lineDir);
@@ -613,7 +618,7 @@ void StepReferenceLineFilter::run(PipelineContext& ctx)
 
         cv::Point2f normal(-lineDir.y / lineLength, lineDir.x / lineLength);
 
-        double halfWidth = cfg_->searchRegionWidth / 2.0;
+        double halfWidth = ctx.config->searchRegionWidth / 2.0;
         cv::Point2f offset = normal * halfWidth;
 
         std::vector<cv::Point> searchRegion = {
@@ -638,24 +643,24 @@ void StepReferenceLineFilter::run(PipelineContext& ctx)
 
         std::vector<cv::Vec4f> allLines;
 
-        if (cfg_->lineDetectAlgorithm == 0) {
-            detectLinesHoughP(edges, cfg_, allLines);
-        } else if (cfg_->lineDetectAlgorithm == 1) {
+        if (ctx.config->lineDetectAlgorithm == 0) {
+            detectLinesHoughP(edges, ctx.config, allLines);
+        } else if (ctx.config->lineDetectAlgorithm == 1) {
             detectLinesLSD(maskedGray, allLines);
-        } else if (cfg_->lineDetectAlgorithm == 2) {
+        } else if (ctx.config->lineDetectAlgorithm == 2) {
             detectLinesEDlines(maskedGray, allLines);
         }
 
-        double refAngle = calculateReferenceLineAngle(cfg_);
+        double refAngle = calculateReferenceLineAngle(ctx.config);
 
         std::vector<cv::Vec4f> matchedLines;
         for (const auto& line : allLines) {
             if (isLineMatchingReference(line,
-                                        cfg_->referenceLineStart,
-                                        cfg_->referenceLineEnd,
+                                        ctx.config->referenceLineStart,
+                                        ctx.config->referenceLineEnd,
                                         refAngle,
-                                        cfg_->angleThreshold,
-                                        cfg_->distanceThreshold)) {
+                                        ctx.config->angleThreshold,
+                                        ctx.config->distanceThreshold)) {
                 matchedLines.push_back(line);
             }
         }
@@ -663,8 +668,8 @@ void StepReferenceLineFilter::run(PipelineContext& ctx)
         ctx.lineDetect = src.clone();
 
         cv::line(ctx.lineDetect,
-                 cfg_->referenceLineStart,
-                 cfg_->referenceLineEnd,
+                 ctx.config->referenceLineStart,
+                 ctx.config->referenceLineEnd,
                  cv::Scalar(0, 255, 255), 4, cv::LINE_AA);
 
         // 绘制所有匹配直线（洋红色）
@@ -697,8 +702,8 @@ void StepReferenceLineFilter::run(PipelineContext& ctx)
         ctx.reason = QString("参考线匹配: 找到 %1/%2 条匹配直线 (角度容差:%3°, 距离容差:%4px)")
                          .arg(matchedLines.size())
                          .arg(allLines.size())
-                         .arg(cfg_->angleThreshold)
-                         .arg(cfg_->distanceThreshold);
+                         .arg(ctx.config->angleThreshold)
+                         .arg(ctx.config->distanceThreshold);
 
         ctx.matchedLineCount = static_cast<int>(matchedLines.size());
         ctx.totalLineCount = static_cast<int>(allLines.size());

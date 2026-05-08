@@ -96,50 +96,16 @@ PipelineContext PipelineManager::execute(const cv::Mat& inputImage, const Pipeli
         return PipelineContext();
     }
 
-    // 标记后台Pipeline开始运行
+    // 标记后台Pipeline开始运行（用于reset安全）
     m_pipelineRunning.storeRelease(1);
 
-    // 标记是否需要发送重置相关信号（必须在锁外发送）
-    bool shouldEmitPipelineReset = false;
+    // 使用局部context，不共享可变状态
+    PipelineContext ctx;
+    ctx.srcBgr = inputImage;
+    ctx.config = &config;
 
     try {
-        QMutexLocker locker(&m_configMutex);
-
-        m_lastContext.srcBgr.release();
-        m_lastContext.channelImg.release();
-        m_lastContext.enhanced.release();
-        m_lastContext.mask.release();
-        m_lastContext.processed.release();
-        m_lastContext.regions.clear();
-        m_lastContext.currentRegions = 0;
-        m_lastContext.pass = true;
-        m_lastContext.reason.clear();
-
-        m_lastContext.srcBgr = inputImage;
-
-        PipelineConfig savedConfig = m_config;
-        m_config = config;
-        m_lastConfigSnapshot = config;
-
-        m_pipeline.run(m_lastContext);
-
-        m_config = savedConfig;
-
-        if (m_hasPendingConfig.loadAcquire()) {
-            m_config = m_pendingConfig;
-            m_lastConfigSnapshot = m_pendingConfig;
-            m_hasPendingConfig.storeRelease(0);
-        }
-
-        if (m_hasPendingReset.loadAcquire()) {
-            m_algorithmQueue.clear();
-            m_config.shapeFilter.clear();
-            m_displayMode = DisplayConfig::Mode::MaskGreenWhite;
-            m_overlayAlpha = AppConstants::DEFAULT_OVERLAY_ALPHA;
-            initPipeline();
-            m_hasPendingReset.storeRelease(0);
-            shouldEmitPipelineReset = true;
-        }
+        m_pipeline.run(ctx);
     } catch (const std::exception& ex) {
         qDebug() << "[PipelineManager] Pipeline执行异常:" << ex.what();
         Logger::instance()->error(QString("Pipeline执行异常: %1").arg(ex.what()));
@@ -152,42 +118,49 @@ PipelineContext PipelineManager::execute(const cv::Mat& inputImage, const Pipeli
         return PipelineContext();
     }
 
-    // 标记后台Pipeline运行结束
+    // 保存结果供UI线程快速读取
+    {
+        QMutexLocker locker(&m_contextMutex);
+        m_lastContext = ctx;
+    }
+
     m_pipelineRunning.storeRelease(0);
 
-    // 发送Pipeline重置信号（必须在锁外，避免死锁）
-    if (shouldEmitPipelineReset) {
+    // 处理延迟重置（execute执行期间UI线程请求的reset）
+    if (m_hasPendingReset.loadAcquire()) {
+        m_algorithmQueue.clear();
+        m_config.shapeFilter.clear();
+        m_displayMode = DisplayConfig::Mode::MaskGreenWhite;
+        m_overlayAlpha = AppConstants::DEFAULT_OVERLAY_ALPHA;
+        initPipeline();
+        m_hasPendingReset.storeRelease(0);
         emit pipelineReset();
         emit algorithmQueueChanged(0);
     }
 
-    // 发出完成信号（在锁外，避免死锁）
-    QString message = m_lastContext.reason.isEmpty()
+    QString message = ctx.reason.isEmpty()
                           ? "Pipeline执行完成"
-                          : m_lastContext.reason;
+                          : ctx.reason;
     emit pipelineFinished(message);
 
-    // 返回副本，避免多线程竞争
-    return m_lastContext;
+    return ctx;
 }
 
 // ========== 私有方法 ==========
 
 void PipelineManager::initPipeline()
 {
-    // 清空现有Pipeline
     m_pipeline = Pipeline();
 
-    // 按顺序添加处理步骤
-    m_pipeline.add(std::make_unique<StepColorChannel>(&m_config));
-    m_pipeline.add(std::make_unique<StepEnhance>(&m_config, m_processor.get()));
-    m_pipeline.add(std::make_unique<StepGrayFilter>(&m_config));
-    m_pipeline.add(std::make_unique<StepColorFilter>(&m_config, m_processor.get()));
+    m_pipeline.add(std::make_unique<StepColorChannel>());
+    m_pipeline.add(std::make_unique<StepEnhance>(m_processor.get()));
+    m_pipeline.add(std::make_unique<StepGrayFilter>());
+    m_pipeline.add(std::make_unique<StepColorFilter>(m_processor.get()));
     m_pipeline.add(std::make_unique<StepAlgorithmQueue>(m_processor.get(), &m_algorithmQueue));
-    m_pipeline.add(std::make_unique<StepShapeFilter>(&m_config));
-    m_pipeline.add(std::make_unique<StepLineDetect>(&m_config));
-    m_pipeline.add(std::make_unique<StepReferenceLineFilter>(&m_config));
-    m_pipeline.add(std::make_unique<StepBarcodeRecognition>(&m_config.barcode));
+    m_pipeline.add(std::make_unique<StepShapeFilter>());
+    m_pipeline.add(std::make_unique<StepLineDetect>());
+    m_pipeline.add(std::make_unique<StepReferenceLineFilter>());
+    m_pipeline.add(std::make_unique<StepBarcodeRecognition>());
 }
 
 void PipelineManager::setChannelMode(PipelineConfig::Channel channel)
@@ -256,7 +229,7 @@ PipelineConfig::FilterMode PipelineManager::getCurrentFilterMode() const
 
 cv::Mat PipelineManager::getLastDisplayWithMode(DisplayConfig::Mode mode) const
 {
-    QMutexLocker locker(&m_configMutex);
+    QMutexLocker locker(&m_contextMutex);
     if (m_lastContext.srcBgr.empty()) return cv::Mat();
 
     return DisplayRenderer::render(m_lastContext, mode);
@@ -264,7 +237,7 @@ cv::Mat PipelineManager::getLastDisplayWithMode(DisplayConfig::Mode mode) const
 
 bool PipelineManager::hasLastResult() const
 {
-    QMutexLocker locker(&m_configMutex);
+    QMutexLocker locker(&m_contextMutex);
     return !m_lastContext.srcBgr.empty();
 }
 

@@ -15,6 +15,7 @@
 struct PipelineContext
 {
     // 输入
+    const PipelineConfig* config = nullptr;  // 步骤从这里读取配置参数
     cv::Mat srcBgr;      // 原图(3通道)
     // 中间结果
     cv::Mat channelImg;  // 颜色通道输出（一般是灰度）

@@ -9,22 +9,17 @@
 class StepColorChannel:public IPipelineStep
 {
 public:
-    explicit StepColorChannel(const PipelineConfig* cfg) : cfg_(cfg) {}
-
     void run(PipelineContext &ctx) override;
-private:
-    const PipelineConfig* cfg_ = nullptr;
 };
 
 // 2) 增强参数
 class StepEnhance:public IPipelineStep
 {
 public:
-    StepEnhance(const PipelineConfig* cfg, ImageProcessor* proc) : cfg_(cfg), proc_(proc) {}
+    explicit StepEnhance(ImageProcessor* proc) : proc_(proc) {}
 
     void run(PipelineContext& ctx) override;
 private:
-    const PipelineConfig* cfg_ = nullptr;
     ImageProcessor* proc_ = nullptr;
 };
 
@@ -32,12 +27,7 @@ private:
 class StepGrayFilter : public IPipelineStep
 {
 public:
-    StepGrayFilter(const PipelineConfig* cfg) : cfg_(cfg) {}
-
     void run(PipelineContext& ctx) override;
-
-private:
-    const PipelineConfig* cfg_ = nullptr;
 };
 
 // 4) 算法队列
@@ -57,30 +47,23 @@ private:
 class StepShapeFilter : public IPipelineStep
 {
 public:
-    explicit StepShapeFilter(const PipelineConfig* cfg) : m_cfg(cfg) {}
-
     void run(PipelineContext& ctx) override;
 private:
     cv::Mat applyFilter(const cv::Mat& regions, const ShapeFilterConfig& config);
-    
-    cv::Mat applyFilterAnd(const cv::Mat& regions, const ShapeFilterConfig& config);
-    
-    cv::Mat applyFilterOr(const cv::Mat& regions, const ShapeFilterConfig& config);
 
-private:
-    const PipelineConfig* m_cfg = nullptr;
+    cv::Mat applyFilterAnd(const cv::Mat& regions, const ShapeFilterConfig& config);
+
+    cv::Mat applyFilterOr(const cv::Mat& regions, const ShapeFilterConfig& config);
 };
 
 // 颜色过滤步骤
 class StepColorFilter : public IPipelineStep
 {
 public:
-    StepColorFilter(const PipelineConfig* cfg, ImageProcessor* proc)
-        : m_cfg(cfg), m_processor(proc) {}
+    StepColorFilter(ImageProcessor* proc) : m_processor(proc) {}
 
     void run(PipelineContext& ctx) override;
 private:
-    const PipelineConfig* m_cfg;
     ImageProcessor* m_processor;
 };
 
@@ -88,21 +71,12 @@ private:
 class StepLineDetect : public IPipelineStep
 {
 public:
-    explicit StepLineDetect(const PipelineConfig* cfg) : cfg_(cfg) {}
-
     void run(PipelineContext &ctx) override;
-private:
-    const PipelineConfig* cfg_;
 };
 
 // 参考线匹配
 class StepReferenceLineFilter : public IPipelineStep
 {
 public:
-    explicit StepReferenceLineFilter(const PipelineConfig* cfg) : cfg_(cfg) {}
-
     void run(PipelineContext &ctx) override;
-private:
-    const PipelineConfig* cfg_ = nullptr;
 };
-

@@ -11,15 +11,14 @@
 class StepBarcodeRecognition : public IPipelineStep
 {
 public:
-    explicit StepBarcodeRecognition(const BarcodeConfig* config);
+    StepBarcodeRecognition();
     ~StepBarcodeRecognition();
-    
+
     void run(PipelineContext& ctx) override;
 
 private:
-    const BarcodeConfig* cfg_;
-    ZXingBarcodeReader reader_;  // ZXing条码读取器
-    
+    ZXingBarcodeReader reader_;
+
     bool is2DCode(const QString& codeType) const;
     QString convertBarcodeType(const QString& zxingType) const;
 };
