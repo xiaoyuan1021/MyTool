@@ -25,10 +25,9 @@
 struct TemplateEntry
 {
     QString templateName;        ///< 模板名称（如"螺丝A"、"标签B"）
-    QString templateImagePath;   // 模板图片相对路径（相对于方案目录）
-    QString templateJsonPath;    // 模板参数相对路径
-    cv::Mat templateImage;       // 模板图像（运行时加载，不序列化）
-    TemplateParams params;       // 模板匹配参数
+    QString templateFilePath;    ///< 模板文件相对路径（相对于方案目录）
+    cv::Mat templateImage;       ///< 模板图像（运行时加载，不序列化到 JSON）
+    TemplateParams params;       ///< 模板匹配参数
 
     TemplateEntry() : params() {
         params.matchMethod = 5; // TM_CCOEFF_NORMED 默认值
@@ -44,34 +43,38 @@ struct TemplateEntry
      * @param baseDir 方案根目录
      */
     bool load(const QString& baseDir) {
-        QString imgPath = baseDir + "/templates/" + templateName + ".png";
-        QString jsonPath = baseDir + "/templates/" + templateName + ".json";
+        QString tplPath = baseDir + "/templates/" + templateName + ".tpl";
 
-        // 加载图像
-        templateImage = cv::imread(imgPath.toStdString(), cv::IMREAD_COLOR);
-        if (templateImage.empty()) {
+        QFile file(tplPath);
+        if (!file.open(QIODevice::ReadOnly)) {
+            return false;
+        }
+        QByteArray data = file.readAll();
+        file.close();
+        if (data.isEmpty()) return false;
+
+        try {
+            cv::FileStorage fs(std::string(data.begin(), data.end()),
+                cv::FileStorage::READ | cv::FileStorage::MEMORY);
+            if (!fs.isOpened()) return false;
+
+            fs["templateImage"] >> templateImage;
+            if (templateImage.empty()) return false;
+
+            fs["matchMethod"] >> params.matchMethod;
+
+            params.polygonPoints.clear();
+            cv::FileNode pts = fs["polygonPoints"];
+            if (pts.type() == cv::FileNode::SEQ) {
+                for (const auto& pt : pts) {
+                    params.polygonPoints.append(QPointF(pt["x"], pt["y"]));
+                }
+            }
+        } catch (const cv::Exception&) {
             return false;
         }
 
-        // 加载参数
-        QFile file(jsonPath);
-        if (file.open(QIODevice::ReadOnly)) {
-            QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
-            QJsonObject obj = doc.object();
-            params.matchMethod = obj["matchMethod"].toInt(5);
-
-            params.polygonPoints.clear();
-            QJsonArray pts = obj["polygonPoints"].toArray();
-            for (const auto& pt : pts) {
-                QJsonObject ptObj = pt.toObject();
-                params.polygonPoints.append(QPointF(
-                    ptObj["x"].toDouble(), ptObj["y"].toDouble()));
-            }
-            file.close();
-        }
-
-        templateImagePath = "templates/" + templateName + ".png";
-        templateJsonPath = "templates/" + templateName + ".json";
+        templateFilePath = "templates/" + templateName + ".tpl";
         return true;
     }
 
@@ -80,57 +83,52 @@ struct TemplateEntry
      * @param baseDir 方案根目录
      */
     bool save(const QString& baseDir) {
+        if (templateImage.empty()) return false;
+
         QDir dir(baseDir);
         if (!dir.exists("templates")) {
             dir.mkpath("templates");
         }
 
-        QString imgPath = baseDir + "/templates/" + templateName + ".png";
-        QString jsonPath = baseDir + "/templates/" + templateName + ".json";
+        QString tplPath = baseDir + "/templates/" + templateName + ".tpl";
 
-        // 保存图像
-        if (!templateImage.empty()) {
-            if (!cv::imwrite(imgPath.toStdString(), templateImage)) {
-                return false;
+        try {
+            cv::FileStorage fs(".tpl",
+                cv::FileStorage::WRITE | cv::FileStorage::MEMORY | cv::FileStorage::FORMAT_YAML);
+
+            fs << "templateImage" << templateImage;
+            fs << "matchMethod" << params.matchMethod;
+
+            fs << "polygonPoints" << "[";
+            for (const auto& pt : params.polygonPoints) {
+                fs << "{:" << "x" << pt.x() << "y" << pt.y() << "}";
             }
-        }
+            fs << "]";
 
-        // 保存参数
-        QJsonObject obj;
-        obj["matchMethod"] = params.matchMethod;
+            std::string content = fs.releaseAndGetString();
 
-        QJsonArray pts;
-        for (const auto& pt : params.polygonPoints) {
-            QJsonObject ptObj;
-            ptObj["x"] = pt.x();
-            ptObj["y"] = pt.y();
-            pts.append(ptObj);
-        }
-        obj["polygonPoints"] = pts;
-
-        QFile file(jsonPath);
-        if (file.open(QIODevice::WriteOnly)) {
-            file.write(QJsonDocument(obj).toJson());
+            QFile file(tplPath);
+            if (!file.open(QIODevice::WriteOnly)) return false;
+            file.write(content.data(), content.size());
             file.close();
+        } catch (const cv::Exception&) {
+            return false;
         }
 
-        templateImagePath = "templates/" + templateName + ".png";
-        templateJsonPath = "templates/" + templateName + ".json";
+        templateFilePath = "templates/" + templateName + ".tpl";
         return true;
     }
 
     QJsonObject toJson() const {
         QJsonObject obj;
         obj["templateName"] = templateName;
-        obj["templateImagePath"] = templateImagePath;
-        obj["templateJsonPath"] = templateJsonPath;
+        obj["templateFilePath"] = templateFilePath;
         return obj;
     }
 
     void fromJson(const QJsonObject& obj) {
         templateName = obj["templateName"].toString();
-        templateImagePath = obj["templateImagePath"].toString();
-        templateJsonPath = obj["templateJsonPath"].toString();
+        templateFilePath = obj["templateFilePath"].toString();
     }
 };
 

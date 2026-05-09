@@ -47,8 +47,8 @@ public:
     virtual cv::Mat getTemplateImage() const =0 ;
     virtual QString getStrategyName() const =0;
     virtual bool hasTemplate() const= 0;
-    virtual bool saveTemplate(const QString& imagePath, const QString& jsonPath) const = 0;
-    virtual bool loadTemplate(const QString& imagePath, const QString& jsonPath) = 0;
+    virtual bool saveTemplate(const QString& filePath) const = 0;
+    virtual bool loadTemplate(const QString& filePath) = 0;
 };
 
 // ========== OpenCV Template Matching 策略 ==========
@@ -74,9 +74,9 @@ public:
     QString getStrategyName() const override { return "OpenCV TM"; }
     bool hasTemplate() const override { return m_hasTemplate; }
 
-    // 新增：保存和加载模板
-    bool saveTemplate(const QString& imagePath, const QString& jsonPath) const;
-    bool loadTemplate(const QString& imagePath, const QString& jsonPath);
+    // 保存和加载模板（.tpl 单文件，内含图像+参数）
+    bool saveTemplate(const QString& filePath) const;
+    bool loadTemplate(const QString& filePath);
 
 private:
     cv::Mat m_templateImage;

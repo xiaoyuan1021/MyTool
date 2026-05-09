@@ -2,6 +2,7 @@
 #include "ui_template_tab.h"
 #include "image_view.h"
 #include "logger.h"
+#include "image_utils.h"
 #include "widgets/batch_match_dialog.h"
 #include "core/profile_manager.h"
 #include "data/inspection_profile.h"
@@ -238,17 +239,13 @@ void TemplateTabWidget::saveTemplate()
     }
 
     // 选择保存位置
-    QString imagePath = QFileDialog::getSaveFileName(m_parent, "保存模板图像", "", "PNG Images (*.png)");
-    if (imagePath.isEmpty()) {
+    QString filePath = QFileDialog::getSaveFileName(m_parent, "保存模板", "", "模板文件 (*.tpl)");
+    if (filePath.isEmpty()) {
         return;
     }
 
-    // 生成对应的JSON文件路径
-    QString jsonPath = imagePath;
-    jsonPath.replace(".png", ".json");
-
     // 调用策略保存模板
-    if (m_currentStrategy->saveTemplate(imagePath, jsonPath)) {
+    if (m_currentStrategy->saveTemplate(filePath)) {
         QMessageBox::information(m_parent, "成功", "模板保存成功！");
     } else {
         QMessageBox::warning(m_parent, "失败", "模板保存失败，请查看日志");
@@ -257,25 +254,14 @@ void TemplateTabWidget::saveTemplate()
 
 void TemplateTabWidget::loadTemplate()
 {
-    // 选择要加载的模板图像
-    QString imagePath = QFileDialog::getOpenFileName(m_parent, "选择模板图像", "", "PNG Images (*.png)");
-    if (imagePath.isEmpty()) {
-        return;
-    }
-
-    // 生成对应的JSON文件路径
-    QString jsonPath = imagePath;
-    jsonPath.replace(".png", ".json");
-
-    // 检查JSON文件是否存在
-    QFile jsonFile(jsonPath);
-    if (!jsonFile.exists()) {
-        QMessageBox::warning(m_parent, "提示", "找不到对应的模板参数文件！");
+    // 选择要加载的模板文件
+    QString filePath = QFileDialog::getOpenFileName(m_parent, "选择模板文件", "", "模板文件 (*.tpl)");
+    if (filePath.isEmpty()) {
         return;
     }
 
     // 调用策略加载模板
-    if (m_currentStrategy->loadTemplate(imagePath, jsonPath)) {
+    if (m_currentStrategy->loadTemplate(filePath)) {
         updateUIState(true);
         QMessageBox::information(m_parent, "成功", "模板加载成功！");
     } else {
@@ -500,10 +486,19 @@ void TemplateTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
                                        std::function<void()> processAndDisplay)
 {
     Q_UNUSED(pm); Q_UNUSED(roiCtrl); Q_UNUSED(requestRefresh);
+    Q_UNUSED(processAndDisplay);
     connect(this, &TemplateTabWidget::imageToShow,
-            this, [processAndDisplay](const cv::Mat& img) { processAndDisplay(); });
+            this, [this](const cv::Mat& img) {
+                if (!img.empty() && m_view) {
+                    m_view->setImage(ImageUtils::matToQImage(img));
+                }
+            });
     connect(this, &TemplateTabWidget::requestShowImage,
-            this, [processAndDisplay](const cv::Mat& img) { processAndDisplay(); });
+            this, [this](const cv::Mat& img) {
+                if (!img.empty() && m_view) {
+                    m_view->setImage(ImageUtils::matToQImage(img));
+                }
+            });
     connect(this, &TemplateTabWidget::templateCreated,
             this, [](const QString& n) {
                 Logger::instance()->info(QString("模板已创建: %1").arg(n));

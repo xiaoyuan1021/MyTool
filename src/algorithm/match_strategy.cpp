@@ -1,12 +1,8 @@
 #include "match_strategy.h"
 #include "logger.h"
 #include "image_utils.h"
-#include "utils/path_utils.h"
 #include <QCoreApplication>
 #include <QFile>
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QJsonArray>
 
 MatchStrategy::MatchStrategy() {}
 
@@ -264,7 +260,7 @@ cv::Mat OpenCVMatchStrategy::extractTemplateROI(const cv::Mat& image,
     return roi;
 }
 
-bool OpenCVMatchStrategy::saveTemplate(const QString& imagePath, const QString& jsonPath) const
+bool OpenCVMatchStrategy::saveTemplate(const QString& filePath) const
 {
     if (!m_hasTemplate || m_templateImage.empty()) {
         Logger::instance()->error("没有可用的模板数据");
@@ -272,36 +268,31 @@ bool OpenCVMatchStrategy::saveTemplate(const QString& imagePath, const QString& 
     }
 
     try {
-        // 保存模板图像（使用 PathUtils 支持中文路径）
-        if (!PathUtils::writeImageToFile(imagePath, m_templateImage)) {
-            Logger::instance()->error("保存模板图像失败: " + imagePath);
-            return false;
+        // 使用 cv::FileStorage + MEMORY 模式序列化到内存字符串
+        cv::FileStorage fs(".tpl",
+            cv::FileStorage::WRITE | cv::FileStorage::MEMORY | cv::FileStorage::FORMAT_YAML);
+
+        fs << "templateImage" << m_templateImage;
+        fs << "matchMethod" << m_matchMethod;
+
+        fs << "polygonPoints" << "[";
+        for (const QPointF& pt : m_polygonPoints) {
+            fs << "{:" << "x" << pt.x() << "y" << pt.y() << "}";
         }
+        fs << "]";
 
-        // 保存多边形点坐标到JSON
-        QJsonArray pointsArray;
-        for (const QPointF& point : m_polygonPoints) {
-            QJsonArray pointArray;
-            pointArray.append(point.x());
-            pointArray.append(point.y());
-            pointsArray.append(pointArray);
-        }
+        std::string content = fs.releaseAndGetString();
 
-        QJsonObject json;
-        json["polygonPoints"] = pointsArray;
-        json["matchMethod"] = m_matchMethod;
-
-        QFile file(jsonPath);
+        // 通过 Qt QFile 写出（支持中文路径）
+        QFile file(filePath);
         if (!file.open(QIODevice::WriteOnly)) {
-            Logger::instance()->error("保存模板参数文件失败: " + jsonPath);
+            Logger::instance()->error("保存模板文件失败: " + filePath);
             return false;
         }
-
-        QJsonDocument doc(json);
-        file.write(doc.toJson());
+        file.write(content.data(), content.size());
         file.close();
 
-        Logger::instance()->info("模板保存成功: " + imagePath);
+        Logger::instance()->info("模板保存成功: " + filePath);
         return true;
 
     } catch (const cv::Exception& ex) {
@@ -310,48 +301,53 @@ bool OpenCVMatchStrategy::saveTemplate(const QString& imagePath, const QString& 
     }
 }
 
-bool OpenCVMatchStrategy::loadTemplate(const QString& imagePath, const QString& jsonPath)
+bool OpenCVMatchStrategy::loadTemplate(const QString& filePath)
 {
     try {
-        // 加载模板图像（使用 PathUtils 支持中文路径）
-        m_templateImage = PathUtils::readImageFromFile(imagePath);
-        if (m_templateImage.empty()) {
-            Logger::instance()->error("加载模板图像失败: " + imagePath);
-            return false;
-        }
-
-        // 加载多边形点坐标
-        QFile file(jsonPath);
+        // 通过 Qt QFile 读取（支持中文路径）
+        QFile file(filePath);
         if (!file.open(QIODevice::ReadOnly)) {
-            Logger::instance()->error("加载模板参数文件失败: " + jsonPath);
+            Logger::instance()->error("加载模板文件失败: " + filePath);
             return false;
         }
-
-        QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+        QByteArray data = file.readAll();
         file.close();
 
-        if (!doc.isObject()) {
-            Logger::instance()->error("模板参数文件格式错误: " + jsonPath);
+        if (data.isEmpty()) {
+            Logger::instance()->error("模板文件为空: " + filePath);
             return false;
         }
 
-        QJsonObject json = doc.object();
-        
+        // 从内存字符串反序列化
+        cv::FileStorage fs(std::string(data.begin(), data.end()),
+            cv::FileStorage::READ | cv::FileStorage::MEMORY);
+
+        if (!fs.isOpened()) {
+            Logger::instance()->error("模板文件格式错误: " + filePath);
+            return false;
+        }
+
+        fs["templateImage"] >> m_templateImage;
+        if (m_templateImage.empty()) {
+            Logger::instance()->error("模板文件中没有有效的图像数据");
+            return false;
+        }
+
+        fs["matchMethod"] >> m_matchMethod;
+
         // 读取多边形点
         m_polygonPoints.clear();
-        QJsonArray pointsArray = json["polygonPoints"].toArray();
-        for (int i = 0; i < pointsArray.size(); ++i) {
-            QJsonArray pointArray = pointsArray[i].toArray();
-            if (pointArray.size() == 2) {
-                m_polygonPoints.append(QPointF(pointArray[0].toDouble(), pointArray[1].toDouble()));
+        cv::FileNode pts = fs["polygonPoints"];
+        if (pts.type() == cv::FileNode::SEQ) {
+            for (const auto& pt : pts) {
+                double x = pt["x"];
+                double y = pt["y"];
+                m_polygonPoints.append(QPointF(x, y));
             }
         }
 
-        // 读取匹配方法
-        m_matchMethod = json["matchMethod"].toInt(cv::TM_CCOEFF_NORMED);
-
         m_hasTemplate = true;
-        Logger::instance()->info("模板加载成功: " + imagePath);
+        Logger::instance()->info("模板加载成功: " + filePath);
         return true;
 
     } catch (const cv::Exception& ex) {
