@@ -1,6 +1,7 @@
 #include "widgets/batch_match_dialog.h"
 #include "roi_manager.h"
 #include "logger.h"
+#include "utils/path_utils.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QHeaderView>
@@ -215,7 +216,7 @@ BatchMatchItem BatchMatchDialog::processSingleImage(const QString& imageId)
         // 加载图片：优先从文件加载，失败则从RoiManager内存中获取
         cv::Mat img;
         if (!result.imagePath.isEmpty()) {
-            img = cv::imread(result.imagePath.toStdString());
+            img = PathUtils::readImageFromFile(result.imagePath, cv::IMREAD_COLOR);
         }
         if (img.empty()) {
             img = m_roiManager->getImage(imageId);

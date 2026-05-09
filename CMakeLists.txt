@@ -42,6 +42,7 @@ set(INCLUDE_DIRS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/ui
     ${CMAKE_CURRENT_SOURCE_DIR}/include/widgets
     ${CMAKE_CURRENT_SOURCE_DIR}/include/controllers
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/utils
 )
 
 # ============================================================

@@ -1,6 +1,7 @@
 #include "widgets/image_list_manager.h"
 #include "logger.h"
 #include "image_utils.h"
+#include "utils/path_utils.h"
 
 ImageListManager::ImageListManager(
     RoiManager& roiManager,
@@ -54,7 +55,7 @@ void ImageListManager::onAddClicked()
         return;
     }
 
-    cv::Mat img = cv::imread(fileName.toStdString());
+    cv::Mat img = PathUtils::readImageFromFile(fileName, cv::IMREAD_COLOR);
     if (img.empty()) {
         QMessageBox::warning(m_parentWidget, "错误", "无法加载图片文件");
         return;

@@ -2,6 +2,7 @@
 #include "logger.h"
 #include "image_view.h"
 #include "algorithm/image_utils.h"
+#include "utils/path_utils.h"
 #include <QStatusBar>
 #include <QDebug>
 #include <QDir>
@@ -198,7 +199,7 @@ QStringList RoiManager::importImagesFromFolder(const QString& dirPath, const QSt
 
         emit folderImportProgress(i + 1, total, fi.fileName());
 
-        cv::Mat img = cv::imread(filePath.toStdString());
+        cv::Mat img = PathUtils::readImageFromFile(filePath, cv::IMREAD_COLOR);
         if (img.empty()) {
             Logger::instance()->warning(QString("[RoiManager] 跳过无法加载的图片: %1").arg(filePath));
             continue;

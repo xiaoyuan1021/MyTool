@@ -1,6 +1,7 @@
 #include "file_manager.h"
 #include "pipeline_manager.h"
 #include "logger.h"
+#include "utils/path_utils.h"
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QCoreApplication>
@@ -34,7 +35,7 @@ void FileManager::readImageFile(const QString& filePath)
     }
 
     try {
-        cv::Mat img = cv::imread(filePath.toStdString());
+        cv::Mat img = PathUtils::readImageFromFile(filePath);
         if (img.empty()) {
             emit errorOccurred(QString("无法读取图像文件: %1").arg(filePath));
             return;
@@ -66,7 +67,7 @@ bool FileManager::saveImageFile(const QString& filePath, const cv::Mat& image)
     }
 
     try {
-        bool success = cv::imwrite(filePath.toStdString(), image);
+        bool success = PathUtils::writeImageToFile(filePath, image);
         if (success) {
             emit imageSaved(filePath);
             return true;

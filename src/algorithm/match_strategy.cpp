@@ -1,6 +1,7 @@
 #include "match_strategy.h"
 #include "logger.h"
 #include "image_utils.h"
+#include "utils/path_utils.h"
 #include <QCoreApplication>
 #include <QFile>
 #include <QJsonDocument>
@@ -271,8 +272,8 @@ bool OpenCVMatchStrategy::saveTemplate(const QString& imagePath, const QString& 
     }
 
     try {
-        // 保存模板图像
-        if (!cv::imwrite(imagePath.toStdString(), m_templateImage)) {
+        // 保存模板图像（使用 PathUtils 支持中文路径）
+        if (!PathUtils::writeImageToFile(imagePath, m_templateImage)) {
             Logger::instance()->error("保存模板图像失败: " + imagePath);
             return false;
         }
@@ -312,8 +313,8 @@ bool OpenCVMatchStrategy::saveTemplate(const QString& imagePath, const QString& 
 bool OpenCVMatchStrategy::loadTemplate(const QString& imagePath, const QString& jsonPath)
 {
     try {
-        // 加载模板图像
-        m_templateImage = cv::imread(imagePath.toStdString());
+        // 加载模板图像（使用 PathUtils 支持中文路径）
+        m_templateImage = PathUtils::readImageFromFile(imagePath);
         if (m_templateImage.empty()) {
             Logger::instance()->error("加载模板图像失败: " + imagePath);
             return false;

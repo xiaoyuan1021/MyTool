@@ -1,5 +1,6 @@
 #include "controllers/config_controller.h"
 #include "logger.h"
+#include "utils/path_utils.h"
 #include "widgets/enhance_tab_widget.h"
 #include "widgets/filter_tab_widget.h"
 #include "widgets/extract_tab_widget.h"
@@ -178,7 +179,7 @@ void ConfigController::applyConfigToUI(const AppConfig& config)
         
         int loadedCount = 0;
         for (const QString& filePath : config.imageFilePaths) {
-            cv::Mat img = cv::imread(filePath.toStdString());
+            cv::Mat img = PathUtils::readImageFromFile(filePath, cv::IMREAD_COLOR);
             if (img.empty()) {
                 Logger::instance()->warning(QString("无法加载图片: %1").arg(filePath));
                 continue;

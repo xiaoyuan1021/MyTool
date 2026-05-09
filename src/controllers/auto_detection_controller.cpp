@@ -1,5 +1,6 @@
 #include "controllers/auto_detection_controller.h"
 #include "logger.h"
+#include "utils/path_utils.h"
 #include "config/detection_config_types.h"
 #include "algorithm/image_utils.h"
 #include <QFileInfo>
@@ -219,8 +220,8 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
 
             Logger::instance()->info(QString("[检测] 开始处理图片: %1").arg(imagePath));
 
-            // 加载图片
-            cv::Mat image = cv::imread(imagePath.toStdString());
+            // 加载图片（使用 PathUtils 支持中文路径）
+            cv::Mat image = PathUtils::readImageFromFile(imagePath, cv::IMREAD_COLOR);
             if (image.empty()) {
                 Logger::instance()->error(QString("[检测] 无法加载图片: %1").arg(imagePath));
                 PipelineContext emptyCtx;

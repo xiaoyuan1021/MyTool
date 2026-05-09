@@ -2,6 +2,7 @@
 #include "ui_batch_detection_tab.h"
 #include "roi_manager.h"
 #include "core/pipeline_manager.h"
+#include "utils/path_utils.h"
 #include "core/profile_manager.h"
 #include "data/inspection_profile.h"
 #include "data/detection_result_report.h"
@@ -288,7 +289,7 @@ void BatchDetectionWidget::processNextImage()
                     return emptyCtx;
                 }
 
-                cv::Mat image = cv::imread(imagePath.toStdString());
+                cv::Mat image = PathUtils::readImageFromFile(imagePath, cv::IMREAD_COLOR);
                 if (image.empty()) {
                     PipelineContext emptyCtx;
                     emptyCtx.pass = false;
