@@ -7,7 +7,7 @@ int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
     MainWindow w;
-    w.setWindowTitle("Vision_Tool");
+    w.setWindowTitle("EdgeVision——让智能视觉检测触手可及");
     w.setWindowIcon(QIcon(":/icons/keji.png"));
     w.show();
     return a.exec();
