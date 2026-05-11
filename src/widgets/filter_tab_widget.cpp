@@ -2,6 +2,7 @@
 #include "ui_filter_tab.h"
 #include "logger.h"
 #include "config/constants.h"
+#include "config/config_manager.h"
 #include "ui/slider_spinbox_binder.h"
 #include <QDebug>
 
@@ -292,4 +293,16 @@ void FilterTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
     Q_UNUSED(pm); Q_UNUSED(rm); Q_UNUSED(view); Q_UNUSED(roiCtrl); Q_UNUSED(processAndDisplay);
     connect(this, &FilterTabWidget::filterConfigChanged,
             this, [requestRefresh]() { requestRefresh(); });
+}
+
+// ========== IConfigurableTab 接口实现 ==========
+
+void FilterTabWidget::saveToConfig(AppConfig& config) const
+{
+    getFilterConfig(config.filterMode, config.grayLow, config.grayHigh);
+}
+
+void FilterTabWidget::loadFromConfig(const AppConfig& config)
+{
+    setFilterConfig(config.filterMode, config.grayLow, config.grayHigh);
 }

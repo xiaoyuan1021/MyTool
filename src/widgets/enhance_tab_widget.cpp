@@ -1,6 +1,7 @@
 #include "enhance_tab_widget.h"
 #include "ui_enhance_tab.h"
 #include "config/constants.h"
+#include "config/config_manager.h"
 #include "ui/slider_spinbox_binder.h"
 #include "controllers/roi_ui_controller.h"
 
@@ -258,4 +259,16 @@ void EnhanceTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
             this, [requestRefresh]() { requestRefresh(); });
     connect(this, &EnhanceTabWidget::enhanceConfigChanged,
             this, [roiCtrl]() { roiCtrl->saveCurrentRoiPipelineConfig(); });
+}
+
+// ========== IConfigurableTab 接口实现 ==========
+
+void EnhanceTabWidget::saveToConfig(AppConfig& config) const
+{
+    getEnhanceConfig(config.brightness, config.contrast, config.gamma, config.sharpen);
+}
+
+void EnhanceTabWidget::loadFromConfig(const AppConfig& config)
+{
+    setEnhanceConfig(config.brightness, config.contrast, config.gamma, config.sharpen);
 }

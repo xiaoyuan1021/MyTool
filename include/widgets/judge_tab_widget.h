@@ -3,12 +3,13 @@
 #include <QWidget>
 #include "pipeline_manager.h"
 #include "widgets/i_signal_connectable.h"
+#include "widgets/i_configurable_tab.h"
 
 namespace Ui {
     class Form_Judge;
 }
 
-class JudgeTabWidget : public QWidget, public ISignalConnectable
+class JudgeTabWidget : public QWidget, public ISignalConnectable, public IConfigurableTab
 {
     Q_OBJECT
 
@@ -19,6 +20,10 @@ public:
 
     void getJudgeConfig(int& minCount, int& maxCount, int& currentCount) const;
     void setJudgeConfig(int minCount, int maxCount, int currentCount);
+
+    // IConfigurableTab 接口实现
+    void saveToConfig(AppConfig& config) const override;
+    void loadFromConfig(const AppConfig& config) override;
 
     void connectSignals(PipelineManager* pm, RoiManager* rm,
                         ImageView* view, RoiUiController* roiCtrl,

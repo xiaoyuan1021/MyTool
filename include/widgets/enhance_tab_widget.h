@@ -4,6 +4,7 @@
 #include "pipeline_manager.h"
 #include "pipeline.h"
 #include "widgets/i_signal_connectable.h"
+#include "widgets/i_configurable_tab.h"
 #include <QObject>
 #include <QStack>
 #include <QTimer>
@@ -16,7 +17,7 @@ namespace Ui {
 class EnhanceTabWidget;
 }
 
-class EnhanceTabWidget : public QWidget, public ISignalConnectable {
+class EnhanceTabWidget : public QWidget, public ISignalConnectable, public IConfigurableTab {
     Q_OBJECT
 
 public:
@@ -26,6 +27,10 @@ public:
     // 配置管理
     void getEnhanceConfig(int& brightness, int& contrast, int& gamma, int& sharpen) const;
     void setEnhanceConfig(int brightness, int contrast, int gamma, int sharpen);
+
+    // IConfigurableTab 接口实现
+    void saveToConfig(AppConfig& config) const override;
+    void loadFromConfig(const AppConfig& config) override;
 
     void connectSignals(PipelineManager* pm, RoiManager* rm,
                         ImageView* view, RoiUiController* roiCtrl,

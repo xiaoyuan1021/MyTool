@@ -4,13 +4,15 @@
 #include <functional>
 #include "pipeline_manager.h"
 #include "widgets/i_signal_connectable.h"
+#include "widgets/i_configurable_tab.h"
+#include "widgets/i_tab_initializable.h"
 
 namespace Ui
 {
 class BarcodeTabForm;
 }
 
-class BarcodeTabWidget : public QWidget, public ISignalConnectable
+class BarcodeTabWidget : public QWidget, public ISignalConnectable, public IConfigurableTab, public ITabInitializable
 {
     Q_OBJECT
 
@@ -31,6 +33,13 @@ public:
 
     // 从UI获取配置
     BarcodeConfig getBarcodeConfig() const;
+
+    // IConfigurableTab 接口实现
+    void saveToConfig(AppConfig& config) const override;
+    void loadFromConfig(const AppConfig& config) override;
+
+    // ITabInitializable 接口实现
+    void initializeTab(const TabInitContext& ctx) override;
 
     void connectSignals(PipelineManager* pm, RoiManager* rm,
                         ImageView* view, RoiUiController* roiCtrl,

@@ -1,6 +1,7 @@
 #include "judge_tab_widget.h"
 #include "ui_judge_tab.h"
 #include "controllers/roi_ui_controller.h"
+#include "config/config_manager.h"
 #include <QMessageBox>
 #include <QSignalBlocker>
 
@@ -94,4 +95,16 @@ void JudgeTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
     Q_UNUSED(pm); Q_UNUSED(rm); Q_UNUSED(view); Q_UNUSED(requestRefresh); Q_UNUSED(processAndDisplay);
     connect(this, &JudgeTabWidget::judgeConfigChanged,
             roiCtrl, &RoiUiController::updateBlobDetectionConfig);
+}
+
+// ========== IConfigurableTab 接口实现 ==========
+
+void JudgeTabWidget::saveToConfig(AppConfig& config) const
+{
+    getJudgeConfig(config.minRegionCount, config.maxRegionCount, config.currentRegionCount);
+}
+
+void JudgeTabWidget::loadFromConfig(const AppConfig& config)
+{
+    setJudgeConfig(config.minRegionCount, config.maxRegionCount, config.currentRegionCount);
 }

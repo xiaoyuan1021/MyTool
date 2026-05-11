@@ -46,32 +46,167 @@ set(INCLUDE_DIRS
 )
 
 # ============================================================
-# 源文件收集
+# 源文件收集（显式列出，新增文件时需手动添加）
 # ============================================================
-file(GLOB HEADERS
-    include/*.h
-    include/core/*.h
-    include/algorithm/*.h
-    include/config/*.h
-    include/data/*.h
-    include/ui/*.h
-    include/widgets/*.h
-    include/controllers/*.h
+set(HEADERS
+    # core
+    include/core/logger.h
+    include/core/mqtt_client.h
+    include/core/mqtt_manager.h
+    include/core/pipeline.h
+    include/core/pipeline_manager.h
+    include/core/pipeline_steps.h
+    include/core/pipeline_types.h
+    include/core/profile_manager.h
+    include/core/roi_manager.h
+    include/core/video_manager.h
+    # algorithm
+    include/algorithm/dnn_inference.h
+    include/algorithm/image_processor.h
+    include/algorithm/image_utils.h
+    include/algorithm/match_strategy.h
+    include/algorithm/opencv_algorithm.h
+    include/algorithm/ort_inference.h
+    include/algorithm/zxing_barcode_reader.h
+    # config
+    include/config/config_manager.h
+    include/config/constants.h
+    include/config/detection_config_types.h
+    include/config/detection_item.h
+    include/config/detection_type.h
+    include/config/display_config.h
+    include/config/filter_condition.h
+    include/config/json_serializable.h
+    include/config/mqtt_config.h
+    include/config/pipeline_config.h
+    include/config/pipeline_config_mapper.h
+    include/config/roi_config.h
+    include/config/shape_feature.h
+    include/config/shape_filter_config.h
+    include/config/shape_filter_types.h
+    include/config/tab_config.h
+    include/config/vision_inspection_config.h
+    # data
+    include/data/barcode_result.h
+    include/data/detection_result_report.h
+    include/data/inspection_profile.h
+    include/data/region_feature.h
+    include/data/roi_item.h
+    # ui
+    include/ui/barcode_step.h
+    include/ui/cloud_dashboard_manager.h
+    include/ui/display_mode_manager.h
+    include/ui/display_renderer.h
+    include/ui/file_manager.h
+    include/ui/image_view.h
+    include/ui/log_page.h
+    include/ui/mainwindow.h
+    include/ui/pipeline_result_handler.h
+    include/ui/signal_connector.h
+    include/ui/slider_spinbox_binder.h
+    include/ui/system_monitor.h
+    include/ui/toast_notification.h
+    # widgets
+    include/widgets/barcode_tab_widget.h
+    include/widgets/batch_detection_widget.h
+    include/widgets/batch_match_dialog.h
+    include/widgets/enhance_tab_widget.h
+    include/widgets/extract_tab_widget.h
+    include/widgets/filter_tab_widget.h
+    include/widgets/i_configurable_tab.h
+    include/widgets/i_signal_connectable.h
+    include/widgets/i_tab_initializable.h
+    include/widgets/image_list_manager.h
+    include/widgets/image_tab_widget.h
+    include/widgets/judge_tab_widget.h
+    include/widgets/line_tab_widget.h
+    include/widgets/object_detection_tab_widget.h
+    include/widgets/process_tab_widget.h
+    include/widgets/profile_tab_widget.h
+    include/widgets/roi_detection_config_dialog.h
+    include/widgets/roi_list_widget.h
+    include/widgets/tab_manager.h
+    include/widgets/template_tab_widget.h
+    include/widgets/video_source_widget.h
+    include/widgets/video_tab_widget.h
+    # controllers
+    include/controllers/auto_detection_controller.h
+    include/controllers/config_controller.h
+    include/controllers/detection_ui_controller.h
+    include/controllers/profile_controller.h
+    include/controllers/roi_ui_controller.h
+    # utils
+    include/utils/path_utils.h
 )
 
-file(GLOB SOURCES
-    src/*.cpp
-    src/core/*.cpp
-    src/algorithm/*.cpp
-    src/config/*.cpp
-    src/ui/*.cpp
-    src/widgets/*.cpp
-    src/controllers/*.cpp
+set(SOURCES
+    src/main.cpp
+    # core
+    src/core/logger.cpp
+    src/core/mqtt_client.cpp
+    src/core/mqtt_manager.cpp
+    src/core/pipeline.cpp
+    src/core/pipeline_manager.cpp
+    src/core/pipeline_steps.cpp
+    src/core/profile_manager.cpp
+    src/core/roi_manager.cpp
+    src/core/video_manager.cpp
+    # algorithm
+    src/algorithm/dnn_inference.cpp
+    src/algorithm/image_processor.cpp
+    src/algorithm/image_utils.cpp
+    src/algorithm/match_strategy.cpp
+    src/algorithm/opencv_algorithm.cpp
+    src/algorithm/ort_inference.cpp
+    src/algorithm/zxing_barcode_reader.cpp
+    # config
+    src/config/config_manager.cpp
+    src/config/pipeline_config_mapper.cpp
+    # ui
+    src/ui/barcode_step.cpp
+    src/ui/cloud_dashboard_manager.cpp
+    src/ui/display_mode_manager.cpp
+    src/ui/display_renderer.cpp
+    src/ui/file_manager.cpp
+    src/ui/image_view.cpp
+    src/ui/log_page.cpp
+    src/ui/mainwindow.cpp
+    src/ui/pipeline_result_handler.cpp
+    src/ui/signal_connector.cpp
+    src/ui/system_monitor.cpp
+    src/ui/toast_notification.cpp
+    # widgets
+    src/widgets/barcode_tab_widget.cpp
+    src/widgets/batch_detection_widget.cpp
+    src/widgets/batch_match_dialog.cpp
+    src/widgets/enhance_tab_widget.cpp
+    src/widgets/extract_tab_widget.cpp
+    src/widgets/filter_tab_widget.cpp
+    src/widgets/image_list_manager.cpp
+    src/widgets/image_tab_widget.cpp
+    src/widgets/judge_tab_widget.cpp
+    src/widgets/line_tab_widget.cpp
+    src/widgets/object_detection_tab_widget.cpp
+    src/widgets/process_tab_widget.cpp
+    src/widgets/profile_tab_widget.cpp
+    src/widgets/roi_detection_config_dialog.cpp
+    src/widgets/roi_list_widget.cpp
+    src/widgets/tab_manager.cpp
+    src/widgets/template_tab_widget.cpp
+    src/widgets/video_source_widget.cpp
+    src/widgets/video_tab_widget.cpp
+    # controllers
+    src/controllers/auto_detection_controller.cpp
+    src/controllers/config_controller.cpp
+    src/controllers/detection_ui_controller.cpp
+    src/controllers/profile_controller.cpp
+    src/controllers/roi_ui_controller.cpp
 )
 
-file(GLOB FORMS
-    ui/*.ui
-    ui/tabs/*.ui
+set(FORMS
+    ui/mainwindow.ui
+    ui/home_page.ui
+    ui/log_page.ui
 )
 
 # 资源文件 (RESOURCES)

@@ -86,12 +86,17 @@ private:
     void setupBasicInfrastructure();
     void setupManagers();
     void setupControllers();
+    void setupControllerConnections();
+    void setupTabRegistration();
     void setupResultHandler();
     void setupMqtt();
     void setupUI();
     void setupConnections();
 
     void ensureTabExists(const QString& tabName);
+
+    /// 安全停止视频（析构时调用，防止定时器回调访问已销毁的成员）
+    void stopAllAsyncOperations();
 
     Ui::MainWindow *ui;
     ImageView *m_view = nullptr;

@@ -7,6 +7,7 @@
 #include <opencv2/opencv.hpp>
 #include "../algorithm/match_strategy.h"
 #include "widgets/i_signal_connectable.h"
+#include "widgets/i_tab_initializable.h"
 
 namespace Ui
 {
@@ -24,7 +25,7 @@ enum class MatchType
     OpenCVTM
 };
 
-class TemplateTabWidget : public QWidget, public ISignalConnectable
+class TemplateTabWidget : public QWidget, public ISignalConnectable, public ITabInitializable
 {
     Q_OBJECT
 public:
@@ -52,6 +53,9 @@ public:
 
     // 方案模板操作
     void setProfileManager(ProfileManager* pm) { m_profileManager = pm; }
+
+    // ITabInitializable 接口实现
+    void initializeTab(const TabInitContext& ctx) override;
     void saveTemplateToProfile();
     void loadTemplateFromProfile();
 

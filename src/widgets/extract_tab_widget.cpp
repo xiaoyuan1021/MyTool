@@ -2,6 +2,7 @@
 #include "ui_extract_tab.h"
 #include "algorithm/opencv_algorithm.h"
 #include "logger.h"
+#include "config/config_manager.h"
 #include <QMessageBox>
 #include <QListWidgetItem>
 
@@ -346,4 +347,16 @@ void ExtractTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
     Q_UNUSED(pm); Q_UNUSED(rm); Q_UNUSED(view); Q_UNUSED(roiCtrl); Q_UNUSED(processAndDisplay);
     connect(this, &ExtractTabWidget::extractionChanged,
             this, [requestRefresh]() { requestRefresh(); });
+}
+
+// ========== IConfigurableTab 接口实现 ==========
+
+void ExtractTabWidget::saveToConfig(AppConfig& config) const
+{
+    getExtractConfig(config.shapeFilterConfig);
+}
+
+void ExtractTabWidget::loadFromConfig(const AppConfig& config)
+{
+    setExtractConfig(config.shapeFilterConfig);
 }

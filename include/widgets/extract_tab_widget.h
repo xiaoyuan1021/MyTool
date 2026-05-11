@@ -5,13 +5,14 @@
 #include "image_view.h"
 #include <QListWidgetItem>
 #include "widgets/i_signal_connectable.h"
+#include "widgets/i_configurable_tab.h"
 
 namespace Ui
 {
 class ExtractTabForm;
 }
 
-class ExtractTabWidget : public QWidget, public ISignalConnectable
+class ExtractTabWidget : public QWidget, public ISignalConnectable, public IConfigurableTab
 {
     Q_OBJECT
 public:
@@ -25,6 +26,10 @@ public:
     void getExtractConfig(ShapeFilterConfig& config) const;
     void setExtractConfig(const ShapeFilterConfig& config);
     void saveCurrentFilterCondition();
+
+    // IConfigurableTab 接口实现
+    void saveToConfig(AppConfig& config) const override;
+    void loadFromConfig(const AppConfig& config) override;
 
     void connectSignals(PipelineManager* pm, RoiManager* rm,
                         ImageView* view, RoiUiController* roiCtrl,

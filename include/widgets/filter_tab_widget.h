@@ -4,12 +4,13 @@
 #include <QTimer>
 #include "pipeline_manager.h"
 #include "widgets/i_signal_connectable.h"
+#include "widgets/i_configurable_tab.h"
 
 namespace Ui {
 class FilterTabWidget;
 }
 
-class FilterTabWidget : public QWidget, public ISignalConnectable {
+class FilterTabWidget : public QWidget, public ISignalConnectable, public IConfigurableTab {
     Q_OBJECT
 
 public:
@@ -18,6 +19,10 @@ public:
 
     void getFilterConfig(int& mode, int& grayLow, int& grayHigh) const;
     void setFilterConfig(int mode, int grayLow, int grayHigh);
+
+    // IConfigurableTab 接口实现
+    void saveToConfig(AppConfig& config) const override;
+    void loadFromConfig(const AppConfig& config) override;
 
     void connectSignals(PipelineManager* pm, RoiManager* rm,
                         ImageView* view, RoiUiController* roiCtrl,

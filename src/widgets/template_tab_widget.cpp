@@ -467,6 +467,15 @@ void TemplateTabWidget::onLoadFromProfileClicked()
     loadTemplateFromProfile();
 }
 
+// ========== ITabInitializable 接口实现 ==========
+
+void TemplateTabWidget::initializeTab(const TabInitContext& ctx)
+{
+    if (ctx.profileManager) {
+        setProfileManager(ctx.profileManager);
+    }
+}
+
 void TemplateTabWidget::updateUIState(bool hasTemplate)
 {
     m_ui->btn_findTemplate->setEnabled(hasTemplate);

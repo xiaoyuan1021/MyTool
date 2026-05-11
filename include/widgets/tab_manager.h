@@ -60,7 +60,7 @@ public:
     /// 获取已创建的Tab名称列表
     QStringList createdTabNames() const { return m_tabOrder; }
 
-    // ========== 类型安全的获取 ==========
+    // ========== 类型安全的获取（保留向后兼容）==========
 
     EnhanceTabWidget* getEnhanceTab() const;
     FilterTabWidget* getFilterTab() const;
@@ -73,12 +73,25 @@ public:
     TemplateTabWidget* getTemplateTab() const;
     VideoTabWidget* getVideoTab() const;
 
+    // ========== 泛型获取（推荐使用）==========
+
+    /// 按名称获取 Tab Widget（未创建则返回 nullptr）
+    QWidget* getTab(const QString& name) const;
+
+    /// 按名称 + 类型获取 Tab Widget，类型不匹配返回 nullptr
+    template<typename T>
+    T* getTabAs(const QString& name) const {
+        return dynamic_cast<T*>(getTab(name));
+    }
+
+    /// 获取所有已注册的 Tab 名称 → Widget 映射（用于 ConfigController 等需要遍历的场景）
+    const QHash<QString, QWidget*>& allTabs() const { return m_tabs; }
+
 signals:
     /// Tab创建后发出，MainWindow可在此建立信号连接
     void tabCreated(const QString& name, QWidget* widget);
 
 private:
-    QWidget* getTab(const QString& name) const;
     QWidget* createTab(const QString& name);
 
     QTabWidget* m_tabWidget;

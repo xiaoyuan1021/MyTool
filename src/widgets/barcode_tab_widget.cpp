@@ -1,5 +1,6 @@
 #include "widgets/barcode_tab_widget.h"
 #include "ui_barcode_tab.h"
+#include "config/config_manager.h"
 #include <QDebug>
 #include <QSignalBlocker>
 
@@ -186,4 +187,26 @@ void BarcodeTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
     Q_UNUSED(pm); Q_UNUSED(rm); Q_UNUSED(view); Q_UNUSED(roiCtrl); Q_UNUSED(processAndDisplay);
     connect(this, &BarcodeTabWidget::requestApplyBarcodeSettings,
             this, [requestRefresh]() { requestRefresh(); });
+}
+
+// ========== IConfigurableTab 接口实现 ==========
+
+void BarcodeTabWidget::saveToConfig(AppConfig& config) const
+{
+    config.barcodeConfig = getBarcodeConfig();
+}
+
+void BarcodeTabWidget::loadFromConfig(const AppConfig& config)
+{
+    setBarcodeConfig(config.barcodeConfig);
+}
+
+// ========== ITabInitializable 接口实现 ==========
+
+void BarcodeTabWidget::initializeTab(const TabInitContext& ctx)
+{
+    if (ctx.pipelineManager) {
+        PipelineConfig pc = ctx.pipelineManager->getConfigSnapshot();
+        setBarcodeConfig(pc.barcode);
+    }
 }

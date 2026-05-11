@@ -28,6 +28,8 @@
 #include "widgets/video_tab_widget.h"
 #include "widgets/barcode_tab_widget.h"
 #include "widgets/template_tab_widget.h"
+#include "widgets/i_configurable_tab.h"
+#include "widgets/i_tab_initializable.h"
 
 #include <QFile>
 #include <QDir>
@@ -50,35 +52,43 @@ MainWindow::MainWindow(QWidget *parent)
     setupBasicInfrastructure();
     setupManagers();
     setupControllers();
+    setupControllerConnections();
+    setupTabRegistration();
     setupResultHandler();
     setupMqtt();
 }
 
 MainWindow::~MainWindow()
 {
+    stopAllAsyncOperations();
+    delete ui;
+}
+
+// ========== 异步资源清理 ==========
+
+void MainWindow::stopAllAsyncOperations()
+{
     m_isDestroying = true;
 
-    // 【修复退出崩溃】在所有值成员（如 m_roiManager）销毁前，
-    // 主动停止视频并断开信号，防止 VideoManager 定时器触发时访问已销毁的 m_roiManager
+    // 停止视频播放并断开信号，防止定时器回调访问已销毁的成员
     if (m_tabManager) {
         VideoTabWidget* videoTab = m_tabManager->getVideoTab();
         if (videoTab) {
             VideoManager* vm = videoTab->getVideoManager();
             if (vm) {
                 vm->stop();
-                // 断开 VideoTabWidget 的所有信号，防止 lambda 回调访问已释放的成员
                 videoTab->disconnect();
                 vm->disconnect();
             }
         }
     }
 
+    // 等待 Pipeline 异步任务完成
     if (m_isProcessing) {
         m_pipelineWatcher.waitForFinished();
     }
     disconnect(&m_pipelineWatcher, nullptr, this, nullptr);
     disconnect(Logger::instance(), nullptr, this, nullptr);
-    delete ui;
 }
 
 // ========== 初始化 ==========
@@ -179,11 +189,16 @@ void MainWindow::setupManagers()
 
 void MainWindow::setupControllers()
 {
+    // 创建控制器
     m_roiUiController = new RoiUiController(m_roiManager, m_pipelineManager, m_view, ui->statusbar, this);
     m_detectionUiController = new DetectionUiController(m_roiManager, ui->tabWidget, this);
     m_configController = new ConfigController(m_pipelineManager, m_roiManager, this);
     m_autoDetectionController = new AutoDetectionController(m_pipelineManager, &m_roiManager, this);
+    m_profileController = new ProfileController(m_profileManager, &m_roiManager,
+                                                m_pipelineManager, m_tabManager,
+                                                m_roiUiController, m_toast, this, this);
 
+    // 初始化控制器 UI
     m_autoDetectionController->setupUiConnections(
         ui->btn_startAutoDetection, ui->btn_stopAutoDetection,
         ui->statusbar, ui->label_imageList);
@@ -191,53 +206,23 @@ void MainWindow::setupControllers()
     m_roiUiController->setupMainWindowConnections(m_tabManager);
     m_detectionUiController->setupConnections(m_roiUiController,
         [this](const QString& tabName) { ensureTabExists(tabName); });
+}
 
-    // 创建方案控制器（需要 m_roiUiController，必须在 controller 创建之后）
-    m_profileController = new ProfileController(m_profileManager, &m_roiManager,
-                                                m_pipelineManager, m_tabManager,
-                                                m_roiUiController, m_toast, this, this);
-    connect(m_profileController, &ProfileController::requestRefresh, this, &MainWindow::requestRefresh);
-
+void MainWindow::setupControllerConnections()
+{
     // 全局信号连接（统一走防抖 + 脏标记）
     connect(m_roiUiController, &RoiUiController::roiChanged, this, [this]() { requestRefresh(); });
     connect(m_configController, &ConfigController::configApplied, this, [this]() { requestRefresh(); });
+    connect(m_profileController, &ProfileController::requestRefresh, this, &MainWindow::requestRefresh);
 
-    // 【修复】SignalConnector 必须在 controller 创建之后才能创建（需要有效的 roiUiController 指针）
+    // SignalConnector（需要有效的 roiUiController 指针）
     m_signalConnector = new SignalConnector(m_pipelineManager, &m_roiManager,
                                            m_view, m_roiUiController, this);
     connect(m_tabManager, &TabManager::tabCreated,
             m_signalConnector, &SignalConnector::connectTabSignals);
-    // 连接 SignalConnector 的信号到 MainWindow 的方法
     connect(m_signalConnector, &SignalConnector::requestRefresh, this, &MainWindow::requestRefresh);
     connect(m_signalConnector, &SignalConnector::processAndDisplay, this, &MainWindow::processAndDisplay);
     connect(m_signalConnector, &SignalConnector::showImage, this, &MainWindow::showImage);
-
-    // Tab懒加载时，更新ConfigController的tab指针
-    connect(m_tabManager, &TabManager::tabCreated, this, [this](const QString& name, QWidget*) {
-        m_configController->setTabWidgets(
-            m_tabManager->getEnhanceTab(),
-            m_tabManager->getFilterTab(),
-            m_tabManager->getExtractTab(),
-            m_tabManager->getJudgeTab(),
-            m_tabManager->getProcessTab(),
-            m_tabManager->getBarcodeTab()
-        );
-        // 新创建的模板tab需要注入ProfileManager
-        if (name == "补正") {
-            auto* templateTab = m_tabManager->getTemplateTab();
-            if (templateTab) {
-                templateTab->setProfileManager(m_profileManager);
-            }
-        }
-        // 新创建的条码tab需要从PipelineManager同步配置到UI
-        if (name == "条码") {
-            auto* barcodeTab = m_tabManager->getBarcodeTab();
-            if (barcodeTab) {
-                PipelineConfig pc = m_pipelineManager->getConfigSnapshot();
-                barcodeTab->setBarcodeConfig(pc.barcode);
-            }
-        }
-    });
 
     // 批量检测完成提示
     connect(m_autoDetectionController, &AutoDetectionController::detectionFinished,
@@ -250,7 +235,6 @@ void MainWindow::setupControllers()
         [this](const QString& roiId, const QString& detectionId) {
             m_detectionUiController->onDetectionItemSelected(roiId, detectionId, m_tabManager, m_pipelineManager);
 
-            // 检查检测类型，控制画布缩放
             if (auto* roi = m_roiManager.getRoiConfig(roiId)) {
                 for (const auto& item : roi->detectionItems) {
                     if (item.itemId == detectionId) {
@@ -272,9 +256,28 @@ void MainWindow::setupControllers()
         m_detectionUiController->handleDeleteFromTree(ui->treeView);
     });
 
-    // roiManager → roiUiController 同步连接（必须在所有 controller 创建完成后）
+    // roiManager → roiUiController 同步连接
     connect(&m_roiManager, &RoiManager::currentImageChanged, this, [this](const QString&) {
         m_roiUiController->syncRoiConfigsToWidget();
+    });
+}
+
+void MainWindow::setupTabRegistration()
+{
+    // Tab 懒加载时，统一注册到 ConfigController + 初始化依赖注入
+    connect(m_tabManager, &TabManager::tabCreated, this, [this](const QString& name, QWidget* widget) {
+        Q_UNUSED(name);
+        // 自动注册可配置 Tab
+        if (auto* configurableTab = dynamic_cast<IConfigurableTab*>(widget)) {
+            m_configController->registerTab(configurableTab);
+        }
+        // 自动执行 Tab 初始化（消除硬编码的名称判断）
+        if (auto* initializableTab = dynamic_cast<ITabInitializable*>(widget)) {
+            TabInitContext ctx;
+            ctx.profileManager = m_profileManager;
+            ctx.pipelineManager = m_pipelineManager;
+            initializableTab->initializeTab(ctx);
+        }
     });
 }
 
@@ -495,14 +498,6 @@ void MainWindow::ensureTabExists(const QString& tabName)
     m_tabManager->ensureTab(tabName);
 
     m_detectionUiController->setTabNames(m_tabManager->createdTabNames());
-    m_configController->setTabWidgets(
-        m_tabManager->getEnhanceTab(),
-        m_tabManager->getFilterTab(),
-        m_tabManager->getExtractTab(),
-        m_tabManager->getJudgeTab(),
-        m_tabManager->getProcessTab(),
-        m_tabManager->getBarcodeTab()
-    );
 }
 
 // ========== 刷新请求 ==========
