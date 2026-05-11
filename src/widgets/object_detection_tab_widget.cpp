@@ -124,6 +124,13 @@ void ObjectDetectionTabWidget::onApplyClicked()
         if (result == "ort_gpu") {
             m_useOrt = true;
             m_currentModelPath = modelPath;
+            // 自动填充模型定义的输入尺寸
+            int modelW = m_ortInference.getModelImgWidth();
+            int modelH = m_ortInference.getModelImgHeight();
+            if (modelW > 0 && modelH > 0) {
+                m_ui->spinBox_inputWidth->setValue(modelW);
+                m_ui->spinBox_inputHeight->setValue(modelH);
+            }
             emit modelLoadFinished(true, "状态：模型加载成功 (ONNX Runtime GPU)");
             qDebug() << "[ObjectDetection] ONNX Runtime GPU loaded successfully";
         } else if (result == "dnn_cpu") {

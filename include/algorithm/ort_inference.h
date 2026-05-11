@@ -50,8 +50,15 @@ public:
     /** @brief 直接设置类别名称 */
     void setClassNames(const std::vector<std::string>& names);
 
+    /** @brief 获取模型 parameter.json 中定义的输入尺寸（img_scale），用于UI自动填充 */
+    int getModelImgWidth() const { return modelImgWidth_; }
+    int getModelImgHeight() const { return modelImgHeight_; }
+
 private:
     std::vector<std::string> getOutputNames() const;
+
+    /** @brief 当 .names 不存在时，尝试从上级目录的 parameter.json 读取类名和尺寸 */
+    bool loadFromParameterJson(const QString& modelDir);
 
     Ort::Env env_;
     std::unique_ptr<Ort::Session> session_;
@@ -61,4 +68,6 @@ private:
     std::vector<std::string> classNames_;
     bool loaded_ = false;
     bool usingGpu_ = false;
+    int modelImgWidth_ = 0;   // parameter.json 中的 img_scale[0]
+    int modelImgHeight_ = 0;  // parameter.json 中的 img_scale[1]
 };

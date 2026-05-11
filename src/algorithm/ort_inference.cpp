@@ -2,6 +2,9 @@
 #include <QFileInfo>
 #include <QFile>
 #include <QDir>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
 #include <spdlog/spdlog.h>
 #include <algorithm>
 #include <numeric>
@@ -80,6 +83,28 @@ bool OrtInference::loadModel(const QString& modelPath, bool useGpu)
         spdlog::info("OrtInference: model loaded successfully (backend: {})",
                      usingGpu_ ? "CUDA" : "CPU");
 
+        // 从 ONNX Session 读取实际输入形状（最可靠的方式）
+        if (session_->GetInputCount() > 0)
+        {
+            auto inputType = session_->GetInputTypeInfo(0);
+            auto tensorInfo = inputType.GetTensorTypeAndShapeInfo();
+            auto shape = tensorInfo.GetShape();
+            // YOLO 模型输入 shape 通常为 [N, C, H, W] 或 [N, C, H, W]（动态维度为-1）
+            if (shape.size() == 4)
+            {
+                // 跳过 batch 和 channel，取 H 和 W
+                int h = static_cast<int>(shape[2]);
+                int w = static_cast<int>(shape[3]);
+                // 过滤动态维度（-1）和不合理值
+                if (h > 0 && w > 0)
+                {
+                    modelImgWidth_ = w;
+                    modelImgHeight_ = h;
+                    spdlog::info("OrtInference: actual input shape from ONNX = {}x{} (WxH)", w, h);
+                }
+            }
+        }
+
         // 自动加载同名 .names 文件
         QFileInfo modelFileInfo(modelPath);
         QString namesPath = modelFileInfo.dir().filePath(
@@ -87,6 +112,11 @@ bool OrtInference::loadModel(const QString& modelPath, bool useGpu)
         if (QFile::exists(namesPath))
         {
             loadClassNames(namesPath);
+        }
+        else
+        {
+            // .names 不存在时，尝试从上级目录的 parameter.json 读取类名和尺寸
+            loadFromParameterJson(modelFileInfo.dir().absolutePath());
         }
 
         return true;
@@ -118,6 +148,7 @@ std::vector<DetectionResult> OrtInference::detect(const cv::Mat& input,
 
     if (!loaded_ || input.empty())
     {
+        spdlog::warn("OrtInference: detect skipped - loaded={}, empty={}", loaded_, input.empty());
         return results;
     }
 
@@ -125,16 +156,39 @@ std::vector<DetectionResult> OrtInference::detect(const cv::Mat& input,
     {
         int imgWidth = input.cols;
         int imgHeight = input.rows;
+        spdlog::info("OrtInference: detect input image size = {}x{}", imgWidth, imgHeight);
 
-        // 预处理: resize + normalize
+        // === YOLOv8 标准预处理：Letterbox + BGR→RGB + /255 ===
+
+        // 1. Letterbox resize（保持宽高比，用114灰色填充到正方形）
+        float r = std::min(static_cast<float>(inputWidth) / imgWidth,
+                           static_cast<float>(inputHeight) / imgHeight);
+        int newW = static_cast<int>(imgWidth * r);
+        int newH = static_cast<int>(imgHeight * r);
+
         cv::Mat resized;
-        cv::resize(input, resized, cv::Size(inputWidth, inputHeight));
+        cv::resize(input, resized, cv::Size(newW, newH), 0, 0, cv::INTER_LINEAR);
 
-        // 转为 float，归一化到 [0,1]，HWC -> CHW
+        // 创建灰色画布（114是YOLO默认填充值）
+        cv::Mat canvas(inputHeight, inputWidth, CV_8UC3, cv::Scalar(114, 114, 114));
+
+        // 计算居中偏移
+        int padLeft = (inputWidth - newW) / 2;
+        int padTop = (inputHeight - newH) / 2;
+
+        // 将resize后的图像放到画布中心
+        cv::Mat roi = canvas(cv::Rect(padLeft, padTop, newW, newH));
+        resized.copyTo(roi);
+
+        // 2. 转为 float，归一化到 [0,1]
         cv::Mat floatImg;
-        resized.convertTo(floatImg, CV_32FC3, 1.0 / 255.0);
+        canvas.convertTo(floatImg, CV_32FC3, 1.0 / 255.0);
 
-        // HWC -> CHW
+        // 3. BGR → RGB（OpenCV默认BGR，YOLO训练时用RGB）
+        cv::Mat rgbImg;
+        cv::cvtColor(floatImg, rgbImg, cv::COLOR_BGR2RGB);
+
+        // 4. HWC -> CHW
         std::vector<float> inputTensorValues(inputWidth * inputHeight * 3);
         for (int c = 0; c < 3; ++c)
         {
@@ -143,7 +197,7 @@ std::vector<DetectionResult> OrtInference::detect(const cv::Mat& input,
                 for (int w = 0; w < inputWidth; ++w)
                 {
                     inputTensorValues[c * inputWidth * inputHeight + h * inputWidth + w] =
-                        floatImg.at<cv::Vec3f>(h, w)[c];
+                        rgbImg.at<cv::Vec3f>(h, w)[c];
                 }
             }
         }
@@ -205,12 +259,22 @@ std::vector<DetectionResult> OrtInference::detect(const cv::Mat& input,
         auto outputShape = outputTensors[0].GetTensorTypeAndShapeInfo().GetShape();
 
         // YOLOv8 输出: [1, 4+numClasses, numDetections]
-        // 转置为 [numDetections, 4+numClasses]
         int numAttributes = static_cast<int>(outputShape[1]);
         int numDetections = static_cast<int>(outputShape[2]);
+        spdlog::info("OrtInference: output shape = [{}, {}, {}], inputWidth={}, inputHeight={}",
+                      outputShape[0], outputShape[1], outputShape[2], inputWidth, inputHeight);
 
         float xScale = static_cast<float>(imgWidth) / inputWidth;
         float yScale = static_cast<float>(imgHeight) / inputHeight;
+
+        // === 诊断：打印输出数据的原始值 ===
+        // 打印前10个值，检查数据是否正常
+        spdlog::info("OrtInference: first 10 output values:");
+        for (int k = 0; k < 10; ++k)
+        {
+            spdlog::info("  outputData[{}] = {:.6f}", k, outputData[k]);
+        }
+        // === 诊断结束 ===
 
         // 解析每个检测结果
         for (int i = 0; i < numDetections; ++i)
@@ -265,6 +329,16 @@ std::vector<DetectionResult> OrtInference::detect(const cv::Mat& input,
             results.push_back(det);
         }
 
+        // 打印前5个候选的详情用于诊断
+        int logCount = std::min(5, static_cast<int>(results.size()));
+        for (int k = 0; k < logCount; ++k)
+        {
+            spdlog::info("OrtInference: candidate[{}] class={}({}) conf={:.4f} box=({},{},{},{})",
+                         k, results[k].className, results[k].classId, results[k].confidence,
+                         results[k].box.x, results[k].box.y, results[k].box.width, results[k].box.height);
+        }
+        spdlog::info("OrtInference: candidates after conf filter (threshold={:.2f}) = {}", confThreshold, results.size());
+
         // NMS 后处理
         if (!results.empty())
         {
@@ -284,8 +358,10 @@ std::vector<DetectionResult> OrtInference::detect(const cv::Mat& input,
             {
                 nmsResults.push_back(results[idx]);
             }
+            spdlog::info("OrtInference: final results after NMS = {}", nmsResults.size());
             return nmsResults;
         }
+        spdlog::info("OrtInference: no candidates to NMS");
     }
     catch (const Ort::Exception& e)
     {
@@ -363,4 +439,63 @@ std::vector<std::string> OrtInference::getOutputNames() const
     {
         return {};
     }
+}
+
+bool OrtInference::loadFromParameterJson(const QString& modelDir)
+{
+    // 向上级目录查找 parameter.json（ort/ 的上级就是 model_pin/）
+    QString paramPath = QFileInfo(QDir(modelDir), "../parameter.json").absoluteFilePath();
+    if (!QFile::exists(paramPath))
+    {
+        spdlog::info("OrtInference: no parameter.json found at {}", paramPath.toStdString());
+        return false;
+    }
+
+    QFile file(paramPath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+    {
+        spdlog::warn("OrtInference: cannot open parameter.json: {}", paramPath.toStdString());
+        return false;
+    }
+
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(file.readAll(), &parseError);
+    file.close();
+
+    if (parseError.error != QJsonParseError::NoError || !doc.isObject())
+    {
+        spdlog::warn("OrtInference: parameter.json parse error: {}", parseError.errorString().toStdString());
+        return false;
+    }
+
+    QJsonObject root = doc.object();
+
+    // 读取 class_name 数组
+    if (classNames_.empty() && root.contains("class_name") && root["class_name"].isArray())
+    {
+        QJsonArray classNamesArray = root["class_name"].toArray();
+        classNames_.clear();
+        for (const auto& val : classNamesArray)
+        {
+            classNames_.push_back(val.toString().toStdString());
+        }
+        spdlog::info("OrtInference: loaded {} class names from parameter.json",
+                      classNames_.size());
+    }
+
+    // 读取 img_scale 仅作为 fallback（ONNX Session 读取的尺寸优先级更高）
+    if ((modelImgWidth_ <= 0 || modelImgHeight_ <= 0) &&
+        root.contains("img_scale") && root["img_scale"].isArray())
+    {
+        QJsonArray imgScale = root["img_scale"].toArray();
+        if (imgScale.size() >= 2)
+        {
+            modelImgWidth_ = imgScale[0].toInt(0);
+            modelImgHeight_ = imgScale[1].toInt(0);
+            spdlog::info("OrtInference: model img_scale from parameter.json = {}x{}",
+                          modelImgWidth_, modelImgHeight_);
+        }
+    }
+
+    return !classNames_.empty();
 }
