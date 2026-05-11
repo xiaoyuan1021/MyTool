@@ -1,0 +1,11 @@
+{
+  "img_scale": [
+    2000,
+    1280
+  ],
+  "num_class": 2,
+  "class_name": [
+    "normal",
+    "PINZHEN"
+  ]
+}
