@@ -1,4 +1,5 @@
 #include "widgets/video_source_widget.h"
+#include "config/detection_config_types.h"
 #include "logger.h"
 #include "video_manager.h"
 #include <QFileDialog>
@@ -114,10 +115,10 @@ VideoSourceWidget::~VideoSourceWidget()
 {
 }
 
-VisionInspectionConfig::VideoSourceType VideoSourceWidget::getSourceType() const
+VideoSourceType VideoSourceWidget::getSourceType() const
 {
     // 简化实现
-    return VisionInspectionConfig::VideoSourceType::None;
+    return VideoSourceType::None;
 }
 
 QString VideoSourceWidget::getVideoFilePath() const
@@ -135,7 +136,7 @@ int VideoSourceWidget::getCameraIndex() const
     return 0;
 }
 
-void VideoSourceWidget::setSourceType(VisionInspectionConfig::VideoSourceType type)
+void VideoSourceWidget::setSourceType(VideoSourceType type)
 {
     Q_UNUSED(type);
 }
@@ -155,20 +156,35 @@ void VideoSourceWidget::setCameraIndex(int index)
     Q_UNUSED(index);
 }
 
-void VideoSourceWidget::loadFromConfig(const VisionInspectionConfig& config)
+void VideoSourceWidget::loadFromConfig(const VideoSourceConfig& config)
 {
-    setSourceType(config.videoSourceType);
+    // 从 VideoSourceConfig 的字符串类型映射到枚举
+    if (config.videoSourceType == "camera") {
+        setSourceType(VideoSourceType::Camera);
+    } else if (config.videoSourceType == "file") {
+        setSourceType(VideoSourceType::VideoFile);
+    } else {
+        setSourceType(VideoSourceType::None);
+    }
     setVideoFilePath(config.videoFilePath);
-    setImageDirectory(config.imageDirectory);
     setCameraIndex(config.cameraIndex);
     updateUIState();
 }
 
-void VideoSourceWidget::saveToConfig(VisionInspectionConfig& config) const
+void VideoSourceWidget::saveToConfig(VideoSourceConfig& config) const
 {
-    config.videoSourceType = getSourceType();
+    switch (getSourceType()) {
+        case VideoSourceType::Camera:
+            config.videoSourceType = "camera";
+            break;
+        case VideoSourceType::VideoFile:
+            config.videoSourceType = "file";
+            break;
+        default:
+            config.videoSourceType = "file";
+            break;
+    }
     config.videoFilePath = getVideoFilePath();
-    config.imageDirectory = getImageDirectory();
     config.cameraIndex = getCameraIndex();
 }
 
@@ -233,11 +249,11 @@ void VideoSourceWidget::on_comboCamera_currentIndexChanged(int index)
 
 void VideoSourceWidget::updateUIState()
 {
-    VisionInspectionConfig::VideoSourceType type = getSourceType();
+    VideoSourceType type = getSourceType();
     
-    bool isFile = (type == VisionInspectionConfig::VideoSourceType::VideoFile);
-    bool isDir = (type == VisionInspectionConfig::VideoSourceType::ImageDir);
-    bool isCamera = (type == VisionInspectionConfig::VideoSourceType::Camera);
+    bool isFile = (type == VideoSourceType::VideoFile);
+    bool isDir = (type == VideoSourceType::ImageDir);
+    bool isCamera = (type == VideoSourceType::Camera);
     
     // 更新UI可见性（简化实现）
     Q_UNUSED(isFile);

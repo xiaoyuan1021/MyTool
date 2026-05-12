@@ -50,12 +50,14 @@ void StepEnhance::run(PipelineContext& ctx)
         if (ctx.channelImg.empty()) return;
 
         try {
+            // EnhanceConfig 使用与 UI 滑块一致的 int 原始值
+            // 这里转换为算法所需的比例值（brightness 不需要转换）
             ctx.enhanced=proc_->adjustParameter(
                 ctx.channelImg,
                 ctx.config->enhance.brightness,
-                ctx.config->enhance.contrast,
-                ctx.config->enhance.gamma,
-                ctx.config->enhance.sharpen
+                ctx.config->enhance.contrast / 100.0,
+                ctx.config->enhance.gamma / 100.0,
+                ctx.config->enhance.sharpen / 100.0
                 );
         } catch (const cv::Exception& ex) {
             qDebug() << "[Enhance] OpenCV错误:" << ex.what();

@@ -86,7 +86,6 @@ set(HEADERS
     include/config/shape_filter_config.h
     include/config/shape_filter_types.h
     include/config/tab_config.h
-    include/config/vision_inspection_config.h
     # data
     include/data/barcode_result.h
     include/data/detection_result_report.h

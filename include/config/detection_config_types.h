@@ -6,7 +6,7 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include "config/json_serializable.h"
-#include "config/enhance_params.h"
+#include "config/pipeline_config.h"
 
 /**
  * @brief 检测项（DetectionItem）专用配置类型定义
@@ -29,7 +29,7 @@
  */
 struct BlobAnalysisConfig : public IJsonSerializable {
     // 图像增强参数（统一类型定义，独立实例）
-    EnhanceParams enhance;
+    EnhanceConfig enhance;
     
     // 过滤参数
     int minArea = 100;           // 最小面积
@@ -83,7 +83,7 @@ struct VideoSourceConfig {
     double playbackSpeed = 1.0;        // 播放速度 (0.5 ~ 2.0)
     
     // 图像处理参数（统一类型定义，独立实例）
-    EnhanceParams enhance;
+    EnhanceConfig enhance;
     
     // 帧处理参数
     bool enableFrameSkipping = false;  // 是否启用帧跳跃
@@ -101,7 +101,7 @@ struct VideoSourceConfig {
  */
 struct LineDetectionConfig {
     // 图像增强参数（统一类型定义，独立实例）
-    EnhanceParams enhance;
+    EnhanceConfig enhance;
     
     // 直线检测参数
     int algorithm = 0;           // 算法 (0: HoughP, 1: LSD, 2: EDline)
@@ -127,7 +127,7 @@ struct LineDetectionConfig {
  */
 struct BarcodeRecognitionConfig {
     // 图像增强参数（统一类型定义，独立实例）
-    EnhanceParams enhance;
+    EnhanceConfig enhance;
     
     // 条码识别参数
     bool enableBarcode = true;           // 是否启用条码识别

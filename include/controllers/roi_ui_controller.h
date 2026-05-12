@@ -54,7 +54,6 @@ public:
     void onAddRoiClicked();
     void onDeleteRoiClicked();
     void onSwitchRoiClicked();
-    void onRoiSelected(const QRectF& roiRect);
     
     // 统一的ROI选择逻辑（点击ROI/检测项时调用）
     void handleRoiSelection(const QString& roiId);
@@ -63,14 +62,11 @@ public:
     void handleRoiSelectedComplete(const QRectF& roiImgRectF);
     QString addRoiWithName(const QString& roiName);
     bool renameRoi(const QString& roiId, const QString& newName);
-    bool toggleRoiActive(const QString& roiId);
     void deleteDetectionItem(const QString& roiId, const QString& detectionId);
 
     // ROI树形视图管理
     void refreshRoiTreeView();
     void onRoiTreeItemClicked(QTreeWidgetItem* item, int column);
-    void onRoiTreeItemDoubleClicked(QTreeWidgetItem* item, int column);
-    void onRoiTreeContextMenuRequested(const QPoint& pos);
 
     // 获取当前选中的ROI ID
     QString getCurrentSelectedRoiId() const { return m_currentSelectedRoiId; }

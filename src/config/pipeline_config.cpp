@@ -3,13 +3,8 @@
 QJsonObject PipelineConfig::toJson() const {
     QJsonObject obj;
 
-    // 增强参数
-    QJsonObject enhanceObj;
-    enhanceObj["brightness"] = enhance.brightness;
-    enhanceObj["contrast"] = enhance.contrast;
-    enhanceObj["gamma"] = enhance.gamma;
-    enhanceObj["sharpen"] = enhance.sharpen;
-    obj["enhance"] = enhanceObj;
+    // 增强参数（现在都是 int 原始值）
+    obj["enhance"] = enhance.toJson();
 
     // 通道/过滤参数
     QJsonObject colorObj;
@@ -60,17 +55,13 @@ void PipelineConfig::fromJson(const QJsonObject& obj) {
 
     // 增强参数
     if (obj.contains("enhance")) {
-        QJsonObject enhanceObj = obj["enhance"].toObject();
-        enhance.brightness = enhanceObj["brightness"].toInt(0);
-        enhance.contrast   = enhanceObj["contrast"].toDouble(1.0);
-        enhance.gamma      = enhanceObj["gamma"].toDouble(1.0);
-        enhance.sharpen    = enhanceObj["sharpen"].toDouble(0.0);
+        enhance.fromJson(obj["enhance"].toObject());
     } else {
         // 向后兼容：旧格式直接平铺在顶层
         enhance.brightness = obj["brightness"].toInt(0);
-        enhance.contrast   = obj["contrast"].toDouble(1.0);
-        enhance.gamma      = obj["gamma"].toDouble(1.0);
-        enhance.sharpen    = obj["sharpen"].toDouble(0.0);
+        enhance.contrast   = obj["contrast"].toInt(100);
+        enhance.gamma      = obj["gamma"].toInt(100);
+        enhance.sharpen    = obj["sharpen"].toInt(100);
     }
 
     // 通道/过滤参数

@@ -155,9 +155,9 @@ void EnhanceTabWidget::applyState(const EnhancementState &state)
     {
         PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
         cfg.enhance.brightness = state.brightness;
-        cfg.enhance.contrast = state.contrast / 100.0;
-        cfg.enhance.gamma = state.gamma / 100.0;
-        cfg.enhance.sharpen = state.sharpen / 100.0;
+        cfg.enhance.contrast = state.contrast;
+        cfg.enhance.gamma = state.gamma;
+        cfg.enhance.sharpen = state.sharpen;
         m_pipelineManager->setConfig(cfg);
     }
 
@@ -185,9 +185,9 @@ void EnhanceTabWidget::syncConfigToPipeline()
     EnhancementState current = captureState();
     PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
     cfg.enhance.brightness = current.brightness;
-    cfg.enhance.contrast = current.contrast / 100.0;
-    cfg.enhance.gamma = current.gamma / 100.0;
-    cfg.enhance.sharpen = current.sharpen / 100.0;
+    cfg.enhance.contrast = current.contrast;
+    cfg.enhance.gamma = current.gamma;
+    cfg.enhance.sharpen = current.sharpen;
     m_pipelineManager->setConfig(cfg);
     
     // 通知外部将配置回写到当前ROI，防止ROI之间配置串扰
@@ -243,9 +243,9 @@ void EnhanceTabWidget::applyStateQuiet(const EnhancementState &state)
     // 仅同步参数到Pipeline，不触发处理
     PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
     cfg.enhance.brightness = state.brightness;
-    cfg.enhance.contrast = state.contrast / 100.0;
-    cfg.enhance.gamma = state.gamma / 100.0;
-    cfg.enhance.sharpen = state.sharpen / 100.0;
+    cfg.enhance.contrast = state.contrast;
+    cfg.enhance.gamma = state.gamma;
+    cfg.enhance.sharpen = state.sharpen;
     m_pipelineManager->setConfig(cfg);
 }
 
@@ -266,17 +266,17 @@ void EnhanceTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
 void EnhanceTabWidget::saveToConfig(PipelineConfig& config) const
 {
     config.enhance.brightness = m_ui->Slider_brightness->value();
-    config.enhance.contrast   = m_ui->Slider_contrast->value() / 100.0;
-    config.enhance.gamma      = m_ui->Slider_gamma->value() / 100.0;
-    config.enhance.sharpen    = m_ui->Slider_sharpen->value() / 100.0;
+    config.enhance.contrast   = m_ui->Slider_contrast->value();
+    config.enhance.gamma      = m_ui->Slider_gamma->value();
+    config.enhance.sharpen    = m_ui->Slider_sharpen->value();
 }
 
 void EnhanceTabWidget::loadFromConfig(const PipelineConfig& config)
 {
     setEnhanceConfig(
         config.enhance.brightness,
-        static_cast<int>(config.enhance.contrast * 100),
-        static_cast<int>(config.enhance.gamma * 100),
-        static_cast<int>(config.enhance.sharpen * 100)
+        config.enhance.contrast,
+        config.enhance.gamma,
+        config.enhance.sharpen
     );
 }

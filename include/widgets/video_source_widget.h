@@ -3,7 +3,10 @@
 #include <QWidget>
 #include <QString>
 #include <QVector>
-#include "vision_inspection_config.h"
+#include "config/detection_type.h"
+
+// 前向声明（避免循环依赖）
+struct VideoSourceConfig;
 
 namespace Ui {
 class VideoSourceWidget;
@@ -25,7 +28,7 @@ public:
     /**
      * @brief 获取当前配置
      */
-    VisionInspectionConfig::VideoSourceType getSourceType() const;
+    VideoSourceType getSourceType() const;
     QString getVideoFilePath() const;
     QString getImageDirectory() const;
     int getCameraIndex() const;
@@ -33,7 +36,7 @@ public:
     /**
      * @brief 设置配置
      */
-    void setSourceType(VisionInspectionConfig::VideoSourceType type);
+    void setSourceType(VideoSourceType type);
     void setVideoFilePath(const QString& path);
     void setImageDirectory(const QString& dir);
     void setCameraIndex(int index);
@@ -41,12 +44,12 @@ public:
     /**
      * @brief 从配置加载
      */
-    void loadFromConfig(const VisionInspectionConfig& config);
+    void loadFromConfig(const VideoSourceConfig& config);
     
     /**
      * @brief 保存到配置
      */
-    void saveToConfig(VisionInspectionConfig& config) const;
+    void saveToConfig(VideoSourceConfig& config) const;
     
     /**
      * @brief 获取可用相机列表
@@ -59,7 +62,7 @@ public:
     void updateCameraList();
 
 signals:
-    void sourceTypeChanged(VisionInspectionConfig::VideoSourceType type);
+    void sourceTypeChanged(VideoSourceType type);
     void videoFileSelected(const QString& filePath);
     void imageDirectorySelected(const QString& dir);
     void cameraSelected(int index);

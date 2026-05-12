@@ -3,7 +3,6 @@
 #include <QWidget>
 #include "pipeline_manager.h"
 #include "pipeline.h"
-#include "config/enhance_params.h"
 #include "widgets/i_signal_connectable.h"
 #include "widgets/i_configurable_tab.h"
 #include <QObject>
@@ -58,8 +57,8 @@ private slots:
     void on_btn_undoBC_clicked();
 
 private:
-    // 复用 EnhanceParams 类型定义（独立实例，不影响其他 Config）
-    using EnhancementState = EnhanceParams;
+    // 复用 EnhanceConfig 类型定义
+    using EnhancementState = EnhanceConfig;
     EnhancementState captureState() const;
     /// 应用状态并触发处理（用户交互时使用）
     void applyState(const EnhancementState& state);

@@ -43,11 +43,6 @@ void RoiUiController::setupTreeView(QTreeWidget* treeView)
     // 连接信号
     connect(m_treeView, &QTreeWidget::itemClicked,
             this, &RoiUiController::onRoiTreeItemClicked);
-    connect(m_treeView, &QTreeWidget::itemDoubleClicked,
-            this, &RoiUiController::onRoiTreeItemDoubleClicked);
-    connect(m_treeView, &QTreeWidget::customContextMenuRequested,
-            this, &RoiUiController::onRoiTreeContextMenuRequested);
-    
     // 连接绘制ROI完成信号
     connect(m_view, &ImageView::roiSelected, this, [this](const QRectF& rect) {
         // 创建新的ROI配置（名称由RoiManager统一生成，基于现有ROI最大编号）
@@ -243,25 +238,6 @@ void RoiUiController::onSwitchRoiClicked()
     }
 }
 
-void RoiUiController::onRoiSelected(const QRectF& roiRect)
-{
-    if (!m_roiManager.setRoi(roiRect)) {
-        if (m_statusBar) m_statusBar->showMessage("ROI应用失败", 2000);
-        return;
-    }
-
-    cv::Rect roi = m_roiManager.getLastRoi();
-    if (m_statusBar) {
-        m_statusBar->showMessage(
-            QString("ROI已选择：x=%1 y=%2 w=%3 h=%4")
-                .arg(roi.x).arg(roi.y).arg(roi.width).arg(roi.height),
-            2000);
-    }
-
-    m_view->resetZoom();
-    emit roiChanged();
-}
-
 void RoiUiController::refreshRoiTreeView()
 {
     if (!m_treeView) return;
@@ -426,17 +402,6 @@ void RoiUiController::onRoiTreeItemClicked(QTreeWidgetItem* item, int column)
     }
 }
 
-void RoiUiController::onRoiTreeItemDoubleClicked(QTreeWidgetItem* item, int column)
-{
-    Q_UNUSED(column);
-    Q_UNUSED(item);
-}
-
-void RoiUiController::onRoiTreeContextMenuRequested(const QPoint& pos)
-{
-    Q_UNUSED(pos);
-}
-
 // ========== ROI操作方法（供MainWindow委托调用）==========
 
 void RoiUiController::handleRoiSelectedComplete(const QRectF& roiImgRectF)
@@ -484,22 +449,6 @@ bool RoiUiController::renameRoi(const QString& roiId, const QString& newName)
     emit roiRenamed(roiId, newName);
     
     Logger::instance()->info(QString("已重命名ROI: %1 -> %2").arg(roi->roiName).arg(newName));
-    return true;
-}
-
-bool RoiUiController::toggleRoiActive(const QString& roiId)
-{
-    RoiConfig* roi = m_roiManager.getRoiConfig(roiId);
-    if (!roi) {
-        return false;
-    }
-    
-    roi->isActive = !roi->isActive;
-    refreshRoiTreeView();
-    emit roiChanged();
-    emit roiActiveToggled(roiId, roi->isActive);
-    
-    Logger::instance()->info(QString("ROI %1 已%2").arg(roi->roiName).arg(roi->isActive ? "激活" : "停用"));
     return true;
 }
 
@@ -708,9 +657,9 @@ void RoiUiController::setupDisplayConnections(TabManager* tabManager)
         if (auto* enhanceTab = tabManager->getTabAs<EnhanceTabWidget>("增强")) {
             enhanceTab->setEnhanceConfig(
                 config.enhance.brightness,
-                static_cast<int>(config.enhance.contrast * 100),
-                static_cast<int>(config.enhance.gamma * 100),
-                static_cast<int>(config.enhance.sharpen * 100)
+                config.enhance.contrast,
+                config.enhance.gamma,
+                config.enhance.sharpen
             );
         }
     });

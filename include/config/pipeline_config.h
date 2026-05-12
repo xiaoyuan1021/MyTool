@@ -8,20 +8,40 @@
 /**
  * @brief 图像增强配置（亮度、对比度、伽马、锐化）
  *
- * 对应 EnhanceTabWidget 的参数。
+ * 使用与 UI 滑块一致的整数原始值。
+ * 在 Pipeline 执行时由 StepEnhance 内部转换为算法所需的比例值。
+ *
+ * 注意：此类同时服务于 PipelineConfig（全局流水线）和
+ * DetectionItem 各检测类型的独立增强参数。
  */
 struct EnhanceConfig
 {
-    int brightness = 0;
-    double contrast = 1.0;
-    double gamma = 1.0;
-    double sharpen = 0.0;
+    int brightness = 0;    // 亮度 (-100 ~ 100)
+    int contrast = 100;    // 对比度 (0 ~ 300)，100 = 100%
+    int gamma = 100;       // 伽马值 (10 ~ 300)，100 = 1.0
+    int sharpen = 100;     // 锐化 (0 ~ 500)，100 = 1.0
 
     bool operator==(const EnhanceConfig& o) const {
         return brightness == o.brightness &&
-               qFuzzyCompare(contrast, o.contrast) &&
-               qFuzzyCompare(gamma, o.gamma) &&
-               qFuzzyCompare(sharpen, o.sharpen);
+               contrast == o.contrast &&
+               gamma == o.gamma &&
+               sharpen == o.sharpen;
+    }
+
+    QJsonObject toJson() const {
+        QJsonObject obj;
+        obj["brightness"] = brightness;
+        obj["contrast"] = contrast;
+        obj["gamma"] = gamma;
+        obj["sharpen"] = sharpen;
+        return obj;
+    }
+
+    void fromJson(const QJsonObject& obj) {
+        brightness = obj["brightness"].toInt(0);
+        contrast = obj["contrast"].toInt(100);
+        gamma = obj["gamma"].toInt(100);
+        sharpen = obj["sharpen"].toInt(100);
     }
 };
 
@@ -81,11 +101,13 @@ struct LineDetectConfig
 };
 
 /**
- * @brief 判定配置（Blob分析阈值）
+ * @brief Blob分析判定配置（区域数量阈值）
  *
  * 对应 JudgeTabWidget 的参数。
+ * 仅用于 Pipeline 全局配置中的判定阈值，
+ * 与 DetectionItem 中 BlobAnalysisConfig 的 minBlobCount/maxBlobCount 不同。
  */
-struct JudgeConfig
+struct BlobJudgeConfig
 {
     int minRegionCount = 0;
     int maxRegionCount = 1000;
@@ -119,7 +141,7 @@ struct PipelineConfig
     LineDetectConfig lineDetect;   ///< 直线检测与参考线匹配
     ShapeFilterConfig shapeFilter; ///< 形状筛选
     BarcodeConfig    barcode;      ///< 条码识别
-    JudgeConfig      judge;        ///< 判定配置（Blob分析阈值）
+    BlobJudgeConfig  judge;        ///< 判定配置（Blob分析阈值）
 
     // ==================== JSON 序列化（定义在 pipeline_config.cpp）====================
 
