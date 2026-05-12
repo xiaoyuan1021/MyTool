@@ -87,8 +87,8 @@ public:
     /// 更新当前选中ROI的 Blob 检测项判定阈值（由 JudgeTab 触发）
     void updateBlobDetectionConfig(int minCount, int maxCount);
 
-    /// 将MainWindow相关的信号连接移入Controller（从MainWindow迁移）
-    void setupMainWindowConnections(TabManager* tabManager);
+    /// 设置显示相关的信号连接（从MainWindow迁移）
+    void setupDisplayConnections(TabManager* tabManager);
 
     // 同步当前图片的ROI配置到RoiListWidget（图片切换时调用）
     void syncRoiConfigsToWidget();
@@ -131,6 +131,12 @@ private slots:
     void handleRoiSelectionChanged(const QString& roiId);
 
 private:
+    /// 进入ROI绘制模式（统一入口）
+    void enterRoiDrawMode();
+
+    /// 删除ROI并刷新UI（统一删除逻辑，供 onDeleteRoiClicked 和 handleRoiDeleteRequested 调用）
+    void removeRoiAndRefresh(const QString& roiId);
+
     RoiManager& m_roiManager;
     PipelineManager* m_pipelineManager;
     ImageView* m_view;

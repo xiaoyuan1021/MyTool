@@ -95,12 +95,47 @@ void RoiUiController::setupTreeView(QTreeWidget* treeView)
     refreshRoiTreeView();
 }
 
-void RoiUiController::onDrawRoiClicked()
+void RoiUiController::enterRoiDrawMode()
 {
-    if (m_roiManager.getFullImage().empty()) return;
     m_view->setRoiMode(true);
     m_view->setDragMode(QGraphicsView::NoDrag);
     if (m_statusBar) m_statusBar->showMessage("请按下左键绘制ROI");
+}
+
+void RoiUiController::removeRoiAndRefresh(const QString& roiId)
+{
+    RoiConfig* roi = m_roiManager.getRoiConfig(roiId);
+    QString roiName = roi ? roi->roiName : roiId;
+    bool wasSelected = (m_currentSelectedRoiId == roiId);
+
+    if (!m_roiManager.removeRoiConfig(roiId)) {
+        Logger::instance()->warning(QString("[RoiUI] 删除失败: roiId=%1").arg(roiId));
+        return;
+    }
+
+    if (wasSelected) {
+        m_roiManager.resetRoi();
+        m_view->clearRoi();
+        if (m_statusBar) m_statusBar->showMessage("ROI已重置，处理使用完整图像", 2000);
+        m_currentSelectedRoiId.clear();
+    }
+
+    QString previousSelectedId = m_currentSelectedRoiId;
+    refreshRoiTreeView();
+
+    // 如果自动选择改变了选中的ROI，加载新ROI的配置
+    if (m_currentSelectedRoiId != previousSelectedId && !m_currentSelectedRoiId.isEmpty()) {
+        loadRoiPipelineConfig(m_currentSelectedRoiId);
+    }
+
+    emit roiChanged();
+    Logger::instance()->info(QString("已删除ROI: %1").arg(roiName));
+}
+
+void RoiUiController::onDrawRoiClicked()
+{
+    if (m_roiManager.getFullImage().empty()) return;
+    enterRoiDrawMode();
 }
 
 void RoiUiController::onResetRoiClicked()
@@ -116,33 +151,25 @@ void RoiUiController::onResetRoiClicked()
 
 void RoiUiController::onAddRoiClicked()
 {
-    // 检查是否已加载图像
     if (m_roiManager.getFullImage().empty()) {
         QMessageBox::warning(nullptr, "警告", "请先加载一张图像");
         return;
     }
-    
-    // 提示用户绘制ROI
     Logger::instance()->info("请在图像上绘制新的ROI");
-    m_view->setRoiMode(true);
-    m_view->setDragMode(QGraphicsView::NoDrag);
-    if (m_statusBar) m_statusBar->showMessage("请按下左键绘制ROI");
+    enterRoiDrawMode();
 }
 
 void RoiUiController::onDeleteRoiClicked()
 {
-    // 检查是否有选中的ROI
     QTreeWidgetItem* currentItem = m_treeView->currentItem();
     if (!currentItem) {
         QMessageBox::warning(nullptr, "警告", "请先选择要删除的ROI");
         return;
     }
-    
-    // 获取ROI ID
+
+    // 获取ROI ID（如果选中的是检测项，找到父ROI）
     QString roiId = currentItem->data(0, Qt::UserRole).toString();
     QString itemType = currentItem->data(0, Qt::UserRole + 1).toString();
-    
-    // 如果选中的是检测项，需要找到其父ROI
     if (itemType == "detection") {
         QTreeWidgetItem* parentItem = currentItem->parent();
         if (parentItem) {
@@ -152,38 +179,20 @@ void RoiUiController::onDeleteRoiClicked()
             return;
         }
     }
-    
-    // 获取ROI配置
+
+    // 确认删除
     RoiConfig* roi = m_roiManager.getRoiConfig(roiId);
     if (!roi) {
         QMessageBox::warning(nullptr, "警告", "未找到选中的ROI");
         return;
     }
-    
-    // 确认删除
     QMessageBox::StandardButton reply = QMessageBox::question(
         nullptr, "确认删除",
         QString("确定要删除ROI \"%1\" 及其所有检测项吗？").arg(roi->roiName),
-        QMessageBox::Yes | QMessageBox::No
-    );
-    
+        QMessageBox::Yes | QMessageBox::No);
+
     if (reply == QMessageBox::Yes) {
-        // 删除ROI
-        m_roiManager.removeRoiConfig(roiId);
-        
-        // 刷新树形视图
-        refreshRoiTreeView();
-        
-        // 重置ROI管理器
-        m_roiManager.resetRoi();
-        m_view->clearRoi();
-        if (m_statusBar) m_statusBar->showMessage("ROI已重置，处理使用完整图像", 2000);
-        Logger::instance()->info("ROI已重置");
-        
-        // 发出信号通知主窗口更新
-        emit roiChanged();
-        
-        Logger::instance()->info(QString("已删除ROI: %1").arg(roi->roiName));
+        removeRoiAndRefresh(roiId);
     }
 }
 
@@ -457,15 +466,8 @@ QString RoiUiController::addRoiWithName(const QString& roiName)
         QMessageBox::warning(nullptr, "警告", "请先加载一张图像");
         return QString();
     }
-    
-    // 进入绘制模式
     Logger::instance()->info(QString("请在图像上绘制新的ROI: %1").arg(roiName));
-    if (!m_roiManager.getFullImage().empty()) {
-        m_view->setRoiMode(true);
-        m_view->setDragMode(QGraphicsView::NoDrag);
-        if (m_statusBar) m_statusBar->showMessage("请按下左键绘制ROI");
-    }
-    
+    enterRoiDrawMode();
     return roiName;
 }
 
@@ -573,66 +575,20 @@ void RoiUiController::setupRoiListWidget(RoiListWidget* roiListWidget)
 
 void RoiUiController::handleRoiAddRequested(const QString& roiName)
 {
-    // 检查图像是否已加载
+    Q_UNUSED(roiName);
     if (m_roiManager.getFullImage().empty()) {
         QMessageBox::warning(nullptr, "警告", "请先加载一张图像");
         return;
     }
-    
-    // 保存当前ROI的配置
     saveCurrentRoiPipelineConfig();
-    
-    // 进入绘制模式
     Logger::instance()->info("请在图像上绘制新的ROI");
-    m_view->setRoiMode(true);
-    m_view->setDragMode(QGraphicsView::NoDrag);
-    if (m_statusBar) m_statusBar->showMessage("请按下左键绘制ROI");
+    enterRoiDrawMode();
 }
 
 void RoiUiController::handleRoiDeleteRequested(const QString& roiId)
 {
-    Logger::instance()->info(QString("[RoiUI] handleRoiDeleteRequested: roiId=%1, 当前选中=%2").arg(roiId).arg(m_currentSelectedRoiId));
-    
-    // 获取ROI名称用于日志
-    RoiConfig* roi = m_roiManager.getRoiConfig(roiId);
-    QString roiName = roi ? roi->roiName : roiId;
-    
-    // 记录删除前是否是当前选中的ROI
-    bool wasSelected = (m_currentSelectedRoiId == roiId);
-    Logger::instance()->info(QString("[RoiUI] 删除前: roiName=%1, wasSelected=%2, ROI配置数=%3")
-        .arg(roiName).arg(wasSelected ? "true" : "false").arg(m_roiManager.getRoiConfigCount()));
-    
-    if (m_roiManager.removeRoiConfig(roiId)) {
-        Logger::instance()->info(QString("[RoiUI] 删除成功, 剩余ROI配置数=%1").arg(m_roiManager.getRoiConfigCount()));
-        
-        // 如果删除的是当前选中的ROI，重置ROI状态
-        if (wasSelected) {
-            Logger::instance()->info("[RoiUI] 删除的是当前选中ROI，重置ROI状态");
-            m_roiManager.resetRoi();
-            m_view->clearRoi();
-            if (m_statusBar) m_statusBar->showMessage("ROI已重置，处理使用完整图像", 2000);
-            Logger::instance()->info("ROI已重置");
-            m_currentSelectedRoiId.clear();
-        }
-        
-        // 【Bug3修复】刷新后，如果自动选择了新的ROI，需要加载其PipelineConfig
-        QString previousSelectedId = m_currentSelectedRoiId;
-        Logger::instance()->info(QString("[RoiUI] refreshRoiTreeView前: selectedId=%1").arg(m_currentSelectedRoiId));
-        refreshRoiTreeView();
-        Logger::instance()->info(QString("[RoiUI] refreshRoiTreeView后: selectedId=%1").arg(m_currentSelectedRoiId));
-        
-        // 如果auto-selection改变了选中的ROI，加载新ROI的配置
-        if (m_currentSelectedRoiId != previousSelectedId && !m_currentSelectedRoiId.isEmpty()) {
-            Logger::instance()->info(QString("[RoiUI] 选中ID变化: %1 -> %2, 加载新ROI的PipelineConfig")
-                .arg(previousSelectedId).arg(m_currentSelectedRoiId));
-            loadRoiPipelineConfig(m_currentSelectedRoiId);
-        }
-        
-        emit roiChanged();
-        Logger::instance()->info(QString("已删除ROI: %1").arg(roiName));
-    } else {
-        Logger::instance()->warning(QString("[RoiUI] 删除失败: roiId=%1").arg(roiId));
-    }
+    Logger::instance()->info(QString("[RoiUI] handleRoiDeleteRequested: roiId=%1").arg(roiId));
+    removeRoiAndRefresh(roiId);
 }
 
 void RoiUiController::handleRoiRenameRequested(const QString& roiId, const QString& newName)
@@ -655,29 +611,8 @@ void RoiUiController::handleRoiActiveChanged(const QString& roiId, bool active)
 
 void RoiUiController::handleRoiSelectionChanged(const QString& roiId)
 {
-    if (roiId == m_currentSelectedRoiId) {
-        return;
-    }
-    
-    // 保存旧ROI的配置
-    saveCurrentRoiPipelineConfig();
-    
-    m_currentSelectedRoiId = roiId;
-    
-    // 加载新ROI的配置
-    loadRoiPipelineConfig(roiId);
-    
-    // 在图像视图中显示对应的ROI
-    RoiConfig* roi = m_roiManager.getRoiConfig(roiId);
-    if (roi) {
-        m_view->clearRoi();
-        // 已知ROI ID时直接使用setActiveRoi，避免setRoi的矩形匹配问题
-        m_roiManager.setActiveRoi(roi->roiId);
-        
-        // 【P1修复】纯显示切换，不触发Pipeline处理
-        emit roiDisplayChanged(roiId);
-        Logger::instance()->info(QString("已选中ROI: %1 (通过ID激活)").arg(roi->roiName));
-    }
+    // 委托给统一的 handleRoiSelection（内部处理相同ROI的跳过逻辑）
+    handleRoiSelection(roiId);
 }
 
 void RoiUiController::saveCurrentRoiPipelineConfig()
@@ -738,9 +673,9 @@ void RoiUiController::syncRoiConfigsToWidget()
     Logger::instance()->info("[RoiUiController] 已同步ROI配置到Widget");
 }
 
-// ========== MainWindow信号连接（从MainWindow迁移） ==========
+// ========== 显示信号连接（从MainWindow迁移） ==========
 
-void RoiUiController::setupMainWindowConnections(TabManager* tabManager)
+void RoiUiController::setupDisplayConnections(TabManager* tabManager)
 {
     // 纯显示切换：切换到ROI区域图像，无需Pipeline重新处理
     // 使用 setImageKeepZoom 保持当前缩放比例，避免切换时缩放重置

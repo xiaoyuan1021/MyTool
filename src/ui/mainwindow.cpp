@@ -203,7 +203,7 @@ void MainWindow::setupControllers()
         ui->btn_startAutoDetection, ui->btn_stopAutoDetection,
         ui->statusbar, ui->label_imageList);
     m_roiUiController->setupTreeView(ui->treeView);
-    m_roiUiController->setupMainWindowConnections(m_tabManager);
+    m_roiUiController->setupDisplayConnections(m_tabManager);
     m_detectionUiController->setupConnections(m_roiUiController,
         [this](const QString& tabName) { ensureTabExists(tabName); });
 }
