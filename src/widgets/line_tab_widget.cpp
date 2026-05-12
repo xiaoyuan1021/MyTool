@@ -103,10 +103,10 @@ void LineDetectTabWidget::onLineThresholdChanged(int value)
     if (!m_pipelineManager) return;
     {
         PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
-        cfg.lineThreshold = value;
+        cfg.lineDetect.threshold = value;
         m_pipelineManager->setConfig(cfg);
     }
-    if (m_pipelineManager->getConfigSnapshot().enableLineDetect) {
+    if (m_pipelineManager->getConfigSnapshot().lineDetect.enabled) {
         if (m_requestRefresh) {
             m_requestRefresh();
         }
@@ -118,10 +118,10 @@ void LineDetectTabWidget::onLineMinLengthChanged(int value)
     if (!m_pipelineManager) return;
     {
         PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
-        cfg.lineMinLength = value;
+        cfg.lineDetect.minLength = value;
         m_pipelineManager->setConfig(cfg);
     }
-    if (m_pipelineManager->getConfigSnapshot().enableLineDetect) {
+    if (m_pipelineManager->getConfigSnapshot().lineDetect.enabled) {
         if (m_requestRefresh) {
             m_requestRefresh();
         }
@@ -133,10 +133,10 @@ void LineDetectTabWidget::onLineMaxGapChanged(int value)
     if (!m_pipelineManager) return;
     {
         PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
-        cfg.lineMaxGap = value;
+        cfg.lineDetect.maxGap = value;
         m_pipelineManager->setConfig(cfg);
     }
-    if (m_pipelineManager->getConfigSnapshot().enableLineDetect) {
+    if (m_pipelineManager->getConfigSnapshot().lineDetect.enabled) {
         if (m_requestRefresh) {
             m_requestRefresh();
         }
@@ -151,22 +151,22 @@ void LineDetectTabWidget::handleApply()
 
     // 更新Pipeline配置（使用快照模式，线程安全）
     PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
-    cfg.lineDetectAlgorithm = state.algorithm;
-    cfg.lineThreshold = state.threshold;
-    cfg.lineMinLength = state.minLineLength;
-    cfg.lineMaxGap = state.maxLineGap;
+    cfg.lineDetect.algorithm = state.algorithm;
+    cfg.lineDetect.threshold = state.threshold;
+    cfg.lineDetect.minLength = state.minLineLength;
+    cfg.lineDetect.maxGap = state.maxLineGap;
     
     // 判断是否启用参考线匹配模式
-    bool useReferenceLineMatch = cfg.enableReferenceLineMatch && cfg.referenceLineValid;
+    bool useReferenceLineMatch = cfg.lineDetect.enableReferenceLineMatch && cfg.lineDetect.referenceLineValid;
     
     if (useReferenceLineMatch) {
         // 参考线匹配模式：禁用普通直线检测
-        cfg.enableLineDetect = false;
+        cfg.lineDetect.enabled = false;
         Logger::instance()->info("使用参考线匹配模式检测直线");
     } else {
         // 普通直线检测模式：禁用参考线匹配
-        cfg.enableLineDetect = true;
-        cfg.enableReferenceLineMatch = false;
+        cfg.lineDetect.enabled = true;
+        cfg.lineDetect.enableReferenceLineMatch = false;
         Logger::instance()->info("使用普通直线检测模式");
     }
     m_pipelineManager->setConfig(cfg);
@@ -217,10 +217,10 @@ void LineDetectTabWidget::onReferenceLineEnabledChanged(bool enabled)
 
     {
         PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
-        cfg.enableReferenceLineMatch = enabled;
+        cfg.lineDetect.enableReferenceLineMatch = enabled;
         // 如果启用参考线匹配，禁用普通直线检测
         if (enabled) {
-            cfg.enableLineDetect = false;
+            cfg.lineDetect.enabled = false;
         }
         m_pipelineManager->setConfig(cfg);
     }
@@ -248,9 +248,9 @@ void LineDetectTabWidget::onClearReferenceLineClicked()
     // 清除参考线数据
     {
         PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
-        cfg.referenceLineValid = false;
-        cfg.referenceLineStart = cv::Point2f(0, 0);
-        cfg.referenceLineEnd = cv::Point2f(0, 0);
+        cfg.lineDetect.referenceLineValid = false;
+        cfg.lineDetect.referenceLineStart = cv::Point2f(0, 0);
+        cfg.lineDetect.referenceLineEnd = cv::Point2f(0, 0);
         m_pipelineManager->setConfig(cfg);
     }
 
@@ -270,13 +270,13 @@ void LineDetectTabWidget::onAngleThresholdChanged(double value)
 
     {
         PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
-        cfg.angleThreshold = value;
+        cfg.lineDetect.angleThreshold = value;
         m_pipelineManager->setConfig(cfg);
     }
 
     {
         PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
-        if (cfg.enableReferenceLineMatch && cfg.referenceLineValid) {
+        if (cfg.lineDetect.enableReferenceLineMatch && cfg.lineDetect.referenceLineValid) {
             if (m_requestRefresh) {
                 m_requestRefresh();
             }
@@ -290,13 +290,13 @@ void LineDetectTabWidget::onDistanceThresholdChanged(double value)
 
     {
         PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
-        cfg.distanceThreshold = value;
+        cfg.lineDetect.distanceThreshold = value;
         m_pipelineManager->setConfig(cfg);
     }
 
     {
         PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
-        if (cfg.enableReferenceLineMatch && cfg.referenceLineValid) {
+        if (cfg.lineDetect.enableReferenceLineMatch && cfg.lineDetect.referenceLineValid) {
             if (m_requestRefresh) {
                 m_requestRefresh();
             }
@@ -310,13 +310,13 @@ void LineDetectTabWidget::onSearchRegionWidthChanged(int value)
 
     {
         PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
-        cfg.searchRegionWidth = value;
+        cfg.lineDetect.searchRegionWidth = value;
         m_pipelineManager->setConfig(cfg);
     }
 
     {
         PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
-        if (cfg.enableReferenceLineMatch && cfg.referenceLineValid) {
+        if (cfg.lineDetect.enableReferenceLineMatch && cfg.lineDetect.referenceLineValid) {
             if (m_requestRefresh) {
                 m_requestRefresh();
             }
@@ -331,16 +331,16 @@ void LineDetectTabWidget::updateReferenceLineStatus()
     PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
     QString status;
 
-    if (!cfg.enableReferenceLineMatch) {
+    if (!cfg.lineDetect.enableReferenceLineMatch) {
         status = "状态：参考线匹配未启用";
-    } else if (!cfg.referenceLineValid) {
+    } else if (!cfg.lineDetect.referenceLineValid) {
         status = "状态：参考线未绘制\n点击\"绘制参考线\"按钮开始";
     } else {
         status = QString("状态：参考线已绘制\n起点:(%1,%2)\n终点:(%3,%4)")
-                     .arg(cfg.referenceLineStart.x, 0, 'f', 1)
-                     .arg(cfg.referenceLineStart.y, 0, 'f', 1)
-                     .arg(cfg.referenceLineEnd.x, 0, 'f', 1)
-                     .arg(cfg.referenceLineEnd.y, 0, 'f', 1);
+                     .arg(cfg.lineDetect.referenceLineStart.x, 0, 'f', 1)
+                     .arg(cfg.lineDetect.referenceLineStart.y, 0, 'f', 1)
+                     .arg(cfg.lineDetect.referenceLineEnd.x, 0, 'f', 1)
+                     .arg(cfg.lineDetect.referenceLineEnd.y, 0, 'f', 1);
     }
 
     m_ui->label_referenceLineStatus->setText(status);
@@ -371,9 +371,9 @@ void LineDetectTabWidget::setReferenceLine(const cv::Point2f& start, const cv::P
 
     {
         PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
-        cfg.referenceLineStart = start;
-        cfg.referenceLineEnd = end;
-        cfg.referenceLineValid = true;
+        cfg.lineDetect.referenceLineStart = start;
+        cfg.lineDetect.referenceLineEnd = end;
+        cfg.lineDetect.referenceLineValid = true;
         m_pipelineManager->setConfig(cfg);
     }
 

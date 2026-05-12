@@ -61,7 +61,7 @@ void ImageTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
     connect(this, &ImageTabWidget::channelChanged,
             this, [pm, requestRefresh](int channel) {
                 PipelineConfig cfg = pm->getConfigSnapshot();
-                cfg.channel = static_cast<PipelineConfig::Channel>(channel);
+                cfg.colorFilter.channel = static_cast<PipelineConfig::Channel>(channel);
                 pm->setConfig(cfg);
                 requestRefresh();
             });

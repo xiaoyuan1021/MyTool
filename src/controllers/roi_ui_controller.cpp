@@ -693,9 +693,9 @@ void RoiUiController::saveCurrentRoiPipelineConfig()
         roi->pipelineConfig = m_pipelineManager->getConfigSnapshot();
         Logger::instance()->debug(QString("[RoiUI] 已保存ROI [%1] 的Pipeline配置: brightness=%2, contrast=%3, gamma=%4")
             .arg(roi->roiName)
-            .arg(roi->pipelineConfig.brightness)
-            .arg(roi->pipelineConfig.contrast)
-            .arg(roi->pipelineConfig.gamma));
+            .arg(roi->pipelineConfig.enhance.brightness)
+            .arg(roi->pipelineConfig.enhance.contrast)
+            .arg(roi->pipelineConfig.enhance.gamma));
     } else {
         Logger::instance()->warning(QString("[RoiUI] saveCurrentRoiPipelineConfig: ROI不存在, id=%1").arg(m_currentSelectedRoiId));
     }
@@ -717,11 +717,11 @@ void RoiUiController::loadRoiPipelineConfig(const QString& roiId)
         
         Logger::instance()->info(QString("[RoiUI] 已加载ROI [%1] 的Pipeline配置: brightness=%2, contrast=%3, gamma=%4, sharpen=%5, channel=%6")
             .arg(roi->roiName)
-            .arg(roi->pipelineConfig.brightness)
-            .arg(roi->pipelineConfig.contrast)
-            .arg(roi->pipelineConfig.gamma)
-            .arg(roi->pipelineConfig.sharpen)
-            .arg(static_cast<int>(roi->pipelineConfig.channel)));
+            .arg(roi->pipelineConfig.enhance.brightness)
+            .arg(roi->pipelineConfig.enhance.contrast)
+            .arg(roi->pipelineConfig.enhance.gamma)
+            .arg(roi->pipelineConfig.enhance.sharpen)
+            .arg(static_cast<int>(roi->pipelineConfig.colorFilter.channel)));
     } else {
         Logger::instance()->warning(QString("[RoiUI] loadRoiPipelineConfig: ROI不存在, id=%1").arg(roiId));
     }
@@ -772,10 +772,10 @@ void RoiUiController::setupMainWindowConnections(TabManager* tabManager)
             this, [tabManager](const PipelineConfig& config) {
         if (auto* enhanceTab = tabManager->getEnhanceTab()) {
             enhanceTab->setEnhanceConfig(
-                config.brightness,
-                static_cast<int>(config.contrast * 100),
-                static_cast<int>(config.gamma * 100),
-                static_cast<int>(config.sharpen * 100)
+                config.enhance.brightness,
+                static_cast<int>(config.enhance.contrast * 100),
+                static_cast<int>(config.enhance.gamma * 100),
+                static_cast<int>(config.enhance.sharpen * 100)
             );
         }
     });

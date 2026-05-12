@@ -306,11 +306,11 @@ void BatchDetectionWidget::processNextImage()
                     if (!roiConfig.isActive) continue;
 
                     PipelineConfig config = savedGlobalConfig;
-                    config.brightness = roiConfig.pipelineConfig.brightness;
-                    config.contrast = roiConfig.pipelineConfig.contrast;
-                    config.gamma = roiConfig.pipelineConfig.gamma;
-                    config.sharpen = roiConfig.pipelineConfig.sharpen;
-                    config.channel = roiConfig.pipelineConfig.channel;
+                    config.enhance.brightness = roiConfig.pipelineConfig.enhance.brightness;
+                    config.enhance.contrast = roiConfig.pipelineConfig.enhance.contrast;
+                    config.enhance.gamma = roiConfig.pipelineConfig.enhance.gamma;
+                    config.enhance.sharpen = roiConfig.pipelineConfig.enhance.sharpen;
+                    config.colorFilter.channel = roiConfig.pipelineConfig.colorFilter.channel;
 
                     cv::Rect roiRect = ImageUtils::mapRoiToCvRect(
                         roiConfig.roiRect, image.cols, image.rows);

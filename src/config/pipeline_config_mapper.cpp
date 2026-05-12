@@ -9,23 +9,23 @@ void PipelineConfigMapper::syncConfigFromUI(PipelineConfig& config,
     if (!brightness || !contrast || !gamma || !sharpen || !grayLow || !grayHigh)
         return;
 
-    config.brightness = brightness->value();
-    config.contrast   = contrast->value() / 100.0;
-    config.gamma      = gamma->value() / 100.0;
-    config.sharpen    = sharpen->value() / 100.0;
-    config.grayLow    = grayLow->value();
-    config.grayHigh   = grayHigh->value();
+    config.enhance.brightness = brightness->value();
+    config.enhance.contrast   = contrast->value() / 100.0;
+    config.enhance.gamma      = gamma->value() / 100.0;
+    config.enhance.sharpen    = sharpen->value() / 100.0;
+    config.colorFilter.grayLow    = grayLow->value();
+    config.colorFilter.grayHigh   = grayHigh->value();
 
     // 防呆：避免 low > high
-    if (config.grayLow > config.grayHigh)
-        std::swap(config.grayLow, config.grayHigh);
+    if (config.colorFilter.grayLow > config.colorFilter.grayHigh)
+        std::swap(config.colorFilter.grayLow, config.colorFilter.grayHigh);
 }
 
 void PipelineConfigMapper::resetEnhancement(PipelineConfig& config)
 {
-    config.brightness = 0;
-    config.contrast = 1.0;
-    config.gamma = 1.0;
-    config.sharpen = 1.0;
-    config.enableGrayFilter = false;
+    config.enhance.brightness = 0;
+    config.enhance.contrast = 1.0;
+    config.enhance.gamma = 1.0;
+    config.enhance.sharpen = 1.0;
+    config.colorFilter.enableGrayFilter = false;
 }

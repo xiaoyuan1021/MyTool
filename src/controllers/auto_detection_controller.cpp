@@ -147,8 +147,8 @@ QList<ImageDetectionTask> AutoDetectionController::buildTaskList()
             // 输出PipelineConfig关键参数
             const PipelineConfig& pc = cfg.pipelineConfig;
             emit logMessage(QString("    PipelineConfig: brightness=%1, contrast=%2, gamma=%3, sharpen=%4, channel=%5, grayLow=%6, grayHigh=%7")
-                .arg(pc.brightness).arg(pc.contrast).arg(pc.gamma).arg(pc.sharpen)
-                .arg(static_cast<int>(pc.channel)).arg(pc.grayLow).arg(pc.grayHigh));
+                .arg(pc.enhance.brightness).arg(pc.enhance.contrast).arg(pc.enhance.gamma).arg(pc.enhance.sharpen)
+                .arg(static_cast<int>(pc.colorFilter.channel)).arg(pc.colorFilter.grayLow).arg(pc.colorFilter.grayHigh));
         }
 
         // 至少需要图片文件路径
@@ -271,11 +271,11 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
                 // 【Bug1修复】应用该ROI专属的Pipeline配置，通过execute参数传递
 
                 Logger::instance()->info(QString("[检测] 应用PipelineConfig: brightness=%1, contrast=%2, gamma=%3, sharpen=%4, channel=%5")
-                    .arg(roiConfig.pipelineConfig.brightness)
-                    .arg(roiConfig.pipelineConfig.contrast)
-                    .arg(roiConfig.pipelineConfig.gamma)
-                    .arg(roiConfig.pipelineConfig.sharpen)
-                    .arg(static_cast<int>(roiConfig.pipelineConfig.channel)));
+                    .arg(roiConfig.pipelineConfig.enhance.brightness)
+                    .arg(roiConfig.pipelineConfig.enhance.contrast)
+                    .arg(roiConfig.pipelineConfig.enhance.gamma)
+                    .arg(roiConfig.pipelineConfig.enhance.sharpen)
+                    .arg(static_cast<int>(roiConfig.pipelineConfig.colorFilter.channel)));
 
                 // 执行Pipeline（传入ROI专属配置，线程安全）
                 Logger::instance()->info("[检测] 开始执行Pipeline...");

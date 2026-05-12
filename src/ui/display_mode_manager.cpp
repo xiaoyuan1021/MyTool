@@ -60,7 +60,7 @@ void DisplayModeManager::applyModeForCurrentTab()
 
     if (tabName == "过滤") {
         PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
-        mode = (cfg.currentFilterMode == PipelineConfig::FilterMode::None)
+        mode = (cfg.colorFilter.currentFilterMode == PipelineConfig::FilterMode::None)
             ? DisplayConfig::Mode::Original
             : DisplayConfig::Mode::MaskGreenWhite;
     }

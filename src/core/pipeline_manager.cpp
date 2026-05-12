@@ -27,12 +27,12 @@ void PipelineManager::resetEnhancement()
 
 void PipelineManager::setGrayFilterEnabled(bool enabled)
 {
-    m_config.enableGrayFilter = enabled;
+    m_config.colorFilter.enableGrayFilter = enabled;
 }
 
 void PipelineManager::setAreaFilterEnabled(bool enabled)
 {
-    m_config.enableAreaFilter = enabled;
+    m_config.colorFilter.enableAreaFilter = enabled;
 }
 
 // ========== 形状筛选接口 ==========
@@ -168,12 +168,12 @@ void PipelineManager::initPipeline()
 
 void PipelineManager::setChannelMode(PipelineConfig::Channel channel)
 {
-    m_config.channel=channel;
+    m_config.colorFilter.channel=channel;
 }
 
 PipelineConfig::Channel PipelineManager::getChannelMode() const
 {
-    return m_config.channel;
+    return m_config.colorFilter.channel;
 }
 
 void PipelineManager::updateAlgorithmStep(int index, const AlgorithmStep &step)
@@ -192,42 +192,42 @@ void PipelineManager::setDisplayMode(DisplayConfig::Mode mode)
 
 void PipelineManager::setColorFilterEnabled(bool enabled)
 {
-    m_config.enableColorFilter = enabled;
+    m_config.colorFilter.enableColorFilter = enabled;
 }
 
 void PipelineManager::setColorFilterMode(PipelineConfig::ColorFilterMode mode)
 {
-    m_config.colorFilterMode = mode;
+    m_config.colorFilter.colorFilterMode = mode;
 }
 
 void PipelineManager::setRGBRange(int rLow, int rHigh, int gLow, int gHigh, int bLow, int bHigh)
 {
-    m_config.rLow = rLow;
-    m_config.rHigh = rHigh;
-    m_config.gLow = gLow;
-    m_config.gHigh = gHigh;
-    m_config.bLow = bLow;
-    m_config.bHigh = bHigh;
+    m_config.colorFilter.rLow = rLow;
+    m_config.colorFilter.rHigh = rHigh;
+    m_config.colorFilter.gLow = gLow;
+    m_config.colorFilter.gHigh = gHigh;
+    m_config.colorFilter.bLow = bLow;
+    m_config.colorFilter.bHigh = bHigh;
 }
 
 void PipelineManager::setHSVRange(int hLow, int hHigh, int sLow, int sHigh, int vLow, int vHigh)
 {
-    m_config.hLow = hLow;
-    m_config.hHigh = hHigh;
-    m_config.sLow = sLow;
-    m_config.sHigh = sHigh;
-    m_config.vLow = vLow;
-    m_config.vHigh = vHigh;
+    m_config.colorFilter.hLow = hLow;
+    m_config.colorFilter.hHigh = hHigh;
+    m_config.colorFilter.sLow = sLow;
+    m_config.colorFilter.sHigh = sHigh;
+    m_config.colorFilter.vLow = vLow;
+    m_config.colorFilter.vHigh = vHigh;
 }
 
 void PipelineManager::setCurrentFilterMode(PipelineConfig::FilterMode mode)
 {
-    m_config.currentFilterMode = mode;
+    m_config.colorFilter.currentFilterMode = mode;
 }
 
 PipelineConfig::FilterMode PipelineManager::getCurrentFilterMode() const
 {
-    return m_config.currentFilterMode;
+    return m_config.colorFilter.currentFilterMode;
 }
 
 cv::Mat PipelineManager::getLastDisplayWithMode(DisplayConfig::Mode mode) const

@@ -154,10 +154,10 @@ void EnhanceTabWidget::applyState(const EnhancementState &state)
     // 同步参数到 Pipeline（线程安全：使用快照+setConfig模式）
     {
         PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
-        cfg.brightness = state.brightness;
-        cfg.contrast = state.contrast / 100.0;
-        cfg.gamma = state.gamma / 100.0;
-        cfg.sharpen = state.sharpen / 100.0;
+        cfg.enhance.brightness = state.brightness;
+        cfg.enhance.contrast = state.contrast / 100.0;
+        cfg.enhance.gamma = state.gamma / 100.0;
+        cfg.enhance.sharpen = state.sharpen / 100.0;
         m_pipelineManager->setConfig(cfg);
     }
 
@@ -184,10 +184,10 @@ void EnhanceTabWidget::syncConfigToPipeline()
 {
     EnhancementState current = captureState();
     PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
-    cfg.brightness = current.brightness;
-    cfg.contrast = current.contrast / 100.0;
-    cfg.gamma = current.gamma / 100.0;
-    cfg.sharpen = current.sharpen / 100.0;
+    cfg.enhance.brightness = current.brightness;
+    cfg.enhance.contrast = current.contrast / 100.0;
+    cfg.enhance.gamma = current.gamma / 100.0;
+    cfg.enhance.sharpen = current.sharpen / 100.0;
     m_pipelineManager->setConfig(cfg);
     
     // 通知外部将配置回写到当前ROI，防止ROI之间配置串扰
@@ -242,10 +242,10 @@ void EnhanceTabWidget::applyStateQuiet(const EnhancementState &state)
 
     // 仅同步参数到Pipeline，不触发处理
     PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
-    cfg.brightness = state.brightness;
-    cfg.contrast = state.contrast / 100.0;
-    cfg.gamma = state.gamma / 100.0;
-    cfg.sharpen = state.sharpen / 100.0;
+    cfg.enhance.brightness = state.brightness;
+    cfg.enhance.contrast = state.contrast / 100.0;
+    cfg.enhance.gamma = state.gamma / 100.0;
+    cfg.enhance.sharpen = state.sharpen / 100.0;
     m_pipelineManager->setConfig(cfg);
 }
 

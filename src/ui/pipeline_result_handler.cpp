@@ -82,9 +82,9 @@ void PipelineResultHandler::handleLineTabResult(const PipelineContext& result)
         lineTab->updateMatchResultStatus(
             result.matchedLineCount,
             result.totalLineCount,
-            cfg.angleThreshold,
-            cfg.distanceThreshold,
-            cfg.enableReferenceLineMatch
+            cfg.lineDetect.angleThreshold,
+            cfg.lineDetect.distanceThreshold,
+            cfg.lineDetect.enableReferenceLineMatch
         );
     }
 }
