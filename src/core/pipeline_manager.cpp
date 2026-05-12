@@ -11,12 +11,7 @@ PipelineManager::PipelineManager(QObject* parent)
     : QObject(parent)
     , m_processor(std::make_unique<ImageProcessor>())
 {
-    // resetEnhancement 内联（原 PipelineConfigMapper）
-    m_config.enhance.brightness = 0;
-    m_config.enhance.contrast = 1.0;
-    m_config.enhance.gamma = 1.0;
-    m_config.enhance.sharpen = 1.0;
-    m_config.colorFilter.enableGrayFilter = false;
+    resetEnhancement();
     initPipeline();
 }
 
@@ -26,44 +21,11 @@ PipelineManager::~PipelineManager() = default;
 
 void PipelineManager::resetEnhancement()
 {
-    // resetEnhancement 内联（原 PipelineConfigMapper）
     m_config.enhance.brightness = 0;
     m_config.enhance.contrast = 1.0;
     m_config.enhance.gamma = 1.0;
     m_config.enhance.sharpen = 1.0;
     m_config.colorFilter.enableGrayFilter = false;
-}
-
-void PipelineManager::setGrayFilterEnabled(bool enabled)
-{
-    m_config.colorFilter.enableGrayFilter = enabled;
-}
-
-void PipelineManager::setAreaFilterEnabled(bool enabled)
-{
-    m_config.colorFilter.enableAreaFilter = enabled;
-}
-
-// ========== 形状筛选接口 ==========
-
-void PipelineManager::addFilterCondition(const FilterCondition& condition)
-{
-    m_config.shapeFilter.addCondition(condition);
-}
-
-void PipelineManager::setFilterMode(FilterMode mode)
-{
-    m_config.shapeFilter.mode = mode;
-}
-
-void PipelineManager::clearShapeFilter()
-{
-    m_config.shapeFilter.clear();
-}
-
-void PipelineManager::setShapeFilterConfig(const ShapeFilterConfig& config)
-{
-    m_config.shapeFilter = config;
 }
 
 // ========== 算法队列管理 ==========
@@ -87,9 +49,8 @@ void PipelineManager::swapAlgorithmStep(int index1, int index2)
 {
     if (index1 < m_algorithmQueue.size() && index2 < m_algorithmQueue.size())
     {
-        m_algorithmQueue.swapItemsAt(index1,index2);
+        m_algorithmQueue.swapItemsAt(index1, index2);
         emit algorithmQueueChanged(m_algorithmQueue.size());
-
     }
 }
 
@@ -158,34 +119,9 @@ PipelineContext PipelineManager::execute(const cv::Mat& inputImage, const Pipeli
     return ctx;
 }
 
-// ========== 私有方法 ==========
+// ========== 非trivial方法 ==========
 
-void PipelineManager::initPipeline()
-{
-    m_pipeline = Pipeline();
-
-    m_pipeline.add(std::make_unique<StepColorChannel>());
-    m_pipeline.add(std::make_unique<StepEnhance>(m_processor.get()));
-    m_pipeline.add(std::make_unique<StepGrayFilter>());
-    m_pipeline.add(std::make_unique<StepColorFilter>(m_processor.get()));
-    m_pipeline.add(std::make_unique<StepAlgorithmQueue>(m_processor.get(), &m_algorithmQueue));
-    m_pipeline.add(std::make_unique<StepShapeFilter>());
-    m_pipeline.add(std::make_unique<StepLineDetect>());
-    m_pipeline.add(std::make_unique<StepReferenceLineFilter>());
-    m_pipeline.add(std::make_unique<StepBarcodeRecognition>());
-}
-
-void PipelineManager::setChannelMode(PipelineConfig::Channel channel)
-{
-    m_config.colorFilter.channel=channel;
-}
-
-PipelineConfig::Channel PipelineManager::getChannelMode() const
-{
-    return m_config.colorFilter.channel;
-}
-
-void PipelineManager::updateAlgorithmStep(int index, const AlgorithmStep &step)
+void PipelineManager::updateAlgorithmStep(int index, const AlgorithmStep& step)
 {
     if (index >= 0 && index < m_algorithmQueue.size())
     {
@@ -197,46 +133,6 @@ void PipelineManager::updateAlgorithmStep(int index, const AlgorithmStep &step)
 void PipelineManager::setDisplayMode(DisplayConfig::Mode mode)
 {
     m_displayMode = mode;
-}
-
-void PipelineManager::setColorFilterEnabled(bool enabled)
-{
-    m_config.colorFilter.enableColorFilter = enabled;
-}
-
-void PipelineManager::setColorFilterMode(PipelineConfig::ColorFilterMode mode)
-{
-    m_config.colorFilter.colorFilterMode = mode;
-}
-
-void PipelineManager::setRGBRange(int rLow, int rHigh, int gLow, int gHigh, int bLow, int bHigh)
-{
-    m_config.colorFilter.rLow = rLow;
-    m_config.colorFilter.rHigh = rHigh;
-    m_config.colorFilter.gLow = gLow;
-    m_config.colorFilter.gHigh = gHigh;
-    m_config.colorFilter.bLow = bLow;
-    m_config.colorFilter.bHigh = bHigh;
-}
-
-void PipelineManager::setHSVRange(int hLow, int hHigh, int sLow, int sHigh, int vLow, int vHigh)
-{
-    m_config.colorFilter.hLow = hLow;
-    m_config.colorFilter.hHigh = hHigh;
-    m_config.colorFilter.sLow = sLow;
-    m_config.colorFilter.sHigh = sHigh;
-    m_config.colorFilter.vLow = vLow;
-    m_config.colorFilter.vHigh = vHigh;
-}
-
-void PipelineManager::setCurrentFilterMode(PipelineConfig::FilterMode mode)
-{
-    m_config.colorFilter.currentFilterMode = mode;
-}
-
-PipelineConfig::FilterMode PipelineManager::getCurrentFilterMode() const
-{
-    return m_config.colorFilter.currentFilterMode;
 }
 
 cv::Mat PipelineManager::getLastDisplayWithMode(DisplayConfig::Mode mode) const
@@ -270,4 +166,21 @@ void PipelineManager::resetPipeline()
 
     emit pipelineReset();
     emit algorithmQueueChanged(0);
+}
+
+// ========== 私有方法 ==========
+
+void PipelineManager::initPipeline()
+{
+    m_pipeline = Pipeline();
+
+    m_pipeline.add(std::make_unique<StepColorChannel>());
+    m_pipeline.add(std::make_unique<StepEnhance>(m_processor.get()));
+    m_pipeline.add(std::make_unique<StepGrayFilter>());
+    m_pipeline.add(std::make_unique<StepColorFilter>(m_processor.get()));
+    m_pipeline.add(std::make_unique<StepAlgorithmQueue>(m_processor.get(), &m_algorithmQueue));
+    m_pipeline.add(std::make_unique<StepShapeFilter>());
+    m_pipeline.add(std::make_unique<StepLineDetect>());
+    m_pipeline.add(std::make_unique<StepReferenceLineFilter>());
+    m_pipeline.add(std::make_unique<StepBarcodeRecognition>());
 }

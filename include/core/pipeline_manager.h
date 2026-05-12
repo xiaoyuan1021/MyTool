@@ -32,11 +32,13 @@ public:
 
     void resetEnhancement();
 
-    void setGrayFilterEnabled(bool enabled);
+    /// 获取配置的可变引用（UI线程直接读写，替代大量 trivial setter）
+    PipelineConfig& mutableConfig() { return m_config; }
 
-    void setAreaFilterEnabled(bool enabled);
+    /// 获取配置的常量引用
+    const PipelineConfig& config() const { return m_config; }
 
-    // 获取当前配置（仅UI线程调用，无需加锁）
+    // 获取当前配置的拷贝（用于并发快照）
     PipelineConfig getConfigSnapshot() const { return m_config; }
 
     // 设置配置（仅UI线程调用）
@@ -63,13 +65,6 @@ public:
         return m_lastContext;
     }
 
-    void addFilterCondition(const FilterCondition& condition);
-    void setFilterMode(FilterMode mode);
-    void clearShapeFilter();
-    void setShapeFilterConfig(const ShapeFilterConfig& config);
-
-    void setChannelMode(PipelineConfig::Channel channel);
-    PipelineConfig::Channel getChannelMode() const;
     void updateAlgorithmStep(int index, const AlgorithmStep& step);
 
     void setDisplayMode(DisplayConfig::Mode mode);
@@ -82,12 +77,6 @@ public:
 
     // ========== 颜色过滤控制 ==========
 
-    void setColorFilterEnabled(bool enabled);
-    void setColorFilterMode(PipelineConfig::ColorFilterMode mode);
-    void setRGBRange(int rLow, int rHigh, int gLow, int gHigh, int bLow, int bHigh);
-    void setHSVRange(int hLow, int hHigh, int sLow, int sHigh, int vLow, int vHigh);
-    void setCurrentFilterMode(PipelineConfig::FilterMode mode);
-    PipelineConfig::FilterMode getCurrentFilterMode() const;
 
     void resetPipeline();
 

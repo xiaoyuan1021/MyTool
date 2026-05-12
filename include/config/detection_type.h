@@ -1,8 +1,7 @@
 #pragma once
 
 #include <QString>
-#include <QDateTime>
-#include <QRandomGenerator>
+#include "utils/id_utils.h"
 
 /**
  * @brief 检测类型枚举
@@ -45,18 +44,6 @@ inline DetectionType stringToDetectionType(const QString& str) {
     if (str == "目标检测") return DetectionType::ObjectDetection;
     if (str == "视频检测") return DetectionType::VideoDetection;
     return DetectionType::Blob; // 默认值
-}
-
-/**
- * @brief 生成唯一ID
- * @param prefix 前缀（如 "roi" 或 "det"）
- * @return 唯一ID字符串
- */
-inline QString generateUniqueId(const QString& prefix) {
-    return QString("%1_%2_%3")
-        .arg(prefix)
-        .arg(QDateTime::currentMSecsSinceEpoch())
-        .arg(QRandomGenerator::global()->bounded(10000));
 }
 
 /**

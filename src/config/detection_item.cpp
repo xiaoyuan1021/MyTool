@@ -8,11 +8,6 @@ QJsonObject DetectionItem::toJson() const {
     obj["enabled"] = enabled;
     obj["description"] = description;
     
-    QJsonObject params;
-    for (auto it = parameters.begin(); it != parameters.end(); ++it) {
-        params[it.key()] = QJsonValue::fromVariant(it.value());
-    }
-    obj["parameters"] = params;
     obj["config"] = config;
     
     return obj;
@@ -24,11 +19,6 @@ void DetectionItem::fromJson(const QJsonObject& obj) {
     type = stringToDetectionType(obj["type"].toString());
     enabled = obj["enabled"].toBool(true);
     description = obj["description"].toString();
-    
-    QJsonObject params = obj["parameters"].toObject();
-    for (auto it = params.begin(); it != params.end(); ++it) {
-        parameters[it.key()] = it.value().toVariant();
-    }
     
     config = obj["config"].toObject();
     

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <QString>
-#include <QVariantMap>
 #include <QJsonObject>
 #include <QJsonArray>
 #include "detection_type.h"
@@ -17,7 +16,6 @@ struct DetectionItem {
     QString itemId;             // 检测项唯一ID
     QString itemName;           // 检测项名称
     DetectionType type;         // 检测类型
-    QVariantMap parameters;     // 检测参数
     bool enabled;               // 是否启用
     QString description;        // 描述信息
     QJsonObject config;         // 检测类型的专属配置（通用JSON存储）

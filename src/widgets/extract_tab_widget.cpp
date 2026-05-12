@@ -88,8 +88,8 @@ void ExtractTabWidget::onConditionChanged(int index)
 {
     if (!m_pipeline) return;
 
-    FilterMode mode = (index == 0) ? FilterMode::And : FilterMode::Or;
-    m_pipeline->setFilterMode(mode);
+    auto mode = (index == 0) ? ShapeFilterLogicMode::And : ShapeFilterLogicMode::Or;
+    m_pipeline->mutableConfig().shapeFilter.mode = mode;
 
     QString modeName = (mode == FilterMode::And) ? "AND" : "OR";
     Logger::instance()->info(QString("筛选模式已切换:%1").arg(modeName));
@@ -106,11 +106,11 @@ void ExtractTabWidget::clearFilter()
     m_filterConditions.removeAt(m_currentSelectedIndex);
 
     // 清空 Pipeline 中的所有条件
-    m_pipeline->clearShapeFilter();
+    m_pipeline->mutableConfig().shapeFilter.clear();
 
     // 重新添加剩余的条件到 Pipeline
     for (const FilterCondition& condition : m_filterConditions) {
-        m_pipeline->addFilterCondition(condition);
+        m_pipeline->mutableConfig().shapeFilter.addCondition(condition);
     }
 
     // 清空输入框
@@ -158,7 +158,7 @@ void ExtractTabWidget::addFilter()
     ShapeFeature feature = static_cast<ShapeFeature>(featureIndex);
 
     FilterCondition condition(feature, minValue, maxValue);
-    m_pipeline->addFilterCondition(condition);
+    m_pipeline->mutableConfig().shapeFilter.addCondition(condition);
 
     // 保存条件到本地列表
     m_filterConditions.append(condition);
@@ -293,11 +293,11 @@ void ExtractTabWidget::setExtractConfig(const ShapeFilterConfig& config)
 
     // 清空当前条件
     m_filterConditions.clear();
-    m_pipeline->clearShapeFilter();
+    m_pipeline->mutableConfig().shapeFilter.clear();
 
     // 应用新配置
     m_filterConditions = config.conditions;
-    m_pipeline->setShapeFilterConfig(config);
+    m_pipeline->mutableConfig().shapeFilter = config;
 
     // 更新UI显示
     updateFilterListWidget();
@@ -330,9 +330,9 @@ void ExtractTabWidget::saveCurrentFilterCondition()
     m_filterConditions[m_currentSelectedIndex].maxValue = maxValue;
 
     // 重新同步到 Pipeline
-    m_pipeline->clearShapeFilter();
+    m_pipeline->mutableConfig().shapeFilter.clear();
     for (const FilterCondition& condition : m_filterConditions) {
-        m_pipeline->addFilterCondition(condition);
+        m_pipeline->mutableConfig().shapeFilter.addCondition(condition);
     }
 
     // 触发重新处理
