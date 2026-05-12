@@ -96,57 +96,8 @@ struct VideoSourceConfig {
     void fromJson(const QJsonObject& obj);
 };
 
-/**
- * @brief 直线检测配置参数
- */
-struct LineDetectionConfig {
-    // 图像增强参数（统一类型定义，独立实例）
-    EnhanceConfig enhance;
-    
-    // 直线检测参数
-    int algorithm = 0;           // 算法 (0: HoughP, 1: LSD, 2: EDline)
-    double rho = 1.0;            // 距离分辨率
-    double theta = 3.14159265358979323846 / 180.0; // 角度分辨率
-    int threshold = 50;          // 阈值
-    double minLineLength = 30.0; // 最小线段长度
-    double maxLineGap = 10.0;    // 最大线段间隙
-    
-    // 参考线匹配参数
-    bool enableReferenceLine = false;   // 是否启用参考线匹配
-    double angleThreshold = 10.0;       // 角度阈值（度）
-    double distanceThreshold = 20.0;    // 距离阈值（像素）
-    int searchRegionWidth = 50;         // 搜索区域宽度（像素）
-    
-    // JSON 序列化（定义在 detection_config_types.cpp）
-    QJsonObject toJson() const;
-    void fromJson(const QJsonObject& obj);
-};
-
-/**
- * @brief 条码识别配置参数
- */
-struct BarcodeRecognitionConfig {
-    // 图像增强参数（统一类型定义，独立实例）
-    EnhanceConfig enhance;
-    
-    // 条码识别参数
-    bool enableBarcode = true;           // 是否启用条码识别
-    QStringList codeTypes = {"auto"};    // 条码类型
-    int maxNumSymbols = 0;               // 最大识别数量 (0=不限制)
-    bool returnQuality = true;           // 是否返回质量信息
-    double minConfidence = 0.7;          // 最小置信度
-    int timeout = 5000;                  // 超时时间（毫秒）
-    
-    // 图像预处理参数
-    bool enablePreprocessing = true;     // 是否启用预处理
-    int preprocessMethod = 0;            // 预处理方法 (0: 直接识别, 1: 二值化, 2: 形态学)
-    int binarizationThreshold = 128;     // 二值化阈值
-    int morphologySize = 3;              // 形态学核大小
-    
-    // JSON 序列化（定义在 detection_config_types.cpp）
-    QJsonObject toJson() const;
-    void fromJson(const QJsonObject& obj);
-};
+// 注意：LineDetectionConfig 和 BarcodeRecognitionConfig 已合并到 pipeline_config.h
+// 分别为 LineDetectConfig 和 BarcodeConfig 的别名
 
 /**
  * @brief 目标检测配置参数

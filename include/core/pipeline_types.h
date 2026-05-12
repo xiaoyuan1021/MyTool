@@ -46,21 +46,4 @@ enum class ImageFilterMode
     HSV     // HSV颜色过滤模式
 };
 
-/**
- * 条码识别配置结构体
- */
-struct BarcodeConfig
-{
-    bool enableBarcode = false;                    // 是否启用条码识别
-    QStringList codeTypes = {"auto"};             // 条码类型，"auto"表示自动检测
-    int maxNumSymbols = 0;                        // 最大识别数量，0表示不限制
-    bool returnQuality = true;                    // 返回质量信息
-    
-    bool operator==(const BarcodeConfig& other) const
-    {
-        return enableBarcode == other.enableBarcode &&
-               codeTypes == other.codeTypes &&
-               maxNumSymbols == other.maxNumSymbols &&
-               returnQuality == other.returnQuality;
-    }
-};
+// 注意：BarcodeConfig 已移至 pipeline_config.h，以支持增强参数和 JSON 序列化

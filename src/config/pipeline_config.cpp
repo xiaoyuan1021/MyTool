@@ -1,4 +1,5 @@
 #include "config/pipeline_config.h"
+#include <QJsonArray>
 
 QJsonObject PipelineConfig::toJson() const {
     QJsonObject obj;
@@ -105,12 +106,95 @@ void PipelineConfig::fromJson(const QJsonObject& obj) {
     // 条码参数
     QJsonObject barcodeObj = obj["barcode"].toObject();
     if (!barcodeObj.isEmpty()) {
-        barcode.enableBarcode = barcodeObj["enableBarcode"].toBool(false);
-        QString codeTypesStr  = barcodeObj["codeTypes"].toString();
-        if (!codeTypesStr.isEmpty()) {
-            barcode.codeTypes = codeTypesStr.split(",");
-        }
-        barcode.maxNumSymbols = barcodeObj["maxNumSymbols"].toInt(0);
-        barcode.returnQuality = barcodeObj["returnQuality"].toBool(true);
+        barcode.fromJson(barcodeObj);
     }
+}
+
+// ========== LineDetectConfig 序列化 ==========
+
+QJsonObject LineDetectConfig::toJson() const {
+    QJsonObject obj;
+    obj["brightness"] = enhance.brightness;
+    obj["contrast"] = enhance.contrast;
+    obj["gamma"] = enhance.gamma;
+    obj["sharpen"] = enhance.sharpen;
+    obj["algorithm"] = algorithm;
+    obj["rho"] = rho;
+    obj["theta"] = theta;
+    obj["threshold"] = threshold;
+    obj["minLength"] = minLength;
+    obj["maxGap"] = maxGap;
+    obj["enabled"] = enabled;
+    obj["enableReferenceLineMatch"] = enableReferenceLineMatch;
+    obj["angleThreshold"] = angleThreshold;
+    obj["distanceThreshold"] = distanceThreshold;
+    obj["searchRegionWidth"] = searchRegionWidth;
+    return obj;
+}
+
+void LineDetectConfig::fromJson(const QJsonObject& obj) {
+    enhance.brightness = obj["brightness"].toInt(0);
+    enhance.contrast = obj["contrast"].toInt(100);
+    enhance.gamma = obj["gamma"].toInt(100);
+    enhance.sharpen = obj["sharpen"].toInt(100);
+    algorithm = obj["algorithm"].toInt(0);
+    rho = obj["rho"].toDouble(1.0);
+    theta = obj["theta"].toDouble(CV_PI / 180.0);
+    threshold = obj["threshold"].toInt(50);
+    minLength = obj["minLength"].toDouble(30.0);
+    maxGap = obj["maxGap"].toDouble(10.0);
+    enabled = obj["enabled"].toBool(false);
+    enableReferenceLineMatch = obj["enableReferenceLineMatch"].toBool(false);
+    angleThreshold = obj["angleThreshold"].toDouble(10.0);
+    distanceThreshold = obj["distanceThreshold"].toDouble(20.0);
+    searchRegionWidth = obj["searchRegionWidth"].toInt(50);
+}
+
+// ========== BarcodeConfig 序列化 ==========
+
+QJsonObject BarcodeConfig::toJson() const {
+    QJsonObject obj;
+    obj["brightness"] = enhance.brightness;
+    obj["contrast"] = enhance.contrast;
+    obj["gamma"] = enhance.gamma;
+    obj["sharpen"] = enhance.sharpen;
+    obj["enableBarcode"] = enableBarcode;
+    QJsonArray codeTypesArray;
+    for (const QString& type : codeTypes) {
+        codeTypesArray.append(type);
+    }
+    obj["codeTypes"] = codeTypesArray;
+    obj["maxNumSymbols"] = maxNumSymbols;
+    obj["returnQuality"] = returnQuality;
+    obj["minConfidence"] = minConfidence;
+    obj["timeout"] = timeout;
+    obj["enablePreprocessing"] = enablePreprocessing;
+    obj["preprocessMethod"] = preprocessMethod;
+    obj["binarizationThreshold"] = binarizationThreshold;
+    obj["morphologySize"] = morphologySize;
+    return obj;
+}
+
+void BarcodeConfig::fromJson(const QJsonObject& obj) {
+    enhance.brightness = obj["brightness"].toInt(0);
+    enhance.contrast = obj["contrast"].toInt(100);
+    enhance.gamma = obj["gamma"].toInt(100);
+    enhance.sharpen = obj["sharpen"].toInt(100);
+    enableBarcode = obj["enableBarcode"].toBool(true);
+    codeTypes.clear();
+    QJsonArray codeTypesArray = obj["codeTypes"].toArray();
+    for (const QJsonValue& val : codeTypesArray) {
+        codeTypes.append(val.toString());
+    }
+    if (codeTypes.isEmpty()) {
+        codeTypes = {"auto"};
+    }
+    maxNumSymbols = obj["maxNumSymbols"].toInt(0);
+    returnQuality = obj["returnQuality"].toBool(true);
+    minConfidence = obj["minConfidence"].toDouble(0.7);
+    timeout = obj["timeout"].toInt(5000);
+    enablePreprocessing = obj["enablePreprocessing"].toBool(true);
+    preprocessMethod = obj["preprocessMethod"].toInt(0);
+    binarizationThreshold = obj["binarizationThreshold"].toInt(128);
+    morphologySize = obj["morphologySize"].toInt(3);
 }
