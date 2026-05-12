@@ -77,13 +77,10 @@ set(HEADERS
     include/config/detection_item.h
     include/config/detection_type.h
     include/config/display_config.h
-    include/config/filter_condition.h
     include/config/json_serializable.h
     include/config/mqtt_config.h
     include/config/pipeline_config.h
     include/config/roi_config.h
-    include/config/shape_feature.h
-    include/config/shape_filter_config.h
     include/config/shape_filter_types.h
     include/config/tab_config.h
     # data
