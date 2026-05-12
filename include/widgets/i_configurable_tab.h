@@ -1,8 +1,7 @@
 #pragma once
 
 #include <QString>
-
-struct AppConfig;
+#include "config/pipeline_config.h"
 
 /**
  * @brief 可配置 Tab Widget 接口
@@ -19,14 +18,14 @@ public:
     virtual ~IConfigurableTab() = default;
 
     /**
-     * @brief 将当前 UI 配置保存到 AppConfig
-     * @param config 目标配置对象
+     * @brief 将当前 UI 配置保存到 PipelineConfig
+     * @param config 目标配置对象（对应子结构体）
      */
-    virtual void saveToConfig(AppConfig& config) const = 0;
+    virtual void saveToConfig(PipelineConfig& config) const = 0;
 
     /**
-     * @brief 从 AppConfig 加载配置到 UI
-     * @param config 源配置对象
+     * @brief 从 PipelineConfig 加载配置到 UI
+     * @param config 源配置对象（对应子结构体）
      */
-    virtual void loadFromConfig(const AppConfig& config) = 0;
+    virtual void loadFromConfig(const PipelineConfig& config) = 0;
 };

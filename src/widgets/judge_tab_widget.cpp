@@ -99,12 +99,12 @@ void JudgeTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
 
 // ========== IConfigurableTab 接口实现 ==========
 
-void JudgeTabWidget::saveToConfig(AppConfig& config) const
+void JudgeTabWidget::saveToConfig(PipelineConfig& config) const
 {
-    getJudgeConfig(config.minRegionCount, config.maxRegionCount, config.currentRegionCount);
+    getJudgeConfig(config.judge.minRegionCount, config.judge.maxRegionCount, config.judge.currentRegionCount);
 }
 
-void JudgeTabWidget::loadFromConfig(const AppConfig& config)
+void JudgeTabWidget::loadFromConfig(const PipelineConfig& config)
 {
-    setJudgeConfig(config.minRegionCount, config.maxRegionCount, config.currentRegionCount);
+    setJudgeConfig(config.judge.minRegionCount, config.judge.maxRegionCount, config.judge.currentRegionCount);
 }

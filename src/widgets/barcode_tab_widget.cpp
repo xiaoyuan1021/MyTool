@@ -191,14 +191,14 @@ void BarcodeTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
 
 // ========== IConfigurableTab 接口实现 ==========
 
-void BarcodeTabWidget::saveToConfig(AppConfig& config) const
+void BarcodeTabWidget::saveToConfig(PipelineConfig& config) const
 {
-    config.barcodeConfig = getBarcodeConfig();
+    config.barcode = getBarcodeConfig();
 }
 
-void BarcodeTabWidget::loadFromConfig(const AppConfig& config)
+void BarcodeTabWidget::loadFromConfig(const PipelineConfig& config)
 {
-    setBarcodeConfig(config.barcodeConfig);
+    setBarcodeConfig(config.barcode);
 }
 
 // ========== ITabInitializable 接口实现 ==========

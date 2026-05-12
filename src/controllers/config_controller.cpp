@@ -80,9 +80,9 @@ void ConfigController::loadConfig(QWidget* parentWidget)
 
 void ConfigController::collectConfigFromUI(AppConfig& config)
 {
-    // 通过 IConfigurableTab 接口收集所有已注册 Tab 的配置
+    // 通过 IConfigurableTab 接口收集所有已注册 Tab 的配置到 PipelineConfig
     for (auto* tab : m_configurableTabs) {
-        tab->saveToConfig(config);
+        tab->saveToConfig(config.pipelineConfig);
     }
 
     // 收集 ROI 配置（单ROI模式，向后兼容）
@@ -111,7 +111,7 @@ void ConfigController::collectConfigFromUI(AppConfig& config)
     // 收集多图片ROI配置（保持原始 JSON 格式，避免序列化往返）
     config.roiExportData = m_roiManager.exportAllConfigsToJson().object();
 
-    // 收集算法队列（来自 PipelineManager，非 Tab）
+    // 收集算法队列（来自 PipelineManager，非 Tab）- 保留独立存储
     config.algorithmQueue = m_pipelineManager->getAlgorithmQueue();
 }
 
@@ -188,7 +188,7 @@ void ConfigController::applyConfigToUI(const AppConfig& config)
 
     // ====== 第四步：通过 IConfigurableTab 接口将配置应用到所有已注册 Tab ======
     for (auto* tab : m_configurableTabs) {
-        tab->loadFromConfig(config);
+        tab->loadFromConfig(config.pipelineConfig);
     }
 
     // ====== 第五步：应用算法队列到 PipelineManager ======
@@ -198,7 +198,10 @@ void ConfigController::applyConfigToUI(const AppConfig& config)
     }
 
     // 同步Pipeline中的提取配置
-    m_pipelineManager->setShapeFilterConfig(config.shapeFilterConfig);
+    m_pipelineManager->setShapeFilterConfig(config.pipelineConfig.shapeFilter);
+
+    // 应用 PipelineConfig 到 PipelineManager（不含 algorithmQueue）
+    m_pipelineManager->setConfig(config.pipelineConfig);
 
     // 发出配置已应用信号
     emit configApplied();

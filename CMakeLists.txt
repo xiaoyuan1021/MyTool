@@ -79,7 +79,6 @@ set(HEADERS
     include/config/json_serializable.h
     include/config/mqtt_config.h
     include/config/pipeline_config.h
-    include/config/pipeline_config_mapper.h
     include/config/roi_config.h
     include/config/shape_feature.h
     include/config/shape_filter_config.h
@@ -161,7 +160,6 @@ set(SOURCES
     src/algorithm/zxing_barcode_reader.cpp
     # config
     src/config/config_manager.cpp
-    src/config/pipeline_config_mapper.cpp
     # ui
     src/ui/barcode_step.cpp
     src/ui/cloud_dashboard_manager.cpp

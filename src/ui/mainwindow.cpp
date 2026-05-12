@@ -72,7 +72,7 @@ void MainWindow::stopAllAsyncOperations()
 
     // 停止视频播放并断开信号，防止定时器回调访问已销毁的成员
     if (m_tabManager) {
-        VideoTabWidget* videoTab = m_tabManager->getVideoTab();
+        VideoTabWidget* videoTab = m_tabManager->getTabAs<VideoTabWidget>("视频");
         if (videoTab) {
             VideoManager* vm = videoTab->getVideoManager();
             if (vm) {
@@ -358,7 +358,7 @@ void MainWindow::on_btn_openVideo_clicked()
     // 确保视频Tab已创建（懒加载）
     ensureTabExists("视频");
 
-    auto* videoTab = m_tabManager->getVideoTab();
+    auto* videoTab = m_tabManager->getTabAs<VideoTabWidget>("视频");
     if (!videoTab) {
         Logger::instance()->error("视频Tab组件创建失败");
         return;

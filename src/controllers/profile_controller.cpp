@@ -106,7 +106,7 @@ void ProfileController::syncBarcodeConfigFromRois()
             PipelineConfig pc = m_pipelineManager->getConfigSnapshot();
             pc.barcode = roi.pipelineConfig.barcode;
             m_pipelineManager->setConfig(pc);
-            auto* barcodeTab = m_tabManager->getBarcodeTab();
+            auto* barcodeTab = m_tabManager->getTabAs<BarcodeTabWidget>("条码");
             if (barcodeTab) {
                 barcodeTab->setBarcodeConfig(pc.barcode);
             }

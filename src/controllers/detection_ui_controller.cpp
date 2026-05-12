@@ -133,7 +133,7 @@ void DetectionUiController::onDetectionItemSelected(const QString& roiId, const 
         if (detection.type == DetectionType::Blob) {
             BlobAnalysisConfig blobConfig;
             blobConfig.fromJson(detection.config);
-            if (auto* judgeTab = tabManager->getJudgeTab()) {
+            if (auto* judgeTab = tabManager->getTabAs<JudgeTabWidget>("判定")) {
                 judgeTab->setJudgeConfig(
                     blobConfig.minBlobCount,
                     blobConfig.maxBlobCount,

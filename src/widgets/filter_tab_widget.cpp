@@ -297,12 +297,20 @@ void FilterTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
 
 // ========== IConfigurableTab 接口实现 ==========
 
-void FilterTabWidget::saveToConfig(AppConfig& config) const
+void FilterTabWidget::saveToConfig(PipelineConfig& config) const
 {
-    getFilterConfig(config.filterMode, config.grayLow, config.grayHigh);
+    int mode, grayLow, grayHigh;
+    getFilterConfig(mode, grayLow, grayHigh);
+    config.colorFilter.currentFilterMode = static_cast<ImageFilterMode>(mode);
+    config.colorFilter.grayLow = grayLow;
+    config.colorFilter.grayHigh = grayHigh;
 }
 
-void FilterTabWidget::loadFromConfig(const AppConfig& config)
+void FilterTabWidget::loadFromConfig(const PipelineConfig& config)
 {
-    setFilterConfig(config.filterMode, config.grayLow, config.grayHigh);
+    setFilterConfig(
+        static_cast<int>(config.colorFilter.currentFilterMode),
+        config.colorFilter.grayLow,
+        config.colorFilter.grayHigh
+    );
 }

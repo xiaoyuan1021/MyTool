@@ -63,48 +63,6 @@ QWidget* TabManager::getTab(const QString& name) const
     return (it != m_tabs.end()) ? it.value() : nullptr;
 }
 
-// ========== 类型安全的 getter ==========
-
-EnhanceTabWidget* TabManager::getEnhanceTab() const {
-    return dynamic_cast<EnhanceTabWidget*>(getTab("增强"));
-}
-
-FilterTabWidget* TabManager::getFilterTab() const {
-    return dynamic_cast<FilterTabWidget*>(getTab("过滤"));
-}
-
-ExtractTabWidget* TabManager::getExtractTab() const {
-    return dynamic_cast<ExtractTabWidget*>(getTab("提取"));
-}
-
-JudgeTabWidget* TabManager::getJudgeTab() const {
-    return dynamic_cast<JudgeTabWidget*>(getTab("判定"));
-}
-
-ProcessTabWidget* TabManager::getProcessTab() const {
-    return dynamic_cast<ProcessTabWidget*>(getTab("处理"));
-}
-
-LineDetectTabWidget* TabManager::getLineDetectTab() const {
-    return dynamic_cast<LineDetectTabWidget*>(getTab("直线"));
-}
-
-BarcodeTabWidget* TabManager::getBarcodeTab() const {
-    return dynamic_cast<BarcodeTabWidget*>(getTab("条码"));
-}
-
-ObjectDetectionTabWidget* TabManager::getObjectDetectionTab() const {
-    return dynamic_cast<ObjectDetectionTabWidget*>(getTab("目标检测"));
-}
-
-TemplateTabWidget* TabManager::getTemplateTab() const {
-    return dynamic_cast<TemplateTabWidget*>(getTab("补正"));
-}
-
-VideoTabWidget* TabManager::getVideoTab() const {
-    return dynamic_cast<VideoTabWidget*>(getTab("视频"));
-}
-
 // ========== Tab创建 ==========
 
 QWidget* TabManager::createTab(const QString& name)

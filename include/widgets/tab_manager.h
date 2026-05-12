@@ -11,17 +11,6 @@ class PipelineManager;
 class RoiManager;
 class ImageView;
 class QTimer;
-class EnhanceTabWidget;
-class FilterTabWidget;
-class ExtractTabWidget;
-class JudgeTabWidget;
-class ProcessTabWidget;
-class LineDetectTabWidget;
-class BarcodeTabWidget;
-class ObjectDetectionTabWidget;
-class TemplateTabWidget;
-class ImageTabWidget;
-class VideoTabWidget;
 
 /**
  * Tab管理器 - 负责Tab的懒加载、创建和按名获取
@@ -60,20 +49,7 @@ public:
     /// 获取已创建的Tab名称列表
     QStringList createdTabNames() const { return m_tabOrder; }
 
-    // ========== 类型安全的获取（保留向后兼容）==========
-
-    EnhanceTabWidget* getEnhanceTab() const;
-    FilterTabWidget* getFilterTab() const;
-    ExtractTabWidget* getExtractTab() const;
-    JudgeTabWidget* getJudgeTab() const;
-    ProcessTabWidget* getProcessTab() const;
-    LineDetectTabWidget* getLineDetectTab() const;
-    BarcodeTabWidget* getBarcodeTab() const;
-    ObjectDetectionTabWidget* getObjectDetectionTab() const;
-    TemplateTabWidget* getTemplateTab() const;
-    VideoTabWidget* getVideoTab() const;
-
-    // ========== 泛型获取（推荐使用）==========
+    // ========== 类型安全的获取 ==========
 
     /// 按名称获取 Tab Widget（未创建则返回 nullptr）
     QWidget* getTab(const QString& name) const;

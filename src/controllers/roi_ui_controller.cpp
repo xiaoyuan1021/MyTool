@@ -770,7 +770,7 @@ void RoiUiController::setupMainWindowConnections(TabManager* tabManager)
     // ROI切换时更新EnhanceTabWidget的UI显示
     connect(this, &RoiUiController::roiPipelineConfigChanged,
             this, [tabManager](const PipelineConfig& config) {
-        if (auto* enhanceTab = tabManager->getEnhanceTab()) {
+        if (auto* enhanceTab = tabManager->getTabAs<EnhanceTabWidget>("增强")) {
             enhanceTab->setEnhanceConfig(
                 config.enhance.brightness,
                 static_cast<int>(config.enhance.contrast * 100),

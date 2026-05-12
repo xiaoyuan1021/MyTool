@@ -35,8 +35,8 @@ public:
     BarcodeConfig getBarcodeConfig() const;
 
     // IConfigurableTab 接口实现
-    void saveToConfig(AppConfig& config) const override;
-    void loadFromConfig(const AppConfig& config) override;
+    void saveToConfig(PipelineConfig& config) const override;
+    void loadFromConfig(const PipelineConfig& config) override;
 
     // ITabInitializable 接口实现
     void initializeTab(const TabInitContext& ctx) override;

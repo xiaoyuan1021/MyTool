@@ -1,7 +1,6 @@
 #include "pipeline_manager.h"
 #include "image_processor.h"
 #include "barcode_step.h"
-#include "config/pipeline_config_mapper.h"
 #include "config/constants.h"
 #include "logger.h"
 #include "ui/display_renderer.h"
@@ -12,7 +11,12 @@ PipelineManager::PipelineManager(QObject* parent)
     : QObject(parent)
     , m_processor(std::make_unique<ImageProcessor>())
 {
-    PipelineConfigMapper::resetEnhancement(m_config);
+    // resetEnhancement 内联（原 PipelineConfigMapper）
+    m_config.enhance.brightness = 0;
+    m_config.enhance.contrast = 1.0;
+    m_config.enhance.gamma = 1.0;
+    m_config.enhance.sharpen = 1.0;
+    m_config.colorFilter.enableGrayFilter = false;
     initPipeline();
 }
 
@@ -22,7 +26,12 @@ PipelineManager::~PipelineManager() = default;
 
 void PipelineManager::resetEnhancement()
 {
-    PipelineConfigMapper::resetEnhancement(m_config);
+    // resetEnhancement 内联（原 PipelineConfigMapper）
+    m_config.enhance.brightness = 0;
+    m_config.enhance.contrast = 1.0;
+    m_config.enhance.gamma = 1.0;
+    m_config.enhance.sharpen = 1.0;
+    m_config.colorFilter.enableGrayFilter = false;
 }
 
 void PipelineManager::setGrayFilterEnabled(bool enabled)

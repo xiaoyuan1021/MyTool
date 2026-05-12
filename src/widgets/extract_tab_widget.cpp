@@ -351,12 +351,12 @@ void ExtractTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
 
 // ========== IConfigurableTab 接口实现 ==========
 
-void ExtractTabWidget::saveToConfig(AppConfig& config) const
+void ExtractTabWidget::saveToConfig(PipelineConfig& config) const
 {
-    getExtractConfig(config.shapeFilterConfig);
+    getExtractConfig(config.shapeFilter);
 }
 
-void ExtractTabWidget::loadFromConfig(const AppConfig& config)
+void ExtractTabWidget::loadFromConfig(const PipelineConfig& config)
 {
-    setExtractConfig(config.shapeFilterConfig);
+    setExtractConfig(config.shapeFilter);
 }

@@ -68,7 +68,7 @@ void PipelineResultHandler::handleJudgeTabResult(const PipelineContext& result)
 {
     if (!m_tabManager) return;
     
-    if (auto* judgeTab = m_tabManager->getJudgeTab()) {
+    if (auto* judgeTab = m_tabManager->getTabAs<JudgeTabWidget>("判定")) {
         judgeTab->setCurrentRegionCount(result.currentRegions);
     }
 }
@@ -77,7 +77,7 @@ void PipelineResultHandler::handleLineTabResult(const PipelineContext& result)
 {
     if (!m_tabManager) return;
 
-    if (auto* lineTab = m_tabManager->getLineDetectTab()) {
+    if (auto* lineTab = m_tabManager->getTabAs<LineDetectTabWidget>("直线")) {
         PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
         lineTab->updateMatchResultStatus(
             result.matchedLineCount,
@@ -93,7 +93,7 @@ void PipelineResultHandler::handleBarcodeTabResult(const PipelineContext& result
 {
     if (!m_tabManager) return;
     
-    if (auto* barcodeTab = m_tabManager->getBarcodeTab()) {
+    if (auto* barcodeTab = m_tabManager->getTabAs<BarcodeTabWidget>("条码")) {
         barcodeTab->updateResultsTable(result.barcodeResults);
         barcodeTab->updateStatus(result.barcodeStatus);
     }
@@ -103,7 +103,7 @@ void PipelineResultHandler::handleObjectDetection(cv::Mat& displayImage)
 {
     if (!m_tabManager || !m_roiManager) return;
     
-    if (auto* objTab = m_tabManager->getObjectDetectionTab(); objTab && objTab->isModelLoaded()) {
+    if (auto* objTab = m_tabManager->getTabAs<ObjectDetectionTabWidget>("目标检测"); objTab && objTab->isModelLoaded()) {
         cv::Mat detectImage = m_roiManager->getCurrentImage();
         if (!detectImage.empty()) {
             std::vector<DetectionResult> detResults = objTab->runDetection(detectImage);

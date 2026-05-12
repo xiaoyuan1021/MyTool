@@ -21,8 +21,8 @@ public:
     void setFilterConfig(int mode, int grayLow, int grayHigh);
 
     // IConfigurableTab 接口实现
-    void saveToConfig(AppConfig& config) const override;
-    void loadFromConfig(const AppConfig& config) override;
+    void saveToConfig(PipelineConfig& config) const override;
+    void loadFromConfig(const PipelineConfig& config) override;
 
     void connectSignals(PipelineManager* pm, RoiManager* rm,
                         ImageView* view, RoiUiController* roiCtrl,

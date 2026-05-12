@@ -263,12 +263,20 @@ void EnhanceTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
 
 // ========== IConfigurableTab 接口实现 ==========
 
-void EnhanceTabWidget::saveToConfig(AppConfig& config) const
+void EnhanceTabWidget::saveToConfig(PipelineConfig& config) const
 {
-    getEnhanceConfig(config.brightness, config.contrast, config.gamma, config.sharpen);
+    config.enhance.brightness = m_ui->Slider_brightness->value();
+    config.enhance.contrast   = m_ui->Slider_contrast->value() / 100.0;
+    config.enhance.gamma      = m_ui->Slider_gamma->value() / 100.0;
+    config.enhance.sharpen    = m_ui->Slider_sharpen->value() / 100.0;
 }
 
-void EnhanceTabWidget::loadFromConfig(const AppConfig& config)
+void EnhanceTabWidget::loadFromConfig(const PipelineConfig& config)
 {
-    setEnhanceConfig(config.brightness, config.contrast, config.gamma, config.sharpen);
+    setEnhanceConfig(
+        config.enhance.brightness,
+        static_cast<int>(config.enhance.contrast * 100),
+        static_cast<int>(config.enhance.gamma * 100),
+        static_cast<int>(config.enhance.sharpen * 100)
+    );
 }

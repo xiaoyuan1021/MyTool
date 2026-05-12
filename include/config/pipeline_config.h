@@ -81,6 +81,18 @@ struct LineDetectConfig
 };
 
 /**
+ * @brief 判定配置（Blob分析阈值）
+ *
+ * 对应 JudgeTabWidget 的参数。
+ */
+struct JudgeConfig
+{
+    int minRegionCount = 0;
+    int maxRegionCount = 1000;
+    int currentRegionCount = 0;
+};
+
+/**
  * @brief Pipeline配置结构
  *
  * 按功能分组为子结构体，降低单一"胖结构体"的维护风险。
@@ -101,6 +113,7 @@ struct PipelineConfig
     LineDetectConfig lineDetect;   ///< 直线检测与参考线匹配
     ShapeFilterConfig shapeFilter; ///< 形状筛选
     BarcodeConfig    barcode;      ///< 条码识别
+    JudgeConfig      judge;        ///< 判定配置（Blob分析阈值）
 
     // ==================== JSON 序列化 ====================
 
