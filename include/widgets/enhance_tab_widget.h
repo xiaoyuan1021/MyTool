@@ -3,6 +3,7 @@
 #include <QWidget>
 #include "pipeline_manager.h"
 #include "pipeline.h"
+#include "config/enhance_params.h"
 #include "widgets/i_signal_connectable.h"
 #include "widgets/i_configurable_tab.h"
 #include <QObject>
@@ -57,21 +58,8 @@ private slots:
     void on_btn_undoBC_clicked();
 
 private:
-    struct EnhancementState 
-    { 
-        int brightness = 0;
-        int contrast = 100;
-        int gamma = 100;
-        int sharpen = 100;
-
-        bool operator==(const EnhancementState& other) const
-        {
-            return brightness == other.brightness &&
-                contrast == other.contrast &&
-                gamma == other.gamma &&
-                sharpen == other.sharpen;
-        }   
-    };
+    // 复用 EnhanceParams 类型定义（独立实例，不影响其他 Config）
+    using EnhancementState = EnhanceParams;
     EnhancementState captureState() const;
     /// 应用状态并触发处理（用户交互时使用）
     void applyState(const EnhancementState& state);

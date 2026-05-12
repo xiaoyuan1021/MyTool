@@ -153,8 +153,8 @@ void LineDetectTabWidget::handleApply()
     PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
     cfg.lineDetect.algorithm = state.algorithm;
     cfg.lineDetect.threshold = state.threshold;
-    cfg.lineDetect.minLength = state.minLineLength;
-    cfg.lineDetect.maxGap = state.maxLineGap;
+    cfg.lineDetect.minLength = state.minLength;
+    cfg.lineDetect.maxGap = state.maxGap;
     
     // 判断是否启用参考线匹配模式
     bool useReferenceLineMatch = cfg.lineDetect.enableReferenceLineMatch && cfg.lineDetect.referenceLineValid;
@@ -185,8 +185,8 @@ LineDetectTabWidget::LineDetectState LineDetectTabWidget::getLineState() const
     LineDetectState state;
     state.algorithm = m_ui->comboBox_lineAlgorithm->currentIndex();
     state.threshold = m_ui->Slider_HoughPThreshold->value();
-    state.minLineLength = m_ui->Slider_HoughPMinLineLength->value();
-    state.maxLineGap = m_ui->Slider_HoughPMaxLineGap->value();
+    state.minLength = m_ui->Slider_HoughPMinLineLength->value();
+    state.maxGap = m_ui->Slider_HoughPMaxLineGap->value();
     return state;
 }
 
@@ -201,12 +201,12 @@ void LineDetectTabWidget::setLineState(const LineDetectState &state)
 
     m_ui->comboBox_lineAlgorithm->setCurrentIndex(state.algorithm);
     m_ui->Slider_HoughPThreshold->setValue(state.threshold);
-    m_ui->Slider_HoughPMinLineLength->setValue(state.minLineLength);
-    m_ui->Slider_HoughPMaxLineGap->setValue(state.maxLineGap);
+    m_ui->Slider_HoughPMinLineLength->setValue(state.minLength);
+    m_ui->Slider_HoughPMaxLineGap->setValue(state.maxGap);
 
     m_ui->SpinBox_HoughPThreshold->setValue(state.threshold);
-    m_ui->SpinBox_HoughPMinLineLength->setValue(state.minLineLength);
-    m_ui->SpinBox_HoughPMaxLineGap->setValue(state.maxLineGap);
+    m_ui->SpinBox_HoughPMinLineLength->setValue(state.minLength);
+    m_ui->SpinBox_HoughPMaxLineGap->setValue(state.maxGap);
 }
 
 // ========== 参考线匹配槽函数 ==========

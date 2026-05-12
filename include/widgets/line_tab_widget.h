@@ -4,6 +4,7 @@
 #include <functional>
 #include <opencv2/core.hpp>
 #include "pipeline_manager.h"
+#include "config/pipeline_config.h"
 #include "widgets/i_signal_connectable.h"
 
 namespace Ui
@@ -33,26 +34,8 @@ private:
     std::function<void()> m_requestRefresh;
     Ui::LineTabForm* m_ui;
 
-    struct LineDetectState
-    {
-        int algorithm = 0;  // 0=HoughP, 1=LSD, 2=EDline
-        double rho = 1.0;
-        double theta = CV_PI / 180.0;
-        int threshold = 50;
-        double minLineLength = 30.0;
-        double maxLineGap = 10.0;
-
-        bool operator==(const LineDetectState& other) const
-        {
-            return algorithm == other.algorithm &&
-                rho == other.rho &&
-                theta == other.theta &&
-                threshold == other.threshold &&
-                minLineLength == other.minLineLength &&
-                maxLineGap == other.maxLineGap;
-        }
-    };
-
+    // 复用 LineDetectConfig 类型定义（独立实例，不影响其他 Config）
+    using LineDetectState = LineDetectConfig;
     LineDetectState getLineState() const;
     void setLineState(const LineDetectState& state);
 

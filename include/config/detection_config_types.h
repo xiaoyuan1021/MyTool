@@ -6,6 +6,7 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include "config/json_serializable.h"
+#include "config/enhance_params.h"
 
 /**
  * @brief 检测项（DetectionItem）专用配置类型定义
@@ -27,11 +28,8 @@
  * @brief Blob分析配置参数
  */
 struct BlobAnalysisConfig : public IJsonSerializable {
-    // 图像增强参数
-    int brightness = 0;          // 亮度 (-100 ~ 100)
-    int contrast = 100;          // 对比度 (0 ~ 200)
-    int gamma = 100;             // 伽马值 (10 ~ 300)
-    int sharpen = 100;           // 锐化 (0 ~ 200)
+    // 图像增强参数（统一类型定义，独立实例）
+    EnhanceParams enhance;
     
     // 过滤参数
     int minArea = 100;           // 最小面积
@@ -84,11 +82,8 @@ struct VideoSourceConfig {
     bool autoPlay = true;              // 自动播放
     double playbackSpeed = 1.0;        // 播放速度 (0.5 ~ 2.0)
     
-    // 图像处理参数
-    int brightness = 0;                // 亮度 (-100 ~ 100)
-    int contrast = 100;                // 对比度 (0 ~ 200)
-    int gamma = 100;                   // 伽马值 (10 ~ 300)
-    int sharpen = 100;                 // 锐化 (0 ~ 200)
+    // 图像处理参数（统一类型定义，独立实例）
+    EnhanceParams enhance;
     
     // 帧处理参数
     bool enableFrameSkipping = false;  // 是否启用帧跳跃
@@ -105,11 +100,8 @@ struct VideoSourceConfig {
  * @brief 直线检测配置参数
  */
 struct LineDetectionConfig {
-    // 图像增强参数
-    int brightness = 0;          // 亮度
-    int contrast = 100;          // 对比度
-    int gamma = 100;             // 伽马值
-    int sharpen = 100;           // 锐化
+    // 图像增强参数（统一类型定义，独立实例）
+    EnhanceParams enhance;
     
     // 直线检测参数
     int algorithm = 0;           // 算法 (0: HoughP, 1: LSD, 2: EDline)
@@ -134,11 +126,8 @@ struct LineDetectionConfig {
  * @brief 条码识别配置参数
  */
 struct BarcodeRecognitionConfig {
-    // 图像增强参数
-    int brightness = 0;          // 亮度
-    int contrast = 100;          // 对比度
-    int gamma = 100;             // 伽马值
-    int sharpen = 100;           // 锐化
+    // 图像增强参数（统一类型定义，独立实例）
+    EnhanceParams enhance;
     
     // 条码识别参数
     bool enableBarcode = true;           // 是否启用条码识别

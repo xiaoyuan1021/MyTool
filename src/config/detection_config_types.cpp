@@ -4,10 +4,10 @@
 
 QJsonObject BlobAnalysisConfig::toJson() const {
     QJsonObject obj;
-    obj["brightness"] = brightness;
-    obj["contrast"] = contrast;
-    obj["gamma"] = gamma;
-    obj["sharpen"] = sharpen;
+    obj["brightness"] = enhance.brightness;
+    obj["contrast"] = enhance.contrast;
+    obj["gamma"] = enhance.gamma;
+    obj["sharpen"] = enhance.sharpen;
     obj["minArea"] = minArea;
     obj["maxArea"] = maxArea;
     obj["minCircularity"] = minCircularity;
@@ -35,10 +35,10 @@ QJsonObject BlobAnalysisConfig::toJson() const {
 }
 
 void BlobAnalysisConfig::fromJson(const QJsonObject& obj) {
-    brightness = obj["brightness"].toInt(0);
-    contrast = obj["contrast"].toInt(100);
-    gamma = obj["gamma"].toInt(100);
-    sharpen = obj["sharpen"].toInt(100);
+    enhance.brightness = obj["brightness"].toInt(0);
+    enhance.contrast = obj["contrast"].toInt(100);
+    enhance.gamma = obj["gamma"].toInt(100);
+    enhance.sharpen = obj["sharpen"].toInt(100);
     minArea = obj["minArea"].toInt(100);
     maxArea = obj["maxArea"].toInt(10000);
     minCircularity = obj["minCircularity"].toDouble(0.5);
@@ -73,10 +73,10 @@ QJsonObject VideoSourceConfig::toJson() const {
     obj["cameraIndex"] = cameraIndex;
     obj["autoPlay"] = autoPlay;
     obj["playbackSpeed"] = playbackSpeed;
-    obj["brightness"] = brightness;
-    obj["contrast"] = contrast;
-    obj["gamma"] = gamma;
-    obj["sharpen"] = sharpen;
+    obj["brightness"] = enhance.brightness;
+    obj["contrast"] = enhance.contrast;
+    obj["gamma"] = enhance.gamma;
+    obj["sharpen"] = enhance.sharpen;
     obj["enableFrameSkipping"] = enableFrameSkipping;
     obj["frameSkipInterval"] = frameSkipInterval;
     obj["enableFrameBlur"] = enableFrameBlur;
@@ -90,10 +90,10 @@ void VideoSourceConfig::fromJson(const QJsonObject& obj) {
     cameraIndex = obj["cameraIndex"].toInt(0);
     autoPlay = obj["autoPlay"].toBool(true);
     playbackSpeed = obj["playbackSpeed"].toDouble(1.0);
-    brightness = obj["brightness"].toInt(0);
-    contrast = obj["contrast"].toInt(100);
-    gamma = obj["gamma"].toInt(100);
-    sharpen = obj["sharpen"].toInt(100);
+    enhance.brightness = obj["brightness"].toInt(0);
+    enhance.contrast = obj["contrast"].toInt(100);
+    enhance.gamma = obj["gamma"].toInt(100);
+    enhance.sharpen = obj["sharpen"].toInt(100);
     enableFrameSkipping = obj["enableFrameSkipping"].toBool(false);
     frameSkipInterval = obj["frameSkipInterval"].toInt(1);
     enableFrameBlur = obj["enableFrameBlur"].toBool(false);
@@ -104,10 +104,10 @@ void VideoSourceConfig::fromJson(const QJsonObject& obj) {
 
 QJsonObject LineDetectionConfig::toJson() const {
     QJsonObject obj;
-    obj["brightness"] = brightness;
-    obj["contrast"] = contrast;
-    obj["gamma"] = gamma;
-    obj["sharpen"] = sharpen;
+    obj["brightness"] = enhance.brightness;
+    obj["contrast"] = enhance.contrast;
+    obj["gamma"] = enhance.gamma;
+    obj["sharpen"] = enhance.sharpen;
     obj["algorithm"] = algorithm;
     obj["rho"] = rho;
     obj["theta"] = theta;
@@ -122,10 +122,10 @@ QJsonObject LineDetectionConfig::toJson() const {
 }
 
 void LineDetectionConfig::fromJson(const QJsonObject& obj) {
-    brightness = obj["brightness"].toInt(0);
-    contrast = obj["contrast"].toInt(100);
-    gamma = obj["gamma"].toInt(100);
-    sharpen = obj["sharpen"].toInt(100);
+    enhance.brightness = obj["brightness"].toInt(0);
+    enhance.contrast = obj["contrast"].toInt(100);
+    enhance.gamma = obj["gamma"].toInt(100);
+    enhance.sharpen = obj["sharpen"].toInt(100);
     algorithm = obj["algorithm"].toInt(0);
     rho = obj["rho"].toDouble(1.0);
     theta = obj["theta"].toDouble(3.14159265358979323846 / 180.0);
@@ -142,10 +142,10 @@ void LineDetectionConfig::fromJson(const QJsonObject& obj) {
 
 QJsonObject BarcodeRecognitionConfig::toJson() const {
     QJsonObject obj;
-    obj["brightness"] = brightness;
-    obj["contrast"] = contrast;
-    obj["gamma"] = gamma;
-    obj["sharpen"] = sharpen;
+    obj["brightness"] = enhance.brightness;
+    obj["contrast"] = enhance.contrast;
+    obj["gamma"] = enhance.gamma;
+    obj["sharpen"] = enhance.sharpen;
     obj["enableBarcode"] = enableBarcode;
     QJsonArray codeTypesArray;
     for (const QString& type : codeTypes) {
@@ -164,10 +164,10 @@ QJsonObject BarcodeRecognitionConfig::toJson() const {
 }
 
 void BarcodeRecognitionConfig::fromJson(const QJsonObject& obj) {
-    brightness = obj["brightness"].toInt(0);
-    contrast = obj["contrast"].toInt(100);
-    gamma = obj["gamma"].toInt(100);
-    sharpen = obj["sharpen"].toInt(100);
+    enhance.brightness = obj["brightness"].toInt(0);
+    enhance.contrast = obj["contrast"].toInt(100);
+    enhance.gamma = obj["gamma"].toInt(100);
+    enhance.sharpen = obj["sharpen"].toInt(100);
     enableBarcode = obj["enableBarcode"].toBool(true);
     codeTypes.clear();
     QJsonArray codeTypesArray = obj["codeTypes"].toArray();
