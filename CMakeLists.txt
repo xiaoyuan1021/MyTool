@@ -92,7 +92,6 @@ set(HEADERS
     include/data/detection_result_report.h
     include/data/inspection_profile.h
     include/data/region_feature.h
-    include/data/roi_item.h
     # ui
     include/ui/cloud_dashboard_manager.h
     include/ui/display_mode_manager.h

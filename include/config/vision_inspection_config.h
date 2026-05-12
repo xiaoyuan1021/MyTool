@@ -5,6 +5,7 @@
 #include <QJsonArray>
 #include "detection_type.h"
 #include "detection_config_types.h"
+#include "config/enhance_params.h"
 
 /**
  * @brief 视觉检测项配置 - 组合视频源 + 预处理 + 检测方法 + 判定
@@ -36,10 +37,8 @@ struct VisionInspectionConfig {
     
     // ===== 图像预处理配置 =====
     struct PreprocessConfig {
-        int brightness = 0;          // 亮度 (-100 ~ 100)
-        int contrast = 100;          // 对比度 (0 ~ 200)
-        int gamma = 100;             // 伽马值 (10 ~ 300)
-        int sharpen = 100;           // 锐化 (0 ~ 200)
+        // 图像增强参数（统一类型定义，独立实例）
+        EnhanceParams enhance;
         
         // 去噪参数
         bool enableDenoise = false;
@@ -54,10 +53,10 @@ struct VisionInspectionConfig {
         
         QJsonObject toJson() const {
             QJsonObject obj;
-            obj["brightness"] = brightness;
-            obj["contrast"] = contrast;
-            obj["gamma"] = gamma;
-            obj["sharpen"] = sharpen;
+            obj["brightness"] = enhance.brightness;
+            obj["contrast"] = enhance.contrast;
+            obj["gamma"] = enhance.gamma;
+            obj["sharpen"] = enhance.sharpen;
             obj["enableDenoise"] = enableDenoise;
             obj["denoiseStrength"] = denoiseStrength;
             obj["enableRoi"] = enableRoi;
@@ -69,10 +68,10 @@ struct VisionInspectionConfig {
         }
         
         void fromJson(const QJsonObject& obj) {
-            brightness = obj["brightness"].toInt(0);
-            contrast = obj["contrast"].toInt(100);
-            gamma = obj["gamma"].toInt(100);
-            sharpen = obj["sharpen"].toInt(100);
+            enhance.brightness = obj["brightness"].toInt(0);
+            enhance.contrast = obj["contrast"].toInt(100);
+            enhance.gamma = obj["gamma"].toInt(100);
+            enhance.sharpen = obj["sharpen"].toInt(100);
             enableDenoise = obj["enableDenoise"].toBool(false);
             denoiseStrength = obj["denoiseStrength"].toInt(3);
             enableRoi = obj["enableRoi"].toBool(false);
