@@ -160,6 +160,8 @@ set(SOURCES
     src/algorithm/ort_inference.cpp
     src/algorithm/zxing_barcode_reader.cpp
     src/algorithm/display_renderer.cpp
+    # data
+    src/data/inspection_profile.cpp
     # config
     src/config/config_manager.cpp
     src/config/pipeline_config.cpp
