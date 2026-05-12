@@ -1,6 +1,6 @@
 #include "pipeline_result_handler.h"
 #include "algorithm/image_utils.h"
-#include "ui/display_renderer.h"
+#include "algorithm/display_renderer.h"
 #include "widgets/judge_tab_widget.h"
 #include "widgets/line_tab_widget.h"
 #include "widgets/barcode_tab_widget.h"

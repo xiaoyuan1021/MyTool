@@ -3,7 +3,7 @@
 #include "barcode_step.h"
 #include "config/constants.h"
 #include "logger.h"
-#include "ui/display_renderer.h"
+#include "algorithm/display_renderer.h"
 #include <QDebug>
 #include <algorithm>
 

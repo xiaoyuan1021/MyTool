@@ -18,7 +18,7 @@
 #include "controllers/detection_ui_controller.h"
 #include "controllers/config_controller.h"
 #include "controllers/auto_detection_controller.h"
-#include "ui/pipeline_result_handler.h"
+#include "controllers/pipeline_result_handler.h"
 #include "core/profile_manager.h"
 #include "ui/cloud_dashboard_manager.h"
 #include "ui/display_mode_manager.h"

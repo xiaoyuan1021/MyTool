@@ -93,8 +93,14 @@ struct JudgeConfig
 };
 
 /**
- * @brief Pipeline配置结构
- *
+ * @brief Pipeline执行配置结构（全局流水线参数）
+ * 
+ * ⚠️ 注意：本文件定义的是 Pipeline 执行时的全局配置。
+ * 与 detection_config_types.h 中的类型不同——后者是 DetectionItem 
+ * （每个检测项独立持有）的专用配置，用于支持一个ROI下挂多个检测项。
+ * 
+ * 本文件的配置由 PipelineManager 持有，在 processAndDisplay() 时传入 Pipeline 执行。
+ * 
  * 按功能分组为子结构体，降低单一"胖结构体"的维护风险。
  * 每个子结构体独立管理自己的职责领域。
  *
@@ -115,137 +121,8 @@ struct PipelineConfig
     BarcodeConfig    barcode;      ///< 条码识别
     JudgeConfig      judge;        ///< 判定配置（Blob分析阈值）
 
-    // ==================== JSON 序列化 ====================
+    // ==================== JSON 序列化（定义在 pipeline_config.cpp）====================
 
-    /**
-     * @brief 将 PipelineConfig 序列化为 JSON
-     *        各子结构体独立序列化，集中管理所有字段
-     */
-    QJsonObject toJson() const {
-        QJsonObject obj;
-
-        // 增强参数
-        QJsonObject enhanceObj;
-        enhanceObj["brightness"] = enhance.brightness;
-        enhanceObj["contrast"] = enhance.contrast;
-        enhanceObj["gamma"] = enhance.gamma;
-        enhanceObj["sharpen"] = enhance.sharpen;
-        obj["enhance"] = enhanceObj;
-
-        // 通道/过滤参数
-        QJsonObject colorObj;
-        colorObj["channel"] = static_cast<int>(colorFilter.channel);
-        colorObj["currentFilterMode"] = static_cast<int>(colorFilter.currentFilterMode);
-        colorObj["enableColorFilter"] = colorFilter.enableColorFilter;
-        colorObj["colorFilterMode"] = static_cast<int>(colorFilter.colorFilterMode);
-        colorObj["grayLow"] = colorFilter.grayLow;
-        colorObj["grayHigh"] = colorFilter.grayHigh;
-        colorObj["enableGrayFilter"] = colorFilter.enableGrayFilter;
-        colorObj["enableAreaFilter"] = colorFilter.enableAreaFilter;
-        colorObj["rLow"] = colorFilter.rLow;
-        colorObj["rHigh"] = colorFilter.rHigh;
-        colorObj["gLow"] = colorFilter.gLow;
-        colorObj["gHigh"] = colorFilter.gHigh;
-        colorObj["bLow"] = colorFilter.bLow;
-        colorObj["bHigh"] = colorFilter.bHigh;
-        colorObj["hLow"] = colorFilter.hLow;
-        colorObj["hHigh"] = colorFilter.hHigh;
-        colorObj["sLow"] = colorFilter.sLow;
-        colorObj["sHigh"] = colorFilter.sHigh;
-        colorObj["vLow"] = colorFilter.vLow;
-        colorObj["vHigh"] = colorFilter.vHigh;
-        obj["colorFilter"] = colorObj;
-
-        // 直线检测参数
-        QJsonObject lineObj;
-        lineObj["algorithm"] = lineDetect.algorithm;
-        lineObj["threshold"] = lineDetect.threshold;
-        lineObj["minLength"] = lineDetect.minLength;
-        lineObj["maxGap"] = lineDetect.maxGap;
-        lineObj["enabled"] = lineDetect.enabled;
-        obj["lineDetect"] = lineObj;
-
-        // 条码参数
-        QJsonObject barcodeObj;
-        barcodeObj["enableBarcode"] = barcode.enableBarcode;
-        barcodeObj["codeTypes"] = barcode.codeTypes.join(",");
-        barcodeObj["maxNumSymbols"] = barcode.maxNumSymbols;
-        barcodeObj["returnQuality"] = barcode.returnQuality;
-        obj["barcode"] = barcodeObj;
-
-        return obj;
-    }
-
-    /**
-     * @brief 从 JSON 反序列化 PipelineConfig
-     *        忽略 JSON 中不存在的字段，保持当前值
-     */
-    void fromJson(const QJsonObject& obj) {
-        if (obj.isEmpty()) return;
-
-        // 增强参数
-        if (obj.contains("enhance")) {
-            QJsonObject enhanceObj = obj["enhance"].toObject();
-            enhance.brightness = enhanceObj["brightness"].toInt(0);
-            enhance.contrast   = enhanceObj["contrast"].toDouble(1.0);
-            enhance.gamma      = enhanceObj["gamma"].toDouble(1.0);
-            enhance.sharpen    = enhanceObj["sharpen"].toDouble(0.0);
-        } else {
-            // 向后兼容：旧格式直接平铺在顶层
-            enhance.brightness = obj["brightness"].toInt(0);
-            enhance.contrast   = obj["contrast"].toDouble(1.0);
-            enhance.gamma      = obj["gamma"].toDouble(1.0);
-            enhance.sharpen    = obj["sharpen"].toDouble(0.0);
-        }
-
-        // 通道/过滤参数
-        if (obj.contains("colorFilter")) {
-            QJsonObject colorObj = obj["colorFilter"].toObject();
-            colorFilter.channel          = static_cast<ChannelMode>(colorObj["channel"].toInt(0));
-            colorFilter.currentFilterMode = static_cast<ImageFilterMode>(colorObj["currentFilterMode"].toInt(0));
-            colorFilter.enableColorFilter = colorObj["enableColorFilter"].toBool(false);
-            colorFilter.colorFilterMode  = static_cast<::ColorFilterMode>(colorObj["colorFilterMode"].toInt(0));
-            colorFilter.grayLow          = colorObj["grayLow"].toInt(0);
-            colorFilter.grayHigh         = colorObj["grayHigh"].toInt(255);
-            colorFilter.enableGrayFilter = colorObj["enableGrayFilter"].toBool(true);
-            colorFilter.enableAreaFilter = colorObj["enableAreaFilter"].toBool(false);
-            colorFilter.rLow = colorObj["rLow"].toInt(0);
-            colorFilter.rHigh = colorObj["rHigh"].toInt(255);
-            colorFilter.gLow = colorObj["gLow"].toInt(0);
-            colorFilter.gHigh = colorObj["gHigh"].toInt(255);
-            colorFilter.bLow = colorObj["bLow"].toInt(0);
-            colorFilter.bHigh = colorObj["bHigh"].toInt(255);
-            colorFilter.hLow = colorObj["hLow"].toInt(0);
-            colorFilter.hHigh = colorObj["hHigh"].toInt(179);
-            colorFilter.sLow = colorObj["sLow"].toInt(0);
-            colorFilter.sHigh = colorObj["sHigh"].toInt(255);
-            colorFilter.vLow = colorObj["vLow"].toInt(0);
-            colorFilter.vHigh = colorObj["vHigh"].toInt(255);
-        } else {
-            // 向后兼容：旧格式平铺在顶层
-            colorFilter.channel = static_cast<ChannelMode>(obj["channel"].toInt(0));
-        }
-
-        // 直线检测参数
-        if (obj.contains("lineDetect")) {
-            QJsonObject lineObj = obj["lineDetect"].toObject();
-            lineDetect.algorithm   = lineObj["algorithm"].toInt(0);
-            lineDetect.threshold   = lineObj["threshold"].toInt(50);
-            lineDetect.minLength   = lineObj["minLength"].toDouble(30.0);
-            lineDetect.maxGap      = lineObj["maxGap"].toDouble(10.0);
-            lineDetect.enabled     = lineObj["enabled"].toBool(false);
-        }
-
-        // 条码参数
-        QJsonObject barcodeObj = obj["barcode"].toObject();
-        if (!barcodeObj.isEmpty()) {
-            barcode.enableBarcode = barcodeObj["enableBarcode"].toBool(false);
-            QString codeTypesStr  = barcodeObj["codeTypes"].toString();
-            if (!codeTypesStr.isEmpty()) {
-                barcode.codeTypes = codeTypesStr.split(",");
-            }
-            barcode.maxNumSymbols = barcodeObj["maxNumSymbols"].toInt(0);
-            barcode.returnQuality = barcodeObj["returnQuality"].toBool(true);
-        }
-    }
+    QJsonObject toJson() const;
+    void fromJson(const QJsonObject& obj);
 };

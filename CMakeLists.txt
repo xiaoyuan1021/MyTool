@@ -60,6 +60,7 @@ set(HEADERS
     include/core/profile_manager.h
     include/core/roi_manager.h
     include/core/video_manager.h
+    include/core/barcode_step.h
     # algorithm
     include/algorithm/dnn_inference.h
     include/algorithm/image_processor.h
@@ -68,6 +69,7 @@ set(HEADERS
     include/algorithm/opencv_algorithm.h
     include/algorithm/ort_inference.h
     include/algorithm/zxing_barcode_reader.h
+    include/algorithm/display_renderer.h
     # config
     include/config/config_manager.h
     include/config/constants.h
@@ -92,15 +94,12 @@ set(HEADERS
     include/data/region_feature.h
     include/data/roi_item.h
     # ui
-    include/ui/barcode_step.h
     include/ui/cloud_dashboard_manager.h
     include/ui/display_mode_manager.h
-    include/ui/display_renderer.h
     include/ui/file_manager.h
     include/ui/image_view.h
     include/ui/log_page.h
     include/ui/mainwindow.h
-    include/ui/pipeline_result_handler.h
     include/ui/signal_connector.h
     include/ui/slider_spinbox_binder.h
     include/ui/system_monitor.h
@@ -133,6 +132,7 @@ set(HEADERS
     include/controllers/config_controller.h
     include/controllers/detection_ui_controller.h
     include/controllers/profile_controller.h
+    include/controllers/pipeline_result_handler.h
     include/controllers/roi_ui_controller.h
     # utils
     include/utils/path_utils.h
@@ -150,6 +150,7 @@ set(SOURCES
     src/core/profile_manager.cpp
     src/core/roi_manager.cpp
     src/core/video_manager.cpp
+    src/core/barcode_step.cpp
     # algorithm
     src/algorithm/dnn_inference.cpp
     src/algorithm/image_processor.cpp
@@ -158,18 +159,20 @@ set(SOURCES
     src/algorithm/opencv_algorithm.cpp
     src/algorithm/ort_inference.cpp
     src/algorithm/zxing_barcode_reader.cpp
+    src/algorithm/display_renderer.cpp
     # config
     src/config/config_manager.cpp
+    src/config/pipeline_config.cpp
+    src/config/roi_config.cpp
+    src/config/detection_item.cpp
+    src/config/detection_config_types.cpp
     # ui
-    src/ui/barcode_step.cpp
     src/ui/cloud_dashboard_manager.cpp
     src/ui/display_mode_manager.cpp
-    src/ui/display_renderer.cpp
     src/ui/file_manager.cpp
     src/ui/image_view.cpp
     src/ui/log_page.cpp
     src/ui/mainwindow.cpp
-    src/ui/pipeline_result_handler.cpp
     src/ui/signal_connector.cpp
     src/ui/system_monitor.cpp
     src/ui/toast_notification.cpp
@@ -197,6 +200,7 @@ set(SOURCES
     src/controllers/auto_detection_controller.cpp
     src/controllers/config_controller.cpp
     src/controllers/detection_ui_controller.cpp
+    src/controllers/pipeline_result_handler.cpp
     src/controllers/profile_controller.cpp
     src/controllers/roi_ui_controller.cpp
 )
