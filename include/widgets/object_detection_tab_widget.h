@@ -6,7 +6,7 @@
 #include "pipeline_manager.h"
 #include "algorithm/dnn_inference.h"
 #include "algorithm/ort_inference.h"
-#include "widgets/i_signal_connectable.h"
+#include "widgets/i_tab_interfaces.h"
 
 namespace Ui {
 class ObjectDetectionTabForm;

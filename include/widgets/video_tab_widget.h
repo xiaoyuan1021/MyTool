@@ -5,7 +5,7 @@
 #include <QString>
 #include <QVector>
 #include "video_manager.h"
-#include "widgets/i_signal_connectable.h"
+#include "widgets/i_tab_interfaces.h"
 
 namespace Ui {
 class VideoTabWidget;

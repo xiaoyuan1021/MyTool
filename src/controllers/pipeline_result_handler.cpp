@@ -1,7 +1,7 @@
 #include "pipeline_result_handler.h"
 #include "algorithm/image_utils.h"
 #include "algorithm/display_renderer.h"
-#include "widgets/i_result_updatable.h"
+#include "widgets/i_tab_interfaces.h"
 #include "widgets/object_detection_tab_widget.h"
 #include "logger.h"
 

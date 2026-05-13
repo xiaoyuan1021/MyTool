@@ -1,5 +1,5 @@
 #include "controllers/config_controller.h"
-#include "widgets/i_configurable_tab.h"
+#include "widgets/i_tab_interfaces.h"
 #include "logger.h"
 #include "utils/path_utils.h"
 

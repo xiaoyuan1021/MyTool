@@ -4,9 +4,7 @@
 #include <functional>
 #include <opencv2/core.hpp>
 #include "pipeline_manager.h"
-#include "config/pipeline_config.h"
-#include "widgets/i_signal_connectable.h"
-#include "widgets/i_result_updatable.h"
+#include "widgets/i_tab_interfaces.h"
 
 namespace Ui
 {

@@ -3,8 +3,7 @@
 #include <QWidget>
 #include <QTimer>
 #include "pipeline_manager.h"
-#include "widgets/i_signal_connectable.h"
-#include "widgets/i_configurable_tab.h"
+#include "widgets/i_tab_interfaces.h"
 
 namespace Ui {
 class FilterTabWidget;

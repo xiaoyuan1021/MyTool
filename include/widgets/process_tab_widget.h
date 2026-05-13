@@ -3,7 +3,7 @@
 #include <QObject>
 #include "pipeline_manager.h"
 #include <QListWidgetItem>
-#include "widgets/i_signal_connectable.h"
+#include "widgets/i_tab_interfaces.h"
 
 namespace Ui {
     class Form_Process;

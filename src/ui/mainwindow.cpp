@@ -3,7 +3,7 @@
 #include "logger.h"
 #include "config/constants.h"
 #include "image_view.h"
-#include "widgets/i_signal_connectable.h"
+#include "widgets/i_tab_interfaces.h"
 #include <QtConcurrent/QtConcurrent>
 
 // 各模块完整定义
@@ -28,8 +28,6 @@
 #include "widgets/video_tab_widget.h"
 #include "widgets/barcode_tab_widget.h"
 #include "widgets/template_tab_widget.h"
-#include "widgets/i_configurable_tab.h"
-#include "widgets/i_tab_initializable.h"
 
 #include <QFile>
 #include <QDir>

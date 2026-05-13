@@ -105,10 +105,7 @@ set(HEADERS
     include/widgets/enhance_tab_widget.h
     include/widgets/extract_tab_widget.h
     include/widgets/filter_tab_widget.h
-    include/widgets/i_configurable_tab.h
-    include/widgets/i_result_updatable.h
-    include/widgets/i_signal_connectable.h
-    include/widgets/i_tab_initializable.h
+    include/widgets/i_tab_interfaces.h
     include/widgets/image_list_manager.h
     include/widgets/image_tab_widget.h
     include/widgets/judge_tab_widget.h

@@ -6,8 +6,7 @@
 #include <memory>
 #include <opencv2/opencv.hpp>
 #include "../algorithm/match_strategy.h"
-#include "widgets/i_signal_connectable.h"
-#include "widgets/i_tab_initializable.h"
+#include "widgets/i_tab_interfaces.h"
 
 namespace Ui
 {

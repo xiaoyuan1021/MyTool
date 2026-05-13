@@ -2,9 +2,7 @@
 
 #include <QWidget>
 #include "pipeline_manager.h"
-#include "widgets/i_signal_connectable.h"
-#include "widgets/i_configurable_tab.h"
-#include "widgets/i_result_updatable.h"
+#include "widgets/i_tab_interfaces.h"
 
 namespace Ui {
     class Form_Judge;
