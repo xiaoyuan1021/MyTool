@@ -1,6 +1,7 @@
 #include "display_mode_manager.h"
 #include "core/pipeline_manager.h"
 #include "ui/image_view.h"
+#include "widgets/tab_registry.h"
 
 #include <QTabWidget>
 
@@ -22,20 +23,8 @@ DisplayConfig::Mode DisplayModeManager::getModeForTab(int index) const
     }
     QString tabName = m_tabWidget->tabText(index);
 
-    static const QHash<QString, DisplayConfig::Mode> tabDisplayMode = {
-        {"图像",     DisplayConfig::Mode::Channel},
-        {"视频",     DisplayConfig::Mode::Channel},
-        {"增强",     DisplayConfig::Mode::Enhanced},
-        {"补正",     DisplayConfig::Mode::Original},
-        {"处理",     DisplayConfig::Mode::Processed},
-        {"提取",     DisplayConfig::Mode::Processed},
-        {"判定",     DisplayConfig::Mode::MaskOverlay},
-        {"直线",     DisplayConfig::Mode::LineDetect},
-        {"条码",     DisplayConfig::Mode::BarcodeOverlay},
-        {"目标检测", DisplayConfig::Mode::Original},
-    };
-
-    return tabDisplayMode.value(tabName, DisplayConfig::Mode::Original);
+    // 从 TabRegistry 查询显示模式（单一数据源）
+    return TabRegistry::instance().displayModeFor(tabName);
 }
 
 void DisplayModeManager::onTabChanged(int index)
@@ -58,6 +47,7 @@ void DisplayModeManager::applyModeForCurrentTab()
 
     DisplayConfig::Mode mode = getModeForTab(idx);
 
+    // "过滤" Tab 的显示模式根据当前过滤配置动态决定
     if (tabName == "过滤") {
         PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
         mode = (cfg.colorFilter.currentFilterMode == PipelineConfig::FilterMode::None)

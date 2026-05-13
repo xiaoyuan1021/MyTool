@@ -6,13 +6,14 @@
 #include "widgets/i_signal_connectable.h"
 #include "widgets/i_configurable_tab.h"
 #include "widgets/i_tab_initializable.h"
+#include "widgets/i_result_updatable.h"
 
 namespace Ui
 {
 class BarcodeTabForm;
 }
 
-class BarcodeTabWidget : public QWidget, public ISignalConnectable, public IConfigurableTab, public ITabInitializable
+class BarcodeTabWidget : public QWidget, public ISignalConnectable, public IConfigurableTab, public ITabInitializable, public IResultUpdatable
 {
     Q_OBJECT
 
@@ -40,6 +41,9 @@ public:
 
     // ITabInitializable 接口实现
     void initializeTab(const TabInitContext& ctx) override;
+
+    // IResultUpdatable 接口实现
+    void updateFromPipeline(const PipelineContext& ctx) override;
 
     void connectSignals(PipelineManager* pm, RoiManager* rm,
                         ImageView* view, RoiUiController* roiCtrl,

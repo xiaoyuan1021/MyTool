@@ -21,6 +21,18 @@ LineDetectTabWidget::~LineDetectTabWidget()
     delete m_ui;
 }
 
+void LineDetectTabWidget::updateFromPipeline(const PipelineContext& ctx)
+{
+    PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
+    updateMatchResultStatus(
+        ctx.matchedLineCount,
+        ctx.totalLineCount,
+        cfg.lineDetect.angleThreshold,
+        cfg.lineDetect.distanceThreshold,
+        cfg.lineDetect.enableReferenceLineMatch
+    );
+}
+
 void LineDetectTabWidget::initialize()
 {
     // 设置Slider范围和步长

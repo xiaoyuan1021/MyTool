@@ -4,7 +4,6 @@
 #include <QObject>
 #include <QTabWidget>
 #include <QHash>
-#include <memory>
 
 // 前向声明
 class PipelineManager;
@@ -16,9 +15,9 @@ class QTimer;
  * Tab管理器 - 负责Tab的懒加载、创建和按名获取
  *
  * 职责：
- * 1. 根据名称按需创建Tab Widget
+ * 1. 根据名称按需创建Tab Widget（工厂逻辑委托给 TabRegistry）
  * 2. 按名称或类型安全地获取Tab Widget
- * 3. 管理Tab的生命周期（unique_ptr）
+ * 3. 管理Tab的生命周期
  * 4. 维护Tab名称顺序
  *
  * 信号连接仍由MainWindow在 tabCreated 信号中建立。
@@ -68,15 +67,13 @@ signals:
     void tabCreated(const QString& name, QWidget* widget);
 
 private:
-    QWidget* createTab(const QString& name);
-
     QTabWidget* m_tabWidget;
     PipelineManager* m_pipelineManager;
     RoiManager* m_roiManager;
     ImageView* m_view;
     QTimer* m_debounceTimer;
 
-    // Tab存储：名称 → widget（裸指针，析构时释放）
+    // Tab存储：名称 → widget
     QHash<QString, QWidget*> m_tabs;
     QStringList m_tabOrder;
 };

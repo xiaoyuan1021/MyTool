@@ -3,7 +3,7 @@
 #include "logger.h"
 #include "config/constants.h"
 #include "image_view.h"
-#include "signal_connector.h"
+#include "widgets/i_signal_connectable.h"
 #include <QtConcurrent/QtConcurrent>
 
 // 各模块完整定义
@@ -215,14 +215,21 @@ void MainWindow::setupControllerConnections()
     connect(m_configController, &ConfigController::configApplied, this, [this]() { requestRefresh(); });
     connect(m_profileController, &ProfileController::requestRefresh, this, &MainWindow::requestRefresh);
 
-    // SignalConnector（需要有效的 roiUiController 指针）
-    m_signalConnector = new SignalConnector(m_pipelineManager, &m_roiManager,
-                                           m_view, m_roiUiController, this);
-    connect(m_tabManager, &TabManager::tabCreated,
-            m_signalConnector, &SignalConnector::connectTabSignals);
-    connect(m_signalConnector, &SignalConnector::requestRefresh, this, &MainWindow::requestRefresh);
-    connect(m_signalConnector, &SignalConnector::processAndDisplay, this, &MainWindow::processAndDisplay);
-    connect(m_signalConnector, &SignalConnector::showImage, this, &MainWindow::showImage);
+    // Tab 信号连接（通过 ISignalConnectable 接口多态连接）
+    connect(m_tabManager, &TabManager::tabCreated, this,
+        [this](const QString& tabName, QWidget* widget) {
+            auto* connectable = dynamic_cast<ISignalConnectable*>(widget);
+            if (connectable) {
+                connectable->connectSignals(
+                    m_pipelineManager, &m_roiManager, m_view, m_roiUiController,
+                    [this]() { requestRefresh(); },
+                    [this]() { processAndDisplay(); }
+                );
+            } else {
+                Logger::instance()->warning(
+                    QString("[MainWindow] Tab '%1' 未实现 ISignalConnectable 接口，跳过信号连接").arg(tabName));
+            }
+        });
 
     // 批量检测完成提示
     connect(m_autoDetectionController, &AutoDetectionController::detectionFinished,

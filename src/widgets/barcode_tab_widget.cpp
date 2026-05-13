@@ -104,6 +104,12 @@ void BarcodeTabWidget::updatePipelineConfig()
     }
 }
 
+void BarcodeTabWidget::updateFromPipeline(const PipelineContext& ctx)
+{
+    updateResultsTable(ctx.barcodeResults);
+    updateStatus(ctx.barcodeStatus);
+}
+
 void BarcodeTabWidget::updateResultsTable(const QVector<BarcodeResult>& results)
 {
     m_ui->tableWidget_results->setRowCount(results.size());

@@ -23,6 +23,11 @@ JudgeTabWidget::~JudgeTabWidget()
     delete m_ui;
 }
 
+void JudgeTabWidget::updateFromPipeline(const PipelineContext& ctx)
+{
+    setCurrentRegionCount(ctx.currentRegions);
+}
+
 void JudgeTabWidget::setCurrentRegionCount(int count)
 {
     count = m_pipelineManager->getLastContext().currentRegions;

@@ -34,9 +34,10 @@ private:
     PipelineManager* m_pipelineManager = nullptr;
     QFutureWatcher<PipelineContext>* m_watcher = nullptr;
     
-    void handleJudgeTabResult(const PipelineContext& result);
-    void handleLineTabResult(const PipelineContext& result);
-    void handleBarcodeTabResult(const PipelineContext& result);
+    /// 通过 IResultUpdatable 接口分发结果（不再硬编码 Tab 名称）
+    void distributeResults(const PipelineContext& result);
+    
+    /// 目标检测特殊处理（不走 Pipeline，临时运行推理）
     void handleObjectDetection(cv::Mat& displayImage);
     void drawDetectionResults(cv::Mat& image, const std::vector<DetectionResult>& results);
 };

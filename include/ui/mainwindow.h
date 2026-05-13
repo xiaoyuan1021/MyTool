@@ -16,7 +16,6 @@
 
 // 前向声明
 class ImageView;
-class SignalConnector;
 class SystemMonitor;
 class FileManager;
 class CloudDashboardManager;
@@ -128,9 +127,6 @@ private:
 
     // 自动检测控制器
     AutoDetectionController* m_autoDetectionController = nullptr;
-
-    // 信号连接器
-    SignalConnector* m_signalConnector = nullptr;
 
     // Pipeline结果处理器
     PipelineResultHandler* m_pipelineResultHandler = nullptr;

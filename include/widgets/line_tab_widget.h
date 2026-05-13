@@ -6,13 +6,14 @@
 #include "pipeline_manager.h"
 #include "config/pipeline_config.h"
 #include "widgets/i_signal_connectable.h"
+#include "widgets/i_result_updatable.h"
 
 namespace Ui
 {
 class LineTabForm;
 }
 
-class LineDetectTabWidget : public QWidget, public ISignalConnectable
+class LineDetectTabWidget : public QWidget, public ISignalConnectable, public IResultUpdatable
 {
     Q_OBJECT
 
@@ -22,6 +23,9 @@ public:
                                  QWidget* parent = nullptr);
     ~LineDetectTabWidget();
     void initialize();
+
+    // IResultUpdatable 接口实现
+    void updateFromPipeline(const PipelineContext& ctx) override;
 
     void connectSignals(PipelineManager* pm, RoiManager* rm,
                         ImageView* view, RoiUiController* roiCtrl,

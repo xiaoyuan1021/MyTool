@@ -1,9 +1,7 @@
 #include "pipeline_result_handler.h"
 #include "algorithm/image_utils.h"
 #include "algorithm/display_renderer.h"
-#include "widgets/judge_tab_widget.h"
-#include "widgets/line_tab_widget.h"
-#include "widgets/barcode_tab_widget.h"
+#include "widgets/i_result_updatable.h"
 #include "widgets/object_detection_tab_widget.h"
 #include "logger.h"
 
@@ -36,9 +34,10 @@ void PipelineResultHandler::onPipelineFinished()
         cv::Mat displayImage = DisplayRenderer::render(
             result, m_pipelineManager->getDisplayMode());
 
-        handleJudgeTabResult(result);
-        handleLineTabResult(result);
-        handleBarcodeTabResult(result);
+        // 通过 IResultUpdatable 接口分发结果
+        distributeResults(result);
+
+        // 目标检测特殊处理（不走 Pipeline）
         handleObjectDetection(displayImage);
 
         if (m_imageView) {
@@ -64,38 +63,17 @@ void PipelineResultHandler::onPipelineFinished()
     emit processingFinished();
 }
 
-void PipelineResultHandler::handleJudgeTabResult(const PipelineContext& result)
-{
-    if (!m_tabManager) return;
-    
-    if (auto* judgeTab = m_tabManager->getTabAs<JudgeTabWidget>("判定")) {
-        judgeTab->setCurrentRegionCount(result.currentRegions);
-    }
-}
-
-void PipelineResultHandler::handleLineTabResult(const PipelineContext& result)
+void PipelineResultHandler::distributeResults(const PipelineContext& result)
 {
     if (!m_tabManager) return;
 
-    if (auto* lineTab = m_tabManager->getTabAs<LineDetectTabWidget>("直线")) {
-        PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
-        lineTab->updateMatchResultStatus(
-            result.matchedLineCount,
-            result.totalLineCount,
-            cfg.lineDetect.angleThreshold,
-            cfg.lineDetect.distanceThreshold,
-            cfg.lineDetect.enableReferenceLineMatch
-        );
-    }
-}
-
-void PipelineResultHandler::handleBarcodeTabResult(const PipelineContext& result)
-{
-    if (!m_tabManager) return;
-    
-    if (auto* barcodeTab = m_tabManager->getTabAs<BarcodeTabWidget>("条码")) {
-        barcodeTab->updateResultsTable(result.barcodeResults);
-        barcodeTab->updateStatus(result.barcodeStatus);
+    // 遍历所有已创建的 Tab，通过 IResultUpdatable 接口分发结果
+    // 新增检测类型只需在 Tab Widget 中实现 IResultUpdatable，此处无需修改
+    for (auto it = m_tabManager->allTabs().constBegin();
+         it != m_tabManager->allTabs().constEnd(); ++it) {
+        if (auto* updatable = dynamic_cast<IResultUpdatable*>(it.value())) {
+            updatable->updateFromPipeline(result);
+        }
     }
 }
 

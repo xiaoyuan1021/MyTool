@@ -4,12 +4,13 @@
 #include "pipeline_manager.h"
 #include "widgets/i_signal_connectable.h"
 #include "widgets/i_configurable_tab.h"
+#include "widgets/i_result_updatable.h"
 
 namespace Ui {
     class Form_Judge;
 }
 
-class JudgeTabWidget : public QWidget, public ISignalConnectable, public IConfigurableTab
+class JudgeTabWidget : public QWidget, public ISignalConnectable, public IConfigurableTab, public IResultUpdatable
 {
     Q_OBJECT
 
@@ -17,6 +18,9 @@ public:
     explicit JudgeTabWidget(PipelineManager* pipelineManager, QWidget *parent = nullptr);
     ~JudgeTabWidget();
     void setCurrentRegionCount(int count);
+
+    // IResultUpdatable 接口实现
+    void updateFromPipeline(const PipelineContext& ctx) override;
 
     void getJudgeConfig(int& minCount, int& maxCount, int& currentCount) const;
     void setJudgeConfig(int minCount, int maxCount, int currentCount);

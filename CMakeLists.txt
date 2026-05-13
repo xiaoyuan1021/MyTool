@@ -95,7 +95,6 @@ set(HEADERS
     include/ui/image_view.h
     include/ui/log_page.h
     include/ui/mainwindow.h
-    include/ui/signal_connector.h
     include/ui/slider_spinbox_binder.h
     include/ui/system_monitor.h
     include/ui/toast_notification.h
@@ -107,6 +106,7 @@ set(HEADERS
     include/widgets/extract_tab_widget.h
     include/widgets/filter_tab_widget.h
     include/widgets/i_configurable_tab.h
+    include/widgets/i_result_updatable.h
     include/widgets/i_signal_connectable.h
     include/widgets/i_tab_initializable.h
     include/widgets/image_list_manager.h
@@ -119,6 +119,7 @@ set(HEADERS
     include/widgets/roi_detection_config_dialog.h
     include/widgets/roi_list_widget.h
     include/widgets/tab_manager.h
+    include/widgets/tab_registry.h
     include/widgets/template_tab_widget.h
     include/widgets/video_source_widget.h
     include/widgets/video_tab_widget.h
@@ -170,7 +171,6 @@ set(SOURCES
     src/ui/image_view.cpp
     src/ui/log_page.cpp
     src/ui/mainwindow.cpp
-    src/ui/signal_connector.cpp
     src/ui/system_monitor.cpp
     src/ui/toast_notification.cpp
     # widgets
@@ -190,6 +190,7 @@ set(SOURCES
     src/widgets/roi_detection_config_dialog.cpp
     src/widgets/roi_list_widget.cpp
     src/widgets/tab_manager.cpp
+    src/widgets/tab_registry.cpp
     src/widgets/template_tab_widget.cpp
     src/widgets/video_source_widget.cpp
     src/widgets/video_tab_widget.cpp
