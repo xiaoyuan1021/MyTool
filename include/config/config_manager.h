@@ -10,8 +10,7 @@
 #include "shape_filter_types.h"
 #include "pipeline_config.h"
 #include "mqtt_config.h"
-#include "../algorithm/image_processor.h"
-#include "../core/pipeline_types.h"
+#include "algorithm_step.h"
 
 struct AppConfig
 {

@@ -56,7 +56,6 @@ set(HEADERS
     include/core/pipeline.h
     include/core/pipeline_manager.h
     include/core/pipeline_steps.h
-    include/core/pipeline_types.h
     include/core/profile_manager.h
     include/core/roi_manager.h
     include/core/video_manager.h
@@ -71,6 +70,7 @@ set(HEADERS
     include/algorithm/zxing_barcode_reader.h
     include/algorithm/display_renderer.h
     # config
+    include/config/algorithm_step.h
     include/config/config_manager.h
     include/config/constants.h
     include/config/detection_config_types.h

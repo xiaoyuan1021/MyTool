@@ -8,16 +8,8 @@
 #include <opencv2/opencv.hpp>
 
 #include "image_utils.h"
+#include "config/algorithm_step.h"
 
-
-struct AlgorithmStep
-{
-    QString name;                   // 算法显示名称
-    QString type;                   // 算法类型标识
-    QMap <QString,QVariant> params; // 参数字典
-    bool enabled=true;              // 是否启用
-    QString description;            // 算法说明
-};
 
 class ImageProcessor
 {
