@@ -343,21 +343,6 @@ void MainWindow::showImage(const cv::Mat &img)
 
 // ========== 文件操作 ==========
 
-void MainWindow::on_btn_openImg_clicked()
-{
-    QString path = QCoreApplication::applicationDirPath() + "/../../images/";
-    if (!QDir(path).exists()) {
-        path = QCoreApplication::applicationDirPath() + "/images/";
-    }
-
-    QString fileName = m_fileManager->selectImageFile(path);
-    if (!fileName.isEmpty()) {
-        m_fileManager->readImageFile(fileName);
-    } else {
-        Logger::instance()->warning("用户取消了文件选择");
-    }
-}
-
 void MainWindow::on_btn_openVideo_clicked()
 {
     // 确保视频Tab已创建（懒加载）
@@ -403,17 +388,6 @@ void MainWindow::on_btn_cloudPlatform_clicked()
 }
 
 // ========== ROI操作 ==========
-
-void MainWindow::on_btn_drawRoi_clicked()
-{
-    if (!m_roiManager.getFullImage().empty()) {
-        m_view->setRoiMode(true);
-        m_view->setDragMode(QGraphicsView::NoDrag);
-        ui->statusbar->showMessage("请按下左键绘制ROI");
-    }
-}
-
-void MainWindow::on_btn_resetROI_clicked()    { m_roiUiController->onResetRoiClicked(); }
 
 void MainWindow::on_btn_addROI_clicked()      { m_roiUiController->onAddRoiClicked(); }
 void MainWindow::on_btn_deleteROI_clicked()   { m_roiUiController->onDeleteRoiClicked(); }

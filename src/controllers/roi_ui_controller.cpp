@@ -134,17 +134,6 @@ void RoiUiController::onDrawRoiClicked()
     enterRoiDrawMode();
 }
 
-void RoiUiController::onResetRoiClicked()
-{
-    if (!m_roiManager.getFullImage().empty()) {
-        m_roiManager.resetRoi();
-        m_view->clearRoi();
-        if (m_statusBar) m_statusBar->showMessage("ROI已重置，处理使用完整图像", 2000);
-        Logger::instance()->info("ROI已重置");
-    }
-    emit roiChanged();
-}
-
 void RoiUiController::onAddRoiClicked()
 {
     if (m_roiManager.getFullImage().empty()) {

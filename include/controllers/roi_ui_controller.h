@@ -50,7 +50,6 @@ public:
 
     // ROI按钮事件处理
     void onDrawRoiClicked();
-    void onResetRoiClicked();
     void onAddRoiClicked();
     void onDeleteRoiClicked();
     void onSwitchRoiClicked();
