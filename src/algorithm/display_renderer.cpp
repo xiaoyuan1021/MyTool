@@ -57,8 +57,22 @@ cv::Mat render(const PipelineContext& ctx, DisplayConfig::Mode mode)
             return ctx.srcBgr;
 
         case Mode::BarcodeOverlay:
-            if (!ctx.barcodeResults.isEmpty() && !ctx.srcBgr.empty())
-                return drawBarcodeOverlay(ctx.srcBgr, ctx.barcodeResults);
+            {
+                cv::Mat base;
+                if (!ctx.enhanced.empty()) {
+                    if (ctx.enhanced.channels() == 1)
+                        cv::cvtColor(ctx.enhanced, base, cv::COLOR_GRAY2BGR);
+                    else
+                        base = ctx.enhanced;
+                } else {
+                    base = ctx.srcBgr;
+                }
+                if (!base.empty()) {
+                    if (!ctx.barcodeResults.isEmpty())
+                        return drawBarcodeOverlay(base, ctx.barcodeResults);
+                    return base;
+                }
+            }
             return ctx.srcBgr;
 
         case Mode::MaskOnly:
