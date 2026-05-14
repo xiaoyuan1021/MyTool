@@ -3,12 +3,18 @@
 #include "core/roi_manager.h"
 #include "image_view.h"
 #include "controllers/roi_ui_controller.h"
-#include <QVBoxLayout>
-#include <QGroupBox>
-#include <QScrollArea>
+
 #include <QLabel>
 #include <QTabWidget>
+#include <QHBoxLayout>
 #include <QSet>
+#include <QApplication>
+#include <QDrag>
+#include <QMimeData>
+#include <QDragEnterEvent>
+#include <QDropEvent>
+#include <QMouseEvent>
+#include <climits>
 
 // ============================================================
 // UI 步骤条目表 —— 新增/修改步骤只需改这里
@@ -18,10 +24,9 @@
 //   tabNames        勾选后要显示/隐藏的右侧Tab名称
 //   backendIndices  对应 PipelineConfig::stepEnabled[] 的下标
 //                   （-1=无对应后端步骤，仅控制Tab显隐）
-//   alwaysOn        固定勾选且不可取消
+//   alwaysOn        固定勾选且不可拖拽
 // ============================================================
 const StepConfigWidget::StepEntry StepConfigWidget::kSteps[] = {
-    // Pipeline 执行步骤（对应后端 StepType 枚举）
     {"颜色通道",      {"图像"},        {0},           false},
     {"图像增强",      {"增强"},        {1},           false},
     {"灰度过滤",      {"过滤"},        {2},           false},
@@ -30,12 +35,11 @@ const StepConfigWidget::StepEntry StepConfigWidget::kSteps[] = {
     {"形状筛选",      {"提取"},        {5},           false},
     // 直线检测——一个复选框同时启用 StepLineDetect(6) 和 StepReferenceLineFilter(7)
     {"直线检测",      {"直线"},        {6, 7},        false},
-    // 模板匹配——无对应后端步骤（补正Tab已有自身的启用控制），仅控制 Tab 显隐
+    // 模板匹配——无对应后端步骤，仅控制 Tab 显隐
     {"模板匹配",      {"补正"},        {-1},          false},
-    // 条码识别
     {"条码识别",      {"条码"},        {8},           false},
 
-    // 步骤 Tab 自身始终显示
+    // 步骤 Tab 自身始终显示（单独放在列表下方）
     {"步骤管理",      {"步骤"},        {-1},          true},
 };
 
@@ -43,13 +47,15 @@ const int StepConfigWidget::kStepCount = sizeof(kSteps) / sizeof(kSteps[0]);
 
 // ============================================================
 
+static const char* kMimeType = "application/x-step-entry-index";
+
 StepConfigWidget::StepConfigWidget(PipelineManager* pipelineManager,
                                    QWidget* parent)
     : QWidget(parent)
     , m_pipelineManager(pipelineManager)
 {
     setupUI();
-    syncCheckboxes();
+    rebuildStepItems();
 }
 
 void StepConfigWidget::connectSignals(PipelineManager* pm, RoiManager*,
@@ -60,45 +66,167 @@ void StepConfigWidget::connectSignals(PipelineManager* pm, RoiManager*,
     m_pipelineManager = pm;
     m_requestRefresh = std::move(requestRefresh);
 
-    // ROI 切换时同步复选框
     if (roiCtrl) {
         connect(roiCtrl, &RoiUiController::roiPipelineConfigChanged,
-                this, [this](const PipelineConfig& config) {
-            syncCheckboxes();
+                this, [this](const PipelineConfig&) {
+            rebuildStepItems();
         });
     }
 
-    syncCheckboxes();
+    rebuildStepItems();
 }
+
+// ========== 事件过滤：实现拖拽 ==========
+
+bool StepConfigWidget::eventFilter(QObject* obj, QEvent* event)
+{
+    // ---- 步骤项拖拽发起 ----
+    if (m_stepFrames.contains(static_cast<QFrame*>(obj))) {
+        auto* frame = static_cast<QFrame*>(obj);
+        switch (event->type()) {
+        case QEvent::MouseButtonPress: {
+            auto* me = static_cast<QMouseEvent*>(event);
+            if (me->button() == Qt::LeftButton) {
+                m_dragSource = frame;
+                m_dragStartPos = me->pos();
+            }
+            break;
+        }
+        case QEvent::MouseMove: {
+            if (frame != m_dragSource) break;
+            auto* me = static_cast<QMouseEvent*>(event);
+            if (!(me->buttons() & Qt::LeftButton)) break;
+            if ((me->pos() - m_dragStartPos).manhattanLength()
+                < QApplication::startDragDistance()) break;
+
+            int entryIdx = entryIndexForFrame(frame);
+            if (entryIdx < 0) break;
+
+            auto* drag = new QDrag(frame);
+            auto* mime = new QMimeData();
+            mime->setData(kMimeType, QByteArray::number(entryIdx));
+            drag->setMimeData(mime);
+            drag->exec(Qt::MoveAction);
+            frame->setCursor(Qt::OpenHandCursor);
+            m_dragSource = nullptr;
+            break;
+        }
+        case QEvent::MouseButtonRelease: {
+            frame->setCursor(Qt::OpenHandCursor);
+            m_dragSource = nullptr;
+            break;
+        }
+        default:
+            break;
+        }
+        return QWidget::eventFilter(obj, event);
+    }
+
+    // ---- 容器拖放 ----
+    if (obj == m_stepContainer) {
+        switch (event->type()) {
+        case QEvent::DragEnter: {
+            auto* de = static_cast<QDragEnterEvent*>(event);
+            if (de->mimeData()->hasFormat(kMimeType)) {
+                de->acceptProposedAction();
+            }
+            break;
+        }
+        case QEvent::DragMove: {
+            auto* dm = static_cast<QDragMoveEvent*>(event);
+            if (dm->mimeData()->hasFormat(kMimeType)) {
+                dm->acceptProposedAction();
+            }
+            break;
+        }
+        case QEvent::Drop: {
+            auto* dp = static_cast<QDropEvent*>(event);
+            if (!dp->mimeData()->hasFormat(kMimeType)) break;
+
+            int draggedEntry = dp->mimeData()->data(kMimeType).toInt();
+            int targetPos = dropTargetIndex(dp->pos());
+
+            // 从 layout 中移除源 widget
+            QFrame* sourceFrame = nullptr;
+            int sourcePos = -1;
+            for (int i = 0; i < m_stepFrames.size(); ++i) {
+                if (entryIndexForFrame(m_stepFrames[i]) == draggedEntry) {
+                    sourceFrame = m_stepFrames[i];
+                    sourcePos = i;
+                    break;
+                }
+            }
+            if (!sourceFrame) break;
+
+            m_stepLayout->removeWidget(sourceFrame);
+            m_stepFrames.removeAt(sourcePos);
+
+            // 计算插入位置（移除后调整）
+            if (sourcePos < targetPos) --targetPos;
+            targetPos = qBound(0, targetPos, m_stepFrames.size());
+
+            m_stepLayout->insertWidget(targetPos, sourceFrame);
+            m_stepFrames.insert(targetPos, sourceFrame);
+
+            dp->acceptProposedAction();
+            break;
+        }
+        default:
+            break;
+        }
+        return QWidget::eventFilter(obj, event);
+    }
+
+    return QWidget::eventFilter(obj, event);
+}
+
+int StepConfigWidget::entryIndexForFrame(QObject* obj) const
+{
+    return obj->property("entryIndex").toInt();
+}
+
+int StepConfigWidget::dropTargetIndex(const QPoint& pos) const
+{
+    for (int i = 0; i < m_stepFrames.size(); ++i) {
+        QRect r = m_stepFrames[i]->geometry();
+        if (pos.y() < r.center().y()) return i;
+    }
+    return m_stepFrames.size();
+}
+
+// ========== UI 构建 ==========
 
 void StepConfigWidget::setupUI()
 {
     auto* mainLayout = new QVBoxLayout(this);
 
     auto* descLabel = new QLabel(
-        QStringLiteral("勾选需要的处理步骤，点击「应用」后右侧动态加载对应参数Tab。"),
+        QStringLiteral("勾选需要的处理步骤，拖拽可调整执行顺序，"
+                       "点击「应用」后右侧动态加载对应参数Tab。"),
         this);
     descLabel->setWordWrap(true);
     mainLayout->addWidget(descLabel);
 
-    auto* group = new QGroupBox(QStringLiteral("选择步骤"), this);
-    auto* groupLayout = new QVBoxLayout(group);
+    // 可拖拽排序的步骤容器
+    m_scrollArea = new QScrollArea(this);
+    m_scrollArea->setWidgetResizable(true);
+    m_scrollArea->setFrameShape(QFrame::NoFrame);
 
-    for (int i = 0; i < kStepCount; ++i) {
-        auto* cb = new QCheckBox(kSteps[i].displayName, this);
-        if (kSteps[i].alwaysOn) {
-            cb->setChecked(true);
-            cb->setEnabled(false);  // 不可取消
-        }
-        m_checkboxes.append(cb);
-        groupLayout->addWidget(cb);
-    }
+    m_stepContainer = new QWidget();
+    m_stepContainer->setAcceptDrops(true);
+    m_stepContainer->installEventFilter(this);
+    m_stepLayout = new QVBoxLayout(m_stepContainer);
+    m_stepLayout->setSpacing(2);
+    m_stepLayout->setContentsMargins(0, 0, 0, 0);
 
-    auto* scrollArea = new QScrollArea(this);
-    scrollArea->setWidgetResizable(true);
-    scrollArea->setWidget(group);
-    scrollArea->setFrameShape(QFrame::NoFrame);
-    mainLayout->addWidget(scrollArea, 1);
+    m_scrollArea->setWidget(m_stepContainer);
+    mainLayout->addWidget(m_scrollArea, 1);
+
+    // 固定条目（alwaysOn）显示在列表下方，不可拖拽
+    m_fixedStepCb = new QCheckBox(QStringLiteral("步骤管理"), this);
+    m_fixedStepCb->setChecked(true);
+    m_fixedStepCb->setEnabled(false);
+    mainLayout->addWidget(m_fixedStepCb);
 
     m_applyBtn = new QPushButton(QStringLiteral("应用"), this);
     m_applyBtn->setStyleSheet(
@@ -108,81 +236,178 @@ void StepConfigWidget::setupUI()
     connect(m_applyBtn, &QPushButton::clicked, this, &StepConfigWidget::onApplyClicked);
 }
 
-void StepConfigWidget::syncCheckboxes()
+void StepConfigWidget::rebuildStepItems()
 {
     if (!m_pipelineManager) return;
 
-    for (int i = 0; i < kStepCount && i < m_checkboxes.size(); ++i) {
-        if (kSteps[i].alwaysOn || kSteps[i].backendIndices.isEmpty()) {
-            continue;  // 固定项不刷新
-        }
-        // 只要任一后端步骤启用，复选框就勾选
+    const auto& config = m_pipelineManager->config();
+
+    // 提取可排序的条目索引（排除 alwaysOn）
+    QList<int> sortableEntries;
+    for (int i = 0; i < kStepCount; ++i) {
+        if (!kSteps[i].alwaysOn) sortableEntries.append(i);
+    }
+
+    // 按 stepOrder 排序
+    std::sort(sortableEntries.begin(), sortableEntries.end(),
+              [&](int a, int b) {
+        auto firstPos = [&](int entryIdx) -> int {
+            for (int bi : kSteps[entryIdx].backendIndices) {
+                if (bi < 0) continue;
+                for (int p = 0; p < PipelineConfig::STEP_COUNT; ++p) {
+                    if (config.stepOrder[p] == bi) return p;
+                }
+            }
+            return INT_MAX;
+        };
+        return firstPos(a) < firstPos(b);
+    });
+
+    // 清除旧 widget
+    m_dragSource = nullptr;
+    for (auto* f : m_stepFrames) {
+        f->removeEventFilter(this);
+        f->deleteLater();
+    }
+    m_stepFrames.clear();
+
+    // 清除 layout 中的所有 item（包括 spacer）
+    while (m_stepLayout->count() > 0) {
+        auto* item = m_stepLayout->takeAt(0);
+        delete item;
+    }
+
+    // 创建新的步骤项
+    for (int entryIdx : sortableEntries) {
+        auto* frame = new QFrame();
+        frame->setFrameShape(QFrame::StyledPanel);
+        frame->setCursor(Qt::OpenHandCursor);
+
+        QString style = QStringLiteral(
+            "QFrame { background: white; border: 1px solid #D4E3F0;"
+            " border-radius: 4px; padding: 4px; }"
+            "QFrame:hover { background: #E8F0F8; }");
+        frame->setStyleSheet(style);
+
+        auto* hbox = new QHBoxLayout(frame);
+        hbox->setContentsMargins(8, 4, 8, 4);
+
+        auto* cb = new QCheckBox(
+            QString::fromUtf8(kSteps[entryIdx].displayName), frame);
+
         bool anyEnabled = false;
-        for (int idx : kSteps[i].backendIndices) {
+        for (int idx : kSteps[entryIdx].backendIndices) {
             if (idx >= 0 && m_pipelineManager->isStepEnabled(idx)) {
                 anyEnabled = true;
                 break;
             }
         }
-        m_checkboxes[i]->setChecked(anyEnabled);
+        cb->setChecked(anyEnabled);
+        hbox->addWidget(cb);
+        hbox->addStretch();
+
+        frame->setProperty("entryIndex", entryIdx);
+        frame->installEventFilter(this);
+
+        m_stepLayout->addWidget(frame);
+        m_stepFrames.append(frame);
     }
+
+    // 添加弹性空间
+    m_stepLayout->addStretch();
 }
+
+// ========== 应用 ==========
 
 void StepConfigWidget::onApplyClicked()
 {
     if (!m_pipelineManager) return;
 
-    // 1) 将勾选状态写入 PipelineManager
-    for (int i = 0; i < kStepCount; ++i) {
-        for (int idx : kSteps[i].backendIndices) {
-            if (idx >= 0) {
-                m_pipelineManager->setStepEnabled(idx, m_checkboxes[i]->isChecked());
+    // ---- 1) 从当前顺序读取勾选状态 + 排序 ----
+    std::array<int, PipelineConfig::STEP_COUNT> newOrder{};
+    QSet<int> placed;
+    int pos = 0;
+
+    for (auto* frame : m_stepFrames) {
+        int entryIdx = entryIndexForFrame(frame);
+        if (entryIdx < 0) continue;
+
+        // 查找 frame 内的 QCheckBox
+        auto* cb = frame->findChild<QCheckBox*>();
+        bool checked = cb && cb->isChecked();
+
+        for (int idx : kSteps[entryIdx].backendIndices) {
+            if (idx < 0) continue;
+
+            m_pipelineManager->setStepEnabled(idx, checked);
+
+            if (!placed.contains(idx)) {
+                newOrder[pos++] = idx;
+                placed.insert(idx);
             }
         }
     }
 
-    // 2) 重建 Pipeline
+    // 补全未出现的索引
+    for (int i = 0; i < PipelineConfig::STEP_COUNT; ++i) {
+        if (!placed.contains(i)) {
+            newOrder[pos++] = i;
+        }
+    }
+
+    auto& cfg = m_pipelineManager->mutableConfig();
+    for (int i = 0; i < PipelineConfig::STEP_COUNT; ++i) {
+        cfg.stepOrder[i] = newOrder[i];
+    }
+
+    // ---- 2) 重建 Pipeline ----
     m_pipelineManager->rebuildPipeline();
 
-    // 3) 请求外部创建需要的 Tab（固定顺序创建）
+    // ---- 3) 按用户排序创建 Tab ----
     emit tabsNeeded(collectEnabledTabNames());
 
-    // 4) 动态显示/隐藏对应的 Tab
+    // ---- 4) 动态显示/隐藏 ----
     applyTabVisibility();
 
-    // 5) 触发刷新
+    // ---- 5) 触发刷新 ----
     emit stepConfigChanged();
     if (m_requestRefresh) m_requestRefresh();
 }
 
+// ========== Tab 管理 ==========
+
 QStringList StepConfigWidget::collectEnabledTabNames()
 {
-    // 固定顺序 —— 按 Pipeline 执行顺序排列
-    QStringList order = {
-        "图像", "增强", "过滤", "补正",
-        "处理", "提取", "直线", "条码",
-        "步骤"
-    };
-
-    // 收集已勾选条目对应的 Tab 名
     QSet<QString> checked;
-    for (int i = 0; i < kStepCount; ++i) {
-        if (m_checkboxes[i]->isChecked()) {
-            for (const auto& name : kSteps[i].tabNames) {
-                checked.insert(name);
+    for (auto* frame : m_stepFrames) {
+        int entryIdx = entryIndexForFrame(frame);
+        if (entryIdx < 0) continue;
+        auto* cb = frame->findChild<QCheckBox*>();
+        if (!cb || !cb->isChecked()) continue;
+
+        for (const auto& name : kSteps[entryIdx].tabNames) {
+            checked.insert(name);
+        }
+    }
+    checked.insert(QStringLiteral("步骤"));
+
+    // 按用户拖拽后的顺序输出（去重）
+    QStringList result;
+    for (auto* frame : m_stepFrames) {
+        int entryIdx = entryIndexForFrame(frame);
+        if (entryIdx < 0) continue;
+        auto* cb = frame->findChild<QCheckBox*>();
+        if (!cb || !cb->isChecked()) continue;
+
+        for (const auto& name : kSteps[entryIdx].tabNames) {
+            if (!result.contains(name)) {
+                result.append(name);
             }
         }
     }
-    // "步骤" 始终显示
-    checked.insert(QStringLiteral("步骤"));
-
-    // 按固定顺序输出
-    QStringList result;
-    for (const auto& name : order) {
-        if (checked.contains(name)) {
-            result.append(name);
-        }
-    }
+    // "步骤"始终最后
+    result.removeAll(QStringLiteral("步骤"));
+    result.append(QStringLiteral("步骤"));
     return result;
 }
 

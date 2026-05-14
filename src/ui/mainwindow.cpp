@@ -31,6 +31,7 @@
 #include "widgets/step_config_widget.h"
 
 
+#include <QTabBar>
 #include <QFile>
 #include <QDir>
 #include <QTimer>
@@ -287,11 +288,32 @@ void MainWindow::setupTabRegistration()
             initializableTab->initializeTab(ctx);
         }
 
-        // "步骤"Tab的 tabsNeeded 信号 → 创建对应Tab
+        // "步骤"Tab的 tabsNeeded 信号 → 按指定顺序创建/重排对应Tab
         if (auto* stepWidget = qobject_cast<StepConfigWidget*>(widget)) {
             connect(stepWidget, &StepConfigWidget::tabsNeeded, this, [this](const QStringList& tabNames) {
+                // 1) 确保所有需要的 Tab 存在
+                bool anyNew = false;
                 for (const auto& name : tabNames) {
-                    ensureTabExists(name);
+                    if (!m_tabManager->isCreated(name)) {
+                        m_tabManager->ensureTab(name);
+                        anyNew = true;
+                    }
+                }
+                if (anyNew) {
+                    m_detectionUiController->setTabNames(m_tabManager->createdTabNames());
+                }
+
+                // 2) 按指定顺序重排 TabBar
+                auto* tabBar = ui->tabWidget->tabBar();
+                for (int desired = 0; desired < tabNames.size(); ++desired) {
+                    for (int cur = desired; cur < tabBar->count(); ++cur) {
+                        if (tabBar->tabText(cur) == tabNames[desired]) {
+                            if (cur != desired) {
+                                tabBar->moveTab(cur, desired);
+                            }
+                            break;
+                        }
+                    }
                 }
             });
         }

@@ -3,8 +3,12 @@
 #include <QWidget>
 #include <QCheckBox>
 #include <QPushButton>
+#include <QFrame>
+#include <QVBoxLayout>
+#include <QScrollArea>
 #include <QStringList>
 #include <QList>
+#include <QPoint>
 #include <functional>
 #include "config/pipeline_config.h"
 #include "widgets/i_tab_interfaces.h"
@@ -12,14 +16,15 @@
 class PipelineManager;
 
 /**
- * @brief 自定义Pipeline步骤配置Tab
+ * @brief 自定义Pipeline步骤配置Tab（支持拖拽排序）
  *
  * 每个 UI 步骤条目（StepEntry）对应：
- *  - 一个复选框（显示名）
+ *  - 一个 QFrame（内含 QCheckBox）
  *  - 一个或多个要显示/隐藏的右侧Tab
  *  - 一个或多个后端 Pipeline 步骤索引（stepEnabled[] 下标，-1=无对应）
  *
- * 这样 UI 层与后端 StepType 枚举解耦，维护时只需增删 kSteps 数组即可。
+ * 用户拖拽调整顺序 → 点击【应用】→ 按用户顺序执行。
+ * UI 层与后端 StepType 枚举解耦，维护时只需增删 kSteps 数组。
  */
 class StepConfigWidget : public QWidget, public ISignalConnectable
 {
@@ -41,19 +46,24 @@ signals:
 private slots:
     void onApplyClicked();
 
+protected:
+    bool eventFilter(QObject* obj, QEvent* event) override;
+
 private:
     /// UI 步骤条目 —— 与后端 StepType 枚举解耦
     struct StepEntry {
         const char* displayName;         // 复选框文字
         QStringList   tabNames;          // 勾选后要显示的Tab名
         QList<int>    backendIndices;    // stepEnabled[] 下标（-1 = 无对应）
-        bool          alwaysOn = false;  // 始终勾选且不可取消
+        bool          alwaysOn = false;  // 始终勾选且不可拖拽
     };
 
     void setupUI();
-    void syncCheckboxes();
+    void rebuildStepItems();
     QStringList collectEnabledTabNames();
     void applyTabVisibility();
+    int  entryIndexForFrame(QObject* obj) const;
+    int  dropTargetIndex(const QPoint& pos) const;
 
     static const StepEntry kSteps[];   // 定义在 .cpp
     static const int       kStepCount;
@@ -61,5 +71,14 @@ private:
     PipelineManager*         m_pipelineManager = nullptr;
     std::function<void()>    m_requestRefresh;
     QPushButton*             m_applyBtn = nullptr;
-    QList<QCheckBox*>        m_checkboxes;      // 与 kSteps 一一对应
+
+    QWidget*                 m_stepContainer = nullptr;
+    QVBoxLayout*             m_stepLayout = nullptr;
+    QScrollArea*             m_scrollArea = nullptr;
+    QList<QFrame*>           m_stepFrames;
+    QCheckBox*               m_fixedStepCb = nullptr;
+
+    // 拖拽辅助
+    QPoint                   m_dragStartPos;
+    QFrame*                  m_dragSource = nullptr;
 };
