@@ -1,5 +1,4 @@
 #include "controllers/roi_ui_controller.h"
-#include "widgets/roi_list_widget.h"
 #include "roi_config.h"
 #include "logger.h"
 #include "image_utils.h"
@@ -10,6 +9,9 @@
 
 #include <QApplication>
 #include <QDebug>
+#include <QMenu>
+#include <QInputDialog>
+#include <QMessageBox>
 
 RoiUiController::RoiUiController(
     RoiManager& roiManager,
@@ -23,7 +25,6 @@ RoiUiController::RoiUiController(
     , m_view(imageView)
     , m_statusBar(statusBar)
     , m_treeView(nullptr)
-    , m_roiListWidget(nullptr)
 {
 }
 
@@ -43,6 +44,8 @@ void RoiUiController::setupTreeView(QTreeWidget* treeView)
     // 连接信号
     connect(m_treeView, &QTreeWidget::itemClicked,
             this, &RoiUiController::onRoiTreeItemClicked);
+    connect(m_treeView, &QTreeWidget::customContextMenuRequested,
+            this, &RoiUiController::onRoiTreeContextMenu);
     // 连接绘制ROI完成信号
     connect(m_view, &ImageView::roiSelected, this, [this](const QRectF& rect) {
         // 创建新的ROI配置（名称由RoiManager统一生成，基于现有ROI最大编号）
@@ -392,6 +395,51 @@ void RoiUiController::onRoiTreeItemClicked(QTreeWidgetItem* item, int column)
     }
 }
 
+void RoiUiController::onRoiTreeContextMenu(const QPoint& pos)
+{
+    QTreeWidgetItem* item = m_treeView->itemAt(pos);
+    if (!item) return;
+
+    // 只处理 ROI 层（非检测项子节点）
+    QString itemType = item->data(0, Qt::UserRole + 1).toString();
+    if (itemType == "detection") return;
+
+    QString roiId = item->data(0, Qt::UserRole).toString();
+    if (roiId.isEmpty()) return;
+
+    // 选中该项
+    handleRoiSelection(roiId);
+
+    // 获取 ROI 真实名称（item->text(0) 可能带有检测项后缀）
+    RoiConfig* roi = m_roiManager.getRoiConfig(roiId);
+    QString roiName = roi ? roi->roiName : item->text(0);
+
+    // 构造菜单
+    QMenu menu;
+    QAction* renameAct = menu.addAction("重命名");
+    menu.addSeparator();
+    QAction* deleteAct = menu.addAction("删除");
+
+    QAction* chosen = menu.exec(m_treeView->viewport()->mapToGlobal(pos));
+    if (chosen == renameAct) {
+        bool ok;
+        QString newName = QInputDialog::getText(
+            nullptr, "重命名ROI", "请输入新名称:",
+            QLineEdit::Normal, roiName, &ok);
+        if (ok && !newName.isEmpty() && newName != roiName) {
+            renameRoi(roiId, newName);
+        }
+    } else if (chosen == deleteAct) {
+        auto reply = QMessageBox::question(
+            nullptr, "确认删除",
+            QString("确定要删除ROI \"%1\" 吗？").arg(roiName),
+            QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+        if (reply == QMessageBox::Yes) {
+            removeRoiAndRefresh(roiId);
+        }
+    }
+}
+
 // ========== ROI操作方法（供MainWindow委托调用）==========
 
 QString RoiUiController::addRoiWithName(const QString& roiName)
@@ -453,86 +501,6 @@ void RoiUiController::deleteDetectionItem(const QString& roiId, const QString& d
     }
 }
 
-// ========== RoiListWidget设置和信号连接 ==========
-
-void RoiUiController::setupRoiListWidget(RoiListWidget* roiListWidget)
-{
-    m_roiListWidget = roiListWidget;
-    
-    if (!m_roiListWidget) {
-        return;
-    }
-    
-    // 连接RoiListWidget信号到Controller处理
-    connect(m_roiListWidget, &RoiListWidget::roiAddRequested,
-            this, &RoiUiController::handleRoiAddRequested);
-    connect(m_roiListWidget, &RoiListWidget::roiDeleteRequested,
-            this, &RoiUiController::handleRoiDeleteRequested);
-    connect(m_roiListWidget, &RoiListWidget::roiRenameRequested,
-            this, &RoiUiController::handleRoiRenameRequested);
-    connect(m_roiListWidget, &RoiListWidget::roiActiveChanged,
-            this, &RoiUiController::handleRoiActiveChanged);
-    connect(m_roiListWidget, &RoiListWidget::roiSelectionChanged,
-            this, &RoiUiController::handleRoiSelectionChanged);
-    connect(m_roiListWidget, &RoiListWidget::drawRoiRequested,
-            this, &RoiUiController::onDrawRoiClicked);
-    
-    // 连接RoiManager信号到RoiListWidget数据同步
-    connect(&m_roiManager, &RoiManager::roiConfigChanged,
-            this, [this]() {
-                if (m_roiListWidget) {
-                    m_roiListWidget->setRoiData(m_roiManager.getRoiConfigs());
-                }
-            });
-    
-    // 初始同步数据
-    m_roiListWidget->setRoiData(m_roiManager.getRoiConfigs());
-}
-
-// ========== RoiListWidget信号处理槽函数 ==========
-
-void RoiUiController::handleRoiAddRequested(const QString& roiName)
-{
-    Q_UNUSED(roiName);
-    if (m_roiManager.getFullImage().empty()) {
-        QMessageBox::warning(nullptr, "警告", "请先加载一张图像");
-        return;
-    }
-    saveCurrentRoiPipelineConfig();
-    Logger::instance()->info("请在图像上绘制新的ROI");
-    enterRoiDrawMode();
-}
-
-void RoiUiController::handleRoiDeleteRequested(const QString& roiId)
-{
-    Logger::instance()->info(QString("[RoiUI] handleRoiDeleteRequested: roiId=%1").arg(roiId));
-    removeRoiAndRefresh(roiId);
-}
-
-void RoiUiController::handleRoiRenameRequested(const QString& roiId, const QString& newName)
-{
-    renameRoi(roiId, newName);
-}
-
-void RoiUiController::handleRoiActiveChanged(const QString& roiId, bool active)
-{
-    RoiConfig* roi = m_roiManager.getRoiConfig(roiId);
-    if (roi) {
-        roi->isActive = active;
-        refreshRoiTreeView();
-        emit roiChanged();
-        emit roiActiveToggled(roiId, active);
-        
-        Logger::instance()->info(QString("ROI %1 已%2").arg(roi->roiName).arg(active ? "激活" : "停用"));
-    }
-}
-
-void RoiUiController::handleRoiSelectionChanged(const QString& roiId)
-{
-    // 委托给统一的 handleRoiSelection（内部处理相同ROI的跳过逻辑）
-    handleRoiSelection(roiId);
-}
-
 void RoiUiController::saveCurrentRoiPipelineConfig()
 {
     if (m_currentSelectedRoiId.isEmpty() || !m_pipelineManager) {
@@ -585,9 +553,6 @@ void RoiUiController::loadRoiPipelineConfig(const QString& roiId)
 
 void RoiUiController::syncRoiConfigsToWidget()
 {
-    if (m_roiListWidget) {
-        m_roiListWidget->setRoiData(m_roiManager.getRoiConfigs());
-    }
     refreshRoiTreeView();
     Logger::instance()->info("[RoiUiController] 已同步ROI配置到Widget");
 }

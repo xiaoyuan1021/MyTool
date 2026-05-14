@@ -11,6 +11,7 @@
 #include <QPainter>
 #include <QWheelEvent>
 #include <QMouseEvent>
+#include <QMenu>
 
 #include <opencv2/opencv.hpp>
 #include "roi_manager.h"
@@ -68,6 +69,9 @@ public:
     // 控制缩放是否启用（视频检测时禁用，避免画面抖动）
     void setZoomEnabled(bool enabled) { m_zoomEnabled = enabled; }
     bool isZoomEnabled() const { return m_zoomEnabled; }
+
+    // 右键上下文菜单
+    void showContextMenu(const QPoint& viewportPos);
 
 
 signals:

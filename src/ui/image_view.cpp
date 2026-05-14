@@ -1,6 +1,7 @@
 #include "image_view.h"
 #include "logger.h"
 #include "qapplication.h"
+#include <QAction>
 #include <algorithm>   // 为 std::clamp
 
 ImageView::ImageView(QWidget *parent)
@@ -288,6 +289,15 @@ void ImageView::mousePressEvent(QMouseEvent *event)
             event->accept();
             return;
         }
+    }
+
+    // 右键上下文菜单（不在任何绘制模式下）
+    if (event->button() == Qt::RightButton
+        && !m_polygonMode && !m_rectangleMode && !m_referenceLineMode && !m_isDrawingRoi && !m_roiReady)
+    {
+        showContextMenu(event->pos());
+        event->accept();
+        return;
     }
 
     if(event->button()==Qt::RightButton && m_roiReady)
@@ -774,4 +784,13 @@ void ImageView::clear()
     // 重置缩放
     resetTransform();
     m_scaleFactor = 1.0;
+}
+
+// =================== 右键上下文菜单 ===================
+void ImageView::showContextMenu(const QPoint& viewportPos)
+{
+    QMenu menu(this);
+    QAction* fitAction = menu.addAction(QStringLiteral("适应窗口"));
+    connect(fitAction, &QAction::triggered, this, &ImageView::resetZoom);
+    menu.exec(mapToGlobal(viewportPos));
 }

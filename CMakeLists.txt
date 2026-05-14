@@ -114,7 +114,6 @@ set(HEADERS
     include/widgets/process_tab_widget.h
     include/widgets/profile_tab_widget.h
     include/widgets/roi_detection_config_dialog.h
-    include/widgets/roi_list_widget.h
     include/widgets/tab_manager.h
     include/widgets/tab_registry.h
     include/widgets/template_tab_widget.h
@@ -186,7 +185,6 @@ set(SOURCES
     src/widgets/process_tab_widget.cpp
     src/widgets/profile_tab_widget.cpp
     src/widgets/roi_detection_config_dialog.cpp
-    src/widgets/roi_list_widget.cpp
     src/widgets/tab_manager.cpp
     src/widgets/tab_registry.cpp
     src/widgets/template_tab_widget.cpp

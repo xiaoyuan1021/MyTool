@@ -16,7 +16,6 @@
 #include "pipeline_manager.h"
 
 // 前向声明
-class RoiListWidget;
 class TabManager;
 
 QT_BEGIN_NAMESPACE
@@ -75,16 +74,13 @@ public:
     // 加载指定ROI的PipelineConfig到PipelineManager
     void loadRoiPipelineConfig(const QString& roiId);
     
-    // 设置RoiListWidget并建立信号连接
-    void setupRoiListWidget(RoiListWidget* roiListWidget);
-
     /// 更新当前选中ROI的 Blob 检测项判定阈值（由 JudgeTab 触发）
     void updateBlobDetectionConfig(int minCount, int maxCount);
 
-    /// 设置显示相关的信号连接（从MainWindow迁移）
+    // 设置显示模式连接
     void setupDisplayConnections(TabManager* tabManager);
 
-    // 同步当前图片的ROI配置到RoiListWidget（图片切换时调用）
+    // 同步ROI配置到Widget（图片切换时调用）
     void syncRoiConfigsToWidget();
 
     // 获取RoiManager引用
@@ -117,18 +113,14 @@ signals:
     void roiActiveToggled(const QString& roiId, bool active);
 
 private slots:
-    // RoiListWidget信号处理槽函数
-    void handleRoiAddRequested(const QString& roiName);
-    void handleRoiDeleteRequested(const QString& roiId);
-    void handleRoiRenameRequested(const QString& roiId, const QString& newName);
-    void handleRoiActiveChanged(const QString& roiId, bool active);
-    void handleRoiSelectionChanged(const QString& roiId);
+    // 右键菜单
+    void onRoiTreeContextMenu(const QPoint& pos);
 
 private:
     /// 进入ROI绘制模式（统一入口）
     void enterRoiDrawMode();
 
-    /// 删除ROI并刷新UI（统一删除逻辑，供 onDeleteRoiClicked 和 handleRoiDeleteRequested 调用）
+    /// 删除ROI并刷新UI（统一删除逻辑）
     void removeRoiAndRefresh(const QString& roiId);
 
     RoiManager& m_roiManager;
@@ -136,7 +128,6 @@ private:
     ImageView* m_view;
     QStatusBar* m_statusBar;
     QTreeWidget* m_treeView;
-    RoiListWidget* m_roiListWidget;  // RoiListWidget引用
     QString m_currentSelectedRoiId;
 };
 

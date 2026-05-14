@@ -120,6 +120,11 @@ QListWidget::item:selected {
 }
 QListWidget::item:hover {
     background-color: #E8F0F8;
+    color: #3D4F5F;
+}
+QListWidget::item:selected:hover {
+    background-color: #5B9BD5;
+    color: white;
 }
 
 /* =========================
@@ -443,4 +448,24 @@ QToolTip {
     border: none;
     border-radius: 4px;
     padding: 4px 8px;
+}
+
+/* =========================
+   右键菜单
+========================= */
+QMenu {
+    background-color: #FFFFFF;
+    border: 1px solid #D4E3F0;
+    border-radius: 6px;
+    padding: 4px;
+}
+QMenu::item {
+    padding: 6px 24px;
+    color: #3D4F5F;
+    border-radius: 4px;
+}
+QMenu::item:selected {
+    background-color: #5B9BD5;
+    color: white;
+    border-radius: 4px;
 }
