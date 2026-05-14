@@ -37,3 +37,4 @@ CMakeFiles/*
 build_zxing/*
 .agents/*
 skills-lock.json
+thresholds_new.pnm
