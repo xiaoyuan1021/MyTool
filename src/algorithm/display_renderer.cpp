@@ -30,7 +30,7 @@ cv::Mat render(const PipelineContext& ctx, DisplayConfig::Mode mode)
         case Mode::Channel:
             if (!ctx.channelImg.empty())
                 return ctx.channelImg;
-            return ctx.srcBgr;
+            return ensureBgr(ctx.visualBase);
 
         case Mode::Enhanced:
             if (!ctx.enhanced.empty()) {
@@ -41,19 +41,19 @@ cv::Mat render(const PipelineContext& ctx, DisplayConfig::Mode mode)
                 }
                 return ctx.enhanced;
             }
-            return ctx.srcBgr;
+            return ensureBgr(ctx.visualBase);
 
         case Mode::MaskGreenWhite:
             if (!ctx.mask.empty())
                 return OpenCVAlgorithm::convertToGreenWhite(ctx.mask);
             if (!ctx.processed.empty())
                 return OpenCVAlgorithm::convertToGreenWhite(ctx.processed);
-            return ctx.srcBgr;
+            return ensureBgr(ctx.visualBase);
 
         case Mode::MaskOverlay:
             if (!ctx.mask.empty())
                 return overlayMaskOnImage(ensureBgr(ctx.visualBase), ctx.mask);
-            return ctx.srcBgr;
+            return ensureBgr(ctx.visualBase);
 
         case Mode::Processed:
             if (!ctx.processed.empty()) {
@@ -61,12 +61,12 @@ cv::Mat render(const PipelineContext& ctx, DisplayConfig::Mode mode)
                     return OpenCVAlgorithm::convertToGreenWhite(ctx.processed);
                 return ctx.processed;
             }
-            return ctx.srcBgr;
+            return ensureBgr(ctx.visualBase);
 
         case Mode::LineDetect:
             if (!ctx.lineDetect.empty())
                 return ctx.lineDetect;
-            return ctx.srcBgr;
+            return ensureBgr(ctx.visualBase);
 
         case Mode::BarcodeOverlay:
             {
@@ -77,7 +77,7 @@ cv::Mat render(const PipelineContext& ctx, DisplayConfig::Mode mode)
                     return base;
                 }
             }
-            return ctx.srcBgr;
+            return ensureBgr(ctx.visualBase);
 
         case Mode::MaskOnly:
             if (!ctx.mask.empty()) {
@@ -88,7 +88,7 @@ cv::Mat render(const PipelineContext& ctx, DisplayConfig::Mode mode)
                 }
                 return ctx.mask;
             }
-            return ctx.srcBgr;
+            return ensureBgr(ctx.visualBase);
 
         case Mode::ProcessedOverlay:
             if (!ctx.processed.empty()) {
@@ -101,10 +101,10 @@ cv::Mat render(const PipelineContext& ctx, DisplayConfig::Mode mode)
                 if (!base.empty())
                     return overlayMaskOnImage(base, overlayMask);
             }
-            return ctx.srcBgr;
+            return ensureBgr(ctx.visualBase);
 
         default:
-            return ctx.srcBgr;
+            return ensureBgr(ctx.visualBase);
         }
     } catch (const cv::Exception& ex) {
         qDebug() << "[DisplayRenderer] OpenCV错误:" << ex.what();

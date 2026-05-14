@@ -414,7 +414,7 @@ void MainWindow::on_btn_drawRoi_clicked()
 }
 
 void MainWindow::on_btn_resetROI_clicked()    { m_roiUiController->onResetRoiClicked(); }
-void MainWindow::onRoiSelected(const QRectF &r) { m_roiUiController->handleRoiSelectedComplete(r); }
+
 void MainWindow::on_btn_addROI_clicked()      { m_roiUiController->onAddRoiClicked(); }
 void MainWindow::on_btn_deleteROI_clicked()   { m_roiUiController->onDeleteRoiClicked(); }
 void MainWindow::on_btn_switchROI_clicked()   { m_roiUiController->onSwitchRoiClicked(); }

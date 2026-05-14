@@ -67,7 +67,6 @@ private slots:
     void on_btn_addROI_clicked();
     void on_btn_deleteROI_clicked();
     void on_btn_switchROI_clicked();
-    void onRoiSelected(const QRectF &roiRect);
     void on_tabWidget_currentChanged(int index);
     void on_btn_Log_clicked();
     void on_btn_Home_clicked();

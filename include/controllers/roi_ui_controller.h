@@ -59,7 +59,6 @@ public:
     void handleRoiSelection(const QString& roiId);
 
     // ROI操作方法（供MainWindow委托调用）
-    void handleRoiSelectedComplete(const QRectF& roiImgRectF);
     QString addRoiWithName(const QString& roiName);
     bool renameRoi(const QString& roiId, const QString& newName);
     void deleteDetectionItem(const QString& roiId, const QString& detectionId);

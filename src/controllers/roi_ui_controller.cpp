@@ -79,10 +79,11 @@ void RoiUiController::setupTreeView(QTreeWidget* treeView)
         
         // 刷新列表
         refreshRoiTreeView();
-        
-        // 触发配置修改信号（需要Pipeline重新处理）
-        emit roiChanged();
-        
+
+        // 显示ROI裁剪区域并铺满画布（不触发Pipeline检测）
+        emit roiDisplayChanged(m_currentSelectedRoiId);
+        m_view->resetZoom();
+
         Logger::instance()->info(QString("已添加ROI: %1").arg(roiName));
     });
     
@@ -403,27 +404,6 @@ void RoiUiController::onRoiTreeItemClicked(QTreeWidgetItem* item, int column)
 }
 
 // ========== ROI操作方法（供MainWindow委托调用）==========
-
-void RoiUiController::handleRoiSelectedComplete(const QRectF& roiImgRectF)
-{
-    if (!m_roiManager.setRoi(roiImgRectF)) {
-        if (m_statusBar) m_statusBar->showMessage("ROI应用失败", 2000);
-        return;
-    }
-    
-    cv::Rect roi = m_roiManager.getLastRoi();
-    if (m_statusBar) {
-        m_statusBar->showMessage(
-            QString("ROI已选择：x=%1 y=%2 w=%3 h=%4")
-                .arg(roi.x).arg(roi.y).arg(roi.width).arg(roi.height),
-            2000);
-    }
-    
-    // 绘制完ROI后重置图像缩放，恢复到原始比例
-    m_view->resetZoom();
-    
-    emit roiChanged();
-}
 
 QString RoiUiController::addRoiWithName(const QString& roiName)
 {
