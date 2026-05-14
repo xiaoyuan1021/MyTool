@@ -118,6 +118,7 @@ set(HEADERS
     include/widgets/tab_manager.h
     include/widgets/tab_registry.h
     include/widgets/template_tab_widget.h
+    include/widgets/step_config_widget.h
     include/widgets/video_source_widget.h
     include/widgets/video_tab_widget.h
     # controllers
@@ -189,6 +190,7 @@ set(SOURCES
     src/widgets/tab_manager.cpp
     src/widgets/tab_registry.cpp
     src/widgets/template_tab_widget.cpp
+    src/widgets/step_config_widget.cpp
     src/widgets/video_source_widget.cpp
     src/widgets/video_tab_widget.cpp
     # controllers

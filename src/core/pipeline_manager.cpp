@@ -6,6 +6,7 @@
 #include "algorithm/display_renderer.h"
 #include <QDebug>
 #include <algorithm>
+#include <map>
 
 PipelineManager::PipelineManager(QObject* parent)
     : QObject(parent)
@@ -169,19 +170,48 @@ void PipelineManager::resetPipeline()
     emit algorithmQueueChanged(0);
 }
 
+void PipelineManager::setStepEnabled(int stepIndex, bool enabled)
+{
+    if (stepIndex < 0 || stepIndex >= PipelineConfig::STEP_COUNT) return;
+    m_config.stepEnabled[stepIndex] = enabled;
+}
+
+bool PipelineManager::isStepEnabled(int stepIndex) const
+{
+    if (stepIndex < 0 || stepIndex >= PipelineConfig::STEP_COUNT) return false;
+    return m_config.stepEnabled[stepIndex];
+}
+
+void PipelineManager::rebuildPipeline()
+{
+    if (m_pipelineRunning.loadAcquire()) {
+        m_hasPendingReset.storeRelease(1);
+        return;
+    }
+    initPipeline();
+    emit pipelineReset();
+}
+
 // ========== 私有方法 ==========
 
 void PipelineManager::initPipeline()
 {
     m_pipeline = Pipeline();
 
-    m_pipeline.add(std::make_unique<StepColorChannel>());
-    m_pipeline.add(std::make_unique<StepEnhance>(m_processor.get()));
-    m_pipeline.add(std::make_unique<StepGrayFilter>());
-    m_pipeline.add(std::make_unique<StepColorFilter>(m_processor.get()));
-    m_pipeline.add(std::make_unique<StepAlgorithmQueue>(m_processor.get(), &m_algorithmQueue));
-    m_pipeline.add(std::make_unique<StepShapeFilter>());
-    m_pipeline.add(std::make_unique<StepLineDetect>());
-    m_pipeline.add(std::make_unique<StepReferenceLineFilter>());
-    m_pipeline.add(std::make_unique<StepBarcodeRecognition>());
+    std::map<int, std::unique_ptr<IPipelineStep>> allSteps;
+    allSteps[0] = std::make_unique<StepColorChannel>();
+    allSteps[1] = std::make_unique<StepEnhance>(m_processor.get());
+    allSteps[2] = std::make_unique<StepGrayFilter>();
+    allSteps[3] = std::make_unique<StepColorFilter>(m_processor.get());
+    allSteps[4] = std::make_unique<StepAlgorithmQueue>(m_processor.get(), &m_algorithmQueue);
+    allSteps[5] = std::make_unique<StepShapeFilter>();
+    allSteps[6] = std::make_unique<StepLineDetect>();
+    allSteps[7] = std::make_unique<StepReferenceLineFilter>();
+    allSteps[8] = std::make_unique<StepBarcodeRecognition>();
+
+    for (int idx : m_config.stepOrder) {
+        if (m_config.stepEnabled[idx] && allSteps.contains(idx)) {
+            m_pipeline.add(std::move(allSteps[idx]));
+        }
+    }
 }

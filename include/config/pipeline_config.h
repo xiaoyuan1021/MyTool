@@ -2,10 +2,43 @@
 
 #include <QJsonObject>
 #include <QStringList>
+#include <array>
 #include <opencv2/core.hpp>
 #include "config/shape_filter_types.h"
 
 // ====== 枚举类型（原 pipeline_types.h，合并于此）======
+
+/// Pipeline步骤类型
+enum class StepType : int
+{
+    ColorChannel = 0,
+    Enhance,
+    GrayFilter,
+    ColorFilter,
+    AlgorithmQueue,
+    ShapeFilter,
+    LineDetect,
+    ReferenceLineFilter,
+    BarcodeRecognition,
+    Count   // 步骤总数
+};
+
+/// 步骤显示名称（用于UI）
+inline const char* stepDisplayName(StepType type)
+{
+    switch (type) {
+        case StepType::ColorChannel:       return "颜色通道";
+        case StepType::Enhance:            return "图像增强";
+        case StepType::GrayFilter:         return "灰度过滤";
+        case StepType::ColorFilter:        return "颜色过滤";
+        case StepType::AlgorithmQueue:     return "算法处理";
+        case StepType::ShapeFilter:        return "形状筛选";
+        case StepType::LineDetect:         return "直线检测";
+        case StepType::ReferenceLineFilter: return "参考线匹配";
+        case StepType::BarcodeRecognition: return "条码识别";
+        default:                           return "未知步骤";
+    }
+}
 
 /// 颜色通道模式
 enum class ChannelMode
@@ -222,6 +255,23 @@ struct PipelineConfig
     ShapeFilterConfig shapeFilter; ///< 形状筛选
     BarcodeConfig    barcode;      ///< 条码识别
     BlobJudgeConfig  judge;        ///< 判定配置（Blob分析阈值）
+
+    // ========== Pipeline步骤控制 ==========
+    static constexpr int STEP_COUNT = static_cast<int>(StepType::Count);
+
+    std::array<bool, STEP_COUNT> stepEnabled = {
+        true,   // ColorChannel
+        true,   // Enhance
+        true,   // GrayFilter
+        true,   // ColorFilter
+        true,   // AlgorithmQueue
+        true,   // ShapeFilter
+        true,   // LineDetect
+        true,   // ReferenceLineFilter
+        true    // BarcodeRecognition
+    };
+
+    std::array<int, STEP_COUNT> stepOrder = {0, 1, 2, 3, 4, 5, 6, 7, 8};
 
     // ==================== JSON 序列化（定义在 pipeline_config.cpp）====================
 

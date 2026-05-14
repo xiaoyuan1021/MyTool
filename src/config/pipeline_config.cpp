@@ -48,6 +48,15 @@ QJsonObject PipelineConfig::toJson() const {
     barcodeObj["returnQuality"] = barcode.returnQuality;
     obj["barcode"] = barcodeObj;
 
+    // 步骤控制
+    QJsonArray enabledArr, orderArr;
+    for (int i = 0; i < PipelineConfig::STEP_COUNT; ++i) {
+        enabledArr.append(stepEnabled[i]);
+        orderArr.append(stepOrder[i]);
+    }
+    obj["stepEnabled"] = enabledArr;
+    obj["stepOrder"] = orderArr;
+
     return obj;
 }
 
@@ -107,6 +116,20 @@ void PipelineConfig::fromJson(const QJsonObject& obj) {
     QJsonObject barcodeObj = obj["barcode"].toObject();
     if (!barcodeObj.isEmpty()) {
         barcode.fromJson(barcodeObj);
+    }
+
+    // 步骤控制
+    QJsonArray enabledArr = obj["stepEnabled"].toArray();
+    if (enabledArr.size() == PipelineConfig::STEP_COUNT) {
+        for (int i = 0; i < PipelineConfig::STEP_COUNT; ++i) {
+            stepEnabled[i] = enabledArr[i].toBool(true);
+        }
+    }
+    QJsonArray orderArr = obj["stepOrder"].toArray();
+    if (orderArr.size() == PipelineConfig::STEP_COUNT) {
+        for (int i = 0; i < PipelineConfig::STEP_COUNT; ++i) {
+            stepOrder[i] = orderArr[i].toInt(i);
+        }
     }
 }
 

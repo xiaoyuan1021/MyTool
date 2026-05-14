@@ -28,6 +28,8 @@
 #include "widgets/video_tab_widget.h"
 #include "widgets/barcode_tab_widget.h"
 #include "widgets/template_tab_widget.h"
+#include "widgets/step_config_widget.h"
+
 
 #include <QFile>
 #include <QDir>
@@ -35,6 +37,7 @@
 #include <QFileDialog>
 #include <QInputDialog>
 #include <QLineEdit>
+
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -283,6 +286,15 @@ void MainWindow::setupTabRegistration()
             ctx.pipelineManager = m_pipelineManager;
             initializableTab->initializeTab(ctx);
         }
+
+        // "步骤"Tab的 tabsNeeded 信号 → 创建对应Tab
+        if (auto* stepWidget = qobject_cast<StepConfigWidget*>(widget)) {
+            connect(stepWidget, &StepConfigWidget::tabsNeeded, this, [this](const QStringList& tabNames) {
+                for (const auto& name : tabNames) {
+                    ensureTabExists(name);
+                }
+            });
+        }
     });
 }
 
@@ -516,3 +528,5 @@ void MainWindow::on_btn_importFolder_clicked()
         Logger::instance()->info(QString("[MainWindow] 从文件夹导入 %1 张图片: %2").arg(imported.size()).arg(dir));
     }
 }
+
+

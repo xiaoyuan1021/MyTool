@@ -565,6 +565,7 @@ void RoiUiController::loadRoiPipelineConfig(const QString& roiId)
     RoiConfig* roi = m_roiManager.getRoiConfig(roiId);
     if (roi) {
         m_pipelineManager->setConfig(roi->pipelineConfig);
+        m_pipelineManager->rebuildPipeline();
         
         emit roiPipelineConfigChanged(roi->pipelineConfig);
         

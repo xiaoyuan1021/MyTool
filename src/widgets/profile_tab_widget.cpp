@@ -1,17 +1,24 @@
 #include "profile_tab_widget.h"
 #include "ui_profile_tab.h"
 #include "core/profile_manager.h"
+#include "core/pipeline_manager.h"
 #include "logger.h"
 #include <QInputDialog>
 #include <QMessageBox>
+#include <QVBoxLayout>
+#include <QGroupBox>
+#include <QScrollArea>
 
 ProfileTabWidget::ProfileTabWidget(ProfileManager* profileManager,
+                                   PipelineManager* pipelineManager,
                                    QWidget* parent)
     : QWidget(parent)
     , m_ui(new Ui::ProfileTabWidget)
     , m_profileManager(profileManager)
+    , m_pipelineManager(pipelineManager)
 {
     m_ui->setupUi(this);
+    setupStepCheckboxes();
     setupConnections();
     refreshProfileList();
 }
@@ -19,6 +26,46 @@ ProfileTabWidget::ProfileTabWidget(ProfileManager* profileManager,
 ProfileTabWidget::~ProfileTabWidget()
 {
     delete m_ui;
+}
+
+void ProfileTabWidget::setupStepCheckboxes()
+{
+    // 在方案详情下方添加步骤管理分组（用ScrollArea防止溢出）
+    auto* stepGroup = new QGroupBox(QStringLiteral("Pipeline 步骤管理"), this);
+    auto* stepGroupLayout = new QVBoxLayout(stepGroup);
+
+    for (int i = 0; i < PipelineConfig::STEP_COUNT; ++i) {
+        auto* cb = new QCheckBox(stepDisplayName(static_cast<StepType>(i)), this);
+        if (m_pipelineManager) {
+            cb->setChecked(m_pipelineManager->isStepEnabled(i));
+        } else {
+            cb->setChecked(true);
+        }
+        m_stepCheckboxes[i] = cb;
+        stepGroupLayout->addWidget(cb);
+    }
+
+    auto* scrollArea = new QScrollArea(this);
+    scrollArea->setWidgetResizable(true);
+    scrollArea->setWidget(stepGroup);
+    scrollArea->setFrameShape(QFrame::NoFrame);
+
+    // 插入到方案详情group box之后
+    QVBoxLayout* mainLayout = qobject_cast<QVBoxLayout*>(layout());
+    if (mainLayout) {
+        int detailIdx = -1;
+        for (int i = 0; i < mainLayout->count(); ++i) {
+            if (mainLayout->itemAt(i)->widget() == m_ui->groupBox_profileDetail) {
+                detailIdx = i;
+                break;
+            }
+        }
+        if (detailIdx >= 0) {
+            mainLayout->insertWidget(detailIdx + 1, scrollArea);
+        } else {
+            mainLayout->addWidget(scrollArea);
+        }
+    }
 }
 
 void ProfileTabWidget::setupConnections()
@@ -33,6 +80,23 @@ void ProfileTabWidget::setupConnections()
             this, &ProfileTabWidget::onRefreshClicked);
     connect(m_ui->listWidget_profiles, &QListWidget::currentRowChanged,
             this, &ProfileTabWidget::onProfileSelectionChanged);
+
+    // 连接步骤复选框
+    for (int i = 0; i < PipelineConfig::STEP_COUNT; ++i) {
+        if (m_stepCheckboxes[i]) {
+            connect(m_stepCheckboxes[i], &QCheckBox::toggled, this, [this, i](bool checked) {
+                onStepCheckboxChanged(i, checked);
+            });
+        }
+    }
+}
+
+void ProfileTabWidget::onStepCheckboxChanged(int stepIndex, bool checked)
+{
+    if (!m_pipelineManager) return;
+    m_pipelineManager->setStepEnabled(stepIndex, checked);
+    m_pipelineManager->rebuildPipeline();
+    emit stepConfigChanged();
 }
 
 // ==================== 刷新 ====================

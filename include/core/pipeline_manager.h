@@ -44,6 +44,17 @@ public:
     // 设置配置（仅UI线程调用）
     void setConfig(const PipelineConfig& config) { m_config = config; }
 
+    // ========== 步骤控制 ==========
+
+    /// 启用/禁用指定步骤（调用后需 rebuildPipeline 生效）
+    void setStepEnabled(int stepIndex, bool enabled);
+
+    /// 查询指定步骤是否启用
+    bool isStepEnabled(int stepIndex) const;
+
+    /// 根据当前 m_config.stepEnabled/stepOrder 重建 pipeline
+    void rebuildPipeline();
+
     // ========== 算法队列管理 ==========
 
     void addAlgorithmStep(const AlgorithmStep& step);

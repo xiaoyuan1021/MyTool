@@ -11,6 +11,7 @@
 #include "widgets/barcode_tab_widget.h"
 #include "widgets/video_tab_widget.h"
 #include "widgets/object_detection_tab_widget.h"
+#include "widgets/step_config_widget.h"
 
 TabRegistry& TabRegistry::instance()
 {
@@ -105,6 +106,13 @@ TabRegistry::TabRegistry()
         {"目标检测", DisplayConfig::Mode::Original,       false, false},
         [](PipelineManager* pm, ImageView*, RoiManager*, TabDebounceFunc) -> QWidget* {
             return new ObjectDetectionTabWidget(pm, nullptr);
+        }
+    );
+
+    registerTab(
+        {"步骤",     DisplayConfig::Mode::Original,       false, false},
+        [](PipelineManager* pm, ImageView*, RoiManager*, TabDebounceFunc) -> QWidget* {
+            return new StepConfigWidget(pm, nullptr);
         }
     );
 }

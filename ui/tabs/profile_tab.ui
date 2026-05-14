@@ -2,15 +2,15 @@
 <ui version="4.0">
  <class>ProfileTabWidget</class>
  <widget class="QWidget" name="ProfileTabWidget">
-  <property name="geometry">
-   <rect>
-    <x>0</x>
-    <y>0</y>
-    <width>514</width>
-    <height>420</height>
-   </rect>
-  </property>
-  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>514</width>
+     <height>700</height>
+    </rect>
+   </property>
+   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QLabel" name="label_title">
      <property name="text">

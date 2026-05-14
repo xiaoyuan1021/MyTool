@@ -90,6 +90,16 @@ struct TabConfig {
     }
     
     /**
+     * @brief 获取自定义Pipeline的Tab配置
+     * 初始只显示"步骤"Tab，用户配置后动态加载其他Tab
+     */
+    static TabConfig getCustomConfig() {
+        return TabConfig({
+            "步骤"
+        });
+    }
+    
+    /**
      * @brief 根据检测类型获取Tab配置
      */
     static TabConfig getConfigForType(DetectionType type) {
@@ -106,6 +116,8 @@ struct TabConfig {
                 return getObjectDetectionConfig();
             case DetectionType::VideoDetection:
                 return getVideoDetectionConfig();
+            case DetectionType::Custom:
+                return getCustomConfig();
             default:
                 return TabConfig();
         }

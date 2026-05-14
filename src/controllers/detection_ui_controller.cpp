@@ -69,6 +69,7 @@ void DetectionUiController::onAddDetectionClicked(const QString& roiId)
     comboBox->addItem("条码识别", static_cast<int>(DetectionType::Barcode));
     comboBox->addItem("目标检测", static_cast<int>(DetectionType::ObjectDetection));
     comboBox->addItem("视频检测", static_cast<int>(DetectionType::VideoDetection));
+    comboBox->addItem("自定义Pipeline", static_cast<int>(DetectionType::Custom));
     comboBox->setMinimumWidth(150);
     layout->addWidget(comboBox);
     
