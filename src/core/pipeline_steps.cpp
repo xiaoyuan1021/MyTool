@@ -32,14 +32,17 @@ void StepColorChannel::run(PipelineContext &ctx)
         default:
             ctx.channelImg = ctx.srcBgr;
         }
+        ctx.visualBase = ctx.channelImg;
     } catch (const cv::Exception& ex) {
         qDebug() << "[ColorChannel] OpenCV错误:" << ex.what();
     Logger::instance()->error(QString("ColorChannel OpenCV错误: %1").arg(ex.what()));
         ctx.channelImg = ctx.srcBgr;
+        ctx.visualBase = ctx.channelImg;
     } catch (...) {
         qDebug() << "[ColorChannel] 未知异常";
     Logger::instance()->error(QString("ColorChannel 未知异常"));
         ctx.channelImg = ctx.srcBgr;
+        ctx.visualBase = ctx.channelImg;
     }
 }
 
@@ -59,14 +62,17 @@ void StepEnhance::run(PipelineContext& ctx)
                 ctx.config->enhance.gamma / 100.0,
                 ctx.config->enhance.sharpen / 100.0
                 );
+            ctx.visualBase = ctx.enhanced;
         } catch (const cv::Exception& ex) {
             qDebug() << "[Enhance] OpenCV错误:" << ex.what();
     Logger::instance()->error(QString("Enhance OpenCV错误: %1").arg(ex.what()));
             ctx.enhanced = ctx.channelImg;
+            ctx.visualBase = ctx.enhanced;
         } catch (...) {
             qDebug() << "[Enhance] 未知异常";
     Logger::instance()->error(QString("Enhance 未知异常"));
             ctx.enhanced = ctx.channelImg;
+            ctx.visualBase = ctx.enhanced;
         }
     }
 
@@ -448,12 +454,20 @@ void StepLineDetect::run(PipelineContext &ctx)
         if (ctx.srcBgr.empty()) return;
 
         try {
-            cv::Mat src = ctx.srcBgr;
-            cv::Mat gray;
-            cv::cvtColor(src, gray, cv::COLOR_BGR2GRAY);
+            cv::Mat srcVis = ctx.visualBase.empty() ? ctx.srcBgr : ctx.visualBase;
+            cv::Mat srcGray;
+            cv::Mat srcColor;
+
+            if (srcVis.channels() == 1) {
+                srcGray = srcVis;
+                cv::cvtColor(srcVis, srcColor, cv::COLOR_GRAY2BGR);
+            } else {
+                cv::cvtColor(srcVis, srcGray, cv::COLOR_BGR2GRAY);
+                srcColor = srcVis;
+            }
 
             cv::Mat edges;
-            cv::Canny(gray, edges, 50, 150);
+            cv::Canny(srcGray, edges, 50, 150);
 
             std::vector<cv::Vec4f> lines;
 
@@ -463,14 +477,14 @@ void StepLineDetect::run(PipelineContext &ctx)
             }
             else if (ctx.config->lineDetect.algorithm == 1)
             {
-                detectLinesLSD(gray, lines);
+                detectLinesLSD(srcGray, lines);
             }
             else if (ctx.config->lineDetect.algorithm == 2)
             {
-                detectLinesEDlines(gray, lines);
+                detectLinesEDlines(srcGray, lines);
             }
 
-            ctx.lineDetect = src.clone();
+            ctx.lineDetect = srcColor.clone();
 
             for (const auto& line : lines)
             {
@@ -575,7 +589,12 @@ void StepReferenceLineFilter::run(PipelineContext& ctx)
     }
 
     try {
-        cv::Mat src = ctx.srcBgr;
+        cv::Mat srcVis = ctx.visualBase.empty() ? ctx.srcBgr : ctx.visualBase;
+        cv::Mat src;
+        if (srcVis.channels() == 1)
+            cv::cvtColor(srcVis, src, cv::COLOR_GRAY2BGR);
+        else
+            src = srcVis;
 
         cv::Point2f refStart = ctx.config->lineDetect.referenceLineStart;
         cv::Point2f refEnd = ctx.config->lineDetect.referenceLineEnd;

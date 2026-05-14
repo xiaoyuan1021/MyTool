@@ -3,6 +3,18 @@
 #include "algorithm/opencv_algorithm.h"
 #include "logger.h"
 
+namespace {
+
+cv::Mat ensureBgr(const cv::Mat& img)
+{
+    if (img.empty() || img.channels() == 3) return img;
+    cv::Mat bgr;
+    cv::cvtColor(img, bgr, cv::COLOR_GRAY2BGR);
+    return bgr;
+}
+
+} // anonymous namespace
+
 namespace DisplayRenderer {
 
 cv::Mat render(const PipelineContext& ctx, DisplayConfig::Mode mode)
@@ -40,7 +52,7 @@ cv::Mat render(const PipelineContext& ctx, DisplayConfig::Mode mode)
 
         case Mode::MaskOverlay:
             if (!ctx.mask.empty())
-                return overlayMaskOnImage(ctx.srcBgr, ctx.mask);
+                return overlayMaskOnImage(ensureBgr(ctx.visualBase), ctx.mask);
             return ctx.srcBgr;
 
         case Mode::Processed:
@@ -58,15 +70,7 @@ cv::Mat render(const PipelineContext& ctx, DisplayConfig::Mode mode)
 
         case Mode::BarcodeOverlay:
             {
-                cv::Mat base;
-                if (!ctx.enhanced.empty()) {
-                    if (ctx.enhanced.channels() == 1)
-                        cv::cvtColor(ctx.enhanced, base, cv::COLOR_GRAY2BGR);
-                    else
-                        base = ctx.enhanced;
-                } else {
-                    base = ctx.srcBgr;
-                }
+                cv::Mat base = ensureBgr(ctx.visualBase);
                 if (!base.empty()) {
                     if (!ctx.barcodeResults.isEmpty())
                         return drawBarcodeOverlay(base, ctx.barcodeResults);
@@ -87,13 +91,15 @@ cv::Mat render(const PipelineContext& ctx, DisplayConfig::Mode mode)
             return ctx.srcBgr;
 
         case Mode::ProcessedOverlay:
-            if (!ctx.processed.empty() && !ctx.srcBgr.empty()) {
+            if (!ctx.processed.empty()) {
                 cv::Mat overlayMask;
                 if (ctx.processed.channels() == 1)
                     overlayMask = ctx.processed;
                 else
                     cv::cvtColor(ctx.processed, overlayMask, cv::COLOR_BGR2GRAY);
-                return overlayMaskOnImage(ctx.srcBgr, overlayMask);
+                cv::Mat base = ensureBgr(ctx.visualBase);
+                if (!base.empty())
+                    return overlayMaskOnImage(base, overlayMask);
             }
             return ctx.srcBgr;
 

@@ -75,6 +75,7 @@ PipelineContext PipelineManager::execute(const cv::Mat& inputImage, const Pipeli
     // 使用局部context，不共享可变状态
     PipelineContext ctx;
     ctx.srcBgr = inputImage;
+    ctx.visualBase = inputImage;  // 初始化可视化基底为原图
     ctx.config = &config;
 
     try {

@@ -16,6 +16,7 @@ struct PipelineContext
     // 输入
     const PipelineConfig* config = nullptr;  // 步骤从这里读取配置参数
     cv::Mat srcBgr;      // 原图(3通道)
+    cv::Mat visualBase;  // 最新的可视化结果（用于叠加类显示模式的基底）
     // 中间结果
     cv::Mat channelImg;  // 颜色通道输出（一般是灰度）
     cv::Mat enhanced;    // 增强后
