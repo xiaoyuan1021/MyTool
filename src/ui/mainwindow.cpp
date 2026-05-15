@@ -111,7 +111,8 @@ void MainWindow::setupBasicInfrastructure()
 
     // Pipeline 耗时标签（StatusBar 永久显示，最左侧）
     m_timingLabel = new QLabel(this);
-    m_timingLabel->setText("Pipeline: -- ms");
+    m_timingLabel->setTextFormat(Qt::RichText);
+    m_timingLabel->setText("<img src=':/icons/pipeline.png' width='16' height='16' style='vertical-align: middle;'> Pipeline: -- ms");
     ui->statusbar->insertPermanentWidget(0, m_timingLabel);
     m_benchmarkUiTimer = new QTimer(this);
     m_benchmarkUiTimer->setInterval(500);
