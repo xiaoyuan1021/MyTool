@@ -19,16 +19,28 @@ public:
     ~ObjectDetectionTabWidget();
 
     /**
-     * 对当前图像执行目标检测
+     * 目标检测（使用 OpenCV DNN，用于标签页静图检测）
      * @param image 输入图像
      * @return 检测结果列表
      */
     std::vector<DetectionResult> runDetection(const cv::Mat& image);
 
     /**
+     * 目标检测（使用 ONNX Runtime，用于视频推理）
+     * @param image 输入图像
+     * @return 检测结果列表
+     */
+    std::vector<DetectionResult> runDetectionOrt(const cv::Mat& image);
+
+    /**
      * 判断模型是否已加载
      */
     bool isModelLoaded() const;
+
+    /**
+     * 判断 ONNX Runtime 推理后端是否就绪
+     */
+    bool isOrtLoaded() const;
 
     /**
      * 获取检测参数
@@ -63,8 +75,7 @@ private:
 
     Ui::ObjectDetectionTabForm* m_ui;
     PipelineManager* m_pipelineManager;
-    DnnInference m_dnnInference;   // OpenCV DNN (CPU 回退)
-    OrtInference m_ortInference;   // ONNX Runtime (GPU 加速)
-    bool m_useOrt = true;          // 是否优先使用 ONNX Runtime
+    DnnInference m_dnnInference;   // OpenCV DNN（目标检测标签页使用）
+    OrtInference m_ortInference;   // ONNX Runtime（视频推理使用）
     QString m_currentModelPath;    // 当前已加载的模型路径，用于避免重复加载
 };

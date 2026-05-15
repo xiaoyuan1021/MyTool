@@ -245,6 +245,14 @@ void MainWindow::setupControllerConnections()
                 Logger::instance()->warning(
                     QString("[MainWindow] Tab '%1' 未实现 ISignalConnectable 接口，跳过信号连接").arg(tabName));
             }
+
+            // 视频 Tab：播放状态切换时通知 PipelineResultHandler 切换推理后端
+            if (auto* videoTab = qobject_cast<VideoTabWidget*>(widget)) {
+                connect(videoTab->getVideoManager(), &VideoManager::playbackStateChanged,
+                        this, [this](VideoManager::PlaybackState state) {
+                            m_pipelineResultHandler->setVideoMode(state == VideoManager::PlaybackState::Playing);
+                        });
+            }
         });
 
     // 批量检测完成提示

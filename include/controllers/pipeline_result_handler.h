@@ -20,6 +20,9 @@ public:
     void setDependencies(TabManager* tabManager, RoiManager* roiManager, ImageView* imageView, PipelineManager* pipelineManager);
     void watchPipeline(QFutureWatcher<PipelineContext>* watcher);
 
+    /// 设置视频处理模式（视频帧使用 ONNX Runtime 推理，静图使用 OpenCV DNN）
+    void setVideoMode(bool active);
+
 signals:
     void processingFinished();
     void statusMessage(const QString& message, int timeout = 0);
@@ -40,6 +43,8 @@ private:
     /// 目标检测特殊处理（不走 Pipeline，临时运行推理）
     void handleObjectDetection(cv::Mat& displayImage);
     void drawDetectionResults(cv::Mat& image, const std::vector<DetectionResult>& results);
+
+    bool m_isVideoMode = false;  // 当前是否为视频处理模式
 };
 
 #endif // PIPELINE_RESULT_HANDLER_H

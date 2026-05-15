@@ -77,6 +77,11 @@ void PipelineResultHandler::distributeResults(const PipelineContext& result)
     }
 }
 
+void PipelineResultHandler::setVideoMode(bool active)
+{
+    m_isVideoMode = active;
+}
+
 void PipelineResultHandler::handleObjectDetection(cv::Mat& displayImage)
 {
     if (!m_tabManager || !m_roiManager) return;
@@ -84,7 +89,14 @@ void PipelineResultHandler::handleObjectDetection(cv::Mat& displayImage)
     if (auto* objTab = m_tabManager->getTabAs<ObjectDetectionTabWidget>("目标检测"); objTab && objTab->isModelLoaded()) {
         cv::Mat detectImage = m_roiManager->getCurrentImage();
         if (!detectImage.empty()) {
-            std::vector<DetectionResult> detResults = objTab->runDetection(detectImage);
+            std::vector<DetectionResult> detResults;
+            if (m_isVideoMode) {
+                // 视频推理：使用 ONNX Runtime（GPU 加速）
+                detResults = objTab->runDetectionOrt(detectImage);
+            } else {
+                // 静图检测：使用 OpenCV DNN
+                detResults = objTab->runDetection(detectImage);
+            }
             objTab->updateDetectionResults(detResults);
             drawDetectionResults(displayImage, detResults);
         }

@@ -82,7 +82,7 @@ void ObjectDetectionTabWidget::onApplyClicked()
     }
 
     // 如果模型已加载且路径相同，无需重新加载
-    if ((m_ortInference.isLoaded() || m_dnnInference.isLoaded()) && m_currentModelPath == modelPath) {
+    if (m_dnnInference.isLoaded() && m_currentModelPath == modelPath) {
         qDebug() << "[ObjectDetection] model already loaded, skip reloading";
         m_ui->label_status->setText("状态：模型已就绪");
         emit detectionConfigChanged();
@@ -96,19 +96,20 @@ void ObjectDetectionTabWidget::onApplyClicked()
 
     QFuture<QString> future = QtConcurrent::run(
         [this, modelPath, configPath]() -> QString {
-            // 优先尝试 ONNX Runtime GPU
-            if (m_ortInference.loadModel(modelPath, true)) {
-                spdlog::info("[ObjectDetection] ONNX Runtime GPU loaded");
-                return "ort_gpu";
-            }
-            spdlog::warn("[ObjectDetection] ONNX Runtime GPU failed, trying OpenCV DNN CPU");
+            // Step 1: 加载 OpenCV DNN（标签页静图检测，必须成功）
+            bool dnnOk = m_dnnInference.loadModel(modelPath, configPath);
 
-            // 回退到 OpenCV DNN CPU
-            if (m_dnnInference.loadModel(modelPath, configPath)) {
-                spdlog::info("[ObjectDetection] OpenCV DNN CPU loaded");
-                return "dnn_cpu";
-            }
+            // Step 2: 加载 ONNX Runtime（视频推理加速，可选）
+            bool ortOk = m_ortInference.loadModel(modelPath, true);
 
+            if (dnnOk && ortOk) {
+                spdlog::info("[ObjectDetection] OpenCV DNN + ONNX Runtime loaded");
+                return "both";
+            }
+            if (dnnOk) {
+                spdlog::warn("[ObjectDetection] OpenCV DNN loaded, ONNX Runtime unavailable");
+                return "dnn";
+            }
             spdlog::error("[ObjectDetection] all backends failed");
             return "none";
         }
@@ -121,23 +122,26 @@ void ObjectDetectionTabWidget::onApplyClicked()
         watcher->deleteLater();
         m_ui->btn_apply->setEnabled(true);
 
-        if (result == "ort_gpu") {
-            m_useOrt = true;
+        if (result == "both" || result == "dnn") {
             m_currentModelPath = modelPath;
-            // 自动填充模型定义的输入尺寸
-            int modelW = m_ortInference.getModelImgWidth();
-            int modelH = m_ortInference.getModelImgHeight();
-            if (modelW > 0 && modelH > 0) {
-                m_ui->spinBox_inputWidth->setValue(modelW);
-                m_ui->spinBox_inputHeight->setValue(modelH);
+            // 尝试从 ORT 或 DNN 获取模型输入尺寸
+            int modelW = 0, modelH = 0;
+            if (m_ortInference.isLoaded()) {
+                modelW = m_ortInference.getModelImgWidth();
+                modelH = m_ortInference.getModelImgHeight();
             }
-            emit modelLoadFinished(true, "状态：模型加载成功 (ONNX Runtime GPU)");
-            qDebug() << "[ObjectDetection] ONNX Runtime GPU loaded successfully";
-        } else if (result == "dnn_cpu") {
-            m_useOrt = false;
-            m_currentModelPath = modelPath;
-            emit modelLoadFinished(true, "状态：模型加载成功 (OpenCV DNN CPU)");
-            qDebug() << "[ObjectDetection] OpenCV DNN CPU loaded successfully";
+            if (modelW <= 0 || modelH <= 0) {
+                modelW = m_ui->spinBox_inputWidth->value();
+                modelH = m_ui->spinBox_inputHeight->value();
+            }
+            m_ui->spinBox_inputWidth->setValue(modelW);
+            m_ui->spinBox_inputHeight->setValue(modelH);
+
+            QString msg = (result == "both")
+                ? "状态：模型加载成功 (OpenCV DNN + ONNX Runtime 视频加速)"
+                : "状态：模型加载成功 (OpenCV DNN)";
+            emit modelLoadFinished(true, msg);
+            qDebug() << "[ObjectDetection]" << msg;
         } else {
             emit modelLoadFinished(false, "状态：所有推理后端均失败");
             qDebug() << "[ObjectDetection] all backends failed";
@@ -148,12 +152,26 @@ void ObjectDetectionTabWidget::onApplyClicked()
 
 std::vector<DetectionResult> ObjectDetectionTabWidget::runDetection(const cv::Mat& image)
 {
-    if (image.empty()) {
-        return {};
+    if (image.empty()) return {};
+
+    // 使用 OpenCV DNN（目标检测标签页静图检测）
+    if (m_dnnInference.isLoaded()) {
+        return m_dnnInference.detect(image,
+            getConfidenceThreshold(),
+            getNmsThreshold(),
+            getInputWidth(),
+            getInputHeight());
     }
 
-    // 优先使用 ONNX Runtime
-    if (m_useOrt && m_ortInference.isLoaded()) {
+    return {};
+}
+
+std::vector<DetectionResult> ObjectDetectionTabWidget::runDetectionOrt(const cv::Mat& image)
+{
+    if (image.empty()) return {};
+
+    // 优先使用 ONNX Runtime（视频推理加速）
+    if (m_ortInference.isLoaded()) {
         return m_ortInference.detect(image,
             getConfidenceThreshold(),
             getNmsThreshold(),
@@ -175,7 +193,12 @@ std::vector<DetectionResult> ObjectDetectionTabWidget::runDetection(const cv::Ma
 
 bool ObjectDetectionTabWidget::isModelLoaded() const
 {
-    return m_ortInference.isLoaded() || m_dnnInference.isLoaded();
+    return m_dnnInference.isLoaded() || m_ortInference.isLoaded();
+}
+
+bool ObjectDetectionTabWidget::isOrtLoaded() const
+{
+    return m_ortInference.isLoaded();
 }
 
 float ObjectDetectionTabWidget::getConfidenceThreshold() const
