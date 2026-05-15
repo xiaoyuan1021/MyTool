@@ -273,6 +273,9 @@ struct PipelineConfig
 
     std::array<int, STEP_COUNT> stepOrder = {0, 1, 2, 3, 4, 5, 6, 7, 8};
 
+    // ========== 扩展功能开关（不在 StepType 枚举中） ==========
+    bool enableObjectDetection = false;  ///< 在 Pipeline 末尾启用 YOLO 目标检测
+
     // ==================== JSON 序列化（定义在 pipeline_config.cpp）====================
 
     QJsonObject toJson() const;

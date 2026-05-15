@@ -84,8 +84,11 @@ void PipelineResultHandler::setVideoMode(bool active)
 
 void PipelineResultHandler::handleObjectDetection(cv::Mat& displayImage)
 {
-    if (!m_tabManager || !m_roiManager) return;
-    
+    if (!m_tabManager || !m_roiManager || !m_pipelineManager) return;
+
+    // 检查 PipelineConfig 中的目标检测开关
+    if (!m_pipelineManager->getConfigSnapshot().enableObjectDetection) return;
+
     if (auto* objTab = m_tabManager->getTabAs<ObjectDetectionTabWidget>("目标检测"); objTab && objTab->isModelLoaded()) {
         cv::Mat detectImage = m_roiManager->getCurrentImage();
         if (!detectImage.empty()) {

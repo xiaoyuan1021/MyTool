@@ -56,6 +56,7 @@ QJsonObject PipelineConfig::toJson() const {
     }
     obj["stepEnabled"] = enabledArr;
     obj["stepOrder"] = orderArr;
+    obj["enableObjectDetection"] = enableObjectDetection;
 
     return obj;
 }
@@ -131,6 +132,8 @@ void PipelineConfig::fromJson(const QJsonObject& obj) {
             stepOrder[i] = orderArr[i].toInt(i);
         }
     }
+
+    enableObjectDetection = obj["enableObjectDetection"].toBool(false);
 }
 
 // ========== LineDetectConfig 序列化 ==========

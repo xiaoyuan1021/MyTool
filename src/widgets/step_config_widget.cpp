@@ -38,6 +38,8 @@ const StepConfigWidget::StepEntry StepConfigWidget::kSteps[] = {
     // 模板匹配——无对应后端步骤，仅控制 Tab 显隐
     {"模板匹配",      {"补正"},        {-1},          false},
     {"条码识别",      {"条码"},        {8},           false},
+    // 目标检测——无对应后端步骤，通过 PipelineConfig::enableObjectDetection 控制
+    {"目标检测",      {"目标检测"},    {-1},          false},
 
     // 步骤 Tab 自身始终显示（单独放在列表下方）
     {"步骤管理",      {"步骤"},        {-1},          true},
@@ -302,6 +304,12 @@ void StepConfigWidget::rebuildStepItems()
                 break;
             }
         }
+        // 虚拟步骤（backendIndex = -1）从 PipelineConfig 独立字段读取状态
+        if (!anyEnabled && kSteps[entryIdx].backendIndices.size() == 1
+            && kSteps[entryIdx].backendIndices[0] < 0
+            && strcmp(kSteps[entryIdx].displayName, "目标检测") == 0) {
+            anyEnabled = config.enableObjectDetection;
+        }
         cb->setChecked(anyEnabled);
         hbox->addWidget(cb);
         hbox->addStretch();
@@ -345,6 +353,13 @@ void StepConfigWidget::onApplyClicked()
                 newOrder[pos++] = idx;
                 placed.insert(idx);
             }
+        }
+
+        // 虚拟步骤：持久化到 PipelineConfig 独立字段
+        if (kSteps[entryIdx].backendIndices.size() == 1
+            && kSteps[entryIdx].backendIndices[0] < 0
+            && strcmp(kSteps[entryIdx].displayName, "目标检测") == 0) {
+            m_pipelineManager->mutableConfig().enableObjectDetection = checked;
         }
     }
 
