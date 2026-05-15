@@ -129,6 +129,7 @@ set(HEADERS
     include/controllers/roi_ui_controller.h
     # utils
     include/utils/path_utils.h
+    include/utils/benchmark.h
 )
 
 set(SOURCES
@@ -233,6 +234,11 @@ target_link_libraries(VisionTool PRIVATE
     Qt6::Gui
     Qt6::Widgets
 )
+
+# Windows 系统库 (PDH 性能监控)
+if(WIN32)
+    target_link_libraries(VisionTool PRIVATE pdh)
+endif()
 
 # ============================================================
 # 第三方库配置 (OpenCV)

@@ -4,6 +4,7 @@
 #include "config/constants.h"
 #include "logger.h"
 #include "algorithm/display_renderer.h"
+#include "utils/benchmark.h"
 #include <QDebug>
 #include <algorithm>
 #include <map>
@@ -80,7 +81,10 @@ PipelineContext PipelineManager::execute(const cv::Mat& inputImage, const Pipeli
     ctx.config = &config;
 
     try {
-        m_pipeline.run(ctx);
+        {
+            BenchmarkTimer t("Pipeline::run", &m_lastExecMs);
+            m_pipeline.run(ctx);
+        }
     } catch (const std::exception& ex) {
         qDebug() << "[PipelineManager] Pipeline执行异常:" << ex.what();
         Logger::instance()->error(QString("Pipeline执行异常: %1").arg(ex.what()));

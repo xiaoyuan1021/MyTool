@@ -76,6 +76,8 @@ public:
         return m_lastContext;
     }
 
+    double lastExecMs() const { return m_lastExecMs; }
+
     void updateAlgorithmStep(int index, const AlgorithmStep& step);
 
     void setDisplayMode(DisplayConfig::Mode mode);
@@ -123,6 +125,9 @@ private:
 
     // 最后执行结果
     PipelineContext m_lastContext;
+
+    // 基准性能数据
+    double m_lastExecMs = 0;
 
     DisplayConfig::Mode m_displayMode = DisplayConfig::Mode::MaskGreenWhite;
     float m_overlayAlpha = AppConstants::DEFAULT_OVERLAY_ALPHA;

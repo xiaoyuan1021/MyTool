@@ -1,12 +1,12 @@
 #include "system_monitor.h"
 #include "logger.h"
 #include <QDebug>
+#include <algorithm>
 
 // ========== 平台相关头文件 ==========
 #ifdef Q_OS_WIN
 #include <windows.h>
 #include <pdh.h>
-#pragma comment(lib, "pdh.lib")  // 链接 PDH 库
 #endif
 
 #ifdef Q_OS_LINUX
@@ -24,10 +24,7 @@ SystemMonitor::SystemMonitor(QObject* parent)
     , m_memoryUsage(0.0)
     , m_usedMemoryMB(0.0)
     , m_totalMemoryMB(0.0)
-#ifdef Q_OS_WIN
-    , m_cpuQuery(nullptr)
-    , m_cpuCounter(nullptr)
-#endif
+
 #ifdef Q_OS_LINUX
     , m_lastTotalTime(0)
     , m_lastIdleTime(0)
@@ -146,6 +143,7 @@ void SystemMonitor::updateSystemInfo()
 {
     // 1️⃣ 获取 CPU 使用率
     m_cpuUsage = getCpuUsage();
+    spdlog::info("[DEBUG] CPU raw={}", m_cpuUsage);
 
     // 2️⃣ 获取内存使用情况
     m_memoryUsage = getMemoryUsage(m_usedMemoryMB, m_totalMemoryMB);
@@ -179,75 +177,51 @@ void SystemMonitor::updateSystemInfo()
 
 void SystemMonitor::initPlatformResources()
 {
-    PDH_STATUS status;
-
-    // 创建查询对象
-    status = PdhOpenQuery(NULL, 0, (PDH_HQUERY*)&m_cpuQuery);
-    if (status != ERROR_SUCCESS) {
-        qDebug() << "[SystemMonitor] PdhOpenQuery 失败:" << status;
-        return;
+    PDH_STATUS status = PdhOpenQuery(nullptr, 0, &m_pdhQuery);
+    if (status == ERROR_SUCCESS) {
+        status = PdhAddCounter(m_pdhQuery, L"\\Processor(_Total)\\% Processor Time", 0, &m_pdhCpuCounter);
+        if (status == ERROR_SUCCESS) {
+            PdhCollectQueryData(m_pdhQuery);
+            m_pdhInitialized = true;
+            qDebug() << "[SystemMonitor] PDH CPU counter initialized successfully";
+        } else {
+            qDebug() << "[SystemMonitor] PdhAddCounter failed:" << status;
+        }
+    } else {
+        qDebug() << "[SystemMonitor] PdhOpenQuery failed:" << status;
     }
-
-    // 添加 CPU 计数器（所有处理器的总使用率）
-    status = PdhAddCounterA(
-        (PDH_HQUERY)m_cpuQuery,
-        "\\Processor(_Total)\\% Processor Time",  // 计数器路径
-        0,
-        (PDH_HCOUNTER*)&m_cpuCounter
-        );
-
-    if (status != ERROR_SUCCESS) {
-        qDebug() << "[SystemMonitor] PdhAddCounter 失败:" << status;
-        PdhCloseQuery((PDH_HQUERY)m_cpuQuery);
-        m_cpuQuery = nullptr;
-        return;
-    }
-
-    // 第一次采集（需要两次采集才能计算百分比）
-    PdhCollectQueryData((PDH_HQUERY)m_cpuQuery);
-
 }
 
 void SystemMonitor::cleanupPlatformResources()
 {
-    if (m_cpuQuery)
-    {
-        PdhCloseQuery((PDH_HQUERY)m_cpuQuery);
-        m_cpuQuery = nullptr;
-        m_cpuCounter = nullptr;
+    if (m_pdhQuery) {
+        PdhCloseQuery(m_pdhQuery);
+        m_pdhQuery = nullptr;
+        m_pdhCpuCounter = nullptr;
+        m_pdhInitialized = false;
     }
 }
 
 double SystemMonitor::getCpuUsage()
 {
-    if (!m_cpuQuery || !m_cpuCounter) {
-        return 0.0;
+    if (!m_pdhInitialized || !m_pdhCpuCounter) {
+        return m_cpuUsage;
     }
 
-    PDH_STATUS status;
+    PDH_STATUS status = PdhCollectQueryData(m_pdhQuery);
+    if (status != ERROR_SUCCESS) {
+        qDebug() << "[SystemMonitor] PdhCollectQueryData failed:" << status;
+        return m_cpuUsage;
+    }
+
     PDH_FMT_COUNTERVALUE counterValue;
-
-    // 采集数据
-    status = PdhCollectQueryData((PDH_HQUERY)m_cpuQuery);
-    if (status != ERROR_SUCCESS) {
-        qDebug() << "[SystemMonitor] PdhCollectQueryData 失败:" << status;
-        return 0.0;
+    status = PdhGetFormattedCounterValue(m_pdhCpuCounter, PDH_FMT_DOUBLE, nullptr, &counterValue);
+    if (status == ERROR_SUCCESS) {
+        double usage = counterValue.doubleValue;
+        return std::clamp(usage, 0.0, 100.0);
     }
 
-    // 获取格式化的值
-    status = PdhGetFormattedCounterValue(
-        (PDH_HCOUNTER)m_cpuCounter,
-        PDH_FMT_DOUBLE,
-        NULL,
-        &counterValue
-        );
-
-    if (status != ERROR_SUCCESS) {
-        qDebug() << "[SystemMonitor] PdhGetFormattedCounterValue 失败:" << status;
-        return 0.0;
-    }
-
-    return counterValue.doubleValue;
+    return m_cpuUsage;
 }
 
 double SystemMonitor::getMemoryUsage(double& usedMB, double& totalMB)

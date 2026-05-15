@@ -15,6 +15,7 @@
 #include "config/display_config.h"
 
 // 前向声明
+class QLabel;
 class ImageView;
 class SystemMonitor;
 class FileManager;
@@ -143,6 +144,10 @@ private:
 
     // Toast 通知浮标
     ToastNotification* m_toast = nullptr;
+
+    // 基准性能显示
+    QLabel* m_timingLabel = nullptr;
+    QTimer* m_benchmarkUiTimer = nullptr;
 };
 
 #endif // MAINWINDOW_H

@@ -109,6 +109,20 @@ void MainWindow::setupBasicInfrastructure()
     // 系统监控
     m_systemMonitor->setupWithStatusBar(ui->statusbar, AppConstants::SYSTEM_MONITOR_INTERVAL_MS);
 
+    // Pipeline 耗时标签（StatusBar 永久显示，最左侧）
+    m_timingLabel = new QLabel(this);
+    m_timingLabel->setText("Pipeline: -- ms");
+    ui->statusbar->insertPermanentWidget(0, m_timingLabel);
+    m_benchmarkUiTimer = new QTimer(this);
+    m_benchmarkUiTimer->setInterval(500);
+    connect(m_benchmarkUiTimer, &QTimer::timeout, this, [this]() {
+        double ms = m_pipelineManager->lastExecMs();
+        if (ms > 0) {
+            m_timingLabel->setText(QString("Pipeline: %1 ms").arg(ms, 0, 'f', 1));
+        }
+    });
+    m_benchmarkUiTimer->start();
+
     // 日志初始化
     QString logDir = PROJECT_ROOT_DIR "/logs";
     QDir(logDir).mkpath(".");

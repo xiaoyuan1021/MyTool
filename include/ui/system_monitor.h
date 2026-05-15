@@ -5,6 +5,10 @@
 #include <QLabel>
 #include <QStatusBar>
 
+#ifdef Q_OS_WIN
+#include <pdh.h>
+#endif
+
 /**
  * @brief 系统资源监控类
  *
@@ -154,8 +158,9 @@ private:
 
     // ========== 平台相关数据（Windows） ==========
 #ifdef Q_OS_WIN
-    void* m_cpuQuery;         // PDH 查询句柄
-    void* m_cpuCounter;       // CPU 计数器句柄
+    PDH_HQUERY m_pdhQuery = nullptr;
+    PDH_HCOUNTER m_pdhCpuCounter = nullptr;
+    bool m_pdhInitialized = false;
 #endif
 
     // ========== 平台相关数据（Linux） ==========
