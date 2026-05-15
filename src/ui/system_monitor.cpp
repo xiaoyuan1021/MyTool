@@ -143,7 +143,6 @@ void SystemMonitor::updateSystemInfo()
 {
     // 1️⃣ 获取 CPU 使用率
     m_cpuUsage = getCpuUsage();
-    spdlog::info("[DEBUG] CPU raw={}", m_cpuUsage);
 
     // 2️⃣ 获取内存使用情况
     m_memoryUsage = getMemoryUsage(m_usedMemoryMB, m_totalMemoryMB);
@@ -178,17 +177,26 @@ void SystemMonitor::updateSystemInfo()
 void SystemMonitor::initPlatformResources()
 {
     PDH_STATUS status = PdhOpenQuery(nullptr, 0, &m_pdhQuery);
-    if (status == ERROR_SUCCESS) {
-        status = PdhAddCounter(m_pdhQuery, L"\\Processor(_Total)\\% Processor Time", 0, &m_pdhCpuCounter);
-        if (status == ERROR_SUCCESS) {
-            PdhCollectQueryData(m_pdhQuery);
-            m_pdhInitialized = true;
-            qDebug() << "[SystemMonitor] PDH CPU counter initialized successfully";
-        } else {
-            qDebug() << "[SystemMonitor] PdhAddCounter failed:" << status;
-        }
-    } else {
+    if (status != ERROR_SUCCESS) {
         qDebug() << "[SystemMonitor] PdhOpenQuery failed:" << status;
+        return;
+    }
+
+    // 优先使用 Processor Information 计数器（Win8.1+，与任务管理器一致）
+    status = PdhAddEnglishCounter(m_pdhQuery,
+        L"\\Processor Information(_Total)\\% Processor Utility", 0, &m_pdhCpuCounter);
+    if (status != ERROR_SUCCESS) {
+        // 回退到传统计数器
+        status = PdhAddEnglishCounter(m_pdhQuery,
+            L"\\Processor(_Total)\\% Processor Time", 0, &m_pdhCpuCounter);
+    }
+
+    if (status == ERROR_SUCCESS) {
+        PdhCollectQueryData(m_pdhQuery);
+        m_pdhInitialized = true;
+        qDebug() << "[SystemMonitor] PDH CPU counter initialized successfully";
+    } else {
+        qDebug() << "[SystemMonitor] PdhAddEnglishCounter failed:" << status;
     }
 }
 
