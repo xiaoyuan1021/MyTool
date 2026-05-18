@@ -119,10 +119,23 @@ std::vector<DetectionResult> DnnInference::detect(const cv::Mat& input,
         int imgWidth = input.cols;
         int imgHeight = input.rows;
 
-        // 创建blob - YOLOv8标准预处理
-        cv::Mat blob = cv::dnn::blobFromImage(input, 1.0 / 255.0,
+        // YOLOv8 标准预处理：Letterbox + BGR→RGB + /255
+        float r = std::min(static_cast<float>(inputWidth) / imgWidth,
+                           static_cast<float>(inputHeight) / imgHeight);
+        int newW = static_cast<int>(imgWidth * r);
+        int newH = static_cast<int>(imgHeight * r);
+        int padLeft = (inputWidth - newW) / 2;
+        int padTop = (inputHeight - newH) / 2;
+
+        cv::Mat resized;
+        cv::resize(input, resized, cv::Size(newW, newH), 0, 0, cv::INTER_LINEAR);
+
+        cv::Mat canvas(inputHeight, inputWidth, CV_8UC3, cv::Scalar(114, 114, 114));
+        resized.copyTo(canvas(cv::Rect(padLeft, padTop, newW, newH)));
+
+        cv::Mat blob = cv::dnn::blobFromImage(canvas, 1.0 / 255.0,
             cv::Size(inputWidth, inputHeight),
-            cv::Scalar(0, 0, 0), true, false);
+            cv::Scalar(), true, false);
         net_.setInput(blob);
 
         // 执行推理
@@ -150,8 +163,7 @@ std::vector<DetectionResult> DnnInference::detect(const cv::Mat& input,
         // 重塑为 2D: [num_detections, num_attributes]
         cv::Mat flatOutput = output.reshape(1, numAttributes);
 
-        float xScale = static_cast<float>(imgWidth) / inputWidth;
-        float yScale = static_cast<float>(imgHeight) / inputHeight;
+        float invR = 1.0f / r;
 
         // 解析每个检测结果
         for (int i = 0; i < numDetections; ++i)
@@ -181,11 +193,11 @@ std::vector<DetectionResult> DnnInference::detect(const cv::Mat& input,
             if (maxConf < confThreshold)
                 continue;
 
-            // 转换为左上角坐标并缩放到原图尺寸
-            int left   = static_cast<int>((cx - w / 2.0f) * xScale);
-            int top    = static_cast<int>((cy - h / 2.0f) * yScale);
-            int width  = static_cast<int>(w * xScale);
-            int height = static_cast<int>(h * yScale);
+            // 转换为左上角坐标并缩放到原图尺寸（考虑 letterbox 填充偏移）
+            int left   = static_cast<int>((cx - w / 2.0f - padLeft) * invR);
+            int top    = static_cast<int>((cy - h / 2.0f - padTop) * invR);
+            int width  = static_cast<int>(w * invR);
+            int height = static_cast<int>(h * invR);
 
             // 边界裁剪
             left   = std::max(0, left);
