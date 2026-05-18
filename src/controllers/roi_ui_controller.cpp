@@ -147,6 +147,42 @@ void RoiUiController::onAddRoiClicked()
     enterRoiDrawMode();
 }
 
+QString RoiUiController::addFullImageRoi()
+{
+    cv::Mat fullImage = m_roiManager.getFullImage();
+    if (fullImage.empty()) {
+        QMessageBox::warning(nullptr, "警告", "请先加载一张图像");
+        return QString();
+    }
+
+    // 创建覆盖全图的ROI
+    QRectF fullRect(0, 0, fullImage.cols, fullImage.rows);
+    RoiConfig roi("整图", fullRect);
+    roi.color = "#9B59B6";
+
+    if (m_pipelineManager) {
+        roi.pipelineConfig = m_pipelineManager->getConfigSnapshot();
+    }
+
+    m_roiManager.addRoiConfig(roi);
+    m_currentSelectedRoiId = roi.roiId;
+    m_roiManager.setActiveRoi(roi.roiId);
+    m_view->clearRoi();
+    m_view->finishRoiMode();
+    refreshRoiTreeView();
+
+    emit roiDisplayChanged(m_currentSelectedRoiId);
+    m_view->resetZoom();
+
+    if (m_statusBar) {
+        m_statusBar->showMessage(QString("已创建整图ROI: %1 (w=%2 h=%3)")
+            .arg(roi.roiName).arg(fullImage.cols).arg(fullImage.rows), 3000);
+    }
+
+    Logger::instance()->info(QString("已创建整图ROI: %1").arg(roi.roiName));
+    return roi.roiId;
+}
+
 void RoiUiController::onDeleteRoiClicked()
 {
     QTreeWidgetItem* currentItem = m_treeView->currentItem();

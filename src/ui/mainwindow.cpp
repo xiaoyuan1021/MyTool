@@ -282,7 +282,13 @@ void MainWindow::setupControllerConnections()
 
     // 工具栏按钮
     connect(ui->btn_addDetection, &QPushButton::clicked, this, [this]() {
-        m_detectionUiController->onAddDetectionClicked(m_roiUiController->getCurrentSelectedRoiId());
+        QString roiId = m_roiUiController->getCurrentSelectedRoiId();
+        if (roiId.isEmpty()) {
+            roiId = m_roiUiController->addFullImageRoi();
+        }
+        if (!roiId.isEmpty()) {
+            m_detectionUiController->onAddDetectionClicked(roiId);
+        }
     });
     connect(ui->btn_deleteDetection, &QPushButton::clicked, this, [this]() {
         m_detectionUiController->handleDeleteFromTree(ui->treeView);

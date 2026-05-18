@@ -77,6 +77,9 @@ public:
     /// 更新当前选中ROI的 Blob 检测项判定阈值（由 JudgeTab 触发）
     void updateBlobDetectionConfig(int minCount, int maxCount);
 
+    // 创建覆盖整图的ROI（无需用户绘制），返回ROI ID
+    QString addFullImageRoi();
+
     // 设置显示模式连接
     void setupDisplayConnections(TabManager* tabManager);
 
