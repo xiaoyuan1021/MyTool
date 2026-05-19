@@ -38,6 +38,7 @@
 #include <QFileDialog>
 #include <QInputDialog>
 #include <QLineEdit>
+#include <QGroupBox>
 
 
 MainWindow::MainWindow(QWidget *parent)
@@ -104,6 +105,7 @@ void MainWindow::setupBasicInfrastructure()
     connect(m_processDebounceTimer, &QTimer::timeout, this, &MainWindow::processAndDisplay);
 
     setupUI();
+    setupAnimations();
     setupConnections();
 
     // 系统监控
@@ -182,6 +184,67 @@ void MainWindow::setupConnections()
         });
 }
 
+void MainWindow::setupAnimations()
+{
+    m_pageOpacityEffect = new QGraphicsOpacityEffect(this);
+    m_pageOpacityEffect->setOpacity(1.0);
+    ui->page_home->setGraphicsEffect(m_pageOpacityEffect);
+
+    m_pageFadeAnimation = new QPropertyAnimation(m_pageOpacityEffect, "opacity", this);
+    m_pageFadeAnimation->setDuration(280);
+    m_pageFadeAnimation->setStartValue(0.0);
+    m_pageFadeAnimation->setEndValue(1.0);
+    m_pageFadeAnimation->setEasingCurve(QEasingCurve::OutCubic);
+}
+
+void MainWindow::fadeIn(QWidget* widget, int durationMs)
+{
+    auto* effect = new QGraphicsOpacityEffect(widget);
+    effect->setOpacity(0.0);
+    widget->setGraphicsEffect(effect);
+
+    auto* anim = new QPropertyAnimation(effect, "opacity", widget);
+    anim->setDuration(durationMs);
+    anim->setStartValue(0.0);
+    anim->setEndValue(1.0);
+    anim->setEasingCurve(QEasingCurve::OutCubic);
+    anim->start(QAbstractAnimation::DeleteWhenStopped);
+}
+
+void MainWindow::fadeOut(QWidget* widget, int durationMs)
+{
+    auto* effect = qobject_cast<QGraphicsOpacityEffect*>(widget->graphicsEffect());
+    if (!effect) {
+        effect = new QGraphicsOpacityEffect(widget);
+        widget->setGraphicsEffect(effect);
+    }
+    effect->setOpacity(1.0);
+
+    auto* anim = new QPropertyAnimation(effect, "opacity", widget);
+    anim->setDuration(durationMs);
+    anim->setStartValue(1.0);
+    anim->setEndValue(0.0);
+    anim->setEasingCurve(QEasingCurve::InCubic);
+    anim->start(QAbstractAnimation::DeleteWhenStopped);
+}
+
+void MainWindow::animatePageSwitch(int fromIndex, int toIndex)
+{
+    if (fromIndex == toIndex) return;
+
+    QWidget* fromPage = ui->stackedWidget_main->widget(fromIndex);
+    QWidget* toPage = ui->stackedWidget_main->widget(toIndex);
+
+    if (!fromPage || !toPage) {
+        ui->stackedWidget_main->setCurrentIndex(toIndex);
+        return;
+    }
+
+    toPage->setGraphicsEffect(nullptr);
+    ui->stackedWidget_main->setCurrentIndex(toIndex);
+    fadeIn(toPage, 280);
+}
+
 void MainWindow::setupManagers()
 {
     m_tabManager = new TabManager(ui->tabWidget, m_pipelineManager, &m_roiManager,
@@ -216,9 +279,21 @@ void MainWindow::setupControllers()
                                                 m_roiUiController, m_toast, this, this);
 
     // 初始化控制器 UI
+    // 检测状态标签（创建并放置到资源列表GroupBox中）
+    auto* detectionStatusLabel = new QLabel("就绪");
+    detectionStatusLabel->setObjectName("label_detectionStatus");
+    detectionStatusLabel->setStyleSheet(
+        "font-size: 11px; color: #6B7280; padding: 2px 4px;");
+    auto* resGroup = findChild<QGroupBox*>("groupBox_resources");
+    if (resGroup) {
+        auto* layout = qobject_cast<QVBoxLayout*>(resGroup->layout());
+        if (layout) {
+            layout->insertWidget(0, detectionStatusLabel);
+        }
+    }
     m_autoDetectionController->setupUiConnections(
         ui->btn_startAutoDetection, ui->btn_stopAutoDetection,
-        ui->statusbar, ui->label_imageList);
+        ui->statusbar, detectionStatusLabel);
     m_roiUiController->setupTreeView(ui->treeView);
     m_roiUiController->setupDisplayConnections(m_tabManager);
     m_detectionUiController->setupConnections(m_roiUiController,
@@ -470,12 +545,12 @@ void MainWindow::on_tabWidget_currentChanged(int index)
 
 void MainWindow::on_btn_Log_clicked()
 {
-    ui->stackedWidget_main->setCurrentIndex(1);
+    animatePageSwitch(0, 1);
 }
 
 void MainWindow::on_btn_Home_clicked()
 {
-    ui->stackedWidget_main->setCurrentIndex(0);
+    animatePageSwitch(1, 0);
 }
 
 // ========== 配置管理 ==========

@@ -5,6 +5,10 @@
 #include <QTimer>
 #include <QFutureWatcher>
 #include <QDesktopServices>
+#include <QPropertyAnimation>
+#include <QGraphicsOpacityEffect>
+#include <QParallelAnimationGroup>
+#include <QSplashScreen>
 
 #include <opencv2/opencv.hpp>
 
@@ -88,6 +92,14 @@ private:
     void setupMqtt();
     void setupUI();
     void setupConnections();
+    void setupAnimations();
+
+    /// 页面切换淡入淡出动画
+    void animatePageSwitch(int fromIndex, int toIndex);
+    /// 淡入效果
+    void fadeIn(QWidget* widget, int durationMs = 300);
+    /// 淡出效果
+    void fadeOut(QWidget* widget, int durationMs = 200);
 
     void ensureTabExists(const QString& tabName);
 
@@ -148,6 +160,10 @@ private:
     // 基准性能显示
     QLabel* m_timingLabel = nullptr;
     QTimer* m_benchmarkUiTimer = nullptr;
+
+    // 动画相关
+    QGraphicsOpacityEffect* m_pageOpacityEffect = nullptr;
+    QPropertyAnimation* m_pageFadeAnimation = nullptr;
 };
 
 #endif // MAINWINDOW_H
