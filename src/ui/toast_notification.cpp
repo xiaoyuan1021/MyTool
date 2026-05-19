@@ -42,7 +42,8 @@ void ToastNotification::showMessage(const QString& msg, int timeoutMs)
     int pw = parentWidget()->width();
     int w = qMin(MAX_WIDTH, pw - MARGIN * 2);
     setFixedSize(w, m_label->sizeHint().height());
-    move(qMax(0, (pw - w) / 2), MARGIN);
+    QPoint parentTopLeft = parentWidget()->mapToGlobal(QPoint(0, 0));
+    move(parentTopLeft.x() + qMax(0, (pw - w) / 2), parentTopLeft.y() + MARGIN);
 
     show();
     raise();

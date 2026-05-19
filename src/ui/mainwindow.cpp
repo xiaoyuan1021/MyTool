@@ -147,7 +147,7 @@ void MainWindow::setupUI()
     }
 
     // Toast 浮标（叠加在图像视图上）
-    m_toast = new ToastNotification(centralWidget());
+    m_toast = new ToastNotification(m_view);
 }
 
 void MainWindow::setupConnections()
