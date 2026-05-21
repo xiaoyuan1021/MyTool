@@ -44,4 +44,5 @@ private:
     Ui::Form_Process *m_ui;
     PipelineManager* m_pipelineManager;
     int m_editingAlgorithmIndex = -1;
+    bool m_loadingParameters = false;
 };

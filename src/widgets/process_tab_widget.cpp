@@ -43,6 +43,15 @@ void ProcessTabWidget::setupConnections()
             this, &ProcessTabWidget::onAlgorithmTypeChanged);
     connect(m_ui->algorithmListWidget, &QListWidget::currentItemChanged,
             this, &ProcessTabWidget::onAlgorithmSelectionChanged);
+
+    connect(m_ui->doubleSpinBox_radius, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
+            this, [this]() { saveCurrentEdit(); });
+    connect(m_ui->spinBox_width, QOverload<int>::of(&QSpinBox::valueChanged),
+            this, [this]() { saveCurrentEdit(); });
+    connect(m_ui->spinBox_height, QOverload<int>::of(&QSpinBox::valueChanged),
+            this, [this]() { saveCurrentEdit(); });
+    connect(m_ui->comboBox_shapeType, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, [this]() { saveCurrentEdit(); });
 }
 
 void ProcessTabWidget::addAlgorithm()
@@ -73,6 +82,7 @@ void ProcessTabWidget::addAlgorithm()
     m_pipelineManager->addAlgorithmStep(step);
     QListWidgetItem *item = new QListWidgetItem(step.name);
     m_ui->algorithmListWidget->addItem(item);
+    m_ui->algorithmListWidget->setCurrentRow(m_ui->algorithmListWidget->count() - 1);
 
     Logger::instance()->info(QString("添加算法 %1").arg(step.name));
     emit algorithmChanged();
@@ -163,7 +173,7 @@ void ProcessTabWidget::onAlgorithmSelectionChanged(QListWidgetItem* current, QLi
 
 void ProcessTabWidget::saveCurrentEdit()
 {
-    if (m_editingAlgorithmIndex < 0) return;
+    if (m_editingAlgorithmIndex < 0 || m_loadingParameters) return;
 
     const QVector<AlgorithmStep>& queue = m_pipelineManager->getAlgorithmQueue();
     if (m_editingAlgorithmIndex >= queue.size()) {
@@ -196,6 +206,8 @@ void ProcessTabWidget::loadAlgorithmParameters(int index)
     const QVector<AlgorithmStep>& queue = m_pipelineManager->getAlgorithmQueue();
     if (index < 0 || index >= queue.size()) return;
 
+    m_loadingParameters = true;
+
     const AlgorithmStep& step = queue[index];
     int algoType = step.params["OpenCVAlgoType"].toInt();
 
@@ -221,6 +233,8 @@ void ProcessTabWidget::loadAlgorithmParameters(int index)
         }
         break;
     }
+
+    m_loadingParameters = false;
 }
 
 void ProcessTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
