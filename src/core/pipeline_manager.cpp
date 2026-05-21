@@ -24,10 +24,11 @@ PipelineManager::~PipelineManager() = default;
 void PipelineManager::resetEnhancement()
 {
     m_config.enhance.brightness = 0;
-    m_config.enhance.contrast = 1.0;
-    m_config.enhance.gamma = 1.0;
-    m_config.enhance.sharpen = 1.0;
+    m_config.enhance.contrast = 100;
+    m_config.enhance.gamma = 100;
+    m_config.enhance.sharpen = 100;
     m_config.colorFilter.enableGrayFilter = false;
+    qDebug() << "[PipelineManager] resetEnhancement: brightness=0, contrast=100, gamma=100, sharpen=100";
 }
 
 // ========== 算法队列管理 ==========

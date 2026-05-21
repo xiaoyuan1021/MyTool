@@ -89,7 +89,7 @@
       <item>
        <widget class="QPushButton" name="btn_stop">
         <property name="text">
-         <string>停止</string>
+         <string>关闭</string>
         </property>
        </widget>
       </item>

@@ -61,11 +61,14 @@ void DisplayModeManager::applyModeForCurrentTab()
 bool DisplayModeManager::displayCurrentResult()
 {
     if (!m_pipelineManager->hasLastResult()) {
+        qDebug() << "[DisplayMode] displayCurrentResult: 无缓存结果，需触发Pipeline";
         return false;  // 需要触发完整Pipeline处理
     }
     DisplayConfig::Mode mode = getModeForTab(m_tabWidget->currentIndex());
     cv::Mat displayImage = m_pipelineManager->getLastDisplayWithMode(mode);
     if (!displayImage.empty()) {
+        qDebug() << "[DisplayMode] displayCurrentResult: 使用缓存渲染, mode=" << static_cast<int>(mode)
+                 << "size=" << displayImage.cols << "x" << displayImage.rows;
         m_view->setImage(ImageUtils::matToQImage(displayImage));
     }
     return true;

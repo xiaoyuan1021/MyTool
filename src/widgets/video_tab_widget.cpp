@@ -108,7 +108,7 @@ void VideoTabWidget::on_btn_pause_clicked()
 
 void VideoTabWidget::on_btn_stop_clicked()
 {
-    m_videoManager->stop();
+    m_videoManager->close();
 }
 
 void VideoTabWidget::on_comboBox_camera_currentIndexChanged(int index)

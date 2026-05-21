@@ -467,6 +467,12 @@ void MainWindow::processAndDisplay()
     cv::Mat currentImage = m_roiManager.getCurrentImage();
     if (currentImage.empty()) return;
 
+    qDebug() << "[MainWindow] processAndDisplay: img=" << currentImage.cols << "x" << currentImage.rows
+             << "brightness=" << m_pipelineManager->config().enhance.brightness
+             << "contrast=" << m_pipelineManager->config().enhance.contrast
+             << "gamma=" << m_pipelineManager->config().enhance.gamma
+             << "sharpen=" << m_pipelineManager->config().enhance.sharpen;
+
     m_isProcessing = true;
     m_hasPendingProcess = false;
     ui->statusbar->showMessage("正在处理...");
