@@ -303,20 +303,32 @@
              <property name="text">
               <string>凸包</string>
              </property>
+             <property name="data">
+              <string>convex</string>
+             </property>
             </item>
             <item>
              <property name="text">
               <string>外接矩形</string>
+             </property>
+             <property name="data">
+              <string>rectangle1</string>
              </property>
             </item>
             <item>
              <property name="text">
               <string>内接圆</string>
              </property>
+             <property name="data">
+              <string>inner_circle</string>
+             </property>
             </item>
             <item>
              <property name="text">
               <string>外接圆</string>
+             </property>
+             <property name="data">
+              <string>outer_circle</string>
              </property>
             </item>
            </widget>

@@ -358,13 +358,19 @@ cv::Mat OpenCVAlgorithm::shapeTrans(const cv::Mat& region, ShapeTransType type)
             cv::Point2f center;
             float radius;
             cv::minEnclosingCircle(allPoints, center, radius);
-            cv::circle(result, center, static_cast<int>(radius), cv::Scalar(255), cv::FILLED);
+            cv::circle(result, center, static_cast<int>(std::ceil(radius)), cv::Scalar(255), cv::FILLED);
             break;
         }
         case ShapeTransType::Ellipse: {
             if (allPoints.size() >= 5) {
-                cv::RotatedRect ellipse = cv::fitEllipse(allPoints);
-                cv::ellipse(result, ellipse, cv::Scalar(255), cv::FILLED);
+                std::vector<cv::Point> hull;
+                cv::convexHull(allPoints, hull);
+                if (hull.size() >= 5) {
+                    cv::RotatedRect ellipse = cv::fitEllipse(hull);
+                    if (ellipse.size.width > 0 && ellipse.size.height > 0) {
+                        cv::ellipse(result, ellipse, cv::Scalar(255), cv::FILLED);
+                    }
+                }
             }
             break;
         }
@@ -544,18 +550,16 @@ double OpenCVAlgorithm::calculateRegionCircularity(const cv::Mat& region)
     
     if (contours.empty()) return 0.0;
     
-    // 如果有多个轮廓，合并后计算
-    if (contours.size() == 1) {
-        return calculateCircularity(contours[0]);
-    }
-    
-    // 合并所有轮廓
-    std::vector<cv::Point> allPoints;
+    double totalArea = 0.0;
+    double weightedCirc = 0.0;
     for (const auto& contour : contours) {
-        allPoints.insert(allPoints.end(), contour.begin(), contour.end());
+        double area = cv::contourArea(contour);
+        if (area > 0) {
+            totalArea += area;
+            weightedCirc += area * calculateCircularity(contour);
+        }
     }
-    
-    return calculateCircularity(allPoints);
+    return totalArea > 0 ? weightedCirc / totalArea : 0.0;
 }
 
 double OpenCVAlgorithm::calculatePerimeter(const cv::Mat& region)
@@ -626,12 +630,16 @@ RegionFeature OpenCVAlgorithm::calculateRegionFeature(const cv::Mat& region, int
     cv::findContours(binary, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
     
     if (!contours.empty()) {
-        // 合并所有轮廓
-        std::vector<cv::Point> allPoints;
+        double totalArea = 0.0;
+        double weightedCirc = 0.0;
         for (const auto& contour : contours) {
-            allPoints.insert(allPoints.end(), contour.begin(), contour.end());
+            double area = cv::contourArea(contour);
+            if (area > 0) {
+                totalArea += area;
+                weightedCirc += area * calculateCircularity(contour);
+            }
         }
-        feature.circularity = calculateCircularity(allPoints);
+        feature.circularity = totalArea > 0 ? weightedCirc / totalArea : 0.0;
     }
     
     return feature;
