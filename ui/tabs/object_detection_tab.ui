@@ -34,7 +34,7 @@
      <item>
       <widget class="QCheckBox" name="chk_enableObjectDetection">
        <property name="text">
-        <string>启目标检测</string>
+        <string>启用目标检测</string>
        </property>
       </widget>
      </item>
