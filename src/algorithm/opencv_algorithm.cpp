@@ -99,6 +99,9 @@ cv::Mat OpenCVAlgorithm::execute(const cv::Mat& region, const AlgorithmStep& ste
         return shapeTrans(region, shapeType);
     }
 
+    case OpenCVAlgoType::MinCircle:
+        return minCircle(region);
+
     case OpenCVAlgoType::SelectShapeArea:
     {
         double minArea = step.params.value("minArea", 0.0).toDouble();
@@ -297,6 +300,39 @@ cv::Mat OpenCVAlgorithm::fillUpHoles(const cv::Mat& region)
     cv::Mat result;
     cv::bitwise_or(binary, inverted, result);
     
+    return result;
+}
+
+// =============== 最小圆变换 ===============
+
+cv::Mat OpenCVAlgorithm::minCircle(const cv::Mat& region)
+{
+    if (region.empty()) return region.clone();
+
+    cv::Mat binary;
+    if (region.channels() == 3) {
+        cv::cvtColor(region, binary, cv::COLOR_BGR2GRAY);
+    } else {
+        binary = region.clone();
+    }
+
+    cv::threshold(binary, binary, 127, 255, cv::THRESH_BINARY);
+
+    std::vector<std::vector<cv::Point>> contours;
+    cv::findContours(binary, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
+    if (contours.empty()) return region.clone();
+
+    cv::Mat result = cv::Mat::zeros(binary.size(), CV_8UC1);
+
+    for (const auto& contour : contours) {
+        if (contour.size() < 3) continue;
+        cv::Point2f center;
+        float radius;
+        cv::minEnclosingCircle(contour, center, radius);
+        cv::circle(result, center, static_cast<int>(std::ceil(radius)), cv::Scalar(255), cv::FILLED);
+    }
+
     return result;
 }
 

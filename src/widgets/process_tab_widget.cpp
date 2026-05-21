@@ -150,6 +150,9 @@ void ProcessTabWidget::onAlgorithmTypeChanged(int index)
     case 11:
         m_ui->stackedWidget_Algorithm->setCurrentIndex(3);
         break;
+    case 12:
+        m_ui->stackedWidget_Algorithm->setCurrentIndex(2);
+        break;
     }
 }
 
@@ -195,6 +198,8 @@ void ProcessTabWidget::saveCurrentEdit()
     case 11:
         step.params["shapeType"] = m_ui->comboBox_shapeType->currentData().toString();
         break;
+    case 12:
+        break;
     }
 
     m_pipelineManager->updateAlgorithmStep(m_editingAlgorithmIndex, step);
@@ -221,14 +226,14 @@ void ProcessTabWidget::loadAlgorithmParameters(int index)
         m_ui->spinBox_width->setValue(step.params.value("width", 5).toInt());
         m_ui->spinBox_height->setValue(step.params.value("height", 5).toInt());
         break;
-    case 8: case 9: case 10:
+    case 8: case 9: case 10: case 12:
         m_ui->stackedWidget_Algorithm->setCurrentIndex(2);
         break;
     case 11:
         m_ui->stackedWidget_Algorithm->setCurrentIndex(3);
         QString shapeType = step.params.value("shapeType", "convex").toString();
         int comboIndex = m_ui->comboBox_shapeType->findData(shapeType);
-         if (comboIndex >= 0) {
+        if (comboIndex >= 0) {
             m_ui->comboBox_shapeType->setCurrentIndex(comboIndex);
         }
         break;

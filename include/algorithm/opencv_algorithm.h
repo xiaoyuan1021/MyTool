@@ -29,6 +29,7 @@ enum class OpenCVAlgoType
     Connection,         // 连通域
     FillUp,             // 填充孔洞
     ShapeTrans,         // 形状变换
+    MinCircle,          // 最小圆变换
     SelectShapeArea     // 面积筛选
 };
 
@@ -80,6 +81,11 @@ public:
 
     // 填充孔洞
     static cv::Mat fillUpHoles(const cv::Mat& region);
+
+    // ========== 最小圆变换 ==========
+
+    // 对每个连通域计算最小外接圆
+    static cv::Mat minCircle(const cv::Mat& region);
 
     // ========== 形状变换 ==========
 

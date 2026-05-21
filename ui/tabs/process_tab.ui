@@ -89,12 +89,17 @@
          <string>填充孔洞</string>
         </property>
        </item>
-       <item>
-        <property name="text">
-         <string>形状变换</string>
-        </property>
-       </item>
-      </widget>
+        <item>
+         <property name="text">
+          <string>形状变换</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>最小圆变换</string>
+         </property>
+        </item>
+       </widget>
      </item>
      <item>
       <spacer name="verticalSpacer_9">
