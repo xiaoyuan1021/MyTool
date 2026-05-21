@@ -88,6 +88,9 @@ public:
 
     bool hasLastResult() const;
 
+    /// 清除上次Pipeline结果（图片切换时调用，防止旧结果污染新图片显示）
+    void clearLastResult();
+
     // ========== 颜色过滤控制 ==========
 
 

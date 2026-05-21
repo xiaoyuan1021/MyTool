@@ -342,6 +342,10 @@ void MainWindow::setupControllerConnections()
         [this](const QString& roiId, const QString& detectionId) {
             m_detectionUiController->onDetectionItemSelected(roiId, detectionId, m_tabManager, m_pipelineManager);
 
+            // 更新显示模式管理器的Tab状态（switchToTabConfig内部阻塞了信号，
+            // 导致onTabChanged未触发，m_lastMode与实际Tab不同步）
+            m_displayModeManager->onTabChanged(ui->tabWidget->currentIndex());
+
             if (auto* roi = m_roiManager.getRoiConfig(roiId)) {
                 for (const auto& item : roi->detectionItems) {
                     if (item.itemId == detectionId) {
@@ -370,7 +374,9 @@ void MainWindow::setupControllerConnections()
     });
 
     // roiManager → roiUiController 同步连接
+    // 图片切换时：清除上次Pipeline结果，防止旧结果污染新图片的Tab显示
     connect(&m_roiManager, &RoiManager::currentImageChanged, this, [this](const QString&) {
+        m_pipelineManager->clearLastResult();
         m_roiUiController->syncRoiConfigsToWidget();
     });
 }

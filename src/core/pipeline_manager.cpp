@@ -136,6 +136,12 @@ void PipelineManager::updateAlgorithmStep(int index, const AlgorithmStep& step)
     }
 }
 
+void PipelineManager::clearLastResult()
+{
+    QMutexLocker locker(&m_contextMutex);
+    m_lastContext = PipelineContext();
+}
+
 void PipelineManager::setDisplayMode(DisplayConfig::Mode mode)
 {
     m_displayMode = mode;

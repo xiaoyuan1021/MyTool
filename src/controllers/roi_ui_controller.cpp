@@ -377,6 +377,15 @@ void RoiUiController::refreshRoiTreeView()
             m_roiManager.setActiveRoi(roi->roiId);
             emit roiDisplayChanged(m_currentSelectedRoiId);
         }
+    } else if (selectionChanged && m_currentSelectedRoiId.isEmpty()) {
+        // 【Bug修复】新图片没有ROI时，复位Pipeline配置为默认值，
+        // 防止旧图片的增强参数（如brightness=-28）残留在PipelineManager中，
+        // 导致新图片运行Pipeline时发黑或显示异常
+        if (m_pipelineManager) {
+            m_pipelineManager->resetEnhancement();
+            emit roiPipelineConfigChanged(m_pipelineManager->getConfigSnapshot());
+            Logger::instance()->info("[RoiUI] 无ROI，已复位增强参数为默认值");
+        }
     }
 }
 
