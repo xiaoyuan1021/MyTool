@@ -13,7 +13,7 @@ PipelineManager::PipelineManager(QObject* parent)
     : QObject(parent)
     , m_processor(std::make_unique<ImageProcessor>())
 {
-    resetEnhancement();
+    resetConfigToDefaults();
     initPipeline();
 }
 
@@ -21,14 +21,10 @@ PipelineManager::~PipelineManager() = default;
 
 // ========== 配置管理 ==========
 
-void PipelineManager::resetEnhancement()
+void PipelineManager::resetConfigToDefaults()
 {
-    m_config.enhance.brightness = 0;
-    m_config.enhance.contrast = 100;
-    m_config.enhance.gamma = 100;
-    m_config.enhance.sharpen = 100;
-    m_config.colorFilter.enableGrayFilter = false;
-    qDebug() << "[PipelineManager] resetEnhancement: brightness=0, contrast=100, gamma=100, sharpen=100";
+    m_config.resetToDefaults();
+    qDebug() << "[PipelineManager] resetConfigToDefaults";
 }
 
 // ========== 算法队列管理 ==========

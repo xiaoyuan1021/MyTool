@@ -30,7 +30,7 @@ public:
 
     // ========== 配置管理（仅UI线程调用）==========
 
-    void resetEnhancement();
+    void resetConfigToDefaults();
 
     /// 获取配置的可变引用（UI线程直接读写，替代大量 trivial setter）
     PipelineConfig& mutableConfig() { return m_config; }

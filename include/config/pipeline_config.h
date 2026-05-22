@@ -276,6 +276,14 @@ struct PipelineConfig
     // ========== 扩展功能开关（不在 StepType 枚举中） ==========
     bool enableObjectDetection = false;  ///< 在 Pipeline 末尾启用 YOLO 目标检测
 
+    /**
+     * @brief 重置所有配置为出厂默认值
+     *
+     * 切换图片、ROI 或无配置时调用，防止旧配置污染新任务。
+     * 不修改 stepOrder/stepEnabled（由 rebuildPipeline 管理）。
+     */
+    void resetToDefaults();
+
     // ==================== JSON 序列化（定义在 pipeline_config.cpp）====================
 
     QJsonObject toJson() const;

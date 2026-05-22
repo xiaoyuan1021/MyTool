@@ -61,6 +61,11 @@ QJsonObject PipelineConfig::toJson() const {
     return obj;
 }
 
+void PipelineConfig::resetToDefaults()
+{
+    *this = PipelineConfig();
+}
+
 void PipelineConfig::fromJson(const QJsonObject& obj) {
     if (obj.isEmpty()) return;
 

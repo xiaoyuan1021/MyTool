@@ -83,7 +83,7 @@ void EnhanceTabWidget::on_btn_resetBC_clicked()
     m_ui->Slider_contrast->setValue(100);
     m_ui->Slider_gamma->setValue(100);
     m_ui->Slider_sharpen->setValue(100);
-    m_pipelineManager->resetEnhancement();
+    m_pipelineManager->resetConfigToDefaults();
 
     EnhancementState snapshot = captureState();
     m_enhancementHistory.clear();

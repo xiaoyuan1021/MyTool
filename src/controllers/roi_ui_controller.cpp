@@ -382,9 +382,9 @@ void RoiUiController::refreshRoiTreeView()
         // 防止旧图片的增强参数（如brightness=-28）残留在PipelineManager中，
         // 导致新图片运行Pipeline时发黑或显示异常
         if (m_pipelineManager) {
-            m_pipelineManager->resetEnhancement();
+            m_pipelineManager->resetConfigToDefaults();
             emit roiPipelineConfigChanged(m_pipelineManager->getConfigSnapshot());
-            Logger::instance()->info("[RoiUI] 无ROI，已复位增强参数为默认值");
+            Logger::instance()->info("[RoiUI] 无ROI，已复位配置为默认值");
         }
     }
 }
