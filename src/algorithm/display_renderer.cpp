@@ -2,6 +2,10 @@
 #include "pipeline.h"
 #include "algorithm/opencv_algorithm.h"
 #include "logger.h"
+#include <QImage>
+#include <QPainter>
+#include <QFont>
+#include <QPen>
 
 namespace {
 
@@ -74,6 +78,17 @@ cv::Mat render(const PipelineContext& ctx, DisplayConfig::Mode mode)
                 if (!base.empty()) {
                     if (!ctx.barcodeResults.isEmpty())
                         return drawBarcodeOverlay(base, ctx.barcodeResults);
+                    return base;
+                }
+            }
+            return ensureBgr(ctx.visualBase);
+
+        case Mode::OcrOverlay:
+            {
+                cv::Mat base = ensureBgr(ctx.visualBase);
+                if (!base.empty()) {
+                    if (!ctx.ocrRegions.isEmpty())
+                        return drawOcrOverlay(base, ctx.ocrRegions);
                     return base;
                 }
             }
@@ -201,6 +216,78 @@ cv::Mat drawBarcodeOverlay(const cv::Mat& bgr, const QVector<BarcodeResult>& bar
     } catch (...) {
         qDebug() << "[drawBarcodeOverlay] 未知异常";
         Logger::instance()->error("drawBarcodeOverlay未知异常");
+        return bgr;
+    }
+}
+
+
+cv::Mat drawOcrOverlay(const cv::Mat& bgr, const QVector<OcrRegion>& regions)
+{
+    if (regions.isEmpty() || bgr.empty()) return bgr;
+
+    try {
+        // 将cv::Mat转换为QImage进行Qt绘制（支持中文）
+        cv::Mat rgb;
+        cv::cvtColor(bgr, rgb, cv::COLOR_BGR2RGB);
+        QImage qimg(rgb.data, rgb.cols, rgb.rows, rgb.step, QImage::Format_RGB888);
+        QImage resultImg = qimg.copy();  // 深拷贝
+
+        QPainter painter(&resultImg);
+        painter.setRenderHint(QPainter::Antialiasing);
+
+        QFont font("Microsoft YaHei", 10);
+        painter.setFont(font);
+
+        for (const auto& region : regions) {
+            // 绘制绿色边框
+            QPen pen(QColor(0, 255, 0), 2);
+            painter.setPen(pen);
+            painter.drawRect(region.x, region.y, region.width, region.height);
+
+            // 构造标签：文字 + 置信度
+            QString label = region.text;
+            if (region.confidence > 0) {
+                label += QString(" (%1%)").arg(region.confidence * 100, 0, 'f', 1);
+            }
+
+            // 限制显示长度
+            if (label.length() > 30) {
+                label = label.left(27) + "...";
+            }
+
+            // 计算标签位置
+            QFontMetrics fm(font);
+            QRect textRect = fm.boundingRect(label);
+            int labelX = region.x;
+            int labelY = std::max(region.y - 5, textRect.height() + 5);
+
+            // 绘制黑色背景
+            QRect bgRect(labelX, labelY - textRect.height() - 4,
+                        textRect.width() + 6, textRect.height() + 6);
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(QColor(0, 0, 0));
+            painter.drawRect(bgRect);
+
+            // 绘制白色文字
+            painter.setPen(QColor(255, 255, 255));
+            painter.drawText(labelX + 3, labelY - 3, label);
+        }
+
+        painter.end();
+
+        // 转换回cv::Mat
+        cv::Mat result(cv::Size(resultImg.width(), resultImg.height()), CV_8UC3);
+        cv::cvtColor(cv::Mat(resultImg.height(), resultImg.width(), CV_8UC3,
+                             const_cast<uchar*>(resultImg.constBits()), resultImg.bytesPerLine()),
+                     result, cv::COLOR_RGB2BGR);
+        return result;
+    } catch (const cv::Exception& ex) {
+        qDebug() << "[drawOcrOverlay] OpenCV错误:" << ex.what();
+        Logger::instance()->error(QString("drawOcrOverlay错误: %1").arg(ex.what()));
+        return bgr;
+    } catch (...) {
+        qDebug() << "[drawOcrOverlay] 未知异常";
+        Logger::instance()->error("drawOcrOverlay未知异常");
         return bgr;
     }
 }

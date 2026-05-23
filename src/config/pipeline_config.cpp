@@ -51,6 +51,9 @@ QJsonObject PipelineConfig::toJson() const {
     // 滤波去噪参数
     obj["imageFilter"] = imageFilter.toJson();
 
+    // OCR参数
+    obj["ocr"] = ocr.toJson();
+
     // 步骤控制
     QJsonArray enabledArr, orderArr;
     for (int i = 0; i < PipelineConfig::STEP_COUNT; ++i) {
@@ -130,6 +133,11 @@ void PipelineConfig::fromJson(const QJsonObject& obj) {
     // 滤波去噪参数
     if (obj.contains("imageFilter")) {
         imageFilter.fromJson(obj["imageFilter"].toObject());
+    }
+
+    // OCR参数
+    if (obj.contains("ocr")) {
+        ocr.fromJson(obj["ocr"].toObject());
     }
 
     // 步骤控制

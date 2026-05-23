@@ -40,6 +40,8 @@ const StepConfigWidget::StepEntry StepConfigWidget::kSteps[] = {
     {"条码识别",      {"条码"},        {8},           false},
     // 滤波去噪——对应 StepImageFilter(9)
     {"滤波去噪",      {"滤波去噪"},    {9},           false},
+    // 文字识别——对应 StepOcrRecognition(10)
+    {"文字识别",      {"文字识别"},    {10},          false},
     // 目标检测——无对应后端步骤，通过 PipelineConfig::enableObjectDetection 控制
     {"目标检测",      {"目标检测"},    {-1},          false},
 

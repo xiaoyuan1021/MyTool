@@ -4,6 +4,7 @@
 #include <QVector>
 #include "config/display_config.h"
 #include "data/barcode_result.h"
+#include "data/ocr_region.h"
 
 struct PipelineContext;
 
@@ -39,5 +40,13 @@ cv::Mat overlayMaskOnImage(const cv::Mat& bgr, const cv::Mat& mask, float alpha 
  * @return         绘制后的BGR图像
  */
 cv::Mat drawBarcodeOverlay(const cv::Mat& bgr, const QVector<BarcodeResult>& barcodes);
+
+/**
+ * @brief 在原图上绘制OCR识别结果
+ * @param bgr     原图
+ * @param regions OCR识别区域列表
+ * @return        绘制后的BGR图像
+ */
+cv::Mat drawOcrOverlay(const cv::Mat& bgr, const QVector<OcrRegion>& regions);
 
 } // namespace DisplayRenderer

@@ -21,6 +21,7 @@ enum class StepType : int
     ReferenceLineFilter,
     BarcodeRecognition,
     ImageFilter,    // 滤波去噪
+    OcrRecognition, // OCR文字识别
     Count   // 步骤总数
 };
 
@@ -38,6 +39,7 @@ inline const char* stepDisplayName(StepType type)
         case StepType::ReferenceLineFilter: return "参考线匹配";
         case StepType::BarcodeRecognition: return "条码识别";
         case StepType::ImageFilter:        return "滤波去噪";
+        case StepType::OcrRecognition:     return "文字识别";
         default:                           return "未知步骤";
     }
 }
@@ -158,6 +160,50 @@ struct ImageFilterConfig
         morphologyOp = static_cast<MorphologyOpType>(obj["morphologyOp"].toInt(0));
         morphologyKernelSize = obj["morphologyKernelSize"].toInt(3);
         morphologyIterations = obj["morphologyIterations"].toInt(1);
+    }
+};
+
+/**
+ * @brief OCR文字识别配置
+ *
+ * 基于Tesseract OCR引擎，支持中英文识别
+ */
+struct OcrConfig
+{
+    QString language = "chi_sim+eng";    // 识别语言（chi_sim=中文，eng=英文）
+    int minFontSize = 10;                // 最小字体大小（像素）
+    int maxFontSize = 200;               // 最大字体大小（像素）
+    bool enablePreprocess = true;        // 启用预处理（二值化）
+    int binaryThreshold = 128;           // 二值化阈值
+    bool detectOnly = false;             // 仅检测不识别（调试用）
+
+    bool operator==(const OcrConfig& o) const {
+        return language == o.language &&
+               minFontSize == o.minFontSize &&
+               maxFontSize == o.maxFontSize &&
+               enablePreprocess == o.enablePreprocess &&
+               binaryThreshold == o.binaryThreshold &&
+               detectOnly == o.detectOnly;
+    }
+
+    QJsonObject toJson() const {
+        QJsonObject obj;
+        obj["language"] = language;
+        obj["minFontSize"] = minFontSize;
+        obj["maxFontSize"] = maxFontSize;
+        obj["enablePreprocess"] = enablePreprocess;
+        obj["binaryThreshold"] = binaryThreshold;
+        obj["detectOnly"] = detectOnly;
+        return obj;
+    }
+
+    void fromJson(const QJsonObject& obj) {
+        language = obj["language"].toString("chi_sim+eng");
+        minFontSize = obj["minFontSize"].toInt(10);
+        maxFontSize = obj["maxFontSize"].toInt(200);
+        enablePreprocess = obj["enablePreprocess"].toBool(true);
+        binaryThreshold = obj["binaryThreshold"].toInt(128);
+        detectOnly = obj["detectOnly"].toBool(false);
     }
 };
 
@@ -348,6 +394,7 @@ struct PipelineConfig
     BarcodeConfig    barcode;      ///< 条码识别
     BlobJudgeConfig  judge;        ///< 判定配置（Blob分析阈值）
     ImageFilterConfig imageFilter; ///< 滤波去噪
+    OcrConfig        ocr;          ///< OCR文字识别
 
     // ========== Pipeline步骤控制 ==========
     static constexpr int STEP_COUNT = static_cast<int>(StepType::Count);
@@ -362,10 +409,11 @@ struct PipelineConfig
         true,   // LineDetect
         true,   // ReferenceLineFilter
         true,   // BarcodeRecognition
-        true    // ImageFilter
+        true,   // ImageFilter
+        true    // OcrRecognition
     };
 
-    std::array<int, STEP_COUNT> stepOrder = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    std::array<int, STEP_COUNT> stepOrder = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
 
     // ========== 扩展功能开关（不在 StepType 枚举中） ==========
     bool enableObjectDetection = false;  ///< 在 Pipeline 末尾启用 YOLO 目标检测

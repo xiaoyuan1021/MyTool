@@ -8,6 +8,7 @@
 #include <QRectF>
 #include "config/pipeline_config.h"
 #include "data/barcode_result.h"
+#include "data/ocr_region.h"
 #include "region_feature.h"
 #include "display_config.h"
 
@@ -39,6 +40,10 @@ struct PipelineContext
     // 条码识别结果
     QVector<BarcodeResult> barcodeResults;
     QString barcodeStatus;  // 识别状态信息
+
+    // OCR识别结果
+    QString ocrText;                    // 识别的完整文本
+    QVector<OcrRegion> ocrRegions;      // 识别的区域列表
 };
 
 class IPipelineStep

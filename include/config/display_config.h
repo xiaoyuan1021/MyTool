@@ -22,7 +22,8 @@ struct DisplayConfig
         LineDetect,         // 显示直线检测结果
         BarcodeOverlay,     // 在原图上叠加条码识别结果
         MaskOnly,           // 直接显示二值Mask（黑白）
-        ProcessedOverlay    // 处理结果叠加到原图
+        ProcessedOverlay,   // 处理结果叠加到原图
+        OcrOverlay          // 在原图上叠加OCR识别结果
     };
 
     Mode mode = Mode::Original;      // 当前显示模式

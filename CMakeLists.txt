@@ -121,6 +121,9 @@ set(HEADERS
     include/widgets/video_source_widget.h
     include/widgets/video_tab_widget.h
     include/widgets/image_filter_tab_widget.h
+    include/widgets/ocr_tab_widget.h
+    include/core/ocr_step.h
+    include/data/ocr_region.h
     # controllers
     include/controllers/auto_detection_controller.h
     include/controllers/config_controller.h
@@ -147,6 +150,7 @@ set(SOURCES
     src/core/video_manager.cpp
     src/core/barcode_step.cpp
     src/core/pipeline_image_filter_steps.cpp
+    src/core/ocr_step.cpp
     # algorithm
     src/algorithm/dnn_inference.cpp
     src/algorithm/image_processor.cpp
@@ -195,6 +199,7 @@ set(SOURCES
     src/widgets/video_source_widget.cpp
     src/widgets/video_tab_widget.cpp
     src/widgets/image_filter_tab_widget.cpp
+    src/widgets/ocr_tab_widget.cpp
     # controllers
     src/controllers/auto_detection_controller.cpp
     src/controllers/config_controller.cpp
@@ -359,6 +364,29 @@ target_include_directories(VisionTool PRIVATE
 target_link_libraries(VisionTool PRIVATE
     debug "${ZXING_ROOT}/lib/ZXingd.lib"
     optimized "${ZXING_ROOT}/release/lib/ZXing.lib"
+)
+
+
+# ============================================================
+# 第三方库配置 (Tesseract OCR)
+# ============================================================
+set(TESSERACT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/tesseract")
+
+target_include_directories(VisionTool PRIVATE
+    "${TESSERACT_ROOT}/include"
+)
+
+target_link_libraries(VisionTool PRIVATE
+    debug "${TESSERACT_ROOT}/lib/tesseract55d.lib"
+    optimized "${TESSERACT_ROOT}/lib/tesseract55d.lib"
+)
+
+# 拷贝 Tesseract DLL 到输出目录
+add_custom_command(TARGET VisionTool POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${TESSERACT_ROOT}/bin/tesseract55d.dll"
+        $<TARGET_FILE_DIR:VisionTool>
+    COMMENT "Copying Tesseract DLL..."
 )
 
 

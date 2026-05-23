@@ -1,6 +1,7 @@
 #include "pipeline_manager.h"
 #include "image_processor.h"
 #include "barcode_step.h"
+#include "ocr_step.h"
 #include "config/constants.h"
 #include "logger.h"
 #include "algorithm/display_renderer.h"
@@ -216,6 +217,7 @@ void PipelineManager::initPipeline()
     allSteps[7] = std::make_unique<StepReferenceLineFilter>();
     allSteps[8] = std::make_unique<StepBarcodeRecognition>();
     allSteps[9] = std::make_unique<StepImageFilter>();
+    allSteps[10] = std::make_unique<StepOcrRecognition>();
 
     for (int idx : m_config.stepOrder) {
         if (m_config.stepEnabled[idx] && allSteps.contains(idx)) {
