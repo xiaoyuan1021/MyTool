@@ -12,6 +12,7 @@
 #include "widgets/video_tab_widget.h"
 #include "widgets/object_detection_tab_widget.h"
 #include "widgets/step_config_widget.h"
+#include "widgets/image_filter_tab_widget.h"
 
 TabRegistry& TabRegistry::instance()
 {
@@ -49,6 +50,13 @@ TabRegistry::TabRegistry()
         {"过滤",     DisplayConfig::Mode::MaskGreenWhite, false, false},
         [](PipelineManager* pm, ImageView*, RoiManager*, TabDebounceFunc) -> QWidget* {
             return new FilterTabWidget(pm, nullptr);
+        }
+    );
+
+    registerTab(
+        {"滤波去噪", DisplayConfig::Mode::Enhanced,       false, false},
+        [](PipelineManager* pm, ImageView*, RoiManager*, TabDebounceFunc) -> QWidget* {
+            return new ImageFilterTabWidget(pm, nullptr);
         }
     );
 

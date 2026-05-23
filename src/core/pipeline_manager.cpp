@@ -215,6 +215,7 @@ void PipelineManager::initPipeline()
     allSteps[6] = std::make_unique<StepLineDetect>();
     allSteps[7] = std::make_unique<StepReferenceLineFilter>();
     allSteps[8] = std::make_unique<StepBarcodeRecognition>();
+    allSteps[9] = std::make_unique<StepImageFilter>();
 
     for (int idx : m_config.stepOrder) {
         if (m_config.stepEnabled[idx] && allSteps.contains(idx)) {

@@ -79,3 +79,10 @@ class StepReferenceLineFilter : public IPipelineStep
 public:
     void run(PipelineContext &ctx) override;
 };
+
+// 滤波去噪
+class StepImageFilter : public IPipelineStep
+{
+public:
+    void run(PipelineContext& ctx) override;
+};

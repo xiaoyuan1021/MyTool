@@ -120,6 +120,7 @@ set(HEADERS
     include/widgets/step_config_widget.h
     include/widgets/video_source_widget.h
     include/widgets/video_tab_widget.h
+    include/widgets/image_filter_tab_widget.h
     # controllers
     include/controllers/auto_detection_controller.h
     include/controllers/config_controller.h
@@ -145,6 +146,7 @@ set(SOURCES
     src/core/roi_manager.cpp
     src/core/video_manager.cpp
     src/core/barcode_step.cpp
+    src/core/pipeline_image_filter_steps.cpp
     # algorithm
     src/algorithm/dnn_inference.cpp
     src/algorithm/image_processor.cpp
@@ -192,6 +194,7 @@ set(SOURCES
     src/widgets/step_config_widget.cpp
     src/widgets/video_source_widget.cpp
     src/widgets/video_tab_widget.cpp
+    src/widgets/image_filter_tab_widget.cpp
     # controllers
     src/controllers/auto_detection_controller.cpp
     src/controllers/config_controller.cpp

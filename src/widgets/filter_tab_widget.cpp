@@ -212,21 +212,11 @@ void FilterTabWidget::onFilterModeChanged(int index)
 
 void FilterTabWidget::filterColorChannelsChanged()
 {
-    // 根据当前过滤模式同步参数
-    int mode = m_ui->comboBox_filterMode->currentIndex();
-    switch (mode) {
-    case 1:  // Gray
-        syncGrayParameters();
-        break;
-    case 2:  // RGB
-        syncRGBParameters();
-        break;
-    case 3:  // HSV
-        syncHSVParameters();
-        break;
-    default:
-        break;
-    }
+    // 总是同步所有参数，而不是只同步当前模式
+    // 这样用户可以在任何模式下调整滑条并立即看到效果
+    syncGrayParameters();
+    syncRGBParameters();
+    syncHSVParameters();
 
     m_debounceTimer->start();
 }
