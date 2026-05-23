@@ -47,6 +47,9 @@ struct DetectionItem {
             case DetectionType::VideoDetection:
                 config = VideoDetectionConfig().toJson();
                 break;
+            case DetectionType::Ocr:
+                config = OcrDetectionConfig().toJson();
+                break;
             default:
                 break;
         }

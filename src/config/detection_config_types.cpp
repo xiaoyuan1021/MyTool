@@ -166,3 +166,31 @@ void VideoDetectionConfig::fromJson(const QJsonObject& obj) {
     inputWidth = obj["inputWidth"].toInt(640);
     inputHeight = obj["inputHeight"].toInt(640);
 }
+
+// ========== OcrDetectionConfig ==========
+
+QJsonObject OcrDetectionConfig::toJson() const {
+    QJsonObject obj;
+    obj["brightness"] = enhance.brightness;
+    obj["contrast"] = enhance.contrast;
+    obj["gamma"] = enhance.gamma;
+    obj["sharpen"] = enhance.sharpen;
+    obj["language"] = language;
+    obj["pageMode"] = pageMode;
+    obj["enableTextFilter"] = enableTextFilter;
+    obj["expectedText"] = expectedText;
+    obj["matchExact"] = matchExact;
+    return obj;
+}
+
+void OcrDetectionConfig::fromJson(const QJsonObject& obj) {
+    enhance.brightness = obj["brightness"].toInt(0);
+    enhance.contrast = obj["contrast"].toInt(100);
+    enhance.gamma = obj["gamma"].toInt(100);
+    enhance.sharpen = obj["sharpen"].toInt(100);
+    language = obj["language"].toString("chi_sim+eng");
+    pageMode = obj["pageMode"].toInt(0);
+    enableTextFilter = obj["enableTextFilter"].toBool(false);
+    expectedText = obj["expectedText"].toString();
+    matchExact = obj["matchExact"].toBool(false);
+}

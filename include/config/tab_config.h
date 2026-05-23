@@ -100,6 +100,17 @@ struct TabConfig {
     }
     
     /**
+     * @brief 获取OCR识别的Tab配置
+     */
+    static TabConfig getOcrConfig() {
+        return TabConfig({
+            "图像",
+            "增强",
+            "文字识别"
+        });
+    }
+    
+    /**
      * @brief 根据检测类型获取Tab配置
      */
     static TabConfig getConfigForType(DetectionType type) {
@@ -118,6 +129,8 @@ struct TabConfig {
                 return getVideoDetectionConfig();
             case DetectionType::Custom:
                 return getCustomConfig();
+            case DetectionType::Ocr:
+                return getOcrConfig();
             default:
                 return TabConfig();
         }

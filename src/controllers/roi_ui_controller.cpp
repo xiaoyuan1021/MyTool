@@ -334,6 +334,9 @@ void RoiUiController::refreshRoiTreeView()
                 case DetectionType::Barcode:
                     detectionColor = QColor("#FF9800");
                     break;
+                case DetectionType::Ocr:
+                    detectionColor = QColor("#9C27B0");
+                    break;
                 default:
                     detectionColor = QColor("#9E9E9E");
                     break;

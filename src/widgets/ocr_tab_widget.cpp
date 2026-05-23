@@ -5,9 +5,11 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGroupBox>
-#include <QPushButton>
 #include <QFormLayout>
 #include <QHeaderView>
+#include <QClipboard>
+#include <QApplication>
+#include <QMessageBox>
 
 OcrTabWidget::OcrTabWidget(PipelineManager* pipelineManager, QWidget* parent)
     : QWidget(parent)
@@ -32,64 +34,46 @@ void OcrTabWidget::setupUI()
     mainLayout->setContentsMargins(8, 8, 8, 8);
 
     // 语言选择
-    auto* langGroup = new QGroupBox("识别语言");
+    auto* langGroup = new QGroupBox("识别设置");
     auto* langLayout = new QFormLayout(langGroup);
     m_languageCombo = new QComboBox();
     m_languageCombo->addItem("中文+英文", "chi_sim+eng");
     m_languageCombo->addItem("仅中文", "chi_sim");
     m_languageCombo->addItem("仅英文", "eng");
-    langLayout->addRow("语言:", m_languageCombo);
+    langLayout->addRow("识别语言:", m_languageCombo);
+    
+    m_pageModeCombo = new QComboBox();
+    m_pageModeCombo->addItem("自动检测", 0);
+    m_pageModeCombo->addItem("单行文字", 1);
+    m_pageModeCombo->addItem("多行文字", 2);
+    langLayout->addRow("文字排列:", m_pageModeCombo);
+    
     mainLayout->addWidget(langGroup);
 
-    // 字体大小范围
-    auto* sizeGroup = new QGroupBox("字体大小范围");
-    auto* sizeLayout = new QFormLayout(sizeGroup);
+    // 操作提示
+    m_hintLabel = new QLabel(QString::fromUtf8("提示：请先配置ROI区域，然后点击[识别]按钮进行文字识别"));
+    m_hintLabel->setStyleSheet("color: #666; padding: 5px; background: #f5f5f5; border-radius: 3px;");
+    m_hintLabel->setWordWrap(true);
+    mainLayout->addWidget(m_hintLabel);
 
-    m_minFontSizeSlider = new QSlider(Qt::Horizontal);
-    m_minFontSizeSlider->setRange(1, 50);
-    m_minFontSizeSlider->setValue(10);
-    m_minFontSizeLabel = new QLabel("10");
-    auto* minSizeLayout = new QHBoxLayout();
-    minSizeLayout->addWidget(m_minFontSizeSlider);
-    minSizeLayout->addWidget(m_minFontSizeLabel);
-    sizeLayout->addRow("最小:", minSizeLayout);
+    // 操作按钮
+    auto* btnLayout = new QHBoxLayout();
+    
+    m_recognizeBtn = new QPushButton("识别");
+    m_recognizeBtn->setStyleSheet("QPushButton { font-weight: bold; padding: 8px 20px; }");
+    connect(m_recognizeBtn, &QPushButton::clicked, this, &OcrTabWidget::onRecognizeClicked);
+    btnLayout->addWidget(m_recognizeBtn);
 
-    m_maxFontSizeSlider = new QSlider(Qt::Horizontal);
-    m_maxFontSizeSlider->setRange(50, 500);
-    m_maxFontSizeSlider->setValue(200);
-    m_maxFontSizeLabel = new QLabel("200");
-    auto* maxSizeLayout = new QHBoxLayout();
-    maxSizeLayout->addWidget(m_maxFontSizeSlider);
-    maxSizeLayout->addWidget(m_maxFontSizeLabel);
-    sizeLayout->addRow("最大:", maxSizeLayout);
+    m_copyBtn = new QPushButton("复制结果");
+    m_copyBtn->setEnabled(false);
+    connect(m_copyBtn, &QPushButton::clicked, this, &OcrTabWidget::onCopyResultClicked);
+    btnLayout->addWidget(m_copyBtn);
 
-    mainLayout->addWidget(sizeGroup);
+    m_resetBtn = new QPushButton("重置");
+    connect(m_resetBtn, &QPushButton::clicked, this, &OcrTabWidget::onResetClicked);
+    btnLayout->addWidget(m_resetBtn);
 
-    // 预处理选项
-    auto* preprocessGroup = new QGroupBox("预处理");
-    auto* preprocessLayout = new QFormLayout(preprocessGroup);
-
-    m_preprocessCheckBox = new QCheckBox("启用二值化预处理");
-    m_preprocessCheckBox->setChecked(true);
-    preprocessLayout->addRow(m_preprocessCheckBox);
-
-    m_binaryThresholdSlider = new QSlider(Qt::Horizontal);
-    m_binaryThresholdSlider->setRange(0, 255);
-    m_binaryThresholdSlider->setValue(128);
-    m_binaryThresholdLabel = new QLabel("128");
-    auto* thresholdLayout = new QHBoxLayout();
-    thresholdLayout->addWidget(m_binaryThresholdSlider);
-    thresholdLayout->addWidget(m_binaryThresholdLabel);
-    preprocessLayout->addRow("阈值:", thresholdLayout);
-
-    mainLayout->addWidget(preprocessGroup);
-
-    // 调试选项
-    auto* debugGroup = new QGroupBox("调试");
-    auto* debugLayout = new QFormLayout(debugGroup);
-    m_detectOnlyCheckBox = new QCheckBox("仅检测不识别（调试用）");
-    debugLayout->addRow(m_detectOnlyCheckBox);
-    mainLayout->addWidget(debugGroup);
+    mainLayout->addLayout(btnLayout);
 
     // ========== 识别结果显示 ==========
     auto* resultGroup = new QGroupBox("识别结果");
@@ -105,7 +89,7 @@ void OcrTabWidget::setupUI()
     resultLayout->addWidget(textLabel);
     m_resultTextEdit = new QTextEdit();
     m_resultTextEdit->setReadOnly(true);
-    m_resultTextEdit->setMaximumHeight(80);
+    m_resultTextEdit->setMaximumHeight(100);
     m_resultTextEdit->setPlaceholderText("识别结果将显示在这里...");
     resultLayout->addWidget(m_resultTextEdit);
 
@@ -122,67 +106,58 @@ void OcrTabWidget::setupUI()
     resultLayout->addWidget(m_regionsTable);
 
     mainLayout->addWidget(resultGroup);
+    mainLayout->addStretch();
 
     // 连接信号
     connect(m_languageCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &OcrTabWidget::onLanguageChanged);
-    connect(m_minFontSizeSlider, &QSlider::valueChanged, this, [this](int v) {
-        m_minFontSizeLabel->setText(QString::number(v));
-        syncConfigToPipeline();
-        m_debounceTimer->start();
-    });
-    connect(m_maxFontSizeSlider, &QSlider::valueChanged, this, [this](int v) {
-        m_maxFontSizeLabel->setText(QString::number(v));
-        syncConfigToPipeline();
-        m_debounceTimer->start();
-    });
-    connect(m_preprocessCheckBox, &QCheckBox::toggled, this, &OcrTabWidget::onPreprocessToggled);
-    connect(m_binaryThresholdSlider, &QSlider::valueChanged, this, [this](int v) {
-        m_binaryThresholdLabel->setText(QString::number(v));
-        syncConfigToPipeline();
-        m_debounceTimer->start();
-    });
-    connect(m_detectOnlyCheckBox, &QCheckBox::toggled, this, [this](bool) {
-        syncConfigToPipeline();
-        m_debounceTimer->start();
-    });
-
-    // 重置按钮
-    auto* btnLayout = new QHBoxLayout();
-    auto* resetBtn = new QPushButton("重置参数");
-    connect(resetBtn, &QPushButton::clicked, this, &OcrTabWidget::onResetClicked);
-    btnLayout->addStretch();
-    btnLayout->addWidget(resetBtn);
-    mainLayout->addLayout(btnLayout);
-
-    mainLayout->addStretch();
+    connect(m_pageModeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &OcrTabWidget::onLanguageChanged);
 }
 
 void OcrTabWidget::onLanguageChanged(int index)
 {
     Q_UNUSED(index);
     syncConfigToPipeline();
-    m_debounceTimer->start();
 }
 
-void OcrTabWidget::onPreprocessToggled(bool checked)
+void OcrTabWidget::onRecognizeClicked()
 {
-    m_binaryThresholdSlider->setEnabled(checked);
+    // 同步配置到Pipeline
     syncConfigToPipeline();
-    m_debounceTimer->start();
+    
+    // 触发Pipeline执行
+    emit processRequested();
+    
+    // 更新状态
+    m_statusLabel->setText("正在识别...");
+    m_statusLabel->setStyleSheet("font-weight: bold; color: blue;");
+}
+
+void OcrTabWidget::onCopyResultClicked()
+{
+    QString text = m_resultTextEdit->toPlainText();
+    if (text.isEmpty()) {
+        QMessageBox::information(this, "提示", "没有可复制的内容");
+        return;
+    }
+    
+    QApplication::clipboard()->setText(text);
+    m_statusLabel->setText("已复制到剪贴板");
+    m_statusLabel->setStyleSheet("font-weight: bold; color: green;");
 }
 
 void OcrTabWidget::onResetClicked()
 {
     m_languageCombo->setCurrentIndex(0);
-    m_minFontSizeSlider->setValue(10);
-    m_maxFontSizeSlider->setValue(200);
-    m_preprocessCheckBox->setChecked(true);
-    m_binaryThresholdSlider->setValue(128);
-    m_detectOnlyCheckBox->setChecked(false);
-
+    m_pageModeCombo->setCurrentIndex(0);
+    m_resultTextEdit->clear();
+    m_regionsTable->setRowCount(0);
+    m_statusLabel->setText("等待识别...");
+    m_statusLabel->setStyleSheet("font-weight: bold; color: gray;");
+    m_copyBtn->setEnabled(false);
+    
     syncConfigToPipeline();
-    m_debounceTimer->start();
 }
 
 void OcrTabWidget::syncConfigToPipeline()
@@ -191,11 +166,7 @@ void OcrTabWidget::syncConfigToPipeline()
 
     auto& cfg = m_pipelineManager->mutableConfig().ocr;
     cfg.language = m_languageCombo->currentData().toString();
-    cfg.minFontSize = m_minFontSizeSlider->value();
-    cfg.maxFontSize = m_maxFontSizeSlider->value();
-    cfg.enablePreprocess = m_preprocessCheckBox->isChecked();
-    cfg.binaryThreshold = m_binaryThresholdSlider->value();
-    cfg.detectOnly = m_detectOnlyCheckBox->isChecked();
+    cfg.pageMode = m_pageModeCombo->currentData().toInt();
 
     emit ocrConfigChanged();
 }
@@ -203,11 +174,7 @@ void OcrTabWidget::syncConfigToPipeline()
 void OcrTabWidget::saveToConfig(PipelineConfig& config) const
 {
     config.ocr.language = m_languageCombo->currentData().toString();
-    config.ocr.minFontSize = m_minFontSizeSlider->value();
-    config.ocr.maxFontSize = m_maxFontSizeSlider->value();
-    config.ocr.enablePreprocess = m_preprocessCheckBox->isChecked();
-    config.ocr.binaryThreshold = m_binaryThresholdSlider->value();
-    config.ocr.detectOnly = m_detectOnlyCheckBox->isChecked();
+    config.ocr.pageMode = m_pageModeCombo->currentData().toInt();
 }
 
 void OcrTabWidget::loadFromConfig(const PipelineConfig& config)
@@ -218,11 +185,10 @@ void OcrTabWidget::loadFromConfig(const PipelineConfig& config)
     if (langIndex >= 0) {
         m_languageCombo->setCurrentIndex(langIndex);
     }
-    m_minFontSizeSlider->setValue(cfg.minFontSize);
-    m_maxFontSizeSlider->setValue(cfg.maxFontSize);
-    m_preprocessCheckBox->setChecked(cfg.enablePreprocess);
-    m_binaryThresholdSlider->setValue(cfg.binaryThreshold);
-    m_detectOnlyCheckBox->setChecked(cfg.detectOnly);
+    int pageModeIndex = m_pageModeCombo->findData(cfg.pageMode);
+    if (pageModeIndex >= 0) {
+        m_pageModeCombo->setCurrentIndex(pageModeIndex);
+    }
 }
 
 void OcrTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
@@ -255,11 +221,13 @@ void OcrTabWidget::updateFromPipeline(const PipelineContext& ctx)
     if (ctx.ocrText.isEmpty()) {
         m_statusLabel->setText("未识别到文字");
         m_statusLabel->setStyleSheet("font-weight: bold; color: orange;");
+        m_copyBtn->setEnabled(false);
     } else {
         int count = ctx.ocrRegions.size();
         int charCount = ctx.ocrText.length();
         m_statusLabel->setText(QString("识别完成: %1 个区域, %2 个字符").arg(count).arg(charCount));
         m_statusLabel->setStyleSheet("font-weight: bold; color: green;");
+        m_copyBtn->setEnabled(true);
     }
 }
 

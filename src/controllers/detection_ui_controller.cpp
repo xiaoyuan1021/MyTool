@@ -70,6 +70,7 @@ void DetectionUiController::onAddDetectionClicked(const QString& roiId)
     comboBox->addItem("目标检测", static_cast<int>(DetectionType::ObjectDetection));
     comboBox->addItem("视频检测", static_cast<int>(DetectionType::VideoDetection));
     comboBox->addItem("自定义Pipeline", static_cast<int>(DetectionType::Custom));
+    comboBox->addItem("OCR识别", static_cast<int>(DetectionType::Ocr));
     comboBox->setMinimumWidth(150);
     layout->addWidget(comboBox);
     
@@ -130,6 +131,47 @@ void DetectionUiController::onDetectionItemSelected(const QString& roiId, const 
 
         TabConfig config = TabConfig::getConfigForType(detection.type);
         switchToTabConfig(config);
+
+        // 根据检测类型启用对应的Pipeline步骤
+        auto& pipelineConfig = pipelineManager->mutableConfig();
+        
+        // 先禁用所有步骤
+        for (int i = 0; i < PipelineConfig::STEP_COUNT; ++i) {
+            pipelineConfig.stepEnabled[i] = false;
+        }
+
+        // 根据检测类型启用必要步骤
+        switch (detection.type) {
+            case DetectionType::Blob:
+                pipelineConfig.stepEnabled[static_cast<int>(StepType::ColorChannel)] = true;
+                pipelineConfig.stepEnabled[static_cast<int>(StepType::Enhance)] = true;
+                pipelineConfig.stepEnabled[static_cast<int>(StepType::GrayFilter)] = true;
+                pipelineConfig.stepEnabled[static_cast<int>(StepType::ColorFilter)] = true;
+                pipelineConfig.stepEnabled[static_cast<int>(StepType::AlgorithmQueue)] = true;
+                pipelineConfig.stepEnabled[static_cast<int>(StepType::ShapeFilter)] = true;
+                break;
+            case DetectionType::Line:
+                pipelineConfig.stepEnabled[static_cast<int>(StepType::ColorChannel)] = true;
+                pipelineConfig.stepEnabled[static_cast<int>(StepType::Enhance)] = true;
+                pipelineConfig.stepEnabled[static_cast<int>(StepType::LineDetect)] = true;
+                pipelineConfig.stepEnabled[static_cast<int>(StepType::ReferenceLineFilter)] = true;
+                break;
+            case DetectionType::Barcode:
+                pipelineConfig.stepEnabled[static_cast<int>(StepType::ColorChannel)] = true;
+                pipelineConfig.stepEnabled[static_cast<int>(StepType::Enhance)] = true;
+                pipelineConfig.stepEnabled[static_cast<int>(StepType::BarcodeRecognition)] = true;
+                break;
+            case DetectionType::Ocr:
+                pipelineConfig.stepEnabled[static_cast<int>(StepType::ColorChannel)] = true;
+                pipelineConfig.stepEnabled[static_cast<int>(StepType::Enhance)] = true;
+                pipelineConfig.stepEnabled[static_cast<int>(StepType::OcrRecognition)] = true;
+                break;
+            default:
+                break;
+        }
+
+        // 重建Pipeline
+        pipelineManager->rebuildPipeline();
 
         if (detection.type == DetectionType::Blob) {
             BlobAnalysisConfig blobConfig;

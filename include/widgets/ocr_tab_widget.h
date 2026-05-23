@@ -3,12 +3,10 @@
 #include <QWidget>
 #include <QTimer>
 #include <QComboBox>
-#include <QSlider>
 #include <QLabel>
-#include <QCheckBox>
-#include <QLineEdit>
 #include <QTextEdit>
 #include <QTableWidget>
+#include <QPushButton>
 #include "pipeline_manager.h"
 #include "pipeline.h"
 #include "widgets/i_tab_interfaces.h"
@@ -39,7 +37,8 @@ signals:
 
 private slots:
     void onLanguageChanged(int index);
-    void onPreprocessToggled(bool checked);
+    void onRecognizeClicked();
+    void onCopyResultClicked();
     void onResetClicked();
 
 private:
@@ -52,17 +51,14 @@ private:
 
     // UI 控件 - 配置部分
     QComboBox* m_languageCombo;
-    QSlider* m_minFontSizeSlider;
-    QLabel* m_minFontSizeLabel;
-    QSlider* m_maxFontSizeSlider;
-    QLabel* m_maxFontSizeLabel;
-    QCheckBox* m_preprocessCheckBox;
-    QSlider* m_binaryThresholdSlider;
-    QLabel* m_binaryThresholdLabel;
-    QCheckBox* m_detectOnlyCheckBox;
+    QComboBox* m_pageModeCombo;
+    QPushButton* m_recognizeBtn;
+    QPushButton* m_copyBtn;
+    QPushButton* m_resetBtn;
 
     // UI 控件 - 结果显示部分
+    QLabel* m_hintLabel;
+    QLabel* m_statusLabel;
     QTextEdit* m_resultTextEdit;
     QTableWidget* m_regionsTable;
-    QLabel* m_statusLabel;
 };

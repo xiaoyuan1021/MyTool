@@ -22,7 +22,7 @@ QString FileManager::selectImageFile(const QString& defaultPath)
         nullptr,  // parent widget
         "请选择图片",
         defaultPath,
-        "Image Files (*.jpg *.png *.tif);;All Files (*)"
+        "Image Files (*.jpg *.png *.tif *.bmp);;All Files (*)"
     );
     return path;
 }
@@ -105,7 +105,7 @@ void FileManager::saveImageFileWithDialog(PipelineManager* pipelineManager)
     }
 
     QString saveName = QFileDialog::getSaveFileName(
-        nullptr, "保存图片", ".", "*.jpg *.png *.tif");
+        nullptr, "保存图片", ".", "*.jpg *.png *.tif *.bmp");
 
     if (saveName.isEmpty()) return;
 

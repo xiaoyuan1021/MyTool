@@ -171,39 +171,23 @@ struct ImageFilterConfig
 struct OcrConfig
 {
     QString language = "chi_sim+eng";    // 识别语言（chi_sim=中文，eng=英文）
-    int minFontSize = 10;                // 最小字体大小（像素）
-    int maxFontSize = 200;               // 最大字体大小（像素）
-    bool enablePreprocess = true;        // 启用预处理（二值化）
-    int binaryThreshold = 128;           // 二值化阈值
-    bool detectOnly = false;             // 仅检测不识别（调试用）
+    int pageMode = 0;                     // 页面分割模式（0=自动，1=单行，2=多行）
 
     bool operator==(const OcrConfig& o) const {
         return language == o.language &&
-               minFontSize == o.minFontSize &&
-               maxFontSize == o.maxFontSize &&
-               enablePreprocess == o.enablePreprocess &&
-               binaryThreshold == o.binaryThreshold &&
-               detectOnly == o.detectOnly;
+               pageMode == o.pageMode;
     }
 
     QJsonObject toJson() const {
         QJsonObject obj;
         obj["language"] = language;
-        obj["minFontSize"] = minFontSize;
-        obj["maxFontSize"] = maxFontSize;
-        obj["enablePreprocess"] = enablePreprocess;
-        obj["binaryThreshold"] = binaryThreshold;
-        obj["detectOnly"] = detectOnly;
+        obj["pageMode"] = pageMode;
         return obj;
     }
 
     void fromJson(const QJsonObject& obj) {
         language = obj["language"].toString("chi_sim+eng");
-        minFontSize = obj["minFontSize"].toInt(10);
-        maxFontSize = obj["maxFontSize"].toInt(200);
-        enablePreprocess = obj["enablePreprocess"].toBool(true);
-        binaryThreshold = obj["binaryThreshold"].toInt(128);
-        detectOnly = obj["detectOnly"].toBool(false);
+        pageMode = obj["pageMode"].toInt(0);
     }
 };
 
@@ -400,17 +384,17 @@ struct PipelineConfig
     static constexpr int STEP_COUNT = static_cast<int>(StepType::Count);
 
     std::array<bool, STEP_COUNT> stepEnabled = {
-        true,   // ColorChannel
-        true,   // Enhance
-        true,   // GrayFilter
-        true,   // ColorFilter
-        true,   // AlgorithmQueue
-        true,   // ShapeFilter
-        true,   // LineDetect
-        true,   // ReferenceLineFilter
-        true,   // BarcodeRecognition
-        true,   // ImageFilter
-        true    // OcrRecognition
+        false,  // ColorChannel
+        false,  // Enhance
+        false,  // GrayFilter
+        false,  // ColorFilter
+        false,  // AlgorithmQueue
+        false,  // ShapeFilter
+        false,  // LineDetect
+        false,  // ReferenceLineFilter
+        false,  // BarcodeRecognition
+        false,  // ImageFilter
+        false   // OcrRecognition
     };
 
     std::array<int, STEP_COUNT> stepOrder = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};

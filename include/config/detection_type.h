@@ -27,7 +27,8 @@ enum class DetectionType {
     VideoSource,     // 视频源
     ObjectDetection,  // 目标检测
     VideoDetection,  // 视频检测（视频源 + 目标检测）
-    Custom           // 自定义Pipeline
+    Custom,          // 自定义Pipeline
+    Ocr              // OCR文字识别
 };
 
 /**
@@ -43,6 +44,7 @@ inline QString detectionTypeToString(DetectionType type) {
         case DetectionType::ObjectDetection: return "目标检测";
         case DetectionType::VideoDetection: return "视频检测";
         case DetectionType::Custom: return "自定义Pipeline";
+        case DetectionType::Ocr: return "OCR识别";
         default: return "未知类型";
     }
 }
@@ -59,6 +61,7 @@ inline DetectionType stringToDetectionType(const QString& str) {
     if (str == "目标检测") return DetectionType::ObjectDetection;
     if (str == "视频检测") return DetectionType::VideoDetection;
     if (str == "自定义Pipeline") return DetectionType::Custom;
+    if (str == "OCR识别") return DetectionType::Ocr;
     return DetectionType::Blob; // 默认值
 }
 

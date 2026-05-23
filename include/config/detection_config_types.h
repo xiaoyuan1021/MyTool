@@ -150,3 +150,24 @@ struct VideoDetectionConfig {
     QJsonObject toJson() const;
     void fromJson(const QJsonObject& obj);
 };
+
+/**
+ * @brief OCR文字识别配置参数
+ */
+struct OcrDetectionConfig {
+    // 图像增强参数
+    EnhanceConfig enhance;
+    
+    // OCR参数
+    QString language = "chi_sim+eng";    // 识别语言
+    int pageMode = 0;                     // 页面分割模式（0=自动，1=单行，2=多行）
+    
+    // 判定参数（可选）
+    bool enableTextFilter = false;        // 是否启用文本过滤
+    QString expectedText = "";            // 期望的文本（用于判定）
+    bool matchExact = false;              // 是否精确匹配
+    
+    // JSON 序列化（定义在 detection_config_types.cpp）
+    QJsonObject toJson() const;
+    void fromJson(const QJsonObject& obj);
+};
