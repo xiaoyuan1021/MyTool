@@ -110,7 +110,7 @@ QList<ImageDetectionTask> AutoDetectionController::buildTaskList()
     QList<ImageDetectionTask> tasks;
 
     QStringList imageIds = m_roiManager->getImageIds();
-    emit logMessage(QString("[buildTaskList] 共有 %1 张图片").arg(imageIds.size()));
+    Logger::instance()->debug(QString("[buildTaskList] 共有 %1 张图片").arg(imageIds.size()));
 
     for (const QString& imageId : imageIds) {
         ImageDetectionTask task;
@@ -121,13 +121,13 @@ QList<ImageDetectionTask> AutoDetectionController::buildTaskList()
         // 获取该图片的ROI配置（关键：使用 getRoiConfigsForImage，不会切换当前图片）
         task.roiConfigs = m_roiManager->getRoiConfigsForImage(imageId);
 
-        emit logMessage(QString("[buildTaskList] 图片 '%1': 路径='%2', ROI配置数=%3")
+        Logger::instance()->debug(QString("[buildTaskList] 图片 '%1': 路径='%2', ROI配置数=%3")
             .arg(task.imageName).arg(task.imagePath).arg(task.roiConfigs.size()));
 
         // 输出每个ROI配置的详细信息
         for (int i = 0; i < task.roiConfigs.size(); ++i) {
             const RoiConfig& cfg = task.roiConfigs[i];
-            emit logMessage(QString("  [ROI %1] id=%2, name=%3, rect=(%4,%5,%6,%7), active=%8, 检测项数=%9")
+            Logger::instance()->debug(QString("  [ROI %1] id=%2, name=%3, rect=(%4,%5,%6,%7), active=%8, 检测项数=%9")
                 .arg(i).arg(cfg.roiId).arg(cfg.roiName)
                 .arg(cfg.roiRect.x()).arg(cfg.roiRect.y())
                 .arg(cfg.roiRect.width()).arg(cfg.roiRect.height())
@@ -137,7 +137,7 @@ QList<ImageDetectionTask> AutoDetectionController::buildTaskList()
             // 输出每个检测项信息
             for (int j = 0; j < cfg.detectionItems.size(); ++j) {
                 const DetectionItem& det = cfg.detectionItems[j];
-                emit logMessage(QString("    [DetItem %1] id=%2, name=%3, type=%4, enabled=%5, configisEmpty=%6")
+                Logger::instance()->debug(QString("    [DetItem %1] id=%2, name=%3, type=%4, enabled=%5, configisEmpty=%6")
                     .arg(j).arg(det.itemId).arg(det.itemName)
                     .arg(detectionTypeToString(det.type))
                     .arg(det.enabled ? "true" : "false")
@@ -146,27 +146,27 @@ QList<ImageDetectionTask> AutoDetectionController::buildTaskList()
 
             // 输出PipelineConfig关键参数
             const PipelineConfig& pc = cfg.pipelineConfig;
-            emit logMessage(QString("    PipelineConfig: brightness=%1, contrast=%2, gamma=%3, sharpen=%4, channel=%5, grayLow=%6, grayHigh=%7")
+            Logger::instance()->debug(QString("    PipelineConfig: brightness=%1, contrast=%2, gamma=%3, sharpen=%4, channel=%5, grayLow=%6, grayHigh=%7")
                 .arg(pc.enhance.brightness).arg(pc.enhance.contrast).arg(pc.enhance.gamma).arg(pc.enhance.sharpen)
                 .arg(static_cast<int>(pc.colorFilter.channel)).arg(pc.colorFilter.grayLow).arg(pc.colorFilter.grayHigh));
         }
 
         // 至少需要图片文件路径
         if (task.imagePath.isEmpty()) {
-            emit logMessage(QString("跳过图片 '%1': 无文件路径").arg(task.imageName));
+            Logger::instance()->debug(QString("跳过图片 '%1': 无文件路径").arg(task.imageName));
             continue;
         }
 
         // 如果没有ROI配置，也跳过（全图检测的场景可以后续扩展）
         if (task.roiConfigs.isEmpty()) {
-            emit logMessage(QString("跳过图片 '%1': 未配置ROI").arg(task.imageName));
+            Logger::instance()->debug(QString("跳过图片 '%1': 未配置ROI").arg(task.imageName));
             continue;
         }
 
         tasks.append(task);
     }
 
-    emit logMessage(QString("[buildTaskList] 构建了 %1 个检测任务").arg(tasks.size()));
+    Logger::instance()->debug(QString("[buildTaskList] 构建了 %1 个检测任务").arg(tasks.size()));
     return tasks;
 }
 
@@ -218,7 +218,7 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
                 return emptyCtx;
             }
 
-            Logger::instance()->info(QString("[检测] 开始处理图片: %1").arg(imagePath));
+            Logger::instance()->debug(QString("[检测] 开始处理图片: %1").arg(imagePath));
 
             // 加载图片（使用 PathUtils 支持中文路径）
             cv::Mat image = PathUtils::readImageFromFile(imagePath, cv::IMREAD_COLOR);
@@ -229,7 +229,7 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
                 emptyCtx.reason = QString("无法加载图片: %1").arg(imagePath);
                 return emptyCtx;
             }
-            Logger::instance()->info(QString("[检测] 图片加载成功: %1x%2").arg(image.cols).arg(image.rows));
+            Logger::instance()->debug(QString("[检测] 图片加载成功: %1x%2").arg(image.cols).arg(image.rows));
 
             // 保存PipelineManager当前全局配置（执行完毕后恢复）
             PipelineConfig savedGlobalConfig = pipelinePtr->getConfigSnapshot();
@@ -237,10 +237,10 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
             bool allPassed = true;
             QString failReason;
 
-            Logger::instance()->info(QString("[检测] ROI配置数量: %1").arg(roiConfigs.size()));
+            Logger::instance()->debug(QString("[检测] ROI配置数量: %1").arg(roiConfigs.size()));
 
             for (const RoiConfig& roiConfig : roiConfigs) {
-                Logger::instance()->info(QString("[检测] 处理ROI: name=%1, active=%2, rect=(%3,%4,%5,%6), 检测项数=%7")
+                Logger::instance()->debug(QString("[检测] 处理ROI: name=%1, active=%2, rect=(%3,%4,%5,%6), 检测项数=%7")
                     .arg(roiConfig.roiName)
                     .arg(roiConfig.isActive ? "true" : "false")
                     .arg(roiConfig.roiRect.x()).arg(roiConfig.roiRect.y())
@@ -248,7 +248,7 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
                     .arg(roiConfig.detectionItems.size()));
 
                 if (!roiConfig.isActive) {
-                    Logger::instance()->info(QString("[检测] ROI '%1' 未激活，跳过").arg(roiConfig.roiName));
+                    Logger::instance()->debug(QString("[检测] ROI '%1' 未激活，跳过").arg(roiConfig.roiName));
                     continue;
                 }
 
@@ -258,19 +258,19 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
                 // 裁剪ROI区域
                 cv::Rect r = ImageUtils::mapRoiToCvRect(rect, image.cols, image.rows);
                 if (!r.empty()) {
-                    Logger::instance()->info(QString("[检测] ROI裁剪: x=%1, y=%2, w=%3, h=%4, 图片尺寸=%5x%6")
+                    Logger::instance()->debug(QString("[检测] ROI裁剪: x=%1, y=%2, w=%3, h=%4, 图片尺寸=%5x%6")
                         .arg(r.x).arg(r.y).arg(r.width).arg(r.height).arg(image.cols).arg(image.rows));
                     roiImage = image(r).clone();
                 } else {
-                    Logger::instance()->info("[检测] 无ROI区域或尺寸无效，使用全图");
+                    Logger::instance()->debug("[检测] 无ROI区域或尺寸无效，使用全图");
                     roiImage = image.clone();
                 }
 
-                Logger::instance()->info(QString("[检测] ROI图像尺寸: %1x%2").arg(roiImage.cols).arg(roiImage.rows));
+                Logger::instance()->debug(QString("[检测] ROI图像尺寸: %1x%2").arg(roiImage.cols).arg(roiImage.rows));
 
                 // 【Bug1修复】应用该ROI专属的Pipeline配置，通过execute参数传递
 
-                Logger::instance()->info(QString("[检测] 应用PipelineConfig: brightness=%1, contrast=%2, gamma=%3, sharpen=%4, channel=%5")
+                Logger::instance()->debug(QString("[检测] 应用PipelineConfig: brightness=%1, contrast=%2, gamma=%3, sharpen=%4, channel=%5")
                     .arg(roiConfig.pipelineConfig.enhance.brightness)
                     .arg(roiConfig.pipelineConfig.enhance.contrast)
                     .arg(roiConfig.pipelineConfig.enhance.gamma)
@@ -278,9 +278,9 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
                     .arg(static_cast<int>(roiConfig.pipelineConfig.colorFilter.channel)));
 
                 // 执行Pipeline（传入ROI专属配置，线程安全）
-                Logger::instance()->info("[检测] 开始执行Pipeline...");
+                Logger::instance()->debug("[检测] 开始执行Pipeline...");
                 PipelineContext ctx = pipelinePtr->execute(roiImage, roiConfig.pipelineConfig);
-                Logger::instance()->info(QString("[检测] Pipeline执行完成: currentRegions=%1, barcodeResults=%2, matchedLines=%3, totalLines=%4")
+                Logger::instance()->debug(QString("[检测] Pipeline执行完成: currentRegions=%1, barcodeResults=%2, matchedLines=%3, totalLines=%4")
                     .arg(ctx.currentRegions)
                     .arg(ctx.barcodeResults.size())
                     .arg(ctx.matchedLineCount)
@@ -292,11 +292,11 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
 
                 for (const DetectionItem& detItem : roiConfig.detectionItems) {
                     if (!detItem.enabled) {
-                        Logger::instance()->info(QString("[检测] 检测项 '%1' 未启用，跳过").arg(detItem.itemName));
+                        Logger::instance()->debug(QString("[检测] 检测项 '%1' 未启用，跳过").arg(detItem.itemName));
                         continue;
                     }
 
-                    Logger::instance()->info(QString("[检测] 评估检测项: name=%1, type=%2")
+                    Logger::instance()->debug(QString("[检测] 评估检测项: name=%1, type=%2")
                         .arg(detItem.itemName).arg(detectionTypeToString(detItem.type)));
 
                     if (detItem.type == DetectionType::Blob) {
@@ -307,7 +307,7 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
                         int minCount = blobConfig.minBlobCount;
                         int maxCount = blobConfig.maxBlobCount;
 
-                        Logger::instance()->info(QString("[检测] Blob判定: currentCount=%1, min=%2, max=%3")
+                        Logger::instance()->debug(QString("[检测] Blob判定: currentCount=%1, min=%2, max=%3")
                             .arg(currentCount).arg(minCount).arg(maxCount));
 
                         if (currentCount < minCount || currentCount > maxCount) {
@@ -316,14 +316,14 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
                                 .arg(currentCount).arg(minCount).arg(maxCount);
                             Logger::instance()->warning(QString("[检测] Blob判定: NG! %1").arg(roiFailReason));
                         } else {
-                            Logger::instance()->info("[检测] Blob判定: OK");
+                            Logger::instance()->debug("[检测] Blob判定: OK");
                         }
                     }
                     else if (detItem.type == DetectionType::Barcode) {
                         BarcodeRecognitionConfig barcodeConfig;
                         barcodeConfig.fromJson(detItem.config);
 
-                        Logger::instance()->info(QString("[检测] 条码判定: barcodeResults数=%1, minConfidence=%2")
+                        Logger::instance()->debug(QString("[检测] 条码判定: barcodeResults数=%1, minConfidence=%2")
                             .arg(ctx.barcodeResults.size()).arg(barcodeConfig.minConfidence));
 
                         if (ctx.barcodeResults.isEmpty()) {
@@ -332,20 +332,20 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
                             Logger::instance()->warning("[检测] 条码判定: NG! 未检测到条码");
                         } else {
                             // 只要检测到条码就算OK，不校验质量
-                            Logger::instance()->info(QString("[检测] 条码结果: 共%1个")
+                            Logger::instance()->debug(QString("[检测] 条码结果: 共%1个")
                                 .arg(ctx.barcodeResults.size()));
                             for (const BarcodeResult& br : ctx.barcodeResults) {
-                                Logger::instance()->info(QString("  -> type=%1, data=%2, quality=%3")
+                                Logger::instance()->debug(QString("  -> type=%1, data=%2, quality=%3")
                                     .arg(br.type).arg(br.data).arg(br.quality));
                             }
-                            Logger::instance()->info("[检测] 条码判定: OK");
+                            Logger::instance()->debug("[检测] 条码判定: OK");
                         }
                     }
                     else if (detItem.type == DetectionType::Line) {
                         LineDetectionConfig lineConfig;
                         lineConfig.fromJson(detItem.config);
 
-                        Logger::instance()->info(QString("[检测] 直线判定: matchedLineCount=%1, totalLineCount=%2")
+                        Logger::instance()->debug(QString("[检测] 直线判定: matchedLineCount=%1, totalLineCount=%2")
                             .arg(ctx.matchedLineCount).arg(ctx.totalLineCount));
 
                         if (ctx.matchedLineCount == 0 && ctx.totalLineCount == 0) {
@@ -353,12 +353,12 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
                             roiFailReason += "未检测到直线";
                             Logger::instance()->warning("[检测] 直线判定: NG! 未检测到直线");
                         } else {
-                            Logger::instance()->info("[检测] 直线判定: OK");
+                            Logger::instance()->debug("[检测] 直线判定: OK");
                         }
                     }
                 }
 
-                Logger::instance()->info(QString("[检测] ROI '%1' 最终结果: %2")
+                Logger::instance()->debug(QString("[检测] ROI '%1' 最终结果: %2")
                     .arg(roiConfig.roiName).arg(roiPassed ? "PASS" : "FAIL"));
 
                 if (!roiPassed) {
@@ -372,7 +372,7 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
 
             // 不再需要手动恢复配置，execute内部已处理
 
-            Logger::instance()->info(QString("[检测] 整体结果: %1, reason=%2")
+            Logger::instance()->debug(QString("[检测] 整体结果: %1, reason=%2")
                 .arg(allPassed ? "PASS" : "FAIL").arg(failReason.isEmpty() ? "无" : failReason));
 
             PipelineContext resultCtx;
