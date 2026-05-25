@@ -301,15 +301,19 @@ void MainWindow::setupControllers()
 
 void MainWindow::setupControllerConnections()
 {
-    // 全局信号连接（统一走防抖 + 脏标记）
+    // ROI变化：设置为执行模式并刷新
     connect(m_roiUiController, &RoiUiController::roiChanged, this, [this]() { 
         m_pipelineMode = PipelineMode::Execute;
         requestRefresh(); 
     });
+    
+    // 配置应用：设置为执行模式并刷新
     connect(m_configController, &ConfigController::configApplied, this, [this]() { 
         m_pipelineMode = PipelineMode::Execute;
         requestRefresh(); 
     });
+    
+    // 方案加载：设置为执行模式并刷新
     connect(m_profileController, &ProfileController::requestRefresh, this, [this]() {
         m_pipelineMode = PipelineMode::Execute;
         requestRefresh();
@@ -323,15 +327,13 @@ void MainWindow::setupControllerConnections()
                 connectable->connectSignals(
                     m_pipelineManager, &m_roiManager, m_view, m_roiUiController,
                     [this]() { 
-                        // 配置变化：只更新预览，不执行pipeline
-                        if (m_pipelineMode == PipelineMode::Execute) {
-                            requestRefresh();
-                        }
+                        // 配置参数变化：始终执行pipeline以实时预览
+                        requestRefresh();
                     },
                     [this]() { 
-                        // 执行请求：用户主动触发
+                        // 用户主动请求执行：切换到执行模式
                         m_pipelineMode = PipelineMode::Execute;
-                        processAndDisplay(); 
+                        requestRefresh();
                     }
                 );
             } else {

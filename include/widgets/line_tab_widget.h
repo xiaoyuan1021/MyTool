@@ -26,12 +26,12 @@ public:
 
     void connectSignals(PipelineManager* pm, RoiManager* rm,
                         ImageView* view, RoiUiController* roiCtrl,
-                        std::function<void()> requestRefresh,
-                        std::function<void()> processAndDisplay) override;
+                        std::function<void()> onConfigChanged,
+                        std::function<void()> onExecuteRequested) override;
 
 private:
     PipelineManager* m_pipelineManager;
-    std::function<void()> m_requestRefresh;
+    std::function<void()> m_onConfigChanged;
     Ui::LineTabForm* m_ui;
 
     // 复用 LineDetectConfig 类型定义（独立实例，不影响其他 Config）

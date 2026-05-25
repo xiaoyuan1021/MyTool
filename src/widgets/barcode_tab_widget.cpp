@@ -93,6 +93,8 @@ void BarcodeTabWidget::updatePipelineConfig()
     PipelineConfig config = m_pipelineManager->getConfigSnapshot();
     config.barcode = getBarcodeConfig();
     m_pipelineManager->setConfig(config);
+
+    emit barcodeConfigChanged();
     
     // 如果禁用了条码识别，清空结果
     if (!config.barcode.enableBarcode)
@@ -185,12 +187,14 @@ void BarcodeTabWidget::handleApply()
 
 void BarcodeTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
                                       ImageView* view, RoiUiController* roiCtrl,
-                                      std::function<void()> requestRefresh,
-                                      std::function<void()> processAndDisplay)
+                                      std::function<void()> onConfigChanged,
+                                      std::function<void()> onExecuteRequested)
 {
-    Q_UNUSED(pm); Q_UNUSED(rm); Q_UNUSED(view); Q_UNUSED(roiCtrl); Q_UNUSED(processAndDisplay);
+    Q_UNUSED(pm); Q_UNUSED(rm); Q_UNUSED(view); Q_UNUSED(roiCtrl);
+    connect(this, &BarcodeTabWidget::barcodeConfigChanged,
+            this, onConfigChanged);
     connect(this, &BarcodeTabWidget::requestApplyBarcodeSettings,
-            this, [requestRefresh]() { requestRefresh(); });
+            this, onExecuteRequested);
 }
 
 // ========== IConfigurableTab 接口实现 ==========

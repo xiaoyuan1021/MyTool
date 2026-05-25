@@ -30,10 +30,12 @@ public:
 // ISignalConnectable — Tab Widget 信号连接接口
 // ============================================================
 
-using TabDebounceFunc = std::function<void()>;
-
 /**
  * @brief 每个需要与外部模块建立信号连接的 Tab Widget 都应实现此接口。
+ * 
+ * 回调说明：
+ * - onConfigChanged: 配置参数变化时调用，用于更新预览（不执行pipeline）
+ * - onExecuteRequested: 用户主动请求执行时调用
  */
 class ISignalConnectable
 {
@@ -41,8 +43,8 @@ public:
     virtual ~ISignalConnectable() = default;
     virtual void connectSignals(PipelineManager* pm, RoiManager* rm,
                                 ImageView* view, RoiUiController* roiCtrl,
-                                std::function<void()> requestRefresh,
-                                std::function<void()> processAndDisplay) = 0;
+                                std::function<void()> onConfigChanged,
+                                std::function<void()> onExecuteRequested) = 0;
 };
 
 // ============================================================

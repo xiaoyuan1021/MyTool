@@ -43,8 +43,8 @@ public:
 
     void connectSignals(PipelineManager* pm, RoiManager* rm,
                         ImageView* view, RoiUiController* roiCtrl,
-                        std::function<void()> requestRefresh,
-                        std::function<void()> processAndDisplay) override;
+                        std::function<void()> onConfigChanged,
+                        std::function<void()> onExecuteRequested) override;
 
 private:
     PipelineManager* m_pipelineManager;
@@ -61,6 +61,8 @@ private slots:
     void handleApply();
 
 signals:
+    // 条码配置发生变化
+    void barcodeConfigChanged();
     // 请求应用条码识别设置
     void requestApplyBarcodeSettings();
 };

@@ -244,14 +244,14 @@ void EnhanceTabWidget::applyStateQuiet(const EnhancementState &state)
 
 void EnhanceTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
                                       ImageView* view, RoiUiController* roiCtrl,
-                                      std::function<void()> requestRefresh,
-                                      std::function<void()> processAndDisplay)
+                                      std::function<void()> onConfigChanged,
+                                      std::function<void()> onExecuteRequested)
 {
-    Q_UNUSED(pm); Q_UNUSED(rm); Q_UNUSED(view); Q_UNUSED(processAndDisplay);
-    connect(this, &EnhanceTabWidget::processRequested,
-            this, [requestRefresh]() { requestRefresh(); });
+    Q_UNUSED(pm); Q_UNUSED(rm); Q_UNUSED(view);
     connect(this, &EnhanceTabWidget::enhanceConfigChanged,
-            this, [roiCtrl]() { roiCtrl->saveCurrentRoiPipelineConfig(); });
+            this, [onConfigChanged]() { onConfigChanged(); });
+    connect(this, &EnhanceTabWidget::processRequested,
+            this, [onConfigChanged]() { onConfigChanged(); });
 }
 
 // ========== IConfigurableTab 接口实现 ==========

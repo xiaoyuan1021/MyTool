@@ -260,10 +260,10 @@ void ObjectDetectionTabWidget::updateDetectionResults(const std::vector<Detectio
 
 void ObjectDetectionTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
                                               ImageView* view, RoiUiController* roiCtrl,
-                                              std::function<void()> requestRefresh,
-                                              std::function<void()> processAndDisplay)
+                                              std::function<void()> onConfigChanged,
+                                              std::function<void()> onExecuteRequested)
 {
-    Q_UNUSED(pm); Q_UNUSED(rm); Q_UNUSED(view); Q_UNUSED(roiCtrl); Q_UNUSED(processAndDisplay);
+    Q_UNUSED(pm); Q_UNUSED(rm); Q_UNUSED(view); Q_UNUSED(roiCtrl); Q_UNUSED(onExecuteRequested);
     connect(this, &ObjectDetectionTabWidget::detectionConfigChanged,
-            this, [requestRefresh]() { requestRefresh(); });
+            this, [onConfigChanged]() { onConfigChanged(); });
 }

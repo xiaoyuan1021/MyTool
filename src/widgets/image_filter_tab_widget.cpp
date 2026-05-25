@@ -320,19 +320,19 @@ void ImageFilterTabWidget::loadFromConfig(const PipelineConfig& config)
 
 void ImageFilterTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
                                           ImageView* view, RoiUiController* roiCtrl,
-                                          std::function<void()> requestRefresh,
-                                          std::function<void()> processAndDisplay)
+                                          std::function<void()> onConfigChanged,
+                                          std::function<void()> onExecuteRequested)
 {
     Q_UNUSED(rm);
     Q_UNUSED(view);
     Q_UNUSED(roiCtrl);
 
-    connect(this, &ImageFilterTabWidget::processRequested, this, [processAndDisplay]() {
-        if (processAndDisplay) processAndDisplay();
+    connect(this, &ImageFilterTabWidget::processRequested, this, [onExecuteRequested]() {
+        if (onExecuteRequested) onExecuteRequested();
     });
 
-    connect(this, &ImageFilterTabWidget::filterConfigChanged, this, [requestRefresh]() {
-        if (requestRefresh) requestRefresh();
+    connect(this, &ImageFilterTabWidget::filterConfigChanged, this, [onConfigChanged]() {
+        if (onConfigChanged) onConfigChanged();
     });
 }
 

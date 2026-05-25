@@ -197,8 +197,8 @@ void OcrTabWidget::loadFromConfig(const PipelineConfig& config)
 
 void OcrTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
                                   ImageView* view, RoiUiController* roiCtrl,
-                                  std::function<void()> requestRefresh,
-                                  std::function<void()> processAndDisplay)
+                                  std::function<void()> onConfigChanged,
+                                  std::function<void()> onExecuteRequested)
 {
     Q_UNUSED(pm);
     Q_UNUSED(view);
@@ -209,12 +209,12 @@ void OcrTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
         connect(rm, &RoiManager::currentImageChanged, this, &OcrTabWidget::clearResults);
     }
 
-    connect(this, &OcrTabWidget::processRequested, this, [processAndDisplay]() {
-        if (processAndDisplay) processAndDisplay();
+    connect(this, &OcrTabWidget::processRequested, this, [onExecuteRequested]() {
+        if (onExecuteRequested) onExecuteRequested();
     });
 
-    connect(this, &OcrTabWidget::ocrConfigChanged, this, [requestRefresh]() {
-        if (requestRefresh) requestRefresh();
+    connect(this, &OcrTabWidget::ocrConfigChanged, this, [onConfigChanged]() {
+        if (onConfigChanged) onConfigChanged();
     });
 }
 

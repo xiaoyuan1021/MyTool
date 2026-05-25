@@ -117,8 +117,8 @@ void LineDetectTabWidget::onLineThresholdChanged(int value)
         m_pipelineManager->setConfig(cfg);
     }
     if (m_pipelineManager->getConfigSnapshot().lineDetect.enabled) {
-        if (m_requestRefresh) {
-            m_requestRefresh();
+        if (m_onConfigChanged) {
+            m_onConfigChanged();
         }
     }
 }
@@ -132,8 +132,8 @@ void LineDetectTabWidget::onLineMinLengthChanged(int value)
         m_pipelineManager->setConfig(cfg);
     }
     if (m_pipelineManager->getConfigSnapshot().lineDetect.enabled) {
-        if (m_requestRefresh) {
-            m_requestRefresh();
+        if (m_onConfigChanged) {
+            m_onConfigChanged();
         }
     }
 }
@@ -147,8 +147,8 @@ void LineDetectTabWidget::onLineMaxGapChanged(int value)
         m_pipelineManager->setConfig(cfg);
     }
     if (m_pipelineManager->getConfigSnapshot().lineDetect.enabled) {
-        if (m_requestRefresh) {
-            m_requestRefresh();
+        if (m_onConfigChanged) {
+            m_onConfigChanged();
         }
     }
 }
@@ -184,9 +184,9 @@ void LineDetectTabWidget::handleApply()
     // 设置显示模式为LineDetect
     m_pipelineManager->setDisplayMode(DisplayConfig::Mode::LineDetect);
 
-    if (m_requestRefresh)
+    if (m_onConfigChanged)
     {
-        m_requestRefresh();
+        m_onConfigChanged();
     }
 }
 
@@ -237,8 +237,8 @@ void LineDetectTabWidget::onReferenceLineEnabledChanged(bool enabled)
 
     updateReferenceLineStatus();
 
-    if (m_requestRefresh) {
-        m_requestRefresh();
+    if (m_onConfigChanged) {
+        m_onConfigChanged();
     }
 }
 
@@ -269,8 +269,8 @@ void LineDetectTabWidget::onClearReferenceLineClicked()
     // 发射信号请求清除绘制
     emit requestClearReferenceLine();
 
-    if (m_requestRefresh) {
-        m_requestRefresh();
+    if (m_onConfigChanged) {
+        m_onConfigChanged();
     }
 }
 
@@ -287,8 +287,8 @@ void LineDetectTabWidget::onAngleThresholdChanged(double value)
     {
         PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
         if (cfg.lineDetect.enableReferenceLineMatch && cfg.lineDetect.referenceLineValid) {
-            if (m_requestRefresh) {
-                m_requestRefresh();
+            if (m_onConfigChanged) {
+                m_onConfigChanged();
             }
         }
     }
@@ -307,8 +307,8 @@ void LineDetectTabWidget::onDistanceThresholdChanged(double value)
     {
         PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
         if (cfg.lineDetect.enableReferenceLineMatch && cfg.lineDetect.referenceLineValid) {
-            if (m_requestRefresh) {
-                m_requestRefresh();
+            if (m_onConfigChanged) {
+                m_onConfigChanged();
             }
         }
     }
@@ -327,8 +327,8 @@ void LineDetectTabWidget::onSearchRegionWidthChanged(int value)
     {
         PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
         if (cfg.lineDetect.enableReferenceLineMatch && cfg.lineDetect.referenceLineValid) {
-            if (m_requestRefresh) {
-                m_requestRefresh();
+            if (m_onConfigChanged) {
+                m_onConfigChanged();
             }
         }
     }
@@ -358,18 +358,18 @@ void LineDetectTabWidget::updateReferenceLineStatus()
 
 void LineDetectTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
                                          ImageView* view, RoiUiController* roiCtrl,
-                                         std::function<void()> requestRefresh,
-                                         std::function<void()> processAndDisplay)
+                                          std::function<void()> onConfigChanged,
+                                          std::function<void()> onExecuteRequested)
 {
     Q_UNUSED(pm); Q_UNUSED(rm); Q_UNUSED(roiCtrl);
-    Q_UNUSED(processAndDisplay);
-    m_requestRefresh = requestRefresh;
+    Q_UNUSED(onExecuteRequested);
+    m_onConfigChanged = onConfigChanged;
     connect(this, &LineDetectTabWidget::requestDrawReferenceLine,
             view, &ImageView::startReferenceLineDrawing);
     connect(this, &LineDetectTabWidget::requestClearReferenceLine,
             view, [view, this]() {
                 view->clearReferenceLine();
-                if (m_requestRefresh) m_requestRefresh();
+                if (m_onConfigChanged) m_onConfigChanged();
             });
     connect(view, &ImageView::referenceLineDrawn,
             this, &LineDetectTabWidget::setReferenceLine);
@@ -392,8 +392,8 @@ void LineDetectTabWidget::setReferenceLine(const cv::Point2f& start, const cv::P
     // 自动启用参考线匹配
     m_ui->chk_enableReferenceLine->setChecked(true);
 
-    if (m_requestRefresh) {
-        m_requestRefresh();
+    if (m_onConfigChanged) {
+        m_onConfigChanged();
     }
 }
 
