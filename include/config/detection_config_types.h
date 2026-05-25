@@ -161,6 +161,9 @@ struct OcrDetectionConfig {
     // OCR参数
     QString language = "chi_sim+eng";    // 识别语言
     int pageMode = 0;                     // 页面分割模式（0=自动，1=单行，2=多行）
+    int dpi = 0;                          // 图像分辨率（0=自动估计）
+    double confidenceThreshold = 0.3;     // 最小置信度阈值 (0~1)
+    QString whitelist = "";               // 字符白名单（空=不过滤）
     
     // 判定参数（可选）
     bool enableTextFilter = false;        // 是否启用文本过滤

@@ -4,14 +4,24 @@
 #include "data/ocr_region.h"
 #include <QString>
 #include <QVector>
+#include <memory>
 
-/**
- * @brief OCR文字识别步骤
- *
- * 基于Tesseract OCR引擎，识别图像中的文字
- */
+namespace tesseract {
+class TessBaseAPI;
+}
+
 class StepOcrRecognition : public IPipelineStep
 {
 public:
+    StepOcrRecognition();
+    ~StepOcrRecognition() override;
     void run(PipelineContext& ctx) override;
+
+private:
+    static cv::Mat deskew(const cv::Mat& gray, cv::Mat& rotMatrixOut);
+    static cv::Mat enhanceContrast(const cv::Mat& gray);
+    void initTesseract(const QString& language);
+
+    std::unique_ptr<tesseract::TessBaseAPI> m_api;
+    QString m_cachedLanguage;
 };

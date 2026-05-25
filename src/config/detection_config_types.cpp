@@ -177,6 +177,9 @@ QJsonObject OcrDetectionConfig::toJson() const {
     obj["sharpen"] = enhance.sharpen;
     obj["language"] = language;
     obj["pageMode"] = pageMode;
+    obj["dpi"] = dpi;
+    obj["confidenceThreshold"] = confidenceThreshold;
+    obj["whitelist"] = whitelist;
     obj["enableTextFilter"] = enableTextFilter;
     obj["expectedText"] = expectedText;
     obj["matchExact"] = matchExact;
@@ -190,6 +193,9 @@ void OcrDetectionConfig::fromJson(const QJsonObject& obj) {
     enhance.sharpen = obj["sharpen"].toInt(100);
     language = obj["language"].toString("chi_sim+eng");
     pageMode = obj["pageMode"].toInt(0);
+    dpi = obj["dpi"].toInt(0);
+    confidenceThreshold = obj["confidenceThreshold"].toDouble(0.3);
+    whitelist = obj["whitelist"].toString("");
     enableTextFilter = obj["enableTextFilter"].toBool(false);
     expectedText = obj["expectedText"].toString();
     matchExact = obj["matchExact"].toBool(false);
