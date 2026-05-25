@@ -220,6 +220,14 @@ void OcrTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
 
 void OcrTabWidget::updateFromPipeline(const PipelineContext& ctx)
 {
+    // 如果是清空操作（空的ocrText），直接执行
+    if (ctx.ocrText.isEmpty() && ctx.ocrRegions.isEmpty()) {
+        m_resultTextEdit->clear();
+        updateRegionsTable(QVector<OcrRegion>());
+        m_statusLabel->setText("状态：未识别");
+        return;
+    }
+    
     // 非手动触发时忽略自动Pipeline结果，防止切换图片后Tab被自动更新
     if (!m_manualOcrTrigger) return;
     m_manualOcrTrigger = false;

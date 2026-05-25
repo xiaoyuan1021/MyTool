@@ -44,6 +44,10 @@ struct PipelineContext
     // OCR识别结果
     QString ocrText;                    // 识别的完整文本
     QVector<OcrRegion> ocrRegions;      // 识别的区域列表
+    
+    // 步骤间显式数据流字段（用于解耦合）
+    cv::Mat filteredImage;      // 滤波去噪输出（StepImageFilter -> 后续步骤）
+    cv::Mat ocrInputImage;      // OCR输入图像（StepOcrPreprocess -> StepOcrRecognition）
 };
 
 class IPipelineStep
@@ -60,8 +64,31 @@ class Pipeline
 public:
     Pipeline();
     
+    // ========== 步骤管理 ==========
+    
     // 添加Pipeline步骤
     void add(std::unique_ptr<IPipelineStep> step);
+    
+    // 移除指定索引的步骤
+    bool remove(int index);
+    
+    // 清空所有步骤
+    void clear();
+    
+    // 获取步骤数量
+    size_t size() const;
+    
+    // 检查是否为空
+    bool empty() const;
+    
+    // 交换两个步骤的位置
+    bool swap(int index1, int index2);
+    
+    // 获取指定索引的步骤（const版本）
+    const IPipelineStep* getStep(int index) const;
+    
+    // 获取指定索引的步骤（非const版本）
+    IPipelineStep* getStep(int index);
     
     // 执行所有步骤
     void run(PipelineContext& ctx);

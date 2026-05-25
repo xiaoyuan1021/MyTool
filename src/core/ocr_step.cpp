@@ -75,7 +75,15 @@ void StepOcrRecognition::run(PipelineContext& ctx)
 
     const auto& cfg = ctx.config->ocr;
 
-    cv::Mat src = ctx.enhanced.empty() ? ctx.srcBgr : ctx.enhanced;
+    // 优先使用OCR专用输入，其次使用滤波结果，最后使用增强结果
+    cv::Mat src;
+    if (!ctx.ocrInputImage.empty()) {
+        src = ctx.ocrInputImage;
+    } else if (!ctx.filteredImage.empty()) {
+        src = ctx.filteredImage;
+    } else {
+        src = ctx.enhanced.empty() ? ctx.srcBgr : ctx.enhanced;
+    }
     if (src.empty()) return;
 
     cv::Mat gray;

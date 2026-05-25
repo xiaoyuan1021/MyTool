@@ -155,9 +155,30 @@ void MainWindow::setupConnections()
     connect(m_fileManager, &FileManager::imageLoaded, this, [this](const cv::Mat& img, const QString& filePath) {
         m_roiManager.setFullImage(img, filePath);
         m_view->clearRoi();
+        
+        // 清空Pipeline结果，防止旧结果污染新图片显示
+        m_pipelineManager->clearLastResult();
         m_pipelineManager->resetPipeline();
+        
+        // 清空画布，显示新原图
         showImage(img);
+        
+        // 清空所有已创建Tab页的结果显示
+        for (auto it = m_tabManager->allTabs().constBegin();
+             it != m_tabManager->allTabs().constEnd(); ++it) {
+            if (auto* updatable = dynamic_cast<IResultUpdatable*>(it.value())) {
+                PipelineContext emptyCtx;
+                updatable->updateFromPipeline(emptyCtx);
+            }
+        }
+        
         Logger::instance()->info("图像加载成功!");
+        
+        // 触发一次pipeline执行，更新所有Tab的显示
+        // （新图片可能还没有执行过pipeline，需要执行一次来初始化显示）
+        QTimer::singleShot(100, this, [this]() {
+            requestRefresh();
+        });
     });
     connect(m_fileManager, &FileManager::imageSaved, this, [](const QString& path) {
         Logger::instance()->info(QString("图像保存成功: %1").arg(path));
@@ -462,6 +483,22 @@ void MainWindow::setupResultHandler()
     connect(m_pipelineManager->scheduler(), &PipelineScheduler::finished,
             this, [this](const PipelineResult&) {
         m_pipelineMode = PipelineMode::Config;
+    });
+
+    // 执行状态变化时更新UI
+    connect(m_pipelineManager->scheduler(), &PipelineScheduler::processingChanged,
+            this, [this](bool processing) {
+        if (processing) {
+            ui->statusbar->showMessage("正在处理...");
+        }
+    });
+
+    // 队列状态变化时更新UI
+    connect(m_pipelineManager->scheduler(), &PipelineScheduler::queueChanged,
+            this, [this](int pendingCount) {
+        if (pendingCount > 0) {
+            qDebug() << "[MainWindow] 队列中有" << pendingCount << "个待处理请求";
+        }
     });
 
     connect(m_pipelineResultHandler, &PipelineResultHandler::statusMessage,

@@ -70,6 +70,8 @@ void StepImageFilter::run(PipelineContext& ctx)
     }
 
     if (!result.empty()) {
-        ctx.enhanced = result;  // 将滤波结果传递给后续步骤
+        ctx.filteredImage = result;  // 将滤波结果传递给后续步骤
+        // 同时更新enhanced字段以保持向后兼容性
+        ctx.enhanced = result;
     }
 }

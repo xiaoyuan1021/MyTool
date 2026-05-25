@@ -158,29 +158,30 @@ void BarcodeTabWidget::updateStatus(const QString& status)
 void BarcodeTabWidget::onEnableBarcodeChanged(bool enabled)
 {
     m_ui->groupBox_settings->setEnabled(enabled);
-    updatePipelineConfig();
+    // 只更新本地配置，不执行pipeline，等待用户点击"应用"按钮
 }
 
 void BarcodeTabWidget::onCodeTypeChanged(int index)
 {
     Q_UNUSED(index);
-    updatePipelineConfig();
+    // 只更新本地配置，不执行pipeline
 }
 
 void BarcodeTabWidget::onMaxNumChanged(int value)
 {
     Q_UNUSED(value);
-    updatePipelineConfig();
+    // 只更新本地配置，不执行pipeline
 }
 
 void BarcodeTabWidget::onReturnQualityChanged(bool checked)
 {
     Q_UNUSED(checked);
-    updatePipelineConfig();
+    // 只更新本地配置，不执行pipeline
 }
 
 void BarcodeTabWidget::handleApply()
 {
+    // 用户点击"应用"按钮时才更新配置并执行pipeline
     updatePipelineConfig();
     emit requestApplyBarcodeSettings();
 }
@@ -191,8 +192,8 @@ void BarcodeTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
                                       std::function<void()> onExecuteRequested)
 {
     Q_UNUSED(pm); Q_UNUSED(rm); Q_UNUSED(view); Q_UNUSED(roiCtrl);
-    connect(this, &BarcodeTabWidget::barcodeConfigChanged,
-            this, onConfigChanged);
+    Q_UNUSED(onConfigChanged);
+    // 条码识别需要用户点击"应用"按钮才执行，不使用自动预览
     connect(this, &BarcodeTabWidget::requestApplyBarcodeSettings,
             this, onExecuteRequested);
 }
