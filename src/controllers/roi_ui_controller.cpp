@@ -83,9 +83,12 @@ void RoiUiController::setupTreeView(QTreeWidget* treeView)
         // 刷新列表
         refreshRoiTreeView();
 
-        // 显示ROI裁剪区域并铺满画布（不触发Pipeline检测）
+        // 显示ROI裁剪区域并铺满画布
         emit roiDisplayChanged(m_currentSelectedRoiId);
         m_view->resetZoom();
+
+        // 触发Pipeline执行，刷新所有Tab页面显示新ROI的处理结果
+        emit roiChanged();
 
         Logger::instance()->info(QString("已添加ROI: %1").arg(roiName));
     });
@@ -173,6 +176,9 @@ QString RoiUiController::addFullImageRoi()
 
     emit roiDisplayChanged(m_currentSelectedRoiId);
     m_view->resetZoom();
+
+    // 触发Pipeline执行，刷新所有Tab页面显示新ROI的处理结果
+    emit roiChanged();
 
     if (m_statusBar) {
         m_statusBar->showMessage(QString("已创建整图ROI: %1 (w=%2 h=%3)")
@@ -405,12 +411,13 @@ void RoiUiController::handleRoiSelection(const QString& roiId)
         m_currentSelectedRoiId = roiId;
     }
 
-    // 激活ROI在图像视图中（纯显示切换，不触发Pipeline处理）
+    // 激活ROI在图像视图中并触发Pipeline刷新Tab页面
     RoiConfig* roi = m_roiManager.getRoiConfig(m_currentSelectedRoiId);
     if (roi) {
         m_view->clearRoi();
         m_roiManager.setActiveRoi(roi->roiId);
         emit roiDisplayChanged(m_currentSelectedRoiId);
+        emit roiChanged();
         Logger::instance()->info(QString("已选中ROI: %1 (通过ID激活)").arg(roi->roiName));
     }
 }
@@ -610,14 +617,14 @@ void RoiUiController::syncRoiConfigsToWidget()
 void RoiUiController::setupDisplayConnections(TabManager* tabManager)
 {
     // 纯显示切换：切换到ROI区域图像，无需Pipeline重新处理
-    // 使用 setImageKeepZoom 保持当前缩放比例，避免切换时缩放重置
+    // 使用 setImage 自适应缩放铺满画布
     connect(this, &RoiUiController::roiDisplayChanged,
             this, [this](const QString& roiId) {
         Q_UNUSED(roiId);
         cv::Mat currentImage = m_roiManager.getCurrentImage();
         if (!currentImage.empty()) {
             QImage qimg = ImageUtils::matToQImage(currentImage);
-            m_view->setImageKeepZoom(qimg);
+            m_view->setImage(qimg);
             if (m_statusBar) m_statusBar->showMessage("已切换显示", 2000);
         }
     });

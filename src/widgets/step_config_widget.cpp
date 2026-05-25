@@ -150,7 +150,7 @@ bool StepConfigWidget::eventFilter(QObject* obj, QEvent* event)
             if (!dp->mimeData()->hasFormat(kMimeType)) break;
 
             int draggedEntry = dp->mimeData()->data(kMimeType).toInt();
-            int targetPos = dropTargetIndex(dp->pos());
+            int targetPos = dropTargetIndex(dp->position().toPoint());
 
             // 从 layout 中移除源 widget
             QFrame* sourceFrame = nullptr;
