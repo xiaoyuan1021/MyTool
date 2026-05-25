@@ -6,7 +6,6 @@
 #include "widgets/i_tab_interfaces.h"
 #include <QObject>
 #include <QStack>
-#include <QTimer>
 #include <QSignalBlocker>
 #include <functional>
 #include "ui_enhance_tab.h"
@@ -67,8 +66,6 @@ private:
     void updateUndoUi();
     void syncConfigToPipeline();
     
-    QTimer* m_debounceTimer;
-
     QStack<EnhancementState> m_enhancementHistory;
     Ui::EnhanceTabWidget* m_ui;
     PipelineManager* m_pipelineManager;

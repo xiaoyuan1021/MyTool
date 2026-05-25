@@ -16,7 +16,6 @@ class BarcodeTabWidget : public QWidget, public ISignalConnectable, public IConf
 
 public:
     explicit BarcodeTabWidget(PipelineManager* pipelineManager,
-                              std::function<void()> processCallback,
                               QWidget* parent = nullptr);
     ~BarcodeTabWidget();
     
@@ -49,7 +48,6 @@ public:
 
 private:
     PipelineManager* m_pipelineManager;
-    std::function<void()> m_processCallback;
     Ui::BarcodeTabForm* m_ui;
     
     // 更新Pipeline配置

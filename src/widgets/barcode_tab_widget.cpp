@@ -5,11 +5,9 @@
 #include <QSignalBlocker>
 
 BarcodeTabWidget::BarcodeTabWidget(PipelineManager* pipelineManager,
-                                   std::function<void()> processCallback,
                                    QWidget* parent)
     : QWidget(parent)
     , m_pipelineManager(pipelineManager)
-    , m_processCallback(processCallback)
     , m_ui(new Ui::BarcodeTabForm)
 {
     m_ui->setupUi(this);

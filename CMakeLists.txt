@@ -55,6 +55,9 @@ set(HEADERS
     include/core/mqtt_manager.h
     include/core/pipeline.h
     include/core/pipeline_manager.h
+    include/core/pipeline_request.h
+    include/core/pipeline_result.h
+    include/core/pipeline_scheduler.h
     include/core/pipeline_steps.h
     include/core/profile_manager.h
     include/core/roi_manager.h
@@ -144,6 +147,7 @@ set(SOURCES
     src/core/mqtt_manager.cpp
     src/core/pipeline.cpp
     src/core/pipeline_manager.cpp
+    src/core/pipeline_scheduler.cpp
     src/core/pipeline_steps.cpp
     src/core/profile_manager.cpp
     src/core/roi_manager.cpp

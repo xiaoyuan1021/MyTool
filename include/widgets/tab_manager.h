@@ -9,7 +9,6 @@
 class PipelineManager;
 class RoiManager;
 class ImageView;
-class QTimer;
 
 /**
  * Tab管理器 - 负责Tab的懒加载、创建和按名获取
@@ -32,7 +31,6 @@ public:
         PipelineManager* pipelineManager,
         RoiManager* roiManager,
         ImageView* view,
-        QTimer* debounceTimer,
         QObject* parent = nullptr
     );
     ~TabManager();
@@ -71,7 +69,6 @@ private:
     PipelineManager* m_pipelineManager;
     RoiManager* m_roiManager;
     ImageView* m_view;
-    QTimer* m_debounceTimer;
 
     // Tab存储：名称 → widget
     QHash<QString, QWidget*> m_tabs;

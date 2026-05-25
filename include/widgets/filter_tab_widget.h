@@ -1,7 +1,6 @@
 #pragma once
 
 #include <QWidget>
-#include <QTimer>
 #include "pipeline_manager.h"
 #include "widgets/i_tab_interfaces.h"
 
@@ -46,5 +45,4 @@ private:
 private:
     Ui::FilterTabWidget* m_ui;
     PipelineManager* m_pipelineManager;
-    QTimer* m_debounceTimer;
 };

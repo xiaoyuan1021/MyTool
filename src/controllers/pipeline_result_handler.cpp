@@ -18,24 +18,21 @@ void PipelineResultHandler::setDependencies(TabManager* tabManager, RoiManager* 
     m_pipelineManager = pipelineManager;
 }
 
-void PipelineResultHandler::watchPipeline(QFutureWatcher<PipelineContext>* watcher)
+void PipelineResultHandler::onPipelineResult(const PipelineResult& result)
 {
-    m_watcher = watcher;
-    connect(m_watcher, &QFutureWatcher<PipelineContext>::finished,
-            this, &PipelineResultHandler::onPipelineFinished);
-}
-
-void PipelineResultHandler::onPipelineFinished()
-{
-    if (!m_watcher) return;
-
     try {
-        PipelineContext result = m_watcher->result();
+        if (!result.isSuccess()) {
+            qDebug() << "[PipelineResult] Pipeline执行失败:" << result.errorMessage();
+            emit statusMessage("处理失败: " + result.errorMessage(), 3000);
+            return;
+        }
+
+        const PipelineContext& ctx = result.context();
         cv::Mat displayImage = DisplayRenderer::render(
-            result, m_pipelineManager->getDisplayMode());
+            ctx, m_pipelineManager->getDisplayMode());
 
         // 通过 IResultUpdatable 接口分发结果
-        distributeResults(result);
+        distributeResults(ctx);
 
         // 目标检测特殊处理（不走 Pipeline）
         handleObjectDetection(displayImage);
@@ -45,7 +42,9 @@ void PipelineResultHandler::onPipelineFinished()
             m_imageView->setImage(qimg);
         }
 
-        emit statusMessage("处理完成", 2000);
+        // 显示处理时间
+        QString msg = QString("处理完成 (%1 ms)").arg(result.elapsedMs(), 0, 'f', 1);
+        emit statusMessage(msg, 2000);
     } catch (const cv::Exception& ex) {
         qDebug() << "[PipelineResult] OpenCV错误:" << ex.what();
         Logger::instance()->error(QString("Pipeline结果处理错误: %1").arg(ex.what()));
@@ -59,8 +58,6 @@ void PipelineResultHandler::onPipelineFinished()
         Logger::instance()->error("Pipeline结果处理未知异常");
         emit statusMessage("处理失败", 3000);
     }
-
-    emit processingFinished();
 }
 
 void PipelineResultHandler::distributeResults(const PipelineContext& result)

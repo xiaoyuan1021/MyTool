@@ -11,8 +11,6 @@ class PipelineManager;
 class ImageView;
 class RoiManager;
 
-using TabDebounceFunc = std::function<void()>;
-
 /**
  * @brief Tab 元数据条目
  *
@@ -23,7 +21,6 @@ using TabDebounceFunc = std::function<void()>;
 struct TabEntry {
     QString name;                              // Tab 显示名称（如 "增强"）
     DisplayConfig::Mode displayMode;           // 该 Tab 对应的显示模式
-    bool needsDebounce = false;                // 是否需要防抖定时器
     bool needsInitialize = false;              // 创建后是否需要调用 initialize()
 };
 
@@ -36,7 +33,7 @@ struct TabEntry {
 class TabRegistry
 {
 public:
-    using FactoryFunc = std::function<QWidget*(PipelineManager*, ImageView*, RoiManager*, TabDebounceFunc)>;
+    using FactoryFunc = std::function<QWidget*(PipelineManager*, ImageView*, RoiManager*)>;
 
     static TabRegistry& instance();
 
@@ -55,8 +52,7 @@ public:
     /// 创建指定名称的 Tab Widget，未注册返回 nullptr
     QWidget* createTab(const QString& name,
                        PipelineManager* pm, ImageView* view,
-                       RoiManager* rm,
-                       TabDebounceFunc debounceFunc) const;
+                       RoiManager* rm) const;
 
 private:
     TabRegistry();

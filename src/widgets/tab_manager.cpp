@@ -5,21 +5,17 @@
 #include "image_view.h"
 #include "logger.h"
 
-#include <QTimer>
-
 TabManager::TabManager(
     QTabWidget* tabWidget,
     PipelineManager* pipelineManager,
     RoiManager* roiManager,
     ImageView* view,
-    QTimer* debounceTimer,
     QObject* parent)
     : QObject(parent)
     , m_tabWidget(tabWidget)
     , m_pipelineManager(pipelineManager)
     , m_roiManager(roiManager)
     , m_view(view)
-    , m_debounceTimer(debounceTimer)
 {
 }
 
@@ -30,9 +26,8 @@ void TabManager::ensureTab(const QString& tabName)
     if (isCreated(tabName)) return;
 
     // 通过 TabRegistry 创建 Tab（工厂逻辑集中在那里）
-    auto debounceFunc = [this]() { m_debounceTimer->start(); };
     QWidget* widget = TabRegistry::instance().createTab(
-        tabName, m_pipelineManager, m_view, m_roiManager, debounceFunc);
+        tabName, m_pipelineManager, m_view, m_roiManager);
     if (!widget) return;
 
     m_tabWidget->addTab(widget, tabName);

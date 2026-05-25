@@ -13,9 +13,14 @@
 PipelineManager::PipelineManager(QObject* parent)
     : QObject(parent)
     , m_processor(std::make_unique<ImageProcessor>())
+    , m_scheduler(std::make_unique<PipelineScheduler>(this))
 {
     resetConfigToDefaults();
     initPipeline();
+
+    // 连接调度器信号
+    connect(m_scheduler.get(), &PipelineScheduler::finished,
+            this, &PipelineManager::asyncFinished);
 }
 
 PipelineManager::~PipelineManager() = default;
@@ -121,6 +126,13 @@ PipelineContext PipelineManager::execute(const cv::Mat& inputImage, const Pipeli
     emit pipelineFinished(message);
 
     return ctx;
+}
+
+// ========== 调度器接口 ==========
+
+qint64 PipelineManager::executeAsync(const cv::Mat& image, const PipelineConfig& config, int priority)
+{
+    return m_scheduler->submit(image, config, priority);
 }
 
 // ========== 非trivial方法 ==========

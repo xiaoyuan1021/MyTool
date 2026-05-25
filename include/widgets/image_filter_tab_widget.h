@@ -1,7 +1,6 @@
 #pragma once
 
 #include <QWidget>
-#include <QTimer>
 #include <QComboBox>
 #include <QSlider>
 #include <QLabel>
@@ -43,7 +42,6 @@ private:
     void applyConfig();
 
     PipelineManager* m_pipelineManager;
-    QTimer* m_debounceTimer;
 
     // UI 控件
     QComboBox* m_filterTypeCombo;

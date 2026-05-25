@@ -12,14 +12,8 @@
 ImageFilterTabWidget::ImageFilterTabWidget(PipelineManager* pipelineManager, QWidget* parent)
     : QWidget(parent)
     , m_pipelineManager(pipelineManager)
-    , m_debounceTimer(new QTimer(this))
 {
     setupUI();
-    m_debounceTimer->setInterval(100);
-    connect(m_debounceTimer, &QTimer::timeout, this, [this]() {
-        emit processRequested();
-        m_debounceTimer->stop();
-    });
 }
 
 ImageFilterTabWidget::~ImageFilterTabWidget()
@@ -93,7 +87,7 @@ void ImageFilterTabWidget::setupUI()
         int ksize = v * 2 + 1;
         m_medianKernelLabel->setText(QString::number(ksize));
         syncConfigToPipeline();
-        m_debounceTimer->start();
+        emit processRequested();
     });
     paramStack->addWidget(m_medianParams);
 
@@ -166,44 +160,44 @@ void ImageFilterTabWidget::setupUI()
         int ksize = v * 2 + 1;
         m_kernelSizeLabel->setText(QString::number(ksize));
         syncConfigToPipeline();
-        m_debounceTimer->start();
+        emit processRequested();
     });
     connect(m_sigmaXSlider, &QSlider::valueChanged, this, [this](int v) {
         m_sigmaXLabel->setText(QString::number(v / 10.0, 'f', 1));
         syncConfigToPipeline();
-        m_debounceTimer->start();
+        emit processRequested();
     });
     connect(m_sigmaYSlider, &QSlider::valueChanged, this, [this](int v) {
         m_sigmaYLabel->setText(QString::number(v / 10.0, 'f', 1));
         syncConfigToPipeline();
-        m_debounceTimer->start();
+        emit processRequested();
     });
     connect(m_bilateralDSlider, &QSlider::valueChanged, this, [this](int v) {
         m_bilateralDLabel->setText(QString::number(v));
         syncConfigToPipeline();
-        m_debounceTimer->start();
+        emit processRequested();
     });
     connect(m_bilateralSigmaCSlider, &QSlider::valueChanged, this, [this](int v) {
         m_bilateralSigmaCLabel->setText(QString::number(v * 1.0, 'f', 1));
         syncConfigToPipeline();
-        m_debounceTimer->start();
+        emit processRequested();
     });
     connect(m_bilateralSigmaSSlider, &QSlider::valueChanged, this, [this](int v) {
         m_bilateralSigmaSLabel->setText(QString::number(v * 1.0, 'f', 1));
         syncConfigToPipeline();
-        m_debounceTimer->start();
+        emit processRequested();
     });
     connect(m_morphOpCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &ImageFilterTabWidget::onMorphOpChanged);
     connect(m_morphKernelSlider, &QSlider::valueChanged, this, [this](int v) {
         m_morphKernelLabel->setText(QString::number(v));
         syncConfigToPipeline();
-        m_debounceTimer->start();
+        emit processRequested();
     });
     connect(m_morphIterSlider, &QSlider::valueChanged, this, [this](int v) {
         m_morphIterLabel->setText(QString::number(v));
         syncConfigToPipeline();
-        m_debounceTimer->start();
+        emit processRequested();
     });
 
     // 重置按钮
@@ -223,7 +217,7 @@ void ImageFilterTabWidget::onFilterTypeChanged(int index)
     Q_UNUSED(index);
     updateParamVisibility();
     syncConfigToPipeline();
-    m_debounceTimer->start();
+    emit processRequested();
 }
 
 void ImageFilterTabWidget::updateParamVisibility()
@@ -267,7 +261,7 @@ void ImageFilterTabWidget::onMorphOpChanged(int index)
 {
     Q_UNUSED(index);
     syncConfigToPipeline();
-    m_debounceTimer->start();
+    emit processRequested();
 }
 
 void ImageFilterTabWidget::onResetClicked()
@@ -287,7 +281,7 @@ void ImageFilterTabWidget::onResetClicked()
     m_morphIterSlider->setValue(1);
 
     syncConfigToPipeline();
-    m_debounceTimer->start();
+    emit processRequested();
 }
 
 void ImageFilterTabWidget::saveToConfig(PipelineConfig& config) const

@@ -9,7 +9,6 @@ EnhanceTabWidget::EnhanceTabWidget(PipelineManager* pipelineManager, QWidget* pa
     : QWidget(parent)
     , m_ui(new Ui::EnhanceTabWidget)
     , m_pipelineManager(pipelineManager)
-    , m_debounceTimer(new QTimer(this))
 {
     m_ui->setupUi(this);
 
@@ -40,40 +39,34 @@ EnhanceTabWidget::EnhanceTabWidget(PipelineManager* pipelineManager, QWidget* pa
 
     m_enhancementHistory.push(captureState());
     updateUndoUi();
-    m_debounceTimer->setInterval(AppConstants::DEBOUNCE_ENHANCE_MS);
-    connect(m_debounceTimer, &QTimer::timeout, this, [this]()
-    {
-        emit processRequested();
-        m_debounceTimer->stop();
-    });
 }
 
 void EnhanceTabWidget::on_Slider_brightness_valueChanged(int value)
 {
     Q_UNUSED(value);
     syncConfigToPipeline();
-    m_debounceTimer->start();
+    emit processRequested();
 }
 
 void EnhanceTabWidget::on_Slider_contrast_valueChanged(int value)
 {
     Q_UNUSED(value);
     syncConfigToPipeline();
-    m_debounceTimer->start();
+    emit processRequested();
 }
 
 void EnhanceTabWidget::on_Slider_gamma_valueChanged(int value)
 {
     Q_UNUSED(value);
     syncConfigToPipeline();
-    m_debounceTimer->start();
+    emit processRequested();
 }
 
 void EnhanceTabWidget::on_Slider_sharpen_valueChanged(int value)
 {
     Q_UNUSED(value);
     syncConfigToPipeline();
-    m_debounceTimer->start();
+    emit processRequested();
 }
 
 void EnhanceTabWidget::on_btn_resetBC_clicked()

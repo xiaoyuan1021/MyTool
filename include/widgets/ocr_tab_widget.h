@@ -1,7 +1,6 @@
 #pragma once
 
 #include <QWidget>
-#include <QTimer>
 #include <QComboBox>
 #include <QLabel>
 #include <QTextEdit>
@@ -48,7 +47,6 @@ private:
     void updateRegionsTable(const QVector<OcrRegion>& regions);
 
     PipelineManager* m_pipelineManager;
-    QTimer* m_debounceTimer;
 
     bool m_manualOcrTrigger = false;
 

@@ -15,14 +15,8 @@
 OcrTabWidget::OcrTabWidget(PipelineManager* pipelineManager, QWidget* parent)
     : QWidget(parent)
     , m_pipelineManager(pipelineManager)
-    , m_debounceTimer(new QTimer(this))
 {
     setupUI();
-    m_debounceTimer->setInterval(100);
-    connect(m_debounceTimer, &QTimer::timeout, this, [this]() {
-        emit processRequested();
-        m_debounceTimer->stop();
-    });
 }
 
 OcrTabWidget::~OcrTabWidget()

@@ -86,11 +86,9 @@ void MainWindow::stopAllAsyncOperations()
         }
     }
 
-    // 等待 Pipeline 异步任务完成
-    if (m_isProcessing) {
-        m_pipelineWatcher.waitForFinished();
-    }
-    disconnect(&m_pipelineWatcher, nullptr, this, nullptr);
+    // 取消所有待处理的Pipeline请求
+    m_pipelineManager->scheduler()->cancelAll();
+
     disconnect(Logger::instance(), nullptr, this, nullptr);
 }
 
@@ -98,12 +96,6 @@ void MainWindow::stopAllAsyncOperations()
 
 void MainWindow::setupBasicInfrastructure()
 {
-    // 防抖定时器
-    m_processDebounceTimer = new QTimer(this);
-    m_processDebounceTimer->setSingleShot(true);
-    m_processDebounceTimer->setInterval(AppConstants::DEBOUNCE_PROCESS_MS);
-    connect(m_processDebounceTimer, &QTimer::timeout, this, &MainWindow::processAndDisplay);
-
     setupUI();
     setupAnimations();
     setupConnections();
@@ -119,6 +111,11 @@ void MainWindow::setupBasicInfrastructure()
     m_benchmarkUiTimer = new QTimer(this);
     m_benchmarkUiTimer->setInterval(500);
     connect(m_benchmarkUiTimer, &QTimer::timeout, this, [this]() {
+        // 从调度器获取最新的执行时间
+        if (m_pipelineManager->scheduler()->isProcessing()) {
+            return;
+        }
+        // 使用 lastExecMs 获取上次执行时间
         double ms = m_pipelineManager->lastExecMs();
         if (ms > 0) {
             m_timingLabel->setText(QString("Pipeline: %1 ms").arg(ms, 0, 'f', 1));
@@ -248,7 +245,7 @@ void MainWindow::animatePageSwitch(int fromIndex, int toIndex)
 void MainWindow::setupManagers()
 {
     m_tabManager = new TabManager(ui->tabWidget, m_pipelineManager, &m_roiManager,
-                                   m_view, m_processDebounceTimer, this);
+                                   m_view, this);
 
     // 创建云平台看板管理器
     m_cloudDashboardManager = new CloudDashboardManager(m_toast, this);
@@ -263,8 +260,10 @@ void MainWindow::setupManagers()
     m_imageListManager = new ImageListManager(m_roiManager, m_fileManager, this, this);
     m_imageListManager->init(ui->listWidget_images, ui->btn_addImage, ui->btn_removeImage);
     connect(m_imageListManager, &ImageListManager::imageDisplayRequested, this, &MainWindow::showImage);
-    connect(m_imageListManager, &ImageListManager::processRequested, this, [this]() { requestRefresh(); });
-
+    connect(m_imageListManager, &ImageListManager::processRequested, this, [this]() { 
+        m_pipelineMode = PipelineMode::Execute;
+        requestRefresh(); 
+    });
 }
 
 void MainWindow::setupControllers()
@@ -303,9 +302,18 @@ void MainWindow::setupControllers()
 void MainWindow::setupControllerConnections()
 {
     // 全局信号连接（统一走防抖 + 脏标记）
-    connect(m_roiUiController, &RoiUiController::roiChanged, this, [this]() { requestRefresh(); });
-    connect(m_configController, &ConfigController::configApplied, this, [this]() { requestRefresh(); });
-    connect(m_profileController, &ProfileController::requestRefresh, this, &MainWindow::requestRefresh);
+    connect(m_roiUiController, &RoiUiController::roiChanged, this, [this]() { 
+        m_pipelineMode = PipelineMode::Execute;
+        requestRefresh(); 
+    });
+    connect(m_configController, &ConfigController::configApplied, this, [this]() { 
+        m_pipelineMode = PipelineMode::Execute;
+        requestRefresh(); 
+    });
+    connect(m_profileController, &ProfileController::requestRefresh, this, [this]() {
+        m_pipelineMode = PipelineMode::Execute;
+        requestRefresh();
+    });
 
     // Tab 信号连接（通过 ISignalConnectable 接口多态连接）
     connect(m_tabManager, &TabManager::tabCreated, this,
@@ -314,8 +322,17 @@ void MainWindow::setupControllerConnections()
             if (connectable) {
                 connectable->connectSignals(
                     m_pipelineManager, &m_roiManager, m_view, m_roiUiController,
-                    [this]() { requestRefresh(); },
-                    [this]() { processAndDisplay(); }
+                    [this]() { 
+                        // 配置变化：只更新预览，不执行pipeline
+                        if (m_pipelineMode == PipelineMode::Execute) {
+                            requestRefresh();
+                        }
+                    },
+                    [this]() { 
+                        // 执行请求：用户主动触发
+                        m_pipelineMode = PipelineMode::Execute;
+                        processAndDisplay(); 
+                    }
                 );
             } else {
                 Logger::instance()->warning(
@@ -434,30 +451,25 @@ void MainWindow::setupResultHandler()
 {
     m_pipelineResultHandler = new PipelineResultHandler(this);
     m_pipelineResultHandler->setDependencies(m_tabManager, &m_roiManager, m_view, m_pipelineManager);
-    m_pipelineResultHandler->watchPipeline(&m_pipelineWatcher);
+
+    // 连接调度器信号到结果处理器
+    connect(m_pipelineManager->scheduler(), &PipelineScheduler::finished,
+            m_pipelineResultHandler, &PipelineResultHandler::onPipelineResult);
+
+    // 执行完成后切回配置模式
+    connect(m_pipelineManager->scheduler(), &PipelineScheduler::finished,
+            this, [this](const PipelineResult&) {
+        m_pipelineMode = PipelineMode::Config;
+    });
 
     connect(m_pipelineResultHandler, &PipelineResultHandler::statusMessage,
             ui->statusbar, &QStatusBar::showMessage);
-    connect(m_pipelineResultHandler, &PipelineResultHandler::processingFinished,
-            this, [this]() {
-        m_isProcessing = false;
-        m_toast->showMessage("检测完成");
-        if (m_hasPendingProcess) {
-            m_hasPendingProcess = false;
-            QTimer::singleShot(AppConstants::PENDING_PROCESS_DELAY_MS, this, &MainWindow::processAndDisplay);
-        }
-    });
 }
 
 // ========== 核心处理 ==========
 
 void MainWindow::processAndDisplay()
 {
-    if (m_isProcessing) {
-        m_hasPendingProcess = true;
-        return;
-    }
-
     // 脏标记检查：没有变化时跳过Pipeline
     if (!m_needRefresh) return;
     m_needRefresh = false;
@@ -473,17 +485,11 @@ void MainWindow::processAndDisplay()
              << "gamma=" << m_pipelineManager->config().enhance.gamma
              << "sharpen=" << m_pipelineManager->config().enhance.sharpen;
 
-    m_isProcessing = true;
-    m_hasPendingProcess = false;
     ui->statusbar->showMessage("正在处理...");
 
+    // 使用调度器异步执行
     PipelineConfig configSnapshot = m_pipelineManager->getConfigSnapshot();
-    QFuture<PipelineContext> future = QtConcurrent::run(
-        [this, currentImage, configSnapshot]() -> PipelineContext {
-            return m_pipelineManager->execute(currentImage, configSnapshot);
-        }
-    );
-    m_pipelineWatcher.setFuture(future);
+    m_pipelineManager->scheduler()->submit(currentImage, configSnapshot);
 }
 
 void MainWindow::showImage(const cv::Mat &img)
@@ -634,7 +640,8 @@ void MainWindow::ensureTabExists(const QString& tabName)
 void MainWindow::requestRefresh()
 {
     m_needRefresh = true;
-    m_processDebounceTimer->start();
+    // 调度器内部已有消抖机制，直接触发
+    processAndDisplay();
 }
 
 // ========== 方案操作 ==========

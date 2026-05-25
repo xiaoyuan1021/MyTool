@@ -27,50 +27,50 @@ TabRegistry::TabRegistry()
     // 新增 Tab 时只需在此加一行 registerTab 调用
 
     registerTab(
-        {"图像",     DisplayConfig::Mode::Channel,        false, false},
-        [](PipelineManager* pm, ImageView*, RoiManager*, TabDebounceFunc) -> QWidget* {
+        {"图像",     DisplayConfig::Mode::Channel,        false},
+        [](PipelineManager* pm, ImageView*, RoiManager*) -> QWidget* {
             return new ImageTabWidget(pm, nullptr);
         }
     );
 
     registerTab(
-        {"视频",     DisplayConfig::Mode::Channel,        false, false},
-        [](PipelineManager*, ImageView*, RoiManager*, TabDebounceFunc) -> QWidget* {
+        {"视频",     DisplayConfig::Mode::Channel,        false},
+        [](PipelineManager*, ImageView*, RoiManager*) -> QWidget* {
             return new VideoTabWidget(nullptr);
         }
     );
 
     registerTab(
-        {"增强",     DisplayConfig::Mode::Enhanced,       false, false},
-        [](PipelineManager* pm, ImageView*, RoiManager*, TabDebounceFunc) -> QWidget* {
+        {"增强",     DisplayConfig::Mode::Enhanced,       false},
+        [](PipelineManager* pm, ImageView*, RoiManager*) -> QWidget* {
             return new EnhanceTabWidget(pm, nullptr);
         }
     );
 
     registerTab(
-        {"过滤",     DisplayConfig::Mode::MaskGreenWhite, false, false},
-        [](PipelineManager* pm, ImageView*, RoiManager*, TabDebounceFunc) -> QWidget* {
+        {"过滤",     DisplayConfig::Mode::MaskGreenWhite, false},
+        [](PipelineManager* pm, ImageView*, RoiManager*) -> QWidget* {
             return new FilterTabWidget(pm, nullptr);
         }
     );
 
     registerTab(
-        {"滤波去噪", DisplayConfig::Mode::Enhanced,       false, false},
-        [](PipelineManager* pm, ImageView*, RoiManager*, TabDebounceFunc) -> QWidget* {
+        {"滤波去噪", DisplayConfig::Mode::Enhanced,       false},
+        [](PipelineManager* pm, ImageView*, RoiManager*) -> QWidget* {
             return new ImageFilterTabWidget(pm, nullptr);
         }
     );
 
     registerTab(
-        {"文字识别", DisplayConfig::Mode::OcrOverlay,   false, false},
-        [](PipelineManager* pm, ImageView*, RoiManager*, TabDebounceFunc) -> QWidget* {
+        {"文字识别", DisplayConfig::Mode::OcrOverlay,   false},
+        [](PipelineManager* pm, ImageView*, RoiManager*) -> QWidget* {
             return new OcrTabWidget(pm, nullptr);
         }
     );
 
     registerTab(
-        {"补正",     DisplayConfig::Mode::Original,       false, true},
-        [](PipelineManager*, ImageView* view, RoiManager* rm, TabDebounceFunc) -> QWidget* {
+        {"补正",     DisplayConfig::Mode::Original,       true},
+        [](PipelineManager*, ImageView* view, RoiManager* rm) -> QWidget* {
             auto* tab = new TemplateTabWidget(view, rm, nullptr);
             tab->initialize();
             return tab;
@@ -78,8 +78,8 @@ TabRegistry::TabRegistry()
     );
 
     registerTab(
-        {"处理",     DisplayConfig::Mode::Processed,      false, true},
-        [](PipelineManager* pm, ImageView*, RoiManager*, TabDebounceFunc) -> QWidget* {
+        {"处理",     DisplayConfig::Mode::Processed,      true},
+        [](PipelineManager* pm, ImageView*, RoiManager*) -> QWidget* {
             auto* tab = new ProcessTabWidget(pm, nullptr);
             tab->initialize();
             return tab;
@@ -87,8 +87,8 @@ TabRegistry::TabRegistry()
     );
 
     registerTab(
-        {"提取",     DisplayConfig::Mode::Processed,      false, true},
-        [](PipelineManager* pm, ImageView* view, RoiManager* rm, TabDebounceFunc) -> QWidget* {
+        {"提取",     DisplayConfig::Mode::Processed,      true},
+        [](PipelineManager* pm, ImageView* view, RoiManager* rm) -> QWidget* {
             auto* tab = new ExtractTabWidget(pm, view, rm, nullptr);
             tab->initialize();
             return tab;
@@ -96,38 +96,38 @@ TabRegistry::TabRegistry()
     );
 
     registerTab(
-        {"判定",     DisplayConfig::Mode::MaskOverlay,    false, false},
-        [](PipelineManager* pm, ImageView*, RoiManager*, TabDebounceFunc) -> QWidget* {
+        {"判定",     DisplayConfig::Mode::MaskOverlay,    false},
+        [](PipelineManager* pm, ImageView*, RoiManager*) -> QWidget* {
             return new JudgeTabWidget(pm, nullptr);
         }
     );
 
     registerTab(
-        {"直线",     DisplayConfig::Mode::LineDetect,     true,  true},
-        [](PipelineManager* pm, ImageView*, RoiManager*, TabDebounceFunc debounce) -> QWidget* {
-            auto* tab = new LineDetectTabWidget(pm, debounce, nullptr);
+        {"直线",     DisplayConfig::Mode::LineDetect,     true},
+        [](PipelineManager* pm, ImageView*, RoiManager*) -> QWidget* {
+            auto* tab = new LineDetectTabWidget(pm, nullptr);
             tab->initialize();
             return tab;
         }
     );
 
     registerTab(
-        {"条码",     DisplayConfig::Mode::BarcodeOverlay, true,  false},
-        [](PipelineManager* pm, ImageView*, RoiManager*, TabDebounceFunc debounce) -> QWidget* {
-            return new BarcodeTabWidget(pm, debounce, nullptr);
+        {"条码",     DisplayConfig::Mode::BarcodeOverlay, true},
+        [](PipelineManager* pm, ImageView*, RoiManager*) -> QWidget* {
+            return new BarcodeTabWidget(pm, nullptr);
         }
     );
 
     registerTab(
-        {"目标检测", DisplayConfig::Mode::Original,       false, false},
-        [](PipelineManager* pm, ImageView*, RoiManager*, TabDebounceFunc) -> QWidget* {
+        {"目标检测", DisplayConfig::Mode::Original,       false},
+        [](PipelineManager* pm, ImageView*, RoiManager*) -> QWidget* {
             return new ObjectDetectionTabWidget(pm, nullptr);
         }
     );
 
     registerTab(
-        {"步骤",     DisplayConfig::Mode::Original,       false, false},
-        [](PipelineManager* pm, ImageView*, RoiManager*, TabDebounceFunc) -> QWidget* {
+        {"步骤",     DisplayConfig::Mode::Original,       false},
+        [](PipelineManager* pm, ImageView*, RoiManager*) -> QWidget* {
             return new StepConfigWidget(pm, nullptr);
         }
     );
@@ -155,10 +155,9 @@ DisplayConfig::Mode TabRegistry::displayModeFor(const QString& name) const
 
 QWidget* TabRegistry::createTab(const QString& name,
                                 PipelineManager* pm, ImageView* view,
-                                RoiManager* rm,
-                                TabDebounceFunc debounceFunc) const
+                                RoiManager* rm) const
 {
     auto it = m_factories.find(name);
     if (it == m_factories.end()) return nullptr;
-    return it.value()(pm, view, rm, debounceFunc);
+    return it.value()(pm, view, rm);
 }

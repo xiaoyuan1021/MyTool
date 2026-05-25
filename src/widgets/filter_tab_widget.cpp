@@ -10,7 +10,6 @@ FilterTabWidget::FilterTabWidget(PipelineManager* pipelineManager, QWidget* pare
     : QWidget(parent)
     , m_ui(new Ui::FilterTabWidget)
     , m_pipelineManager(pipelineManager)
-    , m_debounceTimer(new QTimer(this))
 {
     m_ui->setupUi(this);
 
@@ -85,13 +84,6 @@ FilterTabWidget::FilterTabWidget(PipelineManager* pipelineManager, QWidget* pare
     m_ui->spinBox_hsv_V_High->setValue(120);
 
     setupConnections();
-
-    // 设置防抖定时器
-    m_debounceTimer->setSingleShot(true);
-    m_debounceTimer->setInterval(AppConstants::DEBOUNCE_FILTER_MS);
-    connect(m_debounceTimer, &QTimer::timeout, this, [this]() {
-        emit filterConfigChanged();
-    });
 }
 
 FilterTabWidget::~FilterTabWidget()
@@ -218,7 +210,8 @@ void FilterTabWidget::filterColorChannelsChanged()
     syncRGBParameters();
     syncHSVParameters();
 
-    m_debounceTimer->start();
+    // 直接发出信号，消抖由 PipelineScheduler 统一处理
+    emit filterConfigChanged();
 }
 
 void FilterTabWidget::syncGrayParameters()

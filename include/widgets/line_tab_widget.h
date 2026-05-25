@@ -17,7 +17,6 @@ class LineDetectTabWidget : public QWidget, public ISignalConnectable, public IR
 
 public:
     explicit LineDetectTabWidget(PipelineManager* pipelineManager,
-                                 std::function<void()> processCallback,
                                  QWidget* parent = nullptr);
     ~LineDetectTabWidget();
     void initialize();
@@ -32,7 +31,6 @@ public:
 
 private:
     PipelineManager* m_pipelineManager;
-    std::function<void()> m_processCallback;
     std::function<void()> m_requestRefresh;
     Ui::LineTabForm* m_ui;
 

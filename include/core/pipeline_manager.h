@@ -2,6 +2,7 @@
 
 #include "pipeline.h"
 #include "pipeline_steps.h"
+#include "pipeline_scheduler.h"
 #include "config/constants.h"
 
 #include <QObject>
@@ -91,8 +92,16 @@ public:
     /// 清除上次Pipeline结果（图片切换时调用，防止旧结果污染新图片显示）
     void clearLastResult();
 
-    // ========== 颜色过滤控制 ==========
+    // ========== 调度器接口 ==========
 
+    /// 获取调度器（用于异步执行）
+    PipelineScheduler* scheduler() { return m_scheduler.get(); }
+    const PipelineScheduler* scheduler() const { return m_scheduler.get(); }
+
+    /// 异步执行Pipeline（通过调度器）
+    qint64 executeAsync(const cv::Mat& image, const PipelineConfig& config, int priority = 0);
+
+    // ========== 颜色过滤控制 ==========
 
     void resetPipeline();
 
@@ -100,6 +109,9 @@ signals:
     void pipelineFinished(const QString& message);
     void algorithmQueueChanged(int count);
     void pipelineReset();
+
+    /// 异步执行完成信号
+    void asyncFinished(const PipelineResult& result);
 
 private:
     void initPipeline();
@@ -135,4 +147,6 @@ private:
     DisplayConfig::Mode m_displayMode = DisplayConfig::Mode::MaskGreenWhite;
     float m_overlayAlpha = AppConstants::DEFAULT_OVERLAY_ALPHA;
 
+    // 调度器
+    std::unique_ptr<PipelineScheduler> m_scheduler;
 };

@@ -113,17 +113,15 @@ private:
     RoiManager m_roiManager;
     SystemMonitor* m_systemMonitor = nullptr;
     FileManager* m_fileManager = nullptr;
-    QTimer* m_processDebounceTimer = nullptr;
 
     bool m_isDestroying = false;
 
     // Tab管理器
     TabManager* m_tabManager = nullptr;
 
-    // 多线程处理相关
-    QFutureWatcher<PipelineContext> m_pipelineWatcher;
-    bool m_isProcessing = false;
-    bool m_hasPendingProcess = false;
+    // Pipeline执行模式
+    enum class PipelineMode { Config, Execute };
+    PipelineMode m_pipelineMode = PipelineMode::Config;
     bool m_needRefresh = false;
 
     // Controller对象
