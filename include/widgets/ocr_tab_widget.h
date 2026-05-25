@@ -44,10 +44,13 @@ private slots:
 private:
     void setupUI();
     void syncConfigToPipeline();
+    void clearResults();
     void updateRegionsTable(const QVector<OcrRegion>& regions);
 
     PipelineManager* m_pipelineManager;
     QTimer* m_debounceTimer;
+
+    bool m_manualOcrTrigger = false;
 
     // UI 控件 - 配置部分
     QComboBox* m_languageCombo;

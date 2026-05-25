@@ -1,6 +1,7 @@
 #include "ocr_tab_widget.h"
 #include "config/pipeline_config.h"
 #include "controllers/roi_ui_controller.h"
+#include "core/roi_manager.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -123,12 +124,15 @@ void OcrTabWidget::onLanguageChanged(int index)
 
 void OcrTabWidget::onRecognizeClicked()
 {
+    // 标记为手动触发，updateFromPipeline 仅在此标记下才更新 UI
+    m_manualOcrTrigger = true;
+
     // 同步配置到Pipeline
     syncConfigToPipeline();
-    
+
     // 触发Pipeline执行
     emit processRequested();
-    
+
     // 更新状态
     m_statusLabel->setText("正在识别...");
     m_statusLabel->setStyleSheet("font-weight: bold; color: blue;");
@@ -149,14 +153,10 @@ void OcrTabWidget::onCopyResultClicked()
 
 void OcrTabWidget::onResetClicked()
 {
+    clearResults();
     m_languageCombo->setCurrentIndex(0);
     m_pageModeCombo->setCurrentIndex(0);
-    m_resultTextEdit->clear();
-    m_regionsTable->setRowCount(0);
-    m_statusLabel->setText("等待识别...");
-    m_statusLabel->setStyleSheet("font-weight: bold; color: gray;");
-    m_copyBtn->setEnabled(false);
-    
+
     syncConfigToPipeline();
 }
 
@@ -169,6 +169,16 @@ void OcrTabWidget::syncConfigToPipeline()
     cfg.pageMode = m_pageModeCombo->currentData().toInt();
 
     emit ocrConfigChanged();
+}
+
+void OcrTabWidget::clearResults()
+{
+    m_manualOcrTrigger = false;
+    m_resultTextEdit->clear();
+    m_regionsTable->setRowCount(0);
+    m_statusLabel->setText("等待识别...");
+    m_statusLabel->setStyleSheet("font-weight: bold; color: gray;");
+    m_copyBtn->setEnabled(false);
 }
 
 void OcrTabWidget::saveToConfig(PipelineConfig& config) const
@@ -196,9 +206,14 @@ void OcrTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
                                   std::function<void()> requestRefresh,
                                   std::function<void()> processAndDisplay)
 {
-    Q_UNUSED(rm);
+    Q_UNUSED(pm);
     Q_UNUSED(view);
     Q_UNUSED(roiCtrl);
+
+    // 图片切换时清空上次识别结果，防止旧图结果自动显示在新图Tab中
+    if (rm) {
+        connect(rm, &RoiManager::currentImageChanged, this, &OcrTabWidget::clearResults);
+    }
 
     connect(this, &OcrTabWidget::processRequested, this, [processAndDisplay]() {
         if (processAndDisplay) processAndDisplay();
@@ -211,6 +226,10 @@ void OcrTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
 
 void OcrTabWidget::updateFromPipeline(const PipelineContext& ctx)
 {
+    // 非手动触发时忽略自动Pipeline结果，防止切换图片后Tab被自动更新
+    if (!m_manualOcrTrigger) return;
+    m_manualOcrTrigger = false;
+
     // 更新识别文本
     m_resultTextEdit->setText(ctx.ocrText);
 
