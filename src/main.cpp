@@ -64,7 +64,7 @@ static QPixmap createSplashPixmap()
     QFont verFont("Microsoft YaHei", 10, QFont::Normal);
     p.setFont(verFont);
     p.setPen(QColor("#9CA3AF"));
-    p.drawText(QRect(0, 300, 600, 30), Qt::AlignCenter, "v1.0  |  研电赛参赛作品");
+    p.drawText(QRect(0, 300, 600, 30), Qt::AlignCenter, "v2.0");
 
     // 底部加载指示
     QFont loadFont("Microsoft YaHei", 9, QFont::Normal);

@@ -39,3 +39,4 @@ build_zxing/*
 skills-lock.json
 *.pnm
 *.db
+docs/*
