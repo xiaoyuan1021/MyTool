@@ -2,6 +2,7 @@
 #include "image_processor.h"
 #include "logger.h"
 #include <QDebug>
+#include <cstring>
 
 OpenCVAlgorithm::OpenCVAlgorithm() {}
 
@@ -797,6 +798,76 @@ cv::Mat OpenCVAlgorithm::selectShapeByFeature(const cv::Mat& region, const QStri
     }
     
     return result;
+}
+
+// =============== 特征范围计算 ===============
+
+OpenCVAlgorithm::FeatureRange OpenCVAlgorithm::calculateFeatureRange(const cv::Mat& image, const char* featureName)
+{
+    FeatureRange range;
+    range.minValue = 1e18;
+    range.maxValue = 0.0;
+    range.regionCount = 0;
+
+    if (image.empty()) return range;
+
+    cv::Mat binary;
+    if (image.channels() == 3) {
+        cv::cvtColor(image, binary, cv::COLOR_BGR2GRAY);
+    } else {
+        binary = image.clone();
+    }
+
+    cv::threshold(binary, binary, 127, 255, cv::THRESH_BINARY);
+
+    cv::Mat labels, stats, centroids;
+    int numLabels = cv::connectedComponentsWithStats(binary, labels, stats, centroids, 8);
+
+    for (int i = 1; i < numLabels; ++i) {
+        cv::Mat regionMask = (labels == i);
+
+        std::vector<std::vector<cv::Point>> contours;
+        cv::findContours(regionMask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
+        if (contours.empty()) continue;
+
+        const auto& contour = contours[0];
+        double featureValue = 0.0;
+
+        if (strcmp(featureName, "area") == 0) {
+            featureValue = cv::contourArea(contour);
+        } else if (strcmp(featureName, "circularity") == 0) {
+            featureValue = calculateCircularity(contour);
+        } else if (strcmp(featureName, "compactness") == 0) {
+            featureValue = calculateCompactness(contour);
+        } else if (strcmp(featureName, "convexity") == 0) {
+            featureValue = calculateConvexity(contour);
+        } else if (strcmp(featureName, "width") == 0) {
+            cv::Rect bbox = cv::boundingRect(contour);
+            featureValue = bbox.width;
+        } else if (strcmp(featureName, "height") == 0) {
+            cv::Rect bbox = cv::boundingRect(contour);
+            featureValue = bbox.height;
+        } else if (strcmp(featureName, "anisometry") == 0) {
+            cv::RotatedRect rotRect = cv::minAreaRect(contour);
+            double w = rotRect.size.width;
+            double h = rotRect.size.height;
+            if (w > 0 && h > 0) {
+                featureValue = (std::max)(w, h) / (std::min)(w, h);
+            }
+        }
+
+        if (featureValue < range.minValue) range.minValue = featureValue;
+        if (featureValue > range.maxValue) range.maxValue = featureValue;
+        range.regionCount++;
+    }
+
+    if (range.regionCount == 0) {
+        range.minValue = 0.0;
+        range.maxValue = 0.0;
+    }
+
+    return range;
 }
 
 // =============== 图像转换 ===============

@@ -38,15 +38,15 @@
      </rect>
     </property>
    </widget>
-   <widget class="QStackedWidget" name="stackedWidget_selectCondition">
-    <property name="geometry">
-     <rect>
-      <x>210</x>
-      <y>140</y>
-      <width>291</width>
-      <height>91</height>
-     </rect>
-    </property>
+    <widget class="QStackedWidget" name="stackedWidget_selectCondition">
+     <property name="geometry">
+      <rect>
+       <x>210</x>
+       <y>140</y>
+       <width>291</width>
+       <height>110</height>
+      </rect>
+     </property>
     <property name="currentIndex">
      <number>0</number>
     </property>
@@ -57,39 +57,49 @@
         <x>50</x>
         <y>10</y>
         <width>201</width>
-        <height>71</height>
+        <height>90</height>
        </rect>
       </property>
-      <layout class="QVBoxLayout" name="verticalLayout_9">
-       <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_4">
-         <item>
-          <widget class="QLabel" name="label_2">
-           <property name="text">
-            <string>最小值</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLineEdit" name="lineEdit_minArea"/>
-         </item>
-        </layout>
-       </item>
-       <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_5">
-         <item>
-          <widget class="QLabel" name="label_3">
-           <property name="text">
-            <string>最大值</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLineEdit" name="lineEdit_maxArea"/>
-         </item>
-        </layout>
-       </item>
-      </layout>
+       <layout class="QVBoxLayout" name="verticalLayout_9">
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_4">
+          <item>
+           <widget class="QLabel" name="label_2">
+            <property name="text">
+             <string>最小值</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="lineEdit_minArea"/>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_5">
+          <item>
+           <widget class="QLabel" name="label_3">
+            <property name="text">
+             <string>最大值</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="lineEdit_maxArea"/>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_featureRange">
+          <property name="text">
+           <string>当前范围: --</string>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">color: rgb(100, 100, 100); font-size: 10px;</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
      </widget>
     </widget>
     <widget class="QWidget" name="page_2"/>

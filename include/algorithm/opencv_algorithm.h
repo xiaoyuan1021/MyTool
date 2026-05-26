@@ -142,6 +142,17 @@ public:
     static cv::Mat selectShapeByFeature(const cv::Mat& region, const QString& featureName,
                                         double minValue, double maxValue);
 
+    // ========== 特征范围计算 ==========
+
+    struct FeatureRange {
+        double minValue;
+        double maxValue;
+        int regionCount;
+    };
+
+    // 计算图像中所有连通域的指定特征范围
+    static FeatureRange calculateFeatureRange(const cv::Mat& image, const char* featureName);
+
     // ========== 图像转换 ==========
 
     // 将mask转换为绿白图像（目标区域为绿色，背景为白色）

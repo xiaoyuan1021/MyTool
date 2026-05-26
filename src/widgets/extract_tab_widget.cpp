@@ -64,6 +64,8 @@ void ExtractTabWidget::onSelectTypeChanged(int index)
 {
     if (!m_ui || !m_ui->lineEdit_minArea || !m_ui->lineEdit_maxArea) return;
 
+    ShapeFeature feature = static_cast<ShapeFeature>(index);
+
     switch(index) {
     case 0: // 面积
         m_ui->lineEdit_minArea->setPlaceholderText("例如: 50");
@@ -82,6 +84,21 @@ void ExtractTabWidget::onSelectTypeChanged(int index)
         m_ui->lineEdit_maxArea->setPlaceholderText("例如: 100");
         break;
     }
+
+    // 查找列表中是否已有该类型的筛选条件，如有则自动选中
+    for (int i = 0; i < m_filterConditions.size(); ++i) {
+        if (m_filterConditions[i].feature == feature) {
+            m_currentSelectedIndex = i;
+            if (m_ui->listWidget_select) {
+                m_ui->listWidget_select->setCurrentRow(i);
+            }
+            calculateAndShowRange(feature);
+            return;
+        }
+    }
+
+    // 没有找到匹配项，只显示范围
+    calculateAndShowRange(feature);
 }
 
 void ExtractTabWidget::onConditionChanged(int index)
@@ -105,14 +122,6 @@ void ExtractTabWidget::clearFilter()
     // 从本地列表中移除
     m_filterConditions.removeAt(m_currentSelectedIndex);
 
-    // 清空 Pipeline 中的所有条件
-    m_pipeline->mutableConfig().shapeFilter.clear();
-
-    // 重新添加剩余的条件到 Pipeline
-    for (const FilterCondition& condition : m_filterConditions) {
-        m_pipeline->mutableConfig().shapeFilter.addCondition(condition);
-    }
-
     // 清空输入框
     if (m_ui) {
         if (m_ui->lineEdit_minArea) m_ui->lineEdit_minArea->clear();
@@ -123,7 +132,12 @@ void ExtractTabWidget::clearFilter()
     updateFilterListWidget();
     m_currentSelectedIndex = -1;
 
-    emit extractionChanged();
+    // 更新范围显示
+    if (m_ui && m_ui->comboBox_select) {
+        ShapeFeature feature = static_cast<ShapeFeature>(m_ui->comboBox_select->currentIndex());
+        calculateAndShowRange(feature);
+    }
+
     Logger::instance()->info("已删除选中的筛选条件");
 }
 
@@ -133,22 +147,10 @@ void ExtractTabWidget::addFilter()
 
     const PipelineContext& ctx = m_pipeline->getLastContext();
     
-    // ✅ 修改后（优先使用processed，因为处理Tab的结果存储在processed中）
     cv::Mat inputMat = !ctx.processed.empty() ? ctx.processed : ctx.mask;
     
     if (inputMat.empty()) {
         QMessageBox::warning(this, "提示", "请先执行算法处理!");
-        return;
-    }
-
-    if (!m_ui->lineEdit_minArea || !m_ui->lineEdit_maxArea) return;
-
-    bool ok1, ok2;
-    double minValue = m_ui->lineEdit_minArea->text().toDouble(&ok1);
-    double maxValue = m_ui->lineEdit_maxArea->text().toDouble(&ok2);
-
-    if (!ok1 || !ok2 || minValue < 0 || maxValue < minValue) {
-        QMessageBox::warning(this, "输入错误", "请输入有效的范围!");
         return;
     }
 
@@ -157,23 +159,49 @@ void ExtractTabWidget::addFilter()
     int featureIndex = m_ui->comboBox_select->currentIndex();
     ShapeFeature feature = static_cast<ShapeFeature>(featureIndex);
 
-    FilterCondition condition(feature, minValue, maxValue);
-    m_pipeline->mutableConfig().shapeFilter.addCondition(condition);
+    // 检查是否已存在同类型筛选条件
+    for (const FilterCondition& cond : m_filterConditions) {
+        if (cond.feature == feature) {
+            QMessageBox::warning(this, "提示", "该类型的筛选条件已存在!");
+            return;
+        }
+    }
 
-    // 保存条件到本地列表
+    // 创建默认条件（不验证min/max输入）
+    FilterCondition condition(feature, 0.0, 1e18);
     m_filterConditions.append(condition);
 
     // 更新列表显示
     updateFilterListWidget();
 
-    // 自动执行处理
-    extractRegions();
+    // 自动选中新添加的项
+    int newIndex = m_filterConditions.size() - 1;
+    m_currentSelectedIndex = newIndex;
+    if (m_ui->listWidget_select) {
+        m_ui->listWidget_select->setCurrentRow(newIndex);
+    }
 
-    Logger::instance()->info(QString("已应用筛选: %1").arg(condition.toString()));
+    // 计算并显示特征范围
+    calculateAndShowRange(feature);
+
+    Logger::instance()->info(QString("已添加筛选条件: %1").arg(getFeatureDisplayName(feature)));
 }
 
 void ExtractTabWidget::extractRegions()
 {
+    if (!m_pipeline) return;
+
+    // 先保存当前正在编辑的条件
+    saveCurrentFilterCondition();
+
+    // 同步所有条件到Pipeline
+    m_pipeline->mutableConfig().shapeFilter.clear();
+    for (const FilterCondition& condition : m_filterConditions) {
+        if (condition.isValid()) {
+            m_pipeline->mutableConfig().shapeFilter.addCondition(condition);
+        }
+    }
+
     m_view->clearPolygon();
     emit extractionChanged();
     Logger::instance()->info("区域已提取");
@@ -224,6 +252,41 @@ void ExtractTabWidget::calculateRegionFeatures(const QVector<QPointF>& points)
         Logger::instance()->info(feature.toString());
     }
     Logger::instance()->info("======================================");
+}
+
+void ExtractTabWidget::calculateAndShowRange(ShapeFeature feature)
+{
+    if (!m_ui || !m_pipeline) return;
+
+    const PipelineContext& ctx = m_pipeline->getLastContext();
+    cv::Mat inputMat = !ctx.processed.empty() ? ctx.processed : ctx.mask;
+
+    if (inputMat.empty()) {
+        if (m_ui->label_featureRange) {
+            m_ui->label_featureRange->setText("当前范围: --");
+        }
+        return;
+    }
+
+    const char* featureName = getFeatureName(feature);
+    OpenCVAlgorithm::FeatureRange range = OpenCVAlgorithm::calculateFeatureRange(inputMat, featureName);
+
+    QString featureDisplayName = getFeatureDisplayName(feature);
+    QString text;
+    if (range.regionCount > 0) {
+        text = QString("%1 最小值: %2 最大值: %3<br>共%4个区域")
+            .arg(featureDisplayName)
+            .arg(range.minValue, 0, 'f', 1)
+            .arg(range.maxValue, 0, 'f', 1)
+            .arg(range.regionCount);
+    } else {
+        text = QString("%1 无数据").arg(featureDisplayName);
+    }
+
+    if (m_ui->label_featureRange) {
+        m_ui->label_featureRange->setTextFormat(Qt::RichText);
+        m_ui->label_featureRange->setText(text);
+    }
 }
 
 void ExtractTabWidget::updateFilterListWidget()
@@ -277,6 +340,9 @@ void ExtractTabWidget::displayFilterCondition(int index)
     if (m_ui->lineEdit_maxArea) {
         m_ui->lineEdit_maxArea->setText(QString::number(condition.maxValue));
     }
+
+    // 计算并显示特征范围
+    calculateAndShowRange(condition.feature);
 }
 
 void ExtractTabWidget::getExtractConfig(ShapeFilterConfig& config) const

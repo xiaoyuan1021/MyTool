@@ -52,6 +52,7 @@ private:
     void setupConnections();
     void updateFilterListWidget();
     void displayFilterCondition(int index);
+    void calculateAndShowRange(ShapeFeature feature);
 
 private:
     Ui::ExtractTabForm* m_ui;
