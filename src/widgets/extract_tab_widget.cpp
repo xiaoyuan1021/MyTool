@@ -426,3 +426,55 @@ void ExtractTabWidget::loadFromConfig(const PipelineConfig& config)
 {
     setExtractConfig(config.shapeFilter);
 }
+
+// ========== IResultUpdatable 接口实现 ==========
+
+void ExtractTabWidget::updateFromPipeline(const PipelineContext& ctx)
+{
+    // 管道执行完成后，更新筛选结果到QLabel
+    // 只有当有筛选条件时才更新（reason非空表示筛选执行了）
+    if (!ctx.reason.isEmpty()) {
+        // 使用筛选后的图像计算特征范围
+        cv::Mat filteredImg = ctx.processed;
+        if (!filteredImg.empty() && m_ui && m_ui->comboBox_select) {
+            int featureIndex = m_ui->comboBox_select->currentIndex();
+            ShapeFeature feature = static_cast<ShapeFeature>(featureIndex);
+            const char* featureName = getFeatureName(feature);
+            OpenCVAlgorithm::FeatureRange range = OpenCVAlgorithm::calculateFeatureRange(filteredImg, featureName);
+            updateRangeLabelWithResult(range);
+        }
+    }
+}
+
+void ExtractTabWidget::updateRangeLabelWithResult(const OpenCVAlgorithm::FeatureRange& filteredRange)
+{
+    if (!m_ui || !m_ui->label_featureRange) return;
+
+    // 获取当前label文本，在后面追加筛选结果
+    QString currentText = m_ui->label_featureRange->text();
+    // 移除之前可能添加的筛选结果行
+    int pos = currentText.indexOf("<br>筛选后");
+    if (pos >= 0) {
+        currentText = currentText.left(pos);
+    }
+
+    // 获取当前特征名称
+    QString featureDisplayName = "--";
+    if (m_ui->comboBox_select) {
+        featureDisplayName = getFeatureDisplayName(static_cast<ShapeFeature>(m_ui->comboBox_select->currentIndex()));
+    }
+
+    // 构建筛选结果文本
+    QString resultText;
+    if (filteredRange.regionCount > 0) {
+        resultText = QString("<br>筛选后 %1 最小值: %2 最大值: %3 共%4个区域")
+            .arg(featureDisplayName)
+            .arg(filteredRange.minValue, 0, 'f', 1)
+            .arg(filteredRange.maxValue, 0, 'f', 1)
+            .arg(filteredRange.regionCount);
+    } else {
+        resultText = QString("<br>筛选后 无匹配区域");
+    }
+
+    m_ui->label_featureRange->setText(currentText + resultText);
+}

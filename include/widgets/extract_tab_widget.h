@@ -5,13 +5,14 @@
 #include "image_view.h"
 #include <QListWidgetItem>
 #include "widgets/i_tab_interfaces.h"
+#include "algorithm/opencv_algorithm.h"
 
 namespace Ui
 {
 class ExtractTabForm;
 }
 
-class ExtractTabWidget : public QWidget, public ISignalConnectable, public IConfigurableTab
+class ExtractTabWidget : public QWidget, public ISignalConnectable, public IConfigurableTab, public IResultUpdatable
 {
     Q_OBJECT
 public:
@@ -29,6 +30,9 @@ public:
     // IConfigurableTab 接口实现
     void saveToConfig(PipelineConfig& config) const override;
     void loadFromConfig(const PipelineConfig& config) override;
+
+    // IResultUpdatable 接口实现
+    void updateFromPipeline(const PipelineContext& ctx) override;
 
     void connectSignals(PipelineManager* pm, RoiManager* rm,
                         ImageView* view, RoiUiController* roiCtrl,
@@ -53,6 +57,7 @@ private:
     void updateFilterListWidget();
     void displayFilterCondition(int index);
     void calculateAndShowRange(ShapeFeature feature);
+    void updateRangeLabelWithResult(const OpenCVAlgorithm::FeatureRange& filteredRange);
 
 private:
     Ui::ExtractTabForm* m_ui;
