@@ -217,9 +217,19 @@
             </property>
            </widget>
           </item>
-          <item>
-           <widget class="QDoubleSpinBox" name="doubleSpinBox_radius"/>
-          </item>
+           <item>
+            <widget class="QDoubleSpinBox" name="doubleSpinBox_radius">
+             <property name="minimum">
+              <double>0.100000000000000</double>
+             </property>
+             <property name="value">
+              <double>1.500000000000000</double>
+             </property>
+             <property name="singleStep">
+              <double>0.500000000000000</double>
+             </property>
+            </widget>
+           </item>
          </layout>
         </widget>
        </widget>
@@ -241,9 +251,16 @@
             </property>
            </widget>
           </item>
-          <item>
-           <widget class="QSpinBox" name="spinBox_width"/>
-          </item>
+           <item>
+            <widget class="QSpinBox" name="spinBox_width">
+             <property name="minimum">
+              <number>1</number>
+             </property>
+             <property name="value">
+              <number>2</number>
+             </property>
+            </widget>
+           </item>
          </layout>
         </widget>
         <widget class="QWidget" name="layoutWidget_5">
@@ -263,9 +280,16 @@
             </property>
            </widget>
           </item>
-          <item>
-           <widget class="QSpinBox" name="spinBox_height"/>
-          </item>
+           <item>
+            <widget class="QSpinBox" name="spinBox_height">
+             <property name="minimum">
+              <number>1</number>
+             </property>
+             <property name="value">
+              <number>2</number>
+             </property>
+            </widget>
+           </item>
          </layout>
         </widget>
        </widget>

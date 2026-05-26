@@ -823,6 +823,9 @@ OpenCVAlgorithm::FeatureRange OpenCVAlgorithm::calculateFeatureRange(const cv::M
     cv::Mat labels, stats, centroids;
     int numLabels = cv::connectedComponentsWithStats(binary, labels, stats, centroids, 8);
 
+    double smallestValue = 1e18;
+    double secondSmallestValue = 1e18;
+
     for (int i = 1; i < numLabels; ++i) {
         cv::Mat regionMask = (labels == i);
 
@@ -857,9 +860,27 @@ OpenCVAlgorithm::FeatureRange OpenCVAlgorithm::calculateFeatureRange(const cv::M
             }
         }
 
+        // 追踪最小值和第二小值（非零）
+        if (featureValue > 0) {
+            if (featureValue < smallestValue) {
+                secondSmallestValue = smallestValue;
+                smallestValue = featureValue;
+            } else if (featureValue < secondSmallestValue) {
+                secondSmallestValue = featureValue;
+            }
+        }
+
         if (featureValue < range.minValue) range.minValue = featureValue;
         if (featureValue > range.maxValue) range.maxValue = featureValue;
         range.regionCount++;
+    }
+
+    // 用第二小的非零值作为显示的最小值（方便用户筛掉小颗粒）
+    if (secondSmallestValue < 1e18) {
+        range.minValue = secondSmallestValue;
+    } else if (smallestValue < 1e18) {
+        // 只有一个非零值的情况
+        range.minValue = smallestValue;
     }
 
     if (range.regionCount == 0) {

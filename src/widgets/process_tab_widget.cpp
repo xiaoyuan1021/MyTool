@@ -67,13 +67,26 @@ void ProcessTabWidget::addAlgorithm()
     step.params["OpenCVAlgoType"] = index;
 
     switch(index) {
-    case 0: case 2: case 4: case 6:
-        step.params["radius"] = m_ui->doubleSpinBox_radius->value();
+    case 0: case 2: case 4: case 6: {
+        double radius = m_ui->doubleSpinBox_radius->value();
+        if (radius <= 0) {
+            QMessageBox::warning(this, "输入错误", "圆形核半径必须大于0!");
+            return;
+        }
+        step.params["radius"] = radius;
         break;
-    case 1: case 3: case 5: case 7:
-        step.params["width"] = m_ui->spinBox_width->value();
-        step.params["height"] = m_ui->spinBox_height->value();
+    }
+    case 1: case 3: case 5: case 7: {
+        int width = m_ui->spinBox_width->value();
+        int height = m_ui->spinBox_height->value();
+        if (width <= 0 || height <= 0) {
+            QMessageBox::warning(this, "输入错误", "矩形核宽度和高度必须大于0!");
+            return;
+        }
+        step.params["width"] = width;
+        step.params["height"] = height;
         break;
+    }
     case 11:
         step.params["shapeType"] = m_ui->comboBox_shapeType->currentData().toString();
         break;
@@ -137,21 +150,24 @@ void ProcessTabWidget::moveAlgorithmDown()
 
 void ProcessTabWidget::onAlgorithmTypeChanged(int index)
 {
+    // 只有在未编辑已有算法时才设置默认值
+    if (m_editingAlgorithmIndex >= 0) return;
+
     switch (index) {
     case 0: case 2: case 4: case 6:
         m_ui->stackedWidget_Algorithm->setCurrentIndex(0);
+        m_ui->doubleSpinBox_radius->setValue(1.5);
         break;
     case 1: case 3: case 5: case 7:
         m_ui->stackedWidget_Algorithm->setCurrentIndex(1);
+        m_ui->spinBox_width->setValue(2);
+        m_ui->spinBox_height->setValue(2);
         break;
-    case 8: case 9: case 10:
+    case 8: case 9: case 10: case 12:
         m_ui->stackedWidget_Algorithm->setCurrentIndex(2);
         break;
     case 11:
         m_ui->stackedWidget_Algorithm->setCurrentIndex(3);
-        break;
-    case 12:
-        m_ui->stackedWidget_Algorithm->setCurrentIndex(2);
         break;
     }
 }
@@ -219,12 +235,12 @@ void ProcessTabWidget::loadAlgorithmParameters(int index)
     switch(algoType) {
     case 0: case 2: case 4: case 6:
         m_ui->stackedWidget_Algorithm->setCurrentIndex(0);
-        m_ui->doubleSpinBox_radius->setValue(step.params.value("radius", 3.5).toDouble());
+        m_ui->doubleSpinBox_radius->setValue(step.params.value("radius", 1.5).toDouble());
         break;
     case 1: case 3: case 5: case 7:
         m_ui->stackedWidget_Algorithm->setCurrentIndex(1);
-        m_ui->spinBox_width->setValue(step.params.value("width", 5).toInt());
-        m_ui->spinBox_height->setValue(step.params.value("height", 5).toInt());
+        m_ui->spinBox_width->setValue(step.params.value("width", 2).toInt());
+        m_ui->spinBox_height->setValue(step.params.value("height", 2).toInt());
         break;
     case 8: case 9: case 10: case 12:
         m_ui->stackedWidget_Algorithm->setCurrentIndex(2);
