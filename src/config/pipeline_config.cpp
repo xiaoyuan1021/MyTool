@@ -144,10 +144,7 @@ void PipelineConfig::fromJson(const QJsonObject& obj) {
 
 QJsonObject LineDetectConfig::toJson() const {
     QJsonObject obj;
-    obj["brightness"] = enhance.brightness;
-    obj["contrast"] = enhance.contrast;
-    obj["gamma"] = enhance.gamma;
-    obj["sharpen"] = enhance.sharpen;
+    obj["enhance"] = enhance.toJson();
     obj["algorithm"] = algorithm;
     obj["rho"] = rho;
     obj["theta"] = theta;
@@ -163,10 +160,9 @@ QJsonObject LineDetectConfig::toJson() const {
 }
 
 void LineDetectConfig::fromJson(const QJsonObject& obj) {
-    enhance.brightness = obj["brightness"].toInt(0);
-    enhance.contrast = obj["contrast"].toInt(100);
-    enhance.gamma = obj["gamma"].toInt(100);
-    enhance.sharpen = obj["sharpen"].toInt(100);
+    if (obj.contains("enhance")) {
+        enhance.fromJson(obj["enhance"].toObject());
+    }
     algorithm = obj["algorithm"].toInt(0);
     rho = obj["rho"].toDouble(1.0);
     theta = obj["theta"].toDouble(CV_PI / 180.0);
@@ -184,10 +180,7 @@ void LineDetectConfig::fromJson(const QJsonObject& obj) {
 
 QJsonObject BarcodeConfig::toJson() const {
     QJsonObject obj;
-    obj["brightness"] = enhance.brightness;
-    obj["contrast"] = enhance.contrast;
-    obj["gamma"] = enhance.gamma;
-    obj["sharpen"] = enhance.sharpen;
+    obj["enhance"] = enhance.toJson();
     obj["enableBarcode"] = enableBarcode;
     QJsonArray codeTypesArray;
     for (const QString& type : codeTypes) {
@@ -206,10 +199,9 @@ QJsonObject BarcodeConfig::toJson() const {
 }
 
 void BarcodeConfig::fromJson(const QJsonObject& obj) {
-    enhance.brightness = obj["brightness"].toInt(0);
-    enhance.contrast = obj["contrast"].toInt(100);
-    enhance.gamma = obj["gamma"].toInt(100);
-    enhance.sharpen = obj["sharpen"].toInt(100);
+    if (obj.contains("enhance")) {
+        enhance.fromJson(obj["enhance"].toObject());
+    }
     enableBarcode = obj["enableBarcode"].toBool(true);
     codeTypes.clear();
     QJsonArray codeTypesArray = obj["codeTypes"].toArray();

@@ -35,12 +35,17 @@ void StepColorChannel::run(PipelineContext &ctx)
         ctx.visualBase = ctx.channelImg;
     } catch (const cv::Exception& ex) {
         qDebug() << "[ColorChannel] OpenCV错误:" << ex.what();
-    Logger::instance()->error(QString("ColorChannel OpenCV错误: %1").arg(ex.what()));
+        Logger::instance()->error(QString("ColorChannel OpenCV错误: %1").arg(ex.what()));
+        ctx.channelImg = ctx.srcBgr;
+        ctx.visualBase = ctx.channelImg;
+    } catch (const std::exception& e) {
+        qDebug() << "[ColorChannel] 异常:" << e.what();
+        Logger::instance()->error(QString("ColorChannel 异常: %1").arg(e.what()));
         ctx.channelImg = ctx.srcBgr;
         ctx.visualBase = ctx.channelImg;
     } catch (...) {
         qDebug() << "[ColorChannel] 未知异常";
-    Logger::instance()->error(QString("ColorChannel 未知异常"));
+        Logger::instance()->error("ColorChannel 未知异常");
         ctx.channelImg = ctx.srcBgr;
         ctx.visualBase = ctx.channelImg;
     }
@@ -148,11 +153,16 @@ void StepFilter::run(PipelineContext& ctx)
         Logger::instance()->error(QString("StepFilter OpenCV错误: %1").arg(ex.what()));
         ctx.filterMask.release();
         ctx.reason = "过滤失败";
+    } catch (const std::exception& e) {
+        qDebug() << "[StepFilter] 异常:" << e.what();
+        Logger::instance()->error(QString("StepFilter 异常: %1").arg(e.what()));
+        ctx.filterMask.release();
+        ctx.reason = QString("过滤失败: %1").arg(e.what());
     } catch (...) {
         qDebug() << "[StepFilter] 未知异常";
         Logger::instance()->error("StepFilter 未知异常");
         ctx.filterMask.release();
-        ctx.reason = "过滤失败";
+        ctx.reason = "过滤失败: 未知异常";
     }
 }
 

@@ -233,26 +233,27 @@ void ImageFilterTabWidget::syncConfigToPipeline()
 {
     if (!m_pipelineManager) return;
 
-    auto& cfg = m_pipelineManager->mutableConfig().imageFilter;
-    cfg.filterType = static_cast<FilterDenoiseType>(m_filterTypeCombo->currentIndex());
+    m_pipelineManager->updateConfig([&](PipelineConfig& cfg) {
+        cfg.imageFilter.filterType = static_cast<FilterDenoiseType>(m_filterTypeCombo->currentIndex());
 
-    // 高斯参数
-    cfg.gaussianKernelSize = m_kernelSizeSlider->value() * 2 + 1;
-    cfg.gaussianSigmaX = m_sigmaXSlider->value() / 10.0;
-    cfg.gaussianSigmaY = m_sigmaYSlider->value() / 10.0;
+        // 高斯参数
+        cfg.imageFilter.gaussianKernelSize = m_kernelSizeSlider->value() * 2 + 1;
+        cfg.imageFilter.gaussianSigmaX = m_sigmaXSlider->value() / 10.0;
+        cfg.imageFilter.gaussianSigmaY = m_sigmaYSlider->value() / 10.0;
 
-    // 中值参数
-    cfg.medianKernelSize = m_medianKernelSlider->value() * 2 + 1;
+        // 中值参数
+        cfg.imageFilter.medianKernelSize = m_medianKernelSlider->value() * 2 + 1;
 
-    // 双边参数
-    cfg.bilateralD = m_bilateralDSlider->value();
-    cfg.bilateralSigmaColor = m_bilateralSigmaCSlider->value();
-    cfg.bilateralSigmaSpace = m_bilateralSigmaSSlider->value();
+        // 双边参数
+        cfg.imageFilter.bilateralD = m_bilateralDSlider->value();
+        cfg.imageFilter.bilateralSigmaColor = m_bilateralSigmaCSlider->value();
+        cfg.imageFilter.bilateralSigmaSpace = m_bilateralSigmaSSlider->value();
 
-    // 形态学参数
-    cfg.morphologyOp = static_cast<MorphologyOpType>(m_morphOpCombo->currentIndex());
-    cfg.morphologyKernelSize = m_morphKernelSlider->value();
-    cfg.morphologyIterations = m_morphIterSlider->value();
+        // 形态学参数
+        cfg.imageFilter.morphologyOp = static_cast<MorphologyOpType>(m_morphOpCombo->currentIndex());
+        cfg.imageFilter.morphologyKernelSize = m_morphKernelSlider->value();
+        cfg.imageFilter.morphologyIterations = m_morphIterSlider->value();
+    });
 
     emit filterConfigChanged();
 }

@@ -158,9 +158,10 @@ void OcrTabWidget::syncConfigToPipeline()
 {
     if (!m_pipelineManager) return;
 
-    auto& cfg = m_pipelineManager->mutableConfig().ocr;
-    cfg.language = m_languageCombo->currentData().toString();
-    cfg.pageMode = m_pageModeCombo->currentData().toInt();
+    m_pipelineManager->updateConfig([&](PipelineConfig& cfg) {
+        cfg.ocr.language = m_languageCombo->currentData().toString();
+        cfg.ocr.pageMode = m_pageModeCombo->currentData().toInt();
+    });
 
     emit ocrConfigChanged();
 }

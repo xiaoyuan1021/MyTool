@@ -85,7 +85,9 @@ void ObjectDetectionTabWidget::onApplyClicked()
     if (m_dnnInference.isLoaded() && m_currentModelPath == modelPath) {
         qDebug() << "[ObjectDetection] model already loaded, skip reloading";
         m_ui->label_status->setText("状态：模型已就绪");
-        m_pipelineManager->mutableConfig().enableObjectDetection = true;
+        m_pipelineManager->updateConfig([](PipelineConfig& cfg) {
+            cfg.enableObjectDetection = true;
+        });
         emit detectionConfigChanged();
         return;
     }
@@ -125,7 +127,9 @@ void ObjectDetectionTabWidget::onApplyClicked()
 
         if (result == "both" || result == "dnn") {
             m_currentModelPath = modelPath;
-            m_pipelineManager->mutableConfig().enableObjectDetection = true;
+            m_pipelineManager->updateConfig([](PipelineConfig& cfg) {
+                cfg.enableObjectDetection = true;
+            });
             // 尝试从 ORT 或 DNN 获取模型输入尺寸
             int modelW = 0, modelH = 0;
             if (m_ortInference.isLoaded()) {

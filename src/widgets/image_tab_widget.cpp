@@ -41,7 +41,9 @@ void ImageTabWidget::on_btn_applyChannel_clicked()
     PipelineConfig::Channel channel = channelFromIndex(comboIndex);
 
     // 设置通道模式到Pipeline
-    m_pipelineManager->mutableConfig().colorFilter.channel = channel;
+    m_pipelineManager->updateConfig([&](PipelineConfig& cfg) {
+        cfg.colorFilter.channel = channel;
+    });
 
     emit channelChanged(comboIndex);
 }
@@ -60,7 +62,9 @@ void ImageTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
 {
     connect(this, &ImageTabWidget::channelChanged,
             this, [pm, onConfigChanged](int channel) {
-                pm->mutableConfig().colorFilter.channel = static_cast<ChannelMode>(channel);
+                pm->updateConfig([channel](PipelineConfig& cfg) {
+                    cfg.colorFilter.channel = static_cast<ChannelMode>(channel);
+                });
                 onConfigChanged();
             });
 }

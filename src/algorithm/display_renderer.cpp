@@ -127,6 +127,10 @@ cv::Mat render(const PipelineContext& ctx, DisplayConfig::Mode mode)
         qDebug() << "[DisplayRenderer] OpenCV错误:" << ex.what();
         Logger::instance()->error(QString("DisplayRenderer渲染错误: %1").arg(ex.what()));
         return ctx.srcBgr.empty() ? cv::Mat() : ctx.srcBgr;
+    } catch (const std::exception& e) {
+        qDebug() << "[DisplayRenderer] 异常:" << e.what();
+        Logger::instance()->error(QString("DisplayRenderer渲染异常: %1").arg(e.what()));
+        return ctx.srcBgr.empty() ? cv::Mat() : ctx.srcBgr;
     } catch (...) {
         qDebug() << "[DisplayRenderer] 未知异常";
         Logger::instance()->error("DisplayRenderer渲染未知异常");

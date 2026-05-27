@@ -160,6 +160,32 @@ cv::Mat OpenCVAlgorithm::openingRectangle(const cv::Mat& region, int width, int 
     return result;
 }
 
+// =============== 通用前处理 ===============
+
+cv::Mat OpenCVAlgorithm::toBinary(const cv::Mat& src)
+{
+    if (src.empty()) return cv::Mat();
+    
+    cv::Mat gray;
+    if (src.channels() == 3) {
+        cv::cvtColor(src, gray, cv::COLOR_BGR2GRAY);
+    } else {
+        gray = src.clone();
+    }
+    
+    cv::Mat binary;
+    cv::threshold(gray, binary, 127, 255, cv::THRESH_BINARY);
+    return binary;
+}
+
+OpenCVAlgorithm::ConnectedComponentsResult OpenCVAlgorithm::analyzeConnectedComponents(const cv::Mat& binary)
+{
+    ConnectedComponentsResult result;
+    result.numLabels = cv::connectedComponentsWithStats(binary, result.labels, result.stats, result.centroids, 8) - 1;
+    return result;
+}
+
+
 cv::Mat OpenCVAlgorithm::closingCircle(const cv::Mat& region, double radius)
 {
     if (radius < 0 || region.empty()) return region.clone();
@@ -229,28 +255,14 @@ cv::Mat OpenCVAlgorithm::connection(const cv::Mat& region)
 {
     if (region.empty()) return region.clone();
     
-    cv::Mat binary;
-    if (region.channels() == 3) {
-        cv::cvtColor(region, binary, cv::COLOR_BGR2GRAY);
-    } else {
-        binary = region.clone();
-    }
+    cv::Mat binary = toBinary(region);
+    if (binary.empty()) return region.clone();
     
-    // 确保是二值图像
-    if (binary.type() != CV_8UC1) {
-        binary.convertTo(binary, CV_8UC1);
-    }
-    cv::threshold(binary, binary, 127, 255, cv::THRESH_BINARY);
+    auto cc = analyzeConnectedComponents(binary);
     
-    cv::Mat labels;
-    int numLabels = cv::connectedComponents(binary, labels, 8);
-    
-    // ✅ 正确：生成二值图像，每个连通域为255，背景为0
     cv::Mat result = cv::Mat::zeros(binary.size(), CV_8UC1);
-    
-    // 跳过背景标签0，从1开始
-    for (int i = 1; i < numLabels; ++i) {
-        result.setTo(cv::Scalar(255), labels == i);
+    for (int i = 1; i <= cc.numLabels; ++i) {
+        result.setTo(cv::Scalar(255), cc.labels == i);
     }
     
     return result;

@@ -133,40 +133,40 @@ void DetectionUiController::onDetectionItemSelected(const QString& roiId, const 
         switchToTabConfig(config);
 
         // 根据检测类型启用对应的Pipeline步骤
-        auto& pipelineConfig = pipelineManager->mutableConfig();
-        
-        // 先禁用所有步骤
-        for (int i = 0; i < PipelineConfig::STEP_COUNT; ++i) {
-            pipelineConfig.stepEnabled[i] = false;
-        }
+        pipelineManager->updateConfig([&](PipelineConfig& pipelineConfig) {
+            // 先禁用所有步骤
+            for (int i = 0; i < PipelineConfig::STEP_COUNT; ++i) {
+                pipelineConfig.stepEnabled[i] = false;
+            }
 
-        // 根据检测类型启用必要步骤
-        switch (detection.type) {
-            case DetectionType::Blob:
-                pipelineConfig.stepEnabled[static_cast<int>(StepType::ColorChannel)] = true;
-                pipelineConfig.stepEnabled[static_cast<int>(StepType::Enhance)] = true;
-                pipelineConfig.stepEnabled[static_cast<int>(StepType::Filter)] = true;
-                pipelineConfig.stepEnabled[static_cast<int>(StepType::AlgorithmQueue)] = true;
-                pipelineConfig.stepEnabled[static_cast<int>(StepType::ShapeFilter)] = true;
-                break;
-            case DetectionType::Line:
-                pipelineConfig.stepEnabled[static_cast<int>(StepType::ColorChannel)] = true;
-                pipelineConfig.stepEnabled[static_cast<int>(StepType::Enhance)] = true;
-                pipelineConfig.stepEnabled[static_cast<int>(StepType::LineDetector)] = true;
-                break;
-            case DetectionType::Barcode:
-                pipelineConfig.stepEnabled[static_cast<int>(StepType::ColorChannel)] = true;
-                pipelineConfig.stepEnabled[static_cast<int>(StepType::Enhance)] = true;
-                pipelineConfig.stepEnabled[static_cast<int>(StepType::BarcodeRecognition)] = true;
-                break;
-            case DetectionType::Ocr:
-                pipelineConfig.stepEnabled[static_cast<int>(StepType::ColorChannel)] = true;
-                pipelineConfig.stepEnabled[static_cast<int>(StepType::Enhance)] = true;
-                pipelineConfig.stepEnabled[static_cast<int>(StepType::OcrRecognition)] = true;
-                break;
-            default:
-                break;
-        }
+            // 根据检测类型启用必要步骤
+            switch (detection.type) {
+                case DetectionType::Blob:
+                    pipelineConfig.stepEnabled[static_cast<int>(StepType::ColorChannel)] = true;
+                    pipelineConfig.stepEnabled[static_cast<int>(StepType::Enhance)] = true;
+                    pipelineConfig.stepEnabled[static_cast<int>(StepType::Filter)] = true;
+                    pipelineConfig.stepEnabled[static_cast<int>(StepType::AlgorithmQueue)] = true;
+                    pipelineConfig.stepEnabled[static_cast<int>(StepType::ShapeFilter)] = true;
+                    break;
+                case DetectionType::Line:
+                    pipelineConfig.stepEnabled[static_cast<int>(StepType::ColorChannel)] = true;
+                    pipelineConfig.stepEnabled[static_cast<int>(StepType::Enhance)] = true;
+                    pipelineConfig.stepEnabled[static_cast<int>(StepType::LineDetector)] = true;
+                    break;
+                case DetectionType::Barcode:
+                    pipelineConfig.stepEnabled[static_cast<int>(StepType::ColorChannel)] = true;
+                    pipelineConfig.stepEnabled[static_cast<int>(StepType::Enhance)] = true;
+                    pipelineConfig.stepEnabled[static_cast<int>(StepType::BarcodeRecognition)] = true;
+                    break;
+                case DetectionType::Ocr:
+                    pipelineConfig.stepEnabled[static_cast<int>(StepType::ColorChannel)] = true;
+                    pipelineConfig.stepEnabled[static_cast<int>(StepType::Enhance)] = true;
+                    pipelineConfig.stepEnabled[static_cast<int>(StepType::OcrRecognition)] = true;
+                    break;
+                default:
+                    break;
+            }
+        });
 
         // 重建Pipeline
         pipelineManager->rebuildPipeline();

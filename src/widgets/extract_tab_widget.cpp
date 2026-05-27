@@ -106,7 +106,9 @@ void ExtractTabWidget::onConditionChanged(int index)
     if (!m_pipeline) return;
 
     auto mode = (index == 0) ? ShapeFilterLogicMode::And : ShapeFilterLogicMode::Or;
-    m_pipeline->mutableConfig().shapeFilter.mode = mode;
+    m_pipeline->updateConfig([&](PipelineConfig& cfg) {
+        cfg.shapeFilter.mode = mode;
+    });
 
     QString modeName = (mode == FilterMode::And) ? "AND" : "OR";
     Logger::instance()->info(QString("筛选模式已切换:%1").arg(modeName));
@@ -195,12 +197,14 @@ void ExtractTabWidget::extractRegions()
     saveCurrentFilterCondition();
 
     // 同步所有条件到Pipeline
-    m_pipeline->mutableConfig().shapeFilter.clear();
-    for (const FilterCondition& condition : m_filterConditions) {
-        if (condition.isValid()) {
-            m_pipeline->mutableConfig().shapeFilter.addCondition(condition);
+    m_pipeline->updateConfig([&](PipelineConfig& cfg) {
+        cfg.shapeFilter.clear();
+        for (const FilterCondition& condition : m_filterConditions) {
+            if (condition.isValid()) {
+                cfg.shapeFilter.addCondition(condition);
+            }
         }
-    }
+    });
 
     m_view->clearPolygon();
     emit extractionChanged();
@@ -359,11 +363,12 @@ void ExtractTabWidget::setExtractConfig(const ShapeFilterConfig& config)
 
     // 清空当前条件
     m_filterConditions.clear();
-    m_pipeline->mutableConfig().shapeFilter.clear();
 
     // 应用新配置
     m_filterConditions = config.conditions;
-    m_pipeline->mutableConfig().shapeFilter = config;
+    m_pipeline->updateConfig([&](PipelineConfig& cfg) {
+        cfg.shapeFilter = config;
+    });
 
     // 更新UI显示
     updateFilterListWidget();
@@ -396,10 +401,12 @@ void ExtractTabWidget::saveCurrentFilterCondition()
     m_filterConditions[m_currentSelectedIndex].maxValue = maxValue;
 
     // 重新同步到 Pipeline
-    m_pipeline->mutableConfig().shapeFilter.clear();
-    for (const FilterCondition& condition : m_filterConditions) {
-        m_pipeline->mutableConfig().shapeFilter.addCondition(condition);
-    }
+    m_pipeline->updateConfig([&](PipelineConfig& cfg) {
+        cfg.shapeFilter.clear();
+        for (const FilterCondition& condition : m_filterConditions) {
+            cfg.shapeFilter.addCondition(condition);
+        }
+    });
 
     // 触发重新处理
     emit extractionChanged();

@@ -361,17 +361,20 @@ void StepConfigWidget::onApplyClicked()
 
         // 当启用过滤步骤时，自动设置默认过滤模式（Gray）
         if (checked && kSteps[entryIdx].backendIndices.contains(2)) {
-            auto& cf = m_pipelineManager->mutableConfig().colorFilter;
-            if (cf.mode == ImageFilterMode::None) {
-                cf.mode = ImageFilterMode::Gray;
-            }
+            m_pipelineManager->updateConfig([&](PipelineConfig& cfg) {
+                if (cfg.colorFilter.mode == ImageFilterMode::None) {
+                    cfg.colorFilter.mode = ImageFilterMode::Gray;
+                }
+            });
         }
 
         // 虚拟步骤：持久化到 PipelineConfig 独立字段
         if (kSteps[entryIdx].backendIndices.size() == 1
             && kSteps[entryIdx].backendIndices[0] < 0
             && strcmp(kSteps[entryIdx].displayName, "目标检测") == 0) {
-            m_pipelineManager->mutableConfig().enableObjectDetection = checked;
+            m_pipelineManager->updateConfig([checked](PipelineConfig& cfg) {
+                cfg.enableObjectDetection = checked;
+            });
         }
     }
 
@@ -382,10 +385,11 @@ void StepConfigWidget::onApplyClicked()
         }
     }
 
-    auto& cfg = m_pipelineManager->mutableConfig();
-    for (int i = 0; i < PipelineConfig::STEP_COUNT; ++i) {
-        cfg.stepOrder[i] = newOrder[i];
-    }
+    m_pipelineManager->updateConfig([&](PipelineConfig& cfg) {
+        for (int i = 0; i < PipelineConfig::STEP_COUNT; ++i) {
+            cfg.stepOrder[i] = newOrder[i];
+        }
+    });
 
     // ---- 2) 重建 Pipeline ----
     m_pipelineManager->rebuildPipeline();

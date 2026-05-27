@@ -164,4 +164,16 @@ private:
     
     // 计算圆形度（基于轮廓）
     static double calculateCircularity(const std::vector<cv::Point>& contour);
+    
+    // 通用前处理：灰度转换 + 二值化
+    static cv::Mat toBinary(const cv::Mat& src);
+    
+    // 连通域分析：返回 labels, stats, centroids, numLabels
+    struct ConnectedComponentsResult {
+        cv::Mat labels;
+        cv::Mat stats;
+        cv::Mat centroids;
+        int numLabels;
+    };
+    static ConnectedComponentsResult analyzeConnectedComponents(const cv::Mat& binary);
 };

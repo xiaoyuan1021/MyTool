@@ -161,32 +161,34 @@ void FilterTabWidget::onConditionChanged(int index)
 
 void FilterTabWidget::onFilterModeChanged(int index)
 {
-    auto& cf = m_pipelineManager->mutableConfig().colorFilter;
-    switch (index) {
-    case 0:  // None
-        cf.mode = ImageFilterMode::None;
-        m_ui->stackedWidget_filter->setCurrentIndex(0);
-        break;
-    case 1:  // Gray
-        cf.mode = ImageFilterMode::Gray;
-        m_ui->stackedWidget_filter->setCurrentIndex(1);
-        syncGrayParameters();
-        break;
-    case 2:  // RGB
-        cf.mode = ImageFilterMode::RGB;
-        m_ui->stackedWidget_filter->setCurrentIndex(2);
-        syncRGBParameters();
-        break;
-    case 3:  // HSV
-        cf.mode = ImageFilterMode::HSV;
-        m_ui->stackedWidget_filter->setCurrentIndex(3);
-        syncHSVParameters();
-        break;
-    default:
-        cf.mode = ImageFilterMode::None;
-        m_ui->stackedWidget_filter->setCurrentIndex(0);
-        break;
-    }
+    m_pipelineManager->updateConfig([&](PipelineConfig& cfg) {
+        auto& cf = cfg.colorFilter;
+        switch (index) {
+        case 0:  // None
+            cf.mode = ImageFilterMode::None;
+            m_ui->stackedWidget_filter->setCurrentIndex(0);
+            break;
+        case 1:  // Gray
+            cf.mode = ImageFilterMode::Gray;
+            m_ui->stackedWidget_filter->setCurrentIndex(1);
+            syncGrayParameters();
+            break;
+        case 2:  // RGB
+            cf.mode = ImageFilterMode::RGB;
+            m_ui->stackedWidget_filter->setCurrentIndex(2);
+            syncRGBParameters();
+            break;
+        case 3:  // HSV
+            cf.mode = ImageFilterMode::HSV;
+            m_ui->stackedWidget_filter->setCurrentIndex(3);
+            syncHSVParameters();
+            break;
+        default:
+            cf.mode = ImageFilterMode::None;
+            m_ui->stackedWidget_filter->setCurrentIndex(0);
+            break;
+        }
+    });
 
     emit filterConfigChanged();
 }
@@ -207,9 +209,10 @@ void FilterTabWidget::syncGrayParameters()
 {
     int grayLow = m_ui->Slider_grayLow->value();
     int grayHigh = m_ui->Slider_grayHigh->value();
-    auto& cf = m_pipelineManager->mutableConfig().colorFilter;
-    cf.grayLow = grayLow;
-    cf.grayHigh = grayHigh;
+    m_pipelineManager->updateConfig([&](PipelineConfig& cfg) {
+        cfg.colorFilter.grayLow = grayLow;
+        cfg.colorFilter.grayHigh = grayHigh;
+    });
 }
 
 void FilterTabWidget::syncRGBParameters()
@@ -221,10 +224,11 @@ void FilterTabWidget::syncRGBParameters()
     int bLow = m_ui->Slider_rgb_B_Low->value();
     int bHigh = m_ui->Slider_rgb_B_High->value();
 
-    auto& cf = m_pipelineManager->mutableConfig().colorFilter;
-    cf.rLow = rLow; cf.rHigh = rHigh;
-    cf.gLow = gLow; cf.gHigh = gHigh;
-    cf.bLow = bLow; cf.bHigh = bHigh;
+    m_pipelineManager->updateConfig([&](PipelineConfig& cfg) {
+        cfg.colorFilter.rLow = rLow; cfg.colorFilter.rHigh = rHigh;
+        cfg.colorFilter.gLow = gLow; cfg.colorFilter.gHigh = gHigh;
+        cfg.colorFilter.bLow = bLow; cfg.colorFilter.bHigh = bHigh;
+    });
 }
 
 void FilterTabWidget::syncHSVParameters()
@@ -236,10 +240,11 @@ void FilterTabWidget::syncHSVParameters()
     int vLow = m_ui->Slider_hsv_V_Low->value();
     int vHigh = m_ui->Slider_hsv_V_High->value();
 
-    auto& cf = m_pipelineManager->mutableConfig().colorFilter;
-    cf.hLow = hLow; cf.hHigh = hHigh;
-    cf.sLow = sLow; cf.sHigh = sHigh;
-    cf.vLow = vLow; cf.vHigh = vHigh;
+    m_pipelineManager->updateConfig([&](PipelineConfig& cfg) {
+        cfg.colorFilter.hLow = hLow; cfg.colorFilter.hHigh = hHigh;
+        cfg.colorFilter.sLow = sLow; cfg.colorFilter.sHigh = sHigh;
+        cfg.colorFilter.vLow = vLow; cfg.colorFilter.vHigh = vHigh;
+    });
 }
 
 void FilterTabWidget::getFilterConfig(int& mode, int& grayLow, int& grayHigh) const

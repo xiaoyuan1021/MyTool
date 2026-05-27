@@ -34,6 +34,7 @@ public:
     void resetConfigToDefaults();
 
     /// 获取配置的可变引用（UI线程直接读写，替代大量 trivial setter）
+    [[deprecated("使用 updateConfig() 替代")]]
     PipelineConfig& mutableConfig() { return m_config; }
 
     /// 获取配置的常量引用
@@ -44,6 +45,11 @@ public:
 
     // 设置配置（仅UI线程调用）
     void setConfig(const PipelineConfig& config) { m_config = config; }
+
+    /// 批量修改配置（推荐方式）
+    void updateConfig(std::function<void(PipelineConfig&)> updater) {
+        updater(m_config);
+    }
 
     // ========== 步骤控制 ==========
 

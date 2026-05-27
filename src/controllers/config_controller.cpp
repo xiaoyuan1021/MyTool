@@ -198,7 +198,9 @@ void ConfigController::applyConfigToUI(const AppConfig& config)
     }
 
     // 同步Pipeline中的提取配置
-    m_pipelineManager->mutableConfig().shapeFilter = config.pipelineConfig.shapeFilter;
+    m_pipelineManager->updateConfig([&](PipelineConfig& cfg) {
+        cfg.shapeFilter = config.pipelineConfig.shapeFilter;
+    });
 
     // 应用 PipelineConfig 到 PipelineManager（不含 algorithmQueue）
     m_pipelineManager->setConfig(config.pipelineConfig);
