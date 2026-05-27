@@ -74,18 +74,13 @@ void PipelineConfig::fromJson(const QJsonObject& obj) {
     // 增强参数
     if (obj.contains("enhance")) {
         enhance.fromJson(obj["enhance"].toObject());
-    } else {
-        // 向后兼容：旧格式直接平铺在顶层
-        enhance.brightness = obj["brightness"].toInt(0);
-        enhance.contrast   = obj["contrast"].toInt(100);
-        enhance.gamma      = obj["gamma"].toInt(100);
-        enhance.sharpen    = obj["sharpen"].toInt(100);
     }
 
     // 通道/过滤参数
     if (obj.contains("colorFilter")) {
         QJsonObject colorObj = obj["colorFilter"].toObject();
         colorFilter.channel = static_cast<ChannelMode>(colorObj["channel"].toInt(0));
+        colorFilter.mode = static_cast<ImageFilterMode>(colorObj["filterMode"].toInt(0));
         colorFilter.grayLow = colorObj["grayLow"].toInt(0);
         colorFilter.grayHigh = colorObj["grayHigh"].toInt(255);
         colorFilter.rLow = colorObj["rLow"].toInt(0);
@@ -100,26 +95,6 @@ void PipelineConfig::fromJson(const QJsonObject& obj) {
         colorFilter.sHigh = colorObj["sHigh"].toInt(255);
         colorFilter.vLow = colorObj["vLow"].toInt(0);
         colorFilter.vHigh = colorObj["vHigh"].toInt(255);
-        
-        // 向后兼容：旧格式
-        if (colorObj.contains("filterMode")) {
-            colorFilter.mode = static_cast<ImageFilterMode>(colorObj["filterMode"].toInt(0));
-        } else if (colorObj.contains("currentFilterMode")) {
-            // 旧格式：根据currentFilterMode和enable标志推断新mode
-            auto oldMode = static_cast<ImageFilterMode>(colorObj["currentFilterMode"].toInt(0));
-            if (oldMode == ImageFilterMode::Gray) {
-                colorFilter.mode = ImageFilterMode::Gray;
-            } else if (colorObj["enableColorFilter"].toBool(false)) {
-                auto colorMode = static_cast<::ColorFilterMode>(colorObj["colorFilterMode"].toInt(0));
-                colorFilter.mode = (colorMode == ::ColorFilterMode::RGB) ? 
-                    ImageFilterMode::RGB : ImageFilterMode::HSV;
-            } else {
-                colorFilter.mode = ImageFilterMode::None;
-            }
-        }
-    } else {
-        // 向后兼容：旧格式平铺在顶层
-        colorFilter.channel = static_cast<ChannelMode>(obj["channel"].toInt(0));
     }
 
     // 直线检测参数

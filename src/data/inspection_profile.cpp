@@ -175,15 +175,6 @@ void RoiTemplate::fromJson(const QJsonObject& obj) {
 
     QJsonObject pipeConfig = obj["pipelineConfig"].toObject();
     if (!pipeConfig.isEmpty()) {
-        // 兼容旧格式：将扁平 barcode_* 字段转为嵌套格式
-        if (pipeConfig.contains("barcode_enable") && !pipeConfig.contains("barcode")) {
-            QJsonObject barcodeObj;
-            barcodeObj["enableBarcode"] = pipeConfig["barcode_enable"];
-            barcodeObj["codeTypes"] = pipeConfig["barcode_codeTypes"];
-            barcodeObj["maxNumSymbols"] = pipeConfig["barcode_maxNum"];
-            barcodeObj["returnQuality"] = pipeConfig["barcode_returnQuality"];
-            pipeConfig["barcode"] = barcodeObj;
-        }
         pipelineConfig.fromJson(pipeConfig);
     }
 }

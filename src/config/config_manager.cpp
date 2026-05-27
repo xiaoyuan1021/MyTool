@@ -78,7 +78,6 @@ void AppConfig::fromJson(const QJsonObject& json)
 
     // ========== Pipeline 配置 ==========
     if (json.contains("pipeline")) {
-        // 新格式：统一在 "pipeline" 键下
         QJsonObject pipelineObj = json["pipeline"].toObject();
         pipelineConfig.fromJson(pipelineObj);
 
@@ -100,106 +99,11 @@ void AppConfig::fromJson(const QJsonObject& json)
                 algorithmQueue.append(step);
             }
         }
-    } else {
-        // 旧格式：各字段平铺在顶层（向后兼容）
-        // 增强参数
-        if (json.contains("enhance")) {
-            QJsonObject enhanceObj = json["enhance"].toObject();
-            pipelineConfig.enhance.brightness = enhanceObj["brightness"].toInt(0);
-            pipelineConfig.enhance.contrast = enhanceObj["contrast"].toInt(100) / 100.0;
-            pipelineConfig.enhance.gamma = enhanceObj["gamma"].toInt(100) / 100.0;
-            pipelineConfig.enhance.sharpen = enhanceObj["sharpen"].toInt(100) / 100.0;
-        }
-
-        // 过滤配置
-        if (json.contains("filter")) {
-            QJsonObject filterObj = json["filter"].toObject();
-            pipelineConfig.colorFilter.mode = static_cast<ImageFilterMode>(filterObj["mode"].toInt(0));
-            pipelineConfig.colorFilter.grayLow = filterObj["grayLow"].toInt(0);
-            pipelineConfig.colorFilter.grayHigh = filterObj["grayHigh"].toInt(255);
-        }
-
-        // 提取配置
-        if (json.contains("extract")) {
-            QJsonObject extractObj = json["extract"].toObject();
-            pipelineConfig.shapeFilter.clear();
-            QString modeStr = extractObj["mode"].toString("and");
-            pipelineConfig.shapeFilter.mode = (modeStr == "and") ? FilterMode::And : FilterMode::Or;
-            QJsonArray conditionsArray = extractObj["conditions"].toArray();
-            for (const auto& item : conditionsArray) {
-                QJsonObject condObj = item.toObject();
-                QString featureName = condObj["feature"].toString();
-                double minValue = condObj["minValue"].toDouble(0.0);
-                double maxValue = condObj["maxValue"].toDouble(1e18);
-                ShapeFeature feature = ShapeFeature::Area;
-                if (featureName == "circularity") feature = ShapeFeature::Circularity;
-                else if (featureName == "width") feature = ShapeFeature::Width;
-                else if (featureName == "height") feature = ShapeFeature::Height;
-                else if (featureName == "compactness") feature = ShapeFeature::Compactness;
-                else if (featureName == "convexity") feature = ShapeFeature::Convexity;
-                else if (featureName == "anisometry") feature = ShapeFeature::RectangularityAnisometry;
-                pipelineConfig.shapeFilter.addCondition(FilterCondition(feature, minValue, maxValue));
-            }
-        }
-
-        // 判定配置
-        if (json.contains("judge")) {
-            QJsonObject judgeObj = json["judge"].toObject();
-            pipelineConfig.judge.minRegionCount = judgeObj["minRegionCount"].toInt(0);
-            pipelineConfig.judge.maxRegionCount = judgeObj["maxRegionCount"].toInt(1000);
-            pipelineConfig.judge.currentRegionCount = judgeObj["currentRegionCount"].toInt(0);
-        }
-
-        // 算法队列配置
-        if (json.contains("algorithms")) {
-            algorithmQueue.clear();
-            QJsonArray algorithmArray = json["algorithms"].toArray();
-            for (const auto& item : algorithmArray) {
-                QJsonObject stepObj = item.toObject();
-                AlgorithmStep step;
-                step.name = stepObj["name"].toString();
-                step.type = stepObj["type"].toString();
-                step.enabled = stepObj["enabled"].toBool(true);
-                step.description = stepObj["description"].toString();
-                QJsonObject paramsObj = stepObj["params"].toObject();
-                for (auto it = paramsObj.begin(); it != paramsObj.end(); ++it) {
-                    step.params[it.key()] = it.value().toVariant();
-                }
-                algorithmQueue.append(step);
-            }
-        }
-
-        // 条码识别配置
-        if (json.contains("barcode")) {
-            QJsonObject barcodeObj = json["barcode"].toObject();
-            pipelineConfig.barcode.enableBarcode = barcodeObj["enableBarcode"].toBool(false);
-            pipelineConfig.barcode.codeTypes.clear();
-            QJsonArray codeTypesArray = barcodeObj["codeTypes"].toArray();
-            for (const auto& val : codeTypesArray) {
-                pipelineConfig.barcode.codeTypes.append(val.toString());
-            }
-            pipelineConfig.barcode.maxNumSymbols = barcodeObj["maxNumSymbols"].toInt(0);
-        }
     }
 
     // RoiManager 导出数据
     if (json.contains("roiExport")) {
         roiExportData = json["roiExport"].toObject();
-    } else if (json.contains("multiRoiConfigs")) {
-        // 向后兼容：旧格式 multiRoiConfigs + currentImageId → 新格式
-        QJsonObject exportObj;
-        exportObj["version"] = "1.0";
-        exportObj["currentImageId"] = json["currentImageId"].toString("");
-        QJsonObject imagesObj;
-        QJsonObject oldMultiRoi = json["multiRoiConfigs"].toObject();
-        for (auto it = oldMultiRoi.begin(); it != oldMultiRoi.end(); ++it) {
-            QJsonObject imageObj;
-            imageObj["roiConfigs"] = it.value().toArray();
-            imageObj["activeRoiId"] = "";
-            imagesObj[it.key()] = imageObj;
-        }
-        exportObj["images"] = imagesObj;
-        roiExportData = exportObj;
     }
 
     // 图片文件路径列表

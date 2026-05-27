@@ -85,7 +85,7 @@ void ConfigController::collectConfigFromUI(AppConfig& config)
         tab->saveToConfig(config.pipelineConfig);
     }
 
-    // 收集 ROI 配置（单ROI模式，向后兼容）
+    // 收集 ROI 配置
     if (m_roiManager.isRoiActive()) {
         cv::Rect roi = m_roiManager.getLastRoi();
         config.roiRect = QRectF(
@@ -147,7 +147,7 @@ void ConfigController::applyConfigToUI(const AppConfig& config)
             .arg(loadedCount).arg(config.imageFilePaths.size()));
     }
 
-    // ====== 第二步：恢复单ROI配置（向后兼容） ======
+    // ====== 第二步：恢复单ROI配置 ======
     if (config.roiRect.isValid() && m_roiManager.imageCount() > 0) {
         m_roiManager.setRoi(config.roiRect);
         Logger::instance()->info("已恢复 ROI 配置");
