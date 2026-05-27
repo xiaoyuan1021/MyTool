@@ -145,8 +145,7 @@ void DetectionUiController::onDetectionItemSelected(const QString& roiId, const 
             case DetectionType::Blob:
                 pipelineConfig.stepEnabled[static_cast<int>(StepType::ColorChannel)] = true;
                 pipelineConfig.stepEnabled[static_cast<int>(StepType::Enhance)] = true;
-                pipelineConfig.stepEnabled[static_cast<int>(StepType::GrayFilter)] = true;
-                pipelineConfig.stepEnabled[static_cast<int>(StepType::ColorFilter)] = true;
+                pipelineConfig.stepEnabled[static_cast<int>(StepType::Filter)] = true;
                 pipelineConfig.stepEnabled[static_cast<int>(StepType::AlgorithmQueue)] = true;
                 pipelineConfig.stepEnabled[static_cast<int>(StepType::ShapeFilter)] = true;
                 break;

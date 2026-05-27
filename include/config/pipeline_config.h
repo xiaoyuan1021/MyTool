@@ -13,8 +13,7 @@ enum class StepType : int
 {
     ColorChannel = 0,
     Enhance,
-    GrayFilter,
-    ColorFilter,
+    Filter,             // 统一过滤（灰度/RGB/HSV）
     AlgorithmQueue,
     ShapeFilter,
     LineDetect,
@@ -31,8 +30,7 @@ inline const char* stepDisplayName(StepType type)
     switch (type) {
         case StepType::ColorChannel:       return "颜色通道";
         case StepType::Enhance:            return "图像增强";
-        case StepType::GrayFilter:         return "灰度过滤";
-        case StepType::ColorFilter:        return "颜色过滤";
+        case StepType::Filter:             return "过滤";
         case StepType::AlgorithmQueue:     return "算法处理";
         case StepType::ShapeFilter:        return "形状筛选";
         case StepType::LineDetect:         return "直线检测";
@@ -247,20 +245,16 @@ struct EnhanceConfig
  * @brief 颜色/通道/灰度过滤配置
  *
  * 对应 FilterTabWidget 和颜色过滤相关参数。
+ * 统一使用 mode 字段控制过滤类型，无需单独的 enable 标志。
  */
 struct ColorFilterConfig
 {
     ChannelMode channel = ChannelMode::RGB;
-    ImageFilterMode currentFilterMode = ImageFilterMode::None;
-
-    bool enableColorFilter = false;
-    ::ColorFilterMode colorFilterMode = ::ColorFilterMode::None;
+    ImageFilterMode mode = ImageFilterMode::None;  // 统一过滤模式开关
 
     // 灰度过滤（选中范围）
     int grayLow = 0;
     int grayHigh = 255;
-    bool enableGrayFilter = true;
-    bool enableAreaFilter = false;
 
     // RGB 过滤范围
     int rLow = 0, rHigh = 255;
@@ -271,6 +265,13 @@ struct ColorFilterConfig
     int hLow = 0, hHigh = 179;
     int sLow = 0, sHigh = 255;
     int vLow = 0, vHigh = 255;
+
+    // 向后兼容：旧字段转换
+    [[deprecated]] bool enableGrayFilter = true;
+    [[deprecated]] bool enableColorFilter = false;
+    [[deprecated]] ::ColorFilterMode colorFilterMode = ::ColorFilterMode::None;
+    [[deprecated]] ImageFilterMode currentFilterMode = ImageFilterMode::None;
+    [[deprecated]] bool enableAreaFilter = false;
 };
 
 /**
@@ -398,8 +399,7 @@ struct PipelineConfig
     std::array<bool, STEP_COUNT> stepEnabled = {
         false,  // ColorChannel
         false,  // Enhance
-        false,  // GrayFilter
-        false,  // ColorFilter
+        false,  // Filter
         false,  // AlgorithmQueue
         false,  // ShapeFilter
         false,  // LineDetect
@@ -409,7 +409,7 @@ struct PipelineConfig
         false   // OcrRecognition
     };
 
-    std::array<int, STEP_COUNT> stepOrder = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    std::array<int, STEP_COUNT> stepOrder = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
 
     // ========== 扩展功能开关（不在 StepType 枚举中） ==========
     bool enableObjectDetection = false;  ///< 在 Pipeline 末尾启用 YOLO 目标检测

@@ -147,7 +147,7 @@ void ExtractTabWidget::addFilter()
 
     const PipelineContext& ctx = m_pipeline->getLastContext();
     
-    cv::Mat inputMat = !ctx.extractedMask.empty() ? ctx.extractedMask : ctx.combinedMask;
+    cv::Mat inputMat = !ctx.extractedMask.empty() ? ctx.extractedMask : ctx.filterMask;
     
     if (inputMat.empty()) {
         QMessageBox::warning(this, "提示", "请先执行算法处理!");
@@ -233,12 +233,12 @@ void ExtractTabWidget::calculateRegionFeatures(const QVector<QPointF>& points)
     }
 
     const PipelineContext& ctx = m_pipeline->getLastContext();
-    if (ctx.extractedMask.empty() && ctx.combinedMask.empty()) {
+    if (ctx.extractedMask.empty() && ctx.filterMask.empty()) {
         Logger::instance()->warning("请先执行算法处理，然后再绘制区域");
         return;
     }
 
-    cv::Mat processedImg = !ctx.extractedMask.empty() ? ctx.extractedMask : ctx.combinedMask;
+    cv::Mat processedImg = !ctx.extractedMask.empty() ? ctx.extractedMask : ctx.filterMask;
     OpenCVAlgorithm analyzer;
     QVector<RegionFeature> features = analyzer.analyzeRegionsInPolygon(points, processedImg);
 
@@ -259,7 +259,7 @@ void ExtractTabWidget::calculateAndShowRange(ShapeFeature feature)
     if (!m_ui || !m_pipeline) return;
 
     const PipelineContext& ctx = m_pipeline->getLastContext();
-    cv::Mat inputMat = !ctx.extractedMask.empty() ? ctx.extractedMask : ctx.combinedMask;
+    cv::Mat inputMat = !ctx.extractedMask.empty() ? ctx.extractedMask : ctx.filterMask;
 
     if (inputMat.empty()) {
         if (m_ui->label_featureRange) {

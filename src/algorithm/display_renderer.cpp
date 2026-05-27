@@ -48,8 +48,8 @@ cv::Mat render(const PipelineContext& ctx, DisplayConfig::Mode mode)
             return ensureBgr(ctx.visualBase);
 
         case Mode::MaskGreenWhite:
-            if (!ctx.combinedMask.empty())
-                return OpenCVAlgorithm::convertToGreenWhite(ctx.combinedMask);
+            if (!ctx.filterMask.empty())
+                return OpenCVAlgorithm::convertToGreenWhite(ctx.filterMask);
             if (!ctx.extractedMask.empty())
                 return OpenCVAlgorithm::convertToGreenWhite(ctx.extractedMask);
             return ensureBgr(ctx.visualBase);
@@ -57,8 +57,8 @@ cv::Mat render(const PipelineContext& ctx, DisplayConfig::Mode mode)
         case Mode::MaskOverlay:
             if (!ctx.extractedMask.empty())
                 return overlayMaskOnImage(ensureBgr(ctx.visualBase), ctx.extractedMask);
-            if (!ctx.combinedMask.empty())
-                return overlayMaskOnImage(ensureBgr(ctx.visualBase), ctx.combinedMask);
+            if (!ctx.filterMask.empty())
+                return overlayMaskOnImage(ensureBgr(ctx.visualBase), ctx.filterMask);
             return ensureBgr(ctx.visualBase);
 
         case Mode::Processed:
@@ -97,13 +97,13 @@ cv::Mat render(const PipelineContext& ctx, DisplayConfig::Mode mode)
             return ensureBgr(ctx.visualBase);
 
         case Mode::MaskOnly:
-            if (!ctx.combinedMask.empty()) {
-                if (ctx.combinedMask.channels() == 1) {
+            if (!ctx.filterMask.empty()) {
+                if (ctx.filterMask.channels() == 1) {
                     cv::Mat bgr;
-                    cv::cvtColor(ctx.combinedMask, bgr, cv::COLOR_GRAY2BGR);
+                    cv::cvtColor(ctx.filterMask, bgr, cv::COLOR_GRAY2BGR);
                     return bgr;
                 }
-                return ctx.combinedMask;
+                return ctx.filterMask;
             }
             return ensureBgr(ctx.visualBase);
 

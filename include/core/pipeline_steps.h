@@ -22,11 +22,14 @@ private:
     ImageProcessor* proc_ = nullptr;
 };
 
-// 3) 灰度过滤
-class StepGrayFilter : public IPipelineStep
+// 3) 统一过滤（灰度/RGB/HSV）
+class StepFilter : public IPipelineStep
 {
 public:
+    StepFilter(ImageProcessor* proc) : m_processor(proc) {}
     void run(PipelineContext& ctx) override;
+private:
+    ImageProcessor* m_processor = nullptr;
 };
 
 // 4) 算法队列
@@ -53,17 +56,6 @@ private:
     cv::Mat applyFilterAnd(const cv::Mat& regions, const ShapeFilterConfig& config);
 
     cv::Mat applyFilterOr(const cv::Mat& regions, const ShapeFilterConfig& config);
-};
-
-// 颜色过滤步骤
-class StepColorFilter : public IPipelineStep
-{
-public:
-    StepColorFilter(ImageProcessor* proc) : m_processor(proc) {}
-
-    void run(PipelineContext& ctx) override;
-private:
-    ImageProcessor* m_processor;
 };
 
 // 直线检测

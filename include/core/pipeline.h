@@ -25,9 +25,7 @@ struct PipelineContext
     cv::Mat ocrInputImage;   // OCR输入图像（预留）
 
     // ========== 过滤结果 ==========
-    cv::Mat grayMask;        // 灰度过滤结果（StepGrayFilter）
-    cv::Mat colorMask;       // 颜色过滤结果（StepColorFilter）
-    cv::Mat combinedMask;    // 合并后的过滤结果（灰度+颜色）
+    cv::Mat filterMask;      // 统一过滤结果（StepFilter）
 
     // ========== 筛选结果 ==========
     cv::Mat extractedMask;   // 形状筛选结果（StepShapeFilter）

@@ -114,7 +114,7 @@ void AppConfig::fromJson(const QJsonObject& json)
         // 过滤配置
         if (json.contains("filter")) {
             QJsonObject filterObj = json["filter"].toObject();
-            pipelineConfig.colorFilter.currentFilterMode = static_cast<ImageFilterMode>(filterObj["mode"].toInt(0));
+            pipelineConfig.colorFilter.mode = static_cast<ImageFilterMode>(filterObj["mode"].toInt(0));
             pipelineConfig.colorFilter.grayLow = filterObj["grayLow"].toInt(0);
             pipelineConfig.colorFilter.grayHigh = filterObj["grayHigh"].toInt(255);
         }

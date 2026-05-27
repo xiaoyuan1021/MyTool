@@ -221,15 +221,14 @@ void PipelineManager::initPipeline()
     std::map<int, std::unique_ptr<IPipelineStep>> allSteps;
     allSteps[0] = std::make_unique<StepColorChannel>();
     allSteps[1] = std::make_unique<StepEnhance>(m_processor.get());
-    allSteps[2] = std::make_unique<StepGrayFilter>();
-    allSteps[3] = std::make_unique<StepColorFilter>(m_processor.get());
-    allSteps[4] = std::make_unique<StepAlgorithmQueue>(m_processor.get(), &m_algorithmQueue);
-    allSteps[5] = std::make_unique<StepShapeFilter>();
-    allSteps[6] = std::make_unique<StepLineDetect>();
-    allSteps[7] = std::make_unique<StepReferenceLineFilter>();
-    allSteps[8] = std::make_unique<StepBarcodeRecognition>();
-    allSteps[9] = std::make_unique<StepImageFilter>();
-    allSteps[10] = std::make_unique<StepOcrRecognition>();
+    allSteps[2] = std::make_unique<StepFilter>(m_processor.get());
+    allSteps[3] = std::make_unique<StepAlgorithmQueue>(m_processor.get(), &m_algorithmQueue);
+    allSteps[4] = std::make_unique<StepShapeFilter>();
+    allSteps[5] = std::make_unique<StepLineDetect>();
+    allSteps[6] = std::make_unique<StepReferenceLineFilter>();
+    allSteps[7] = std::make_unique<StepBarcodeRecognition>();
+    allSteps[8] = std::make_unique<StepImageFilter>();
+    allSteps[9] = std::make_unique<StepOcrRecognition>();
 
     for (int idx : m_config.stepOrder) {
         if (m_config.stepEnabled[idx] && allSteps.contains(idx)) {

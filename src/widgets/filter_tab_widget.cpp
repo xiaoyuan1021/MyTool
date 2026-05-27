@@ -164,37 +164,26 @@ void FilterTabWidget::onFilterModeChanged(int index)
     auto& cf = m_pipelineManager->mutableConfig().colorFilter;
     switch (index) {
     case 0:  // None
-        cf.enableGrayFilter = false;
-        cf.enableColorFilter = false;
-        cf.currentFilterMode = ImageFilterMode::None;
+        cf.mode = ImageFilterMode::None;
         m_ui->stackedWidget_filter->setCurrentIndex(0);
         break;
     case 1:  // Gray
-        cf.enableGrayFilter = true;
-        cf.enableColorFilter = false;
-        cf.currentFilterMode = ImageFilterMode::Gray;
+        cf.mode = ImageFilterMode::Gray;
         m_ui->stackedWidget_filter->setCurrentIndex(1);
         syncGrayParameters();
         break;
     case 2:  // RGB
-        cf.enableColorFilter = true;
-        cf.colorFilterMode = ColorFilterMode::RGB;
-        cf.currentFilterMode = ImageFilterMode::RGB;
+        cf.mode = ImageFilterMode::RGB;
         m_ui->stackedWidget_filter->setCurrentIndex(2);
         syncRGBParameters();
-        emit filterConfigChanged();
-        return;
+        break;
     case 3:  // HSV
-        cf.enableColorFilter = true;
-        cf.colorFilterMode = ColorFilterMode::HSV;
-        cf.currentFilterMode = ImageFilterMode::HSV;
+        cf.mode = ImageFilterMode::HSV;
         m_ui->stackedWidget_filter->setCurrentIndex(3);
         syncHSVParameters();
-        emit filterConfigChanged();
-        return;
+        break;
     default:
-        cf.enableColorFilter = false;
-        cf.currentFilterMode = ImageFilterMode::None;
+        cf.mode = ImageFilterMode::None;
         m_ui->stackedWidget_filter->setCurrentIndex(0);
         break;
     }
@@ -290,7 +279,7 @@ void FilterTabWidget::saveToConfig(PipelineConfig& config) const
 {
     int mode, grayLow, grayHigh;
     getFilterConfig(mode, grayLow, grayHigh);
-    config.colorFilter.currentFilterMode = static_cast<ImageFilterMode>(mode);
+    config.colorFilter.mode = static_cast<ImageFilterMode>(mode);
     config.colorFilter.grayLow = grayLow;
     config.colorFilter.grayHigh = grayHigh;
 }
@@ -298,7 +287,7 @@ void FilterTabWidget::saveToConfig(PipelineConfig& config) const
 void FilterTabWidget::loadFromConfig(const PipelineConfig& config)
 {
     setFilterConfig(
-        static_cast<int>(config.colorFilter.currentFilterMode),
+        static_cast<int>(config.colorFilter.mode),
         config.colorFilter.grayLow,
         config.colorFilter.grayHigh
     );

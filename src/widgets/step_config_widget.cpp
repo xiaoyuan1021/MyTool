@@ -29,19 +29,19 @@
 const StepConfigWidget::StepEntry StepConfigWidget::kSteps[] = {
     {"颜色通道",      {"图像"},        {0},           false},
     {"图像增强",      {"增强"},        {1},           false},
-    // 灰度过滤+颜色过滤共用一个Tab，一个复选框同时控制
-    {"颜色过滤",      {"过滤"},        {2, 3},        false},
-    {"算法处理",      {"处理"},        {4},           false},
-    {"形状筛选",      {"提取"},        {5},           false},
-    // 直线检测——一个复选框同时启用 StepLineDetect(6) 和 StepReferenceLineFilter(7)
-    {"直线检测",      {"直线"},        {6, 7},        false},
+    // 统一过滤（灰度/RGB/HSV）
+    {"过滤",          {"过滤"},        {2},           false},
+    {"算法处理",      {"处理"},        {3},           false},
+    {"形状筛选",      {"提取"},        {4},           false},
+    // 直线检测——一个复选框同时启用 StepLineDetect(5) 和 StepReferenceLineFilter(6)
+    {"直线检测",      {"直线"},        {5, 6},        false},
     // 模板匹配——无对应后端步骤，仅控制 Tab 显隐
     {"模板匹配",      {"补正"},        {-1},          false},
-    {"条码识别",      {"条码"},        {8},           false},
-    // 滤波去噪——对应 StepImageFilter(9)
-    {"滤波去噪",      {"滤波去噪"},    {9},           false},
-    // 文字识别——对应 StepOcrRecognition(10)
-    {"文字识别",      {"文字识别"},    {10},          false},
+    {"条码识别",      {"条码"},        {7},           false},
+    // 滤波去噪——对应 StepImageFilter(8)
+    {"滤波去噪",      {"滤波去噪"},    {8},           false},
+    // 文字识别——对应 StepOcrRecognition(9)
+    {"文字识别",      {"文字识别"},    {9},           false},
     // 目标检测——无对应后端步骤，通过 PipelineConfig::enableObjectDetection 控制
     {"目标检测",      {"目标检测"},    {-1},          false},
 
@@ -362,9 +362,8 @@ void StepConfigWidget::onApplyClicked()
         // 当启用过滤步骤时，自动设置默认过滤模式（Gray）
         if (checked && kSteps[entryIdx].backendIndices.contains(2)) {
             auto& cf = m_pipelineManager->mutableConfig().colorFilter;
-            if (cf.currentFilterMode == ImageFilterMode::None) {
-                cf.currentFilterMode = ImageFilterMode::Gray;
-                cf.enableGrayFilter = true;
+            if (cf.mode == ImageFilterMode::None) {
+                cf.mode = ImageFilterMode::Gray;
             }
         }
 
