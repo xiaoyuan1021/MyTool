@@ -12,6 +12,8 @@ namespace Ui
 class ExtractTabForm;
 }
 
+class QStatusBar;
+
 class ExtractTabWidget : public QWidget, public ISignalConnectable, public IConfigurableTab, public IResultUpdatable
 {
     Q_OBJECT
@@ -19,6 +21,7 @@ public:
     explicit ExtractTabWidget(PipelineManager* pipeline,
                               ImageView* view,
                               RoiManager* roiManager,
+                              QStatusBar* statusBar = nullptr,
                               QWidget* parent = nullptr);
     ~ExtractTabWidget();
     void initialize();
@@ -64,6 +67,7 @@ private:
     PipelineManager* m_pipeline;
     ImageView* m_view;
     RoiManager* m_roiManager;
+    QStatusBar* m_statusBar;
     QVector<FilterCondition> m_filterConditions;
     int m_currentSelectedIndex = -1;
 };

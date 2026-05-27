@@ -10,12 +10,14 @@ TabManager::TabManager(
     PipelineManager* pipelineManager,
     RoiManager* roiManager,
     ImageView* view,
+    QStatusBar* statusBar,
     QObject* parent)
     : QObject(parent)
     , m_tabWidget(tabWidget)
     , m_pipelineManager(pipelineManager)
     , m_roiManager(roiManager)
     , m_view(view)
+    , m_statusBar(statusBar)
 {
 }
 
@@ -27,7 +29,7 @@ void TabManager::ensureTab(const QString& tabName)
 
     // 通过 TabRegistry 创建 Tab（工厂逻辑集中在那里）
     QWidget* widget = TabRegistry::instance().createTab(
-        tabName, m_pipelineManager, m_view, m_roiManager);
+        tabName, m_pipelineManager, m_view, m_roiManager, m_statusBar);
     if (!widget) return;
 
     m_tabWidget->addTab(widget, tabName);

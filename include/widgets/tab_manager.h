@@ -9,6 +9,7 @@
 class PipelineManager;
 class RoiManager;
 class ImageView;
+class QStatusBar;
 
 /**
  * Tab管理器 - 负责Tab的懒加载、创建和按名获取
@@ -31,6 +32,7 @@ public:
         PipelineManager* pipelineManager,
         RoiManager* roiManager,
         ImageView* view,
+        QStatusBar* statusBar = nullptr,
         QObject* parent = nullptr
     );
     ~TabManager();
@@ -69,6 +71,7 @@ private:
     PipelineManager* m_pipelineManager;
     RoiManager* m_roiManager;
     ImageView* m_view;
+    QStatusBar* m_statusBar;
 
     // Tab存储：名称 → widget
     QHash<QString, QWidget*> m_tabs;

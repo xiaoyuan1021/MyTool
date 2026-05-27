@@ -5,16 +5,19 @@
 #include "config/config_manager.h"
 #include <QMessageBox>
 #include <QListWidgetItem>
+#include <QStatusBar>
 
 ExtractTabWidget::ExtractTabWidget(PipelineManager* pipeline,
                                    ImageView* view,
                                    RoiManager* roiManager,
+                                   QStatusBar* statusBar,
                                    QWidget* parent)
     : QWidget(parent)
     , m_ui(new Ui::ExtractTabForm)
     , m_pipeline(pipeline)
     , m_view(view)
     , m_roiManager(roiManager)
+    , m_statusBar(statusBar)
 {
     m_ui->setupUi(this);
 }
@@ -217,10 +220,11 @@ void ExtractTabWidget::drawRegion()
         Logger::instance()->warning("请先打开图像");
         return;
     }
-    //m_view->startPolygonDrawing("region");
     m_view->startRectangleDrawing("region");
 
-    Logger::instance()->info("请在图像上点击左键添加顶点，右键完成绘制");
+    if (m_statusBar) {
+        m_statusBar->showMessage("请在图像上拖动鼠标绘制区域，松开左键确认");
+    }
 }
 
 void ExtractTabWidget::clearRegion()

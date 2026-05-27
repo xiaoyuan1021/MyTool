@@ -16,7 +16,7 @@
 #include <opencv2/opencv.hpp>
 #include "roi_manager.h"
 
-// ROI 交互状态
+// ROI 把手类型
 enum RoiHandle
 {
     None,        // 不在ROI上
@@ -29,6 +29,15 @@ enum RoiHandle
     Bottom,      // 下边缘调整
     Left,        // 左边缘调整
     Right        // 右边缘调整
+};
+
+// ROI 状态机
+enum class RoiState
+{
+    None,       // 无ROI
+    Drawing,    // 正在绘制
+    Ready,      // 已绘制完成，等待右键确认
+    Editing     // 已确认，可调整大小/移动
 };
 
 class ImageView : public QGraphicsView
@@ -94,6 +103,17 @@ protected:
     void mouseReleaseEvent(QMouseEvent *event) override;
 
 private:
+    // mousePressEvent 子处理方法
+    void handlePolygonPressEvent(QMouseEvent *event);
+    void handleRectanglePressEvent(QMouseEvent *event);
+    void handleReferenceLinePressEvent(QMouseEvent *event);
+    void handleRoiConfirmPressEvent(QMouseEvent *event);
+    void handleRoiDrawStartPressEvent(QMouseEvent *event);
+
+    /// 图像设置内部实现
+    /// @param keepZoom true=保持当前缩放比例, false=重置缩放并自适应窗口
+    void setImageInternal(const QImage &img, bool keepZoom);
+
     RoiHandle m_roiHandle = None; // 当前激活的把手
     // 检测鼠标在ROI框上的位置
     RoiHandle getRoiHandleAtPos(const QPointF &imgPos) const;
@@ -115,15 +135,13 @@ private:
     double m_scaleFactor = 1.0;
     bool m_zoomEnabled = true;
 
-    bool m_isDrawingRoi = false;
-    QPointF m_roiStartPosImg;                   // ⭐ 起点：图像坐标
+    // ROI 状态
+    RoiState m_roiState = RoiState::None;
+    QPointF m_roiStartPosImg;                   // 起点：图像坐标
     QGraphicsRectItem *m_roiRectItem = nullptr; // 子项，挂在 m_pixmapItem 上
-    bool m_roiMode = false;
     bool m_viewMode;
     // 最近一次绘制完成的 ROI（图像坐标 = pixmapItem本地坐标）
     QRectF m_roiRectImg;
-    // ROI 已绘制完成，等待右键确认裁剪
-    bool m_roiReady = false;
 
     bool m_polygonMode;
     QVector<QPointF> m_polygonPoints;

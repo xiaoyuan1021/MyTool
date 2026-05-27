@@ -10,6 +10,7 @@ class QWidget;
 class PipelineManager;
 class ImageView;
 class RoiManager;
+class QStatusBar;
 
 /**
  * @brief Tab 元数据条目
@@ -33,7 +34,7 @@ struct TabEntry {
 class TabRegistry
 {
 public:
-    using FactoryFunc = std::function<QWidget*(PipelineManager*, ImageView*, RoiManager*)>;
+    using FactoryFunc = std::function<QWidget*(PipelineManager*, ImageView*, RoiManager*, QStatusBar*)>;
 
     static TabRegistry& instance();
 
@@ -52,7 +53,7 @@ public:
     /// 创建指定名称的 Tab Widget，未注册返回 nullptr
     QWidget* createTab(const QString& name,
                        PipelineManager* pm, ImageView* view,
-                       RoiManager* rm) const;
+                       RoiManager* rm, QStatusBar* statusBar = nullptr) const;
 
 private:
     TabRegistry();

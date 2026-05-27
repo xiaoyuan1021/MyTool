@@ -266,7 +266,7 @@ void MainWindow::animatePageSwitch(int fromIndex, int toIndex)
 void MainWindow::setupManagers()
 {
     m_tabManager = new TabManager(ui->tabWidget, m_pipelineManager, &m_roiManager,
-                                   m_view, this);
+                                   m_view, statusBar(), this);
 
     // 创建云平台看板管理器
     m_cloudDashboardManager = new CloudDashboardManager(m_toast, this);

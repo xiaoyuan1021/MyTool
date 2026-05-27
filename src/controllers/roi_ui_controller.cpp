@@ -62,12 +62,9 @@ void RoiUiController::setupTreeView(QTreeWidget* treeView)
         // 更新当前选中的ROI为新创建的ROI
         m_currentSelectedRoiId = roi.roiId;
         
-        // 【Bug修复】通过ID直接激活，避免setRoi的矩形匹配导致重复创建
-        m_view->clearRoi();
-        m_roiManager.setActiveRoi(roi.roiId);
-        
-        // 【P1修复】退出ROI绘制模式
+        // 退出ROI绘制模式并清理ROI显示
         m_view->finishRoiMode();
+        m_roiManager.setActiveRoi(roi.roiId);
         
         // 【P1修复】更新状态栏，清除"请按下左键绘制ROI"的提示
         if (m_statusBar) {

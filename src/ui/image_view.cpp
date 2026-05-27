@@ -19,17 +19,16 @@ ImageView::ImageView(QWidget *parent)
     setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
 }
 
-void ImageView::setImage(const QImage &img)
+/// 图像设置内部实现
+/// @param keepZoom true=保持当前缩放比例, false=重置缩放并自适应窗口
+void ImageView::setImageInternal(const QImage &img, bool keepZoom)
 {
-    if(img.isNull()) return;
+    if (img.isNull()) return;
 
+    // 设置图像内容
     m_pixmapItem->setPixmap(QPixmap::fromImage(img));
     m_pixmapItem->setPos(0, 0);
-
-    //如何修改成自动铺满画布
     m_scene->setSceneRect(0, 0, img.width(), img.height());
-
-    // 居中对齐
     setAlignment(Qt::AlignCenter);
 
     // 清理旧 ROI
@@ -37,43 +36,37 @@ void ImageView::setImage(const QImage &img)
         delete m_roiRectItem;
         m_roiRectItem = nullptr;
     }
-    m_roiReady = false;  
-    m_roiHandle = None;  
-    // 重置缩放
-    resetTransform();
-    m_scaleFactor = 1.0;
+    m_roiState = RoiState::None;
+    m_roiHandle = None;
 
-    if (this->width() > 0 && this->height() > 0) {
-        fitInView(m_pixmapItem, Qt::KeepAspectRatio);
-        QTransform t = transform();
-        m_scaleFactor = t.m11();
+    // 根据参数决定是否重置缩放
+    if (!keepZoom) {
+        resetTransform();
+        m_scaleFactor = 1.0;
+        // 自适应窗口大小
+        if (this->width() > 0 && this->height() > 0) {
+            fitInView(m_pixmapItem, Qt::KeepAspectRatio);
+            m_scaleFactor = transform().m11();
+        }
     }
 }
 
+/// 设置图像并重置缩放（自适应窗口）
+void ImageView::setImage(const QImage &img)
+{
+    setImageInternal(img, false);
+}
+
+/// 设置图像并保持当前缩放比例
 void ImageView::setImageKeepZoom(const QImage &img)
 {
-    if(img.isNull()) return;
-
-    // 只更新图像内容，保留当前变换矩阵（缩放比例）
-    m_pixmapItem->setPixmap(QPixmap::fromImage(img));
-    m_pixmapItem->setPos(0, 0);
-    m_scene->setSceneRect(0, 0, img.width(), img.height());
-    setAlignment(Qt::AlignCenter);
-
-    // 清理旧 ROI
-    if (m_roiRectItem) {
-        delete m_roiRectItem;
-        m_roiRectItem = nullptr;
-    }
-    m_roiReady = false;
-    m_roiHandle = None;
-    // 不调用 resetTransform()，保持当前缩放
+    setImageInternal(img, true);
 }
 
 void ImageView::setRoiMode(bool enable)
 {
-    m_roiMode = enable;
-    setDragMode(QGraphicsView::ScrollHandDrag);
+    m_roiState = enable ? RoiState::Drawing : RoiState::None;
+    setDragMode(enable ? QGraphicsView::ScrollHandDrag : QGraphicsView::NoDrag);
 }
 
 void ImageView::clearRoi()
@@ -83,15 +76,13 @@ void ImageView::clearRoi()
         delete m_roiRectItem;
         m_roiRectItem=nullptr;
     }
-    m_isDrawingRoi=false;
-    m_roiReady=false;
+    m_roiState = RoiState::None;
     m_roiHandle=None;
 }
 
 void ImageView::finishRoiMode()
 {
-    m_roiMode=false;
-    m_isDrawingRoi=false;
+    clearRoi();
     setDragMode(QGraphicsView::NoDrag);
 }
 
@@ -133,214 +124,189 @@ QPointF ImageView::viewPosToImagePos(const QPoint &viewPos) const
 // =================== 鼠标按下 ===================
 void ImageView::mousePressEvent(QMouseEvent *event)
 {
-    // 检测是否点击了ROI把手（仅在ROI已准备好，且不在任何绘制模式时）
-    if (m_roiReady && !m_isDrawingRoi && !m_polygonMode && !m_rectangleMode && !m_referenceLineMode && event->button() == Qt::LeftButton) {
-        QPointF imgPos = viewPosToImagePos(event->pos());
-        RoiHandle handle = getRoiHandleAtPos(imgPos);
-        
-        if (handle != None) {
+    // 如果处于缩放禁用状态，不处理任何鼠标事件
+    if (!m_zoomEnabled) {
+        QGraphicsView::mousePressEvent(event);
+        return;
+    }
+
+    // ROI编辑模式 - 调整大小（仅左键触发）
+    if (m_roiState == RoiState::Editing && event->button() == Qt::LeftButton)
+    {
+        RoiHandle handle = getRoiHandleAtPos(viewPosToImagePos(event->pos()));
+        if (handle != None)
+        {
             m_roiHandle = handle;
-            m_dragStartPos = imgPos;
+            m_dragStartPos = viewPosToImagePos(event->pos());
             m_dragStartRect = m_roiRectItem->rect();
-            
-            // 如果是移动整个ROI，设置抓手光标
-            if (handle == Move) {
-                setCursor(Qt::ClosedHandCursor);
-            }
-            
-            event->accept();
-            return;
-        }
-    }
-
-    if (m_polygonMode)
-    {
-        if (event->button() == Qt::LeftButton)
-        {
-            // 获取图像坐标
-            QPointF imgPos = viewPosToImagePos(event->pos());
-
-            // 添加到顶点列表
-            m_polygonPoints.append(imgPos);
-
-            // 更新显示
-            updatePolygonPath(m_polygonPoints, m_polygonPathItem);
-
-            // 发送信号（带类型标识）
-            emit polygonDrawingPointAdded(m_currentDrawingType, imgPos);
-
-            event->accept();
-            return;
-        }
-        else if (event->button() == Qt::RightButton)
-        {
-            // 右键完成绘制
-            if (m_polygonPoints.size() >= 3)  // 至少3个点才能成多边形
-            {
-                emit polygonDrawingFinished(m_currentDrawingType, m_polygonPoints);
-                m_polygonMode = false;
-            }
-
-            event->accept();
-            return;
-        }
-    }
-
-    if (m_rectangleMode)
-    {
-        if (event->button() == Qt::LeftButton)
-        {
-            m_rectStartPosImg = viewPosToImagePos(event->pos());
-
-            if (m_rectItem) {
-                delete m_rectItem;
-                m_rectItem = nullptr;
-            }
-
-            m_rectItem = new QGraphicsRectItem(QRectF(m_rectStartPosImg, QSizeF(0, 0)), m_pixmapItem);
-            QSize imgSize = getImageSize();
-            double imageScale = std::max(imgSize.width(), imgSize.height()) / 5000.0;
-            double adaptiveWidth = std::max(2.0, imageScale * 3.0);
-
-            QColor rectColor = (m_currentRectDrawingType == "template") ? Qt::blue : Qt::red;
-            m_rectItem->setPen(QPen(rectColor, adaptiveWidth, Qt::SolidLine));
-
             setDragMode(QGraphicsView::NoDrag);
             event->accept();
             return;
         }
-        else if (event->button() == Qt::RightButton)
-        {
-            // 右键完成矩形绘制
-            if (m_rectItem) {
-                QRectF rectImg = m_rectItem->rect();
-                if (rectImg.width() > 0 && rectImg.height() > 0) {
-                    // 将矩形的四个顶点转换为多边形点
-                    QVector<QPointF> rectPoints;
-                    rectPoints.append(rectImg.topLeft());
-                    rectPoints.append(rectImg.topRight());
-                    rectPoints.append(rectImg.bottomRight());
-                    rectPoints.append(rectImg.bottomLeft());
+    }
 
-                    emit polygonDrawingFinished(m_currentRectDrawingType, rectPoints);
-                    clearRectangleDrawing();
-                }
-            }
+    // 多边形绘制模式
+    if (m_polygonMode) {
+        handlePolygonPressEvent(event);
+        return;
+    }
 
-            event->accept();
-            return;
-        }
+    // 矩形绘制模式
+    if (m_rectangleMode) {
+        handleRectanglePressEvent(event);
+        return;
     }
 
     // 参考线绘制模式
-    if (m_referenceLineMode)
-    {
-        if (event->button() == Qt::LeftButton)
-        {
-            QPointF imgPos = viewPosToImagePos(event->pos());
-            
-            if (m_refLineStartPosImg.isNull()) {
-                // 第一次点击：设置起点
-                m_refLineStartPosImg = imgPos;
-                Logger::instance()->info(QString("参考线起点已设置: (%1, %2)，请点击终点")
-                    .arg(imgPos.x(), 0, 'f', 1)
-                    .arg(imgPos.y(), 0, 'f', 1));
-            } else {
-                // 第二次点击：设置终点并完成绘制
-                if (m_referenceLineItem) {
-                    delete m_referenceLineItem;
-                    m_referenceLineItem = nullptr;
-                }
-                
-                // 创建参考线
-                m_referenceLineItem = new QGraphicsLineItem(
-                    QLineF(m_refLineStartPosImg, imgPos), m_pixmapItem);
-                
-                // 设置参考线样式（醒目的黄色粗虚线）
-                QSize imgSize = getImageSize();
-                double imageScale = std::max(imgSize.width(), imgSize.height()) / 5000.0;
-                double adaptiveWidth = std::max(3.0, imageScale * 4.0);  // 增加线宽
-                
-                QPen linePen(QColor(255, 255, 0), adaptiveWidth, Qt::DashLine);  // 更亮的黄色
-                m_referenceLineItem->setPen(linePen);
-                
-                // 转换为cv::Point2f并发射信号
-                cv::Point2f start(m_refLineStartPosImg.x(), m_refLineStartPosImg.y());
-                cv::Point2f end(imgPos.x(), imgPos.y());
-                emit referenceLineDrawn(start, end);
-                
-                Logger::instance()->info(QString("参考线绘制完成: 起点(%1,%2) -> 终点(%3,%4)")
-                    .arg(start.x, 0, 'f', 1).arg(start.y, 0, 'f', 1)
-                    .arg(end.x, 0, 'f', 1).arg(end.y, 0, 'f', 1));
-                
-                // 完成绘制
-                m_referenceLineMode = false;
-            }
-            
-            event->accept();
-            return;
-        }
-        else if (event->button() == Qt::RightButton)
-        {
-            // 右键取消绘制
-            m_referenceLineMode = false;
-            m_refLineStartPosImg = QPointF();
-            Logger::instance()->info("参考线绘制已取消");
-            event->accept();
-            return;
-        }
+    if (m_referenceLineMode) {
+        handleReferenceLinePressEvent(event);
+        return;
     }
 
     // 右键上下文菜单（不在任何绘制模式下）
     if (event->button() == Qt::RightButton
-        && !m_polygonMode && !m_rectangleMode && !m_referenceLineMode && !m_isDrawingRoi && !m_roiReady)
+        && !m_polygonMode && !m_rectangleMode && !m_referenceLineMode 
+        && m_roiState != RoiState::Drawing && m_roiState != RoiState::Ready)
     {
         showContextMenu(event->pos());
         event->accept();
         return;
     }
 
-    if(event->button()==Qt::RightButton && m_roiReady)
-    {
-        emit roiSelected(m_roiRectImg);
-        m_roiReady=false;
-        finishRoiMode();
-        event->accept();
+    // ROI选择确认
+    if (event->button() == Qt::RightButton && m_roiState == RoiState::Ready) {
+        handleRoiConfirmPressEvent(event);
         return;
-        qDebug()<<"ROI已裁剪";
-
     }
-    if (m_roiMode && event->button() == Qt::LeftButton)
-    {
-        m_isDrawingRoi = true;
 
-        // ⭐ 起点用“图像坐标”
-        m_roiStartPosImg = viewPosToImagePos(event->pos());
+    // ROI绘制模式
+    if (m_roiState == RoiState::Drawing && event->button() == Qt::LeftButton) {
+        handleRoiDrawStartPressEvent(event);
+        return;
+    }
 
-        // 删旧 ROI
-        if (m_roiRectItem)
-        {
-            delete m_roiRectItem;
-            m_roiRectItem = nullptr;
+    setDragMode(QGraphicsView::ScrollHandDrag);
+    QGraphicsView::mousePressEvent(event);
+}
+
+// =================== 多边形绘制处理 ===================
+void ImageView::handlePolygonPressEvent(QMouseEvent *event)
+{
+    if (event->button() == Qt::LeftButton) {
+        QPointF imgPos = viewPosToImagePos(event->pos());
+        m_polygonPoints.append(imgPos);
+        updatePolygonPath(m_polygonPoints, m_polygonPathItem);
+        emit polygonDrawingPointAdded(m_currentDrawingType, imgPos);
+        event->accept();
+    } else if (event->button() == Qt::RightButton) {
+        if (m_polygonPoints.size() >= 3) {
+            emit polygonDrawingFinished(m_currentDrawingType, m_polygonPoints);
+            m_polygonMode = false;
+        }
+        event->accept();
+    }
+}
+
+// =================== 矩形绘制处理 ===================
+void ImageView::handleRectanglePressEvent(QMouseEvent *event)
+{
+    if (event->button() == Qt::LeftButton) {
+        m_rectStartPosImg = viewPosToImagePos(event->pos());
+
+        if (m_rectItem) {
+            delete m_rectItem;
+            m_rectItem = nullptr;
         }
 
-        // ⭐ ROI 作为 pixmapItem 的子项，坐标直接就是图像坐标
-        m_roiRectItem = new QGraphicsRectItem(QRectF(m_roiStartPosImg, QSizeF(0, 0)), m_pixmapItem);
-        //设置ROI颜色和线宽
-
-        // ✅ 根据图像分辨率自适应线宽
+        m_rectItem = new QGraphicsRectItem(QRectF(m_rectStartPosImg, QSizeF(0, 0)), m_pixmapItem);
         QSize imgSize = getImageSize();
-        double imageScale = std::max(imgSize.width(), imgSize.height()) / 5000.0;  // 以1000像素为基准
-        double adaptiveWidth = std::max(2.0, imageScale * 3.0);  // 最小2，按比例增长
+        double imageScale = std::max(imgSize.width(), imgSize.height()) / 5000.0;
+        double adaptiveWidth = std::max(2.0, imageScale * 3.0);
 
-        m_roiRectItem->setPen(QPen(Qt::green, adaptiveWidth, Qt::SolidLine));
+        QColor rectColor = (m_currentRectDrawingType == "template") ? Qt::blue : Qt::red;
+        m_rectItem->setPen(QPen(rectColor, adaptiveWidth, Qt::SolidLine));
 
         setDragMode(QGraphicsView::NoDrag);
         event->accept();
-        return;
     }
-    setDragMode(QGraphicsView::ScrollHandDrag);
-    QGraphicsView::mousePressEvent(event);
+}
+
+// =================== 参考线绘制处理 ===================
+void ImageView::handleReferenceLinePressEvent(QMouseEvent *event)
+{
+    if (event->button() == Qt::LeftButton) {
+        QPointF imgPos = viewPosToImagePos(event->pos());
+        
+        if (m_refLineStartPosImg.isNull()) {
+            m_refLineStartPosImg = imgPos;
+            Logger::instance()->info(QString("参考线起点已设置: (%1, %2)，请点击终点")
+                .arg(imgPos.x(), 0, 'f', 1)
+                .arg(imgPos.y(), 0, 'f', 1));
+        } else {
+            if (m_referenceLineItem) {
+                delete m_referenceLineItem;
+                m_referenceLineItem = nullptr;
+            }
+            
+            m_referenceLineItem = new QGraphicsLineItem(
+                QLineF(m_refLineStartPosImg, imgPos), m_pixmapItem);
+            
+            QSize imgSize = getImageSize();
+            double imageScale = std::max(imgSize.width(), imgSize.height()) / 5000.0;
+            double adaptiveWidth = std::max(3.0, imageScale * 4.0);
+            
+            QPen linePen(QColor(255, 255, 0), adaptiveWidth, Qt::DashLine);
+            m_referenceLineItem->setPen(linePen);
+            
+            cv::Point2f start(m_refLineStartPosImg.x(), m_refLineStartPosImg.y());
+            cv::Point2f end(imgPos.x(), imgPos.y());
+            emit referenceLineDrawn(start, end);
+            
+            Logger::instance()->info(QString("参考线绘制完成: 起点(%1,%2) -> 终点(%3,%4)")
+                .arg(start.x, 0, 'f', 1).arg(start.y, 0, 'f', 1)
+                .arg(end.x, 0, 'f', 1).arg(end.y, 0, 'f', 1));
+            
+            m_referenceLineMode = false;
+        }
+        
+        event->accept();
+    } else if (event->button() == Qt::RightButton) {
+        m_referenceLineMode = false;
+        m_refLineStartPosImg = QPointF();
+        Logger::instance()->info("参考线绘制已取消");
+        event->accept();
+    }
+}
+
+// =================== ROI确认处理 ===================
+void ImageView::handleRoiConfirmPressEvent(QMouseEvent *event)
+{
+    emit roiSelected(m_roiRectImg);
+    finishRoiMode();
+    event->accept();
+}
+
+// =================== ROI绘制开始处理 ===================
+void ImageView::handleRoiDrawStartPressEvent(QMouseEvent *event)
+{
+    m_roiState = RoiState::Drawing;
+    m_roiStartPosImg = viewPosToImagePos(event->pos());
+
+    if (m_roiRectItem) {
+        delete m_roiRectItem;
+        m_roiRectItem = nullptr;
+    }
+
+    m_roiRectItem = new QGraphicsRectItem(QRectF(m_roiStartPosImg, QSizeF(0, 0)), m_pixmapItem);
+
+    QSize imgSize = getImageSize();
+    double imageScale = std::max(imgSize.width(), imgSize.height()) / 5000.0;
+    double adaptiveWidth = std::max(2.0, imageScale * 3.0);
+
+    m_roiRectItem->setPen(QPen(Qt::green, adaptiveWidth, Qt::SolidLine));
+
+    setDragMode(QGraphicsView::NoDrag);
+    event->accept();
 }
 
 // =================== 鼠标移动 ===================
@@ -416,7 +382,7 @@ void ImageView::mouseMoveEvent(QMouseEvent *event)
     }
 
     // 当没有拖拽且不在任何绘制模式时，检测鼠标位置以更新光标
-    if (m_roiReady && !m_isDrawingRoi && !m_polygonMode && !m_rectangleMode && !m_referenceLineMode) {
+    if (m_roiState == RoiState::Editing && !m_polygonMode && !m_rectangleMode && !m_referenceLineMode) {
         QPointF imgPos = viewPosToImagePos(event->pos());
         RoiHandle handle = getRoiHandleAtPos(imgPos);
         setCursorForHandle(handle);
@@ -428,7 +394,7 @@ void ImageView::mouseMoveEvent(QMouseEvent *event)
     }
 
     // ROI 绘制中
-    if (m_isDrawingRoi && m_roiRectItem)
+    if (m_roiState == RoiState::Drawing && m_roiRectItem)
     {
         QPointF curImgPos = viewPosToImagePos(event->pos());
         QRectF rect(m_roiStartPosImg, curImgPos);
@@ -480,11 +446,13 @@ void ImageView::mouseReleaseEvent(QMouseEvent *event)
             m_roiRectImg = m_roiRectItem->rect();
             
             // 检查ROI是否仍然有效
-            m_roiReady = (m_roiRectImg.width() > 2 && m_roiRectImg.height() > 2);
+            if (m_roiRectImg.width() <= 2 || m_roiRectImg.height() <= 2) {
+                m_roiState = RoiState::None;
+            }
         }
         
         // 恢复光标
-        if (m_roiReady && m_roiRectItem) {
+        if (m_roiState == RoiState::Editing && m_roiRectItem) {
             QPointF imgPos = viewPosToImagePos(event->pos());
             RoiHandle handle = getRoiHandleAtPos(imgPos);
             setCursorForHandle(handle);
@@ -496,19 +464,36 @@ void ImageView::mouseReleaseEvent(QMouseEvent *event)
         return;
     }
 
-    if (event->button() == Qt::LeftButton && m_isDrawingRoi)
+    if (event->button() == Qt::LeftButton && m_roiState == RoiState::Drawing)
     {
-        m_isDrawingRoi = false;
-
         if (m_roiRectItem)
         {
-            // ⭐ rect 是 pixmapItem 本地坐标，即图像坐标
+            // rect 是 pixmapItem 本地坐标，即图像坐标
             m_roiRectImg = m_roiRectItem->rect();
-            m_roiReady=(m_roiRectImg.width()>2 && m_roiRectImg.height()>2);
-            if(m_roiReady)
-            {
+            // ROI尺寸足够大时进入Ready状态，否则回到None
+            if (m_roiRectImg.width() > 2 && m_roiRectImg.height() > 2) {
+                m_roiState = RoiState::Ready;
+            } else {
+                m_roiState = RoiState::None;
             }
         }
+        event->accept();
+        return;
+    }
+
+    // 矩形绘制完成（松开左键直接确认）
+    if (event->button() == Qt::LeftButton && m_rectangleMode && m_rectItem)
+    {
+        QRectF rectImg = m_rectItem->rect();
+        if (rectImg.width() > 2 && rectImg.height() > 2) {
+            QVector<QPointF> rectPoints;
+            rectPoints.append(rectImg.topLeft());
+            rectPoints.append(rectImg.topRight());
+            rectPoints.append(rectImg.bottomRight());
+            rectPoints.append(rectImg.bottomLeft());
+            emit polygonDrawingFinished(m_currentRectDrawingType, rectPoints);
+        }
+        clearRectangleDrawing();
         event->accept();
         return;
     }
@@ -519,7 +504,7 @@ void ImageView::mouseReleaseEvent(QMouseEvent *event)
 // 检测鼠标在ROI框上的位置
 RoiHandle ImageView::getRoiHandleAtPos(const QPointF &imgPos) const
 {
-    if (!m_roiRectItem || !m_roiReady) {
+    if (!m_roiRectItem || m_roiState == RoiState::None || m_roiState == RoiState::Drawing) {
         return None;
     }
 
