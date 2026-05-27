@@ -14,40 +14,46 @@
 
 struct PipelineContext
 {
-    // 输入
-    const PipelineConfig* config = nullptr;  // 步骤从这里读取配置参数
-    cv::Mat srcBgr;      // 原图(3通道)
-    cv::Mat visualBase;  // 最新的可视化结果（用于叠加类显示模式的基底）
-    // 中间结果
-    cv::Mat channelImg;  // 颜色通道输出（一般是灰度）
-    cv::Mat enhanced;    // 增强后
-    cv::Mat mask;        // 过滤得到的 mask (0/255)
-    cv::Mat processed;   // 算法处理后的图（可能还是 mask / 或灰度）
-    cv::Mat lineDetect;  // 直线检测结果
-    // 特征
-    std::vector<RegionFeature> regions;
-    // 输出
+    // ========== 输入 ==========
+    const PipelineConfig* config = nullptr;  // 配置指针
+    cv::Mat srcBgr;                          // 原图(3通道)
 
-    int currentRegions=0;
+    // ========== 图像处理流水线 ==========
+    cv::Mat channelImg;      // 颜色通道输出（灰度/HSV等）
+    cv::Mat enhanced;        // 增强后图像
+    cv::Mat filteredImage;   // 滤波去噪输出（StepImageFilter）
+    cv::Mat ocrInputImage;   // OCR输入图像（预留）
 
-    bool pass = true;
-    QString reason;
+    // ========== 过滤结果 ==========
+    cv::Mat grayMask;        // 灰度过滤结果（StepGrayFilter）
+    cv::Mat colorMask;       // 颜色过滤结果（StepColorFilter）
+    cv::Mat combinedMask;    // 合并后的过滤结果（灰度+颜色）
 
-    // 参考线匹配结果
-    int matchedLineCount = 0;
-    int totalLineCount = 0;
+    // ========== 筛选结果 ==========
+    cv::Mat extractedMask;   // 形状筛选结果（StepShapeFilter）
+    int regionCount = 0;     // 筛选后区域数
+    std::vector<RegionFeature> regionFeatures;  // 区域特征
 
-    // 条码识别结果
+    // ========== 专项检测结果 ==========
+    // 直线检测
+    cv::Mat lineDetectImage;     // 直线检测结果图像
+    int matchedLineCount = 0;    // 匹配的参考线数
+    int totalLineCount = 0;      // 检测到的总直线数
+
+    // 条码识别
     QVector<BarcodeResult> barcodeResults;
-    QString barcodeStatus;  // 识别状态信息
+    QString barcodeStatus;
 
-    // OCR识别结果
-    QString ocrText;                    // 识别的完整文本
-    QVector<OcrRegion> ocrRegions;      // 识别的区域列表
-    
-    // 步骤间显式数据流字段（用于解耦合）
-    cv::Mat filteredImage;      // 滤波去噪输出（StepImageFilter -> 后续步骤）
-    cv::Mat ocrInputImage;      // OCR输入图像（StepOcrPreprocess -> StepOcrRecognition）
+    // OCR识别
+    QString ocrText;
+    QVector<OcrRegion> ocrRegions;
+
+    // ========== 可视化输出 ==========
+    cv::Mat visualBase;       // 当前Tab应显示的图像
+
+    // ========== 状态 ==========
+    bool pass = true;
+    QString reason;           // 状态/调试信息
 };
 
 class IPipelineStep

@@ -280,8 +280,8 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
                 // 执行Pipeline（传入ROI专属配置，线程安全）
                 Logger::instance()->debug("[检测] 开始执行Pipeline...");
                 PipelineContext ctx = pipelinePtr->execute(roiImage, roiConfig.pipelineConfig);
-                Logger::instance()->debug(QString("[检测] Pipeline执行完成: currentRegions=%1, barcodeResults=%2, matchedLines=%3, totalLines=%4")
-                    .arg(ctx.currentRegions)
+                Logger::instance()->debug(QString("[检测] Pipeline执行完成: regionCount=%1, barcodeResults=%2, matchedLines=%3, totalLines=%4")
+                    .arg(ctx.regionCount)
                     .arg(ctx.barcodeResults.size())
                     .arg(ctx.matchedLineCount)
                     .arg(ctx.totalLineCount));
@@ -303,7 +303,7 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
                         BlobAnalysisConfig blobConfig;
                         blobConfig.fromJson(detItem.config);
 
-                        int currentCount = ctx.currentRegions;
+                        int currentCount = ctx.regionCount;
                         int minCount = blobConfig.minBlobCount;
                         int maxCount = blobConfig.maxBlobCount;
 

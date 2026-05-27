@@ -25,12 +25,12 @@ JudgeTabWidget::~JudgeTabWidget()
 
 void JudgeTabWidget::updateFromPipeline(const PipelineContext& ctx)
 {
-    setCurrentRegionCount(ctx.currentRegions);
+    setCurrentRegionCount(ctx.regionCount);
 }
 
 void JudgeTabWidget::setCurrentRegionCount(int count)
 {
-    count = m_pipelineManager->getLastContext().currentRegions;
+    count = m_pipelineManager->getLastContext().regionCount;
     m_ui->lineEdit_nowRegions->setText(QString::number(count));
 }
 
@@ -51,7 +51,7 @@ void JudgeTabWidget::onRunTestClicked()
         return;
     }
 
-    int currentCount = m_pipelineManager->getLastContext().currentRegions;
+    int currentCount = m_pipelineManager->getLastContext().regionCount;
     bool pass = (currentCount >= minRegions && currentCount <= maxRegions);
 
     if (pass) 

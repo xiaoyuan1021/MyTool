@@ -112,7 +112,7 @@ void FileManager::saveImageFileWithDialog(PipelineManager* pipelineManager)
     cv::Mat toSave;
 
     // 如果有mask，询问用户保存什么
-    if (!ctx.mask.empty() && cv::countNonZero(ctx.mask) > 0) {
+    if (!ctx.combinedMask.empty() && cv::countNonZero(ctx.combinedMask) > 0) {
         QMessageBox::StandardButton reply = QMessageBox::question(
             nullptr, "保存选项",
             "保存原图还是处理后的mask?\n"
@@ -121,7 +121,7 @@ void FileManager::saveImageFileWithDialog(PipelineManager* pipelineManager)
             QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
 
         if (reply == QMessageBox::Yes) {
-            toSave = ctx.mask;
+            toSave = ctx.combinedMask;
         } else if (reply == QMessageBox::No) {
             toSave = ctx.enhanced.empty() ? ctx.srcBgr : ctx.enhanced;
         } else {

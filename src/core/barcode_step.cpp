@@ -46,9 +46,9 @@ void StepBarcodeRecognition::run(PipelineContext& ctx)
     }
 
     cv::Mat input;
-    if (!ctx.processed.empty())
+    if (!ctx.extractedMask.empty())
     {
-        input = ctx.processed;
+        input = ctx.extractedMask;
     }
     else if (!ctx.enhanced.empty())
     {

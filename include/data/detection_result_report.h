@@ -68,8 +68,8 @@ struct DetectionResultReport
         report.roiName = roiName;
         report.passed = ctx.pass;
         report.failReason = ctx.reason;
-        report.totalRegionCount = ctx.currentRegions;
-        report.regions = ctx.regions;
+        report.totalRegionCount = ctx.regionCount;
+        report.regions = ctx.regionFeatures;
         report.barcodeResults.assign(ctx.barcodeResults.begin(), ctx.barcodeResults.end());
         return report;
     }

@@ -180,7 +180,7 @@ void DetectionUiController::onDetectionItemSelected(const QString& roiId, const 
                 judgeTab->setJudgeConfig(
                     blobConfig.minBlobCount,
                     blobConfig.maxBlobCount,
-                    pipelineManager->getLastContext().currentRegions
+                    pipelineManager->getLastContext().regionCount
                 );
             }
         }

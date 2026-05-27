@@ -85,19 +85,19 @@ void StepGrayFilter::run(PipelineContext& ctx)
     // 如果不是灰度过滤模式，释放mask并返回
     if (ctx.config->colorFilter.currentFilterMode != ImageFilterMode::Gray)
     {
-        ctx.mask.release();
+        ctx.grayMask.release();
         return;
     }
 
     if (!ctx.config->colorFilter.enableGrayFilter)
     {
-        ctx.mask.release();
+        ctx.grayMask.release();
         return;
     }
 
     if (ctx.enhanced.empty())
     {
-        ctx.mask.release();
+        ctx.grayMask.release();
         return;
     }
 
@@ -116,8 +116,8 @@ void StepGrayFilter::run(PipelineContext& ctx)
             gray = gray.clone();
         }
 
-        // 灰度范围 [grayLow, grayHigh] 内的像素设为255（绿色/目标），其余为0（白色/背景）
-        cv::inRange(gray, cv::Scalar(ctx.config->colorFilter.grayLow), cv::Scalar(ctx.config->colorFilter.grayHigh), ctx.mask);
+        // 灰度范围 [grayLow, grayHigh] 内的像素设为255（目标），其余为0（背景）
+        cv::inRange(gray, cv::Scalar(ctx.config->colorFilter.grayLow), cv::Scalar(ctx.config->colorFilter.grayHigh), ctx.grayMask);
 
         ctx.reason = QString("灰度过滤: 范围[%1,%2]")
                          .arg(ctx.config->colorFilter.grayLow)
@@ -127,7 +127,7 @@ void StepGrayFilter::run(PipelineContext& ctx)
     {
         qDebug() << "OpenCV灰度过滤错误:" << ex.what();
         Logger::instance()->error(QString("灰度过滤OpenCV错误: %1").arg(ex.what()));
-        ctx.mask.release();
+        ctx.grayMask.release();
     }
 }
 
@@ -140,9 +140,14 @@ void StepAlgorithmQueue::run(PipelineContext& ctx)
 
         try {
             cv::Mat input;
-            if (!ctx.mask.empty())
+            // 优先使用合并后的过滤结果
+            if (!ctx.combinedMask.empty())
             {
-                input = ctx.mask;
+                input = ctx.combinedMask;
+            }
+            else if (!ctx.grayMask.empty())
+            {
+                input = ctx.grayMask;
             }
             else if (!ctx.enhanced.empty())
             {
@@ -167,7 +172,7 @@ void StepAlgorithmQueue::run(PipelineContext& ctx)
 
             if (!result.empty())
             {
-                ctx.processed = result;
+                ctx.extractedMask = result;
                 ctx.reason = QString("算法队列执行完成 (%1个步骤)")
                                  .arg(m_algorithmQueue->size());
             }
@@ -186,7 +191,10 @@ void StepAlgorithmQueue::run(PipelineContext& ctx)
 void StepShapeFilter::run(PipelineContext& ctx)
     {
         if (!ctx.config) return;
-        cv::Mat inputMat = !ctx.processed.empty() ? ctx.processed : ctx.mask;
+        
+        // 优先使用合并后的过滤结果，其次使用灰度过滤结果
+        cv::Mat inputMat = !ctx.combinedMask.empty() ? ctx.combinedMask : 
+                          (!ctx.grayMask.empty() ? ctx.grayMask : ctx.colorMask);
 
         if (inputMat.empty()) {
             return;
@@ -222,10 +230,10 @@ void StepShapeFilter::run(PipelineContext& ctx)
             qDebug() << "筛选后区域数量:" << numAfter;
             qDebug() << "==============================";
 
-            ctx.currentRegions = numAfter;
+            ctx.regionCount = numAfter;
 
             if (!filteredRegion.empty()) {
-                ctx.processed = filteredRegion;
+                ctx.extractedMask = filteredRegion;
                 ctx.reason = QString("形状筛选: %1, 保留 %2/%3 个区域")
                                  .arg(filter.toString())
                                  .arg(numAfter)
@@ -311,7 +319,7 @@ void StepColorFilter::run(PipelineContext& ctx)
     {
         if (!ctx.config) return;
 
-        // 如果是灰度过滤模式，不处理（让StepGrayFilter处理mask）
+        // 如果是灰度过滤模式，不处理（让StepGrayFilter处理）
         if (ctx.config->colorFilter.currentFilterMode == ImageFilterMode::Gray) {
             return;
         }
@@ -319,23 +327,22 @@ void StepColorFilter::run(PipelineContext& ctx)
         // 如果不是颜色过滤模式（RGB/HSV），释放mask并返回
         if (ctx.config->colorFilter.currentFilterMode != ImageFilterMode::RGB &&
             ctx.config->colorFilter.currentFilterMode != ImageFilterMode::HSV) {
-            ctx.mask.release();
+            ctx.colorMask.release();
             return;
         }
 
         if (!ctx.config->colorFilter.enableColorFilter) {
-            ctx.mask.release();
+            ctx.colorMask.release();
             return;
         }
 
         try {
             cv::Mat input = ctx.enhanced.empty() ? ctx.srcBgr : ctx.enhanced;
 
-            cv::Mat filterMask;
             switch (ctx.config->colorFilter.colorFilterMode)
             {
             case ColorFilterMode::RGB:
-                filterMask = m_processor->filterRGB(
+                ctx.colorMask = m_processor->filterRGB(
                     input,
                     ctx.config->colorFilter.rLow, ctx.config->colorFilter.rHigh,
                     ctx.config->colorFilter.gLow, ctx.config->colorFilter.gHigh,
@@ -344,7 +351,7 @@ void StepColorFilter::run(PipelineContext& ctx)
                 break;
 
             case ColorFilterMode::HSV:
-                filterMask = m_processor->filterHSV(
+                ctx.colorMask = m_processor->filterHSV(
                     input,
                     ctx.config->colorFilter.hLow, ctx.config->colorFilter.hHigh,
                     ctx.config->colorFilter.sLow, ctx.config->colorFilter.sHigh,
@@ -356,19 +363,17 @@ void StepColorFilter::run(PipelineContext& ctx)
                 return;
             }
 
-            cv::bitwise_not(filterMask,ctx.mask);
-
             ctx.reason = QString("颜色过滤: %1 模式")
                              .arg(ctx.config->colorFilter.colorFilterMode == ColorFilterMode::RGB ? "RGB" : "HSV");
         } catch (const cv::Exception& ex) {
             qDebug() << "[ColorFilter] OpenCV错误:" << ex.what();
     Logger::instance()->error(QString("ColorFilter OpenCV错误: %1").arg(ex.what()));
-            ctx.mask.release();
+            ctx.colorMask.release();
             ctx.reason = "颜色过滤失败";
         } catch (...) {
             qDebug() << "[ColorFilter] 未知异常";
     Logger::instance()->error(QString("ColorFilter 未知异常"));
-            ctx.mask.release();
+            ctx.colorMask.release();
             ctx.reason = "颜色过滤失败";
         }
     }
@@ -484,11 +489,11 @@ void StepLineDetect::run(PipelineContext &ctx)
                 detectLinesEDlines(srcGray, lines);
             }
 
-            ctx.lineDetect = srcColor.clone();
+            ctx.lineDetectImage = srcColor.clone();
 
             for (const auto& line : lines)
             {
-                cv::line(ctx.lineDetect,
+                cv::line(ctx.lineDetectImage,
                         cv::Point(line[0], line[1]),
                         cv::Point(line[2], line[3]),
                         cv::Scalar(0, 255, 0), 1);
@@ -655,15 +660,15 @@ void StepReferenceLineFilter::run(PipelineContext& ctx)
             }
         }
 
-        ctx.lineDetect = src.clone();
+        ctx.lineDetectImage = src.clone();
 
-        cv::line(ctx.lineDetect,
+        cv::line(ctx.lineDetectImage,
                  ctx.config->lineDetect.referenceLineStart,
                  ctx.config->lineDetect.referenceLineEnd,
                  cv::Scalar(0, 255, 255), 4, cv::LINE_AA);
 
         for (const auto& line : matchedLines) {
-            cv::line(ctx.lineDetect,
+            cv::line(ctx.lineDetectImage,
                      cv::Point(line[0], line[1]),
                      cv::Point(line[2], line[3]),
                      cv::Scalar(255, 0, 255), 3, cv::LINE_AA);
@@ -681,7 +686,7 @@ void StepReferenceLineFilter::run(PipelineContext& ctx)
                 }
             }
             if (!isMatched) {
-                cv::line(ctx.lineDetect,
+                cv::line(ctx.lineDetectImage,
                          cv::Point(line[0], line[1]),
                          cv::Point(line[2], line[3]),
                          cv::Scalar(0, 255, 0), 1, cv::LINE_AA);
