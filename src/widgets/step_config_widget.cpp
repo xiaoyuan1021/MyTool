@@ -33,15 +33,15 @@ const StepConfigWidget::StepEntry StepConfigWidget::kSteps[] = {
     {"过滤",          {"过滤"},        {2},           false},
     {"算法处理",      {"处理"},        {3},           false},
     {"形状筛选",      {"提取"},        {4},           false},
-    // 直线检测——一个复选框同时启用 StepLineDetect(5) 和 StepReferenceLineFilter(6)
-    {"直线检测",      {"直线"},        {5, 6},        false},
+    // 直线检测（含参考线匹配）
+    {"直线检测",      {"直线"},        {5},           false},
     // 模板匹配——无对应后端步骤，仅控制 Tab 显隐
     {"模板匹配",      {"补正"},        {-1},          false},
-    {"条码识别",      {"条码"},        {7},           false},
-    // 滤波去噪——对应 StepImageFilter(8)
-    {"滤波去噪",      {"滤波去噪"},    {8},           false},
-    // 文字识别——对应 StepOcrRecognition(9)
-    {"文字识别",      {"文字识别"},    {9},           false},
+    {"条码识别",      {"条码"},        {6},           false},
+    // 滤波去噪——对应 StepImageFilter(7)
+    {"滤波去噪",      {"滤波去噪"},    {7},           false},
+    // 文字识别——对应 StepOcrRecognition(8)
+    {"文字识别",      {"文字识别"},    {8},           false},
     // 目标检测——无对应后端步骤，通过 PipelineConfig::enableObjectDetection 控制
     {"目标检测",      {"目标检测"},    {-1},          false},
 

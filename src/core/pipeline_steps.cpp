@@ -410,63 +410,68 @@ static void detectLinesEDlines(const cv::Mat& src, std::vector<cv::Vec4f>& lines
     }
 }
 
-void StepLineDetect::run(PipelineContext &ctx)
-    {
-        if (!ctx.config || !ctx.config->lineDetect.enabled) return;
-        if (ctx.srcBgr.empty()) return;
+void StepLineDetector::run(PipelineContext& ctx)
+{
+    if (!ctx.config) return;
+    if (ctx.srcBgr.empty()) return;
 
-        try {
-            cv::Mat srcVis = ctx.visualBase.empty() ? ctx.srcBgr : ctx.visualBase;
-            cv::Mat srcGray;
-            cv::Mat srcColor;
-
-            if (srcVis.channels() == 1) {
-                srcGray = srcVis;
-                cv::cvtColor(srcVis, srcColor, cv::COLOR_GRAY2BGR);
-            } else {
-                cv::cvtColor(srcVis, srcGray, cv::COLOR_BGR2GRAY);
-                srcColor = srcVis;
-            }
-
-            cv::Mat edges;
-            cv::Canny(srcGray, edges, 50, 150);
-
-            std::vector<cv::Vec4f> lines;
-
-            if (ctx.config->lineDetect.algorithm == 0)
-            {
-                detectLinesHoughP(edges, ctx.config, lines);
-            }
-            else if (ctx.config->lineDetect.algorithm == 1)
-            {
-                detectLinesLSD(srcGray, lines);
-            }
-            else if (ctx.config->lineDetect.algorithm == 2)
-            {
-                detectLinesEDlines(srcGray, lines);
-            }
-
-            ctx.lineDetectImage = srcColor.clone();
-
-            for (const auto& line : lines)
-            {
-                cv::line(ctx.lineDetectImage,
-                        cv::Point(line[0], line[1]),
-                        cv::Point(line[2], line[3]),
-                        cv::Scalar(0, 255, 0), 1);
-            }
-
-            ctx.totalLineCount = static_cast<int>(lines.size());
-        } catch (const cv::Exception& ex) {
-            qDebug() << "[LineDetect] OpenCV错误:" << ex.what();
-    Logger::instance()->error(QString("LineDetect OpenCV错误: %1").arg(ex.what()));
-            ctx.reason = "直线检测失败";
-        } catch (...) {
-            qDebug() << "[LineDetect] 未知异常";
-    Logger::instance()->error(QString("LineDetect 未知异常"));
-            ctx.reason = "直线检测失败";
-        }
+    if (ctx.config->lineDetect.enableReferenceLineMatch) {
+        runReferenceLineMatch(ctx);
+    } else {
+        runLineDetect(ctx);
     }
+}
+
+void StepLineDetector::runLineDetect(PipelineContext& ctx)
+{
+    if (!ctx.config->lineDetect.enabled) return;
+
+    try {
+        cv::Mat srcVis = ctx.visualBase.empty() ? ctx.srcBgr : ctx.visualBase;
+        cv::Mat srcGray;
+        cv::Mat srcColor;
+
+        if (srcVis.channels() == 1) {
+            srcGray = srcVis;
+            cv::cvtColor(srcVis, srcColor, cv::COLOR_GRAY2BGR);
+        } else {
+            cv::cvtColor(srcVis, srcGray, cv::COLOR_BGR2GRAY);
+            srcColor = srcVis;
+        }
+
+        cv::Mat edges;
+        cv::Canny(srcGray, edges, 50, 150);
+
+        std::vector<cv::Vec4f> lines;
+
+        if (ctx.config->lineDetect.algorithm == 0) {
+            detectLinesHoughP(edges, ctx.config, lines);
+        } else if (ctx.config->lineDetect.algorithm == 1) {
+            detectLinesLSD(srcGray, lines);
+        } else if (ctx.config->lineDetect.algorithm == 2) {
+            detectLinesEDlines(srcGray, lines);
+        }
+
+        ctx.lineDetectImage = srcColor.clone();
+
+        for (const auto& line : lines) {
+            cv::line(ctx.lineDetectImage,
+                    cv::Point(line[0], line[1]),
+                    cv::Point(line[2], line[3]),
+                    cv::Scalar(0, 255, 0), 1);
+        }
+
+        ctx.totalLineCount = static_cast<int>(lines.size());
+    } catch (const cv::Exception& ex) {
+        qDebug() << "[LineDetector] OpenCV错误:" << ex.what();
+        Logger::instance()->error(QString("LineDetector OpenCV错误: %1").arg(ex.what()));
+        ctx.reason = "直线检测失败";
+    } catch (...) {
+        qDebug() << "[LineDetector] 未知异常";
+        Logger::instance()->error("LineDetector 未知异常");
+        ctx.reason = "直线检测失败";
+    }
+}
 
 // ========== 参考线匹配辅助函数 ==========
 
@@ -533,20 +538,14 @@ static double calculateReferenceLineAngle(const PipelineConfig* cfg)
                       cfg->lineDetect.referenceLineEnd.x - cfg->lineDetect.referenceLineStart.x) * 180.0 / CV_PI;
 }
 
-// ========== 参考线匹配步骤 ==========
-
-void StepReferenceLineFilter::run(PipelineContext& ctx)
+void StepLineDetector::runReferenceLineMatch(PipelineContext& ctx)
 {
-    if (!ctx.config || !ctx.config->lineDetect.enableReferenceLineMatch) {
+    if (!ctx.config->lineDetect.enableReferenceLineMatch) {
         return;
     }
 
     if (!ctx.config->lineDetect.referenceLineValid) {
         ctx.reason = "参考线未绘制";
-        return;
-    }
-
-    if (ctx.srcBgr.empty()) {
         return;
     }
 
@@ -659,14 +658,14 @@ void StepReferenceLineFilter::run(PipelineContext& ctx)
         ctx.matchedLineCount = static_cast<int>(matchedLines.size());
         ctx.totalLineCount = static_cast<int>(allLines.size());
 
-        qDebug() << "[ReferenceLineFilter]" << ctx.reason;
+        qDebug() << "[LineDetector:ReferenceLineMatch]" << ctx.reason;
     } catch (const cv::Exception& ex) {
-        qDebug() << "[ReferenceLineFilter] OpenCV错误:" << ex.what();
-    Logger::instance()->error(QString("ReferenceLineFilter OpenCV错误: %1").arg(ex.what()));
+        qDebug() << "[LineDetector:ReferenceLineMatch] OpenCV错误:" << ex.what();
+        Logger::instance()->error(QString("LineDetector:ReferenceLineMatch OpenCV错误: %1").arg(ex.what()));
         ctx.reason = "参考线匹配失败";
     } catch (...) {
-        qDebug() << "[ReferenceLineFilter] 未知异常";
-    Logger::instance()->error(QString("ReferenceLineFilter 未知异常"));
+        qDebug() << "[LineDetector:ReferenceLineMatch] 未知异常";
+        Logger::instance()->error("LineDetector:ReferenceLineMatch 未知异常");
         ctx.reason = "参考线匹配失败";
     }
 }

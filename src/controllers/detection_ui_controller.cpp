@@ -152,8 +152,7 @@ void DetectionUiController::onDetectionItemSelected(const QString& roiId, const 
             case DetectionType::Line:
                 pipelineConfig.stepEnabled[static_cast<int>(StepType::ColorChannel)] = true;
                 pipelineConfig.stepEnabled[static_cast<int>(StepType::Enhance)] = true;
-                pipelineConfig.stepEnabled[static_cast<int>(StepType::LineDetect)] = true;
-                pipelineConfig.stepEnabled[static_cast<int>(StepType::ReferenceLineFilter)] = true;
+                pipelineConfig.stepEnabled[static_cast<int>(StepType::LineDetector)] = true;
                 break;
             case DetectionType::Barcode:
                 pipelineConfig.stepEnabled[static_cast<int>(StepType::ColorChannel)] = true;

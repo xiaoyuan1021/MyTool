@@ -58,18 +58,14 @@ private:
     cv::Mat applyFilterOr(const cv::Mat& regions, const ShapeFilterConfig& config);
 };
 
-// 直线检测
-class StepLineDetect : public IPipelineStep
+// 6) 直线检测（含参考线匹配）
+class StepLineDetector : public IPipelineStep
 {
 public:
-    void run(PipelineContext &ctx) override;
-};
-
-// 参考线匹配
-class StepReferenceLineFilter : public IPipelineStep
-{
-public:
-    void run(PipelineContext &ctx) override;
+    void run(PipelineContext& ctx) override;
+private:
+    void runLineDetect(PipelineContext& ctx);
+    void runReferenceLineMatch(PipelineContext& ctx);
 };
 
 // 滤波去噪

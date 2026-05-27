@@ -16,12 +16,11 @@ enum class StepType : int
     Filter,             // 统一过滤（灰度/RGB/HSV）
     AlgorithmQueue,
     ShapeFilter,
-    LineDetect,
-    ReferenceLineFilter,
+    LineDetector,       // 直线检测（含参考线匹配）
     BarcodeRecognition,
-    ImageFilter,    // 滤波去噪
-    OcrRecognition, // OCR文字识别
-    Count   // 步骤总数
+    ImageFilter,        // 滤波去噪
+    OcrRecognition,     // OCR文字识别
+    Count               // 步骤总数
 };
 
 /// 步骤显示名称（用于UI）
@@ -33,8 +32,7 @@ inline const char* stepDisplayName(StepType type)
         case StepType::Filter:             return "过滤";
         case StepType::AlgorithmQueue:     return "算法处理";
         case StepType::ShapeFilter:        return "形状筛选";
-        case StepType::LineDetect:         return "直线检测";
-        case StepType::ReferenceLineFilter: return "参考线匹配";
+        case StepType::LineDetector:       return "直线检测";
         case StepType::BarcodeRecognition: return "条码识别";
         case StepType::ImageFilter:        return "滤波去噪";
         case StepType::OcrRecognition:     return "文字识别";
@@ -402,14 +400,13 @@ struct PipelineConfig
         false,  // Filter
         false,  // AlgorithmQueue
         false,  // ShapeFilter
-        false,  // LineDetect
-        false,  // ReferenceLineFilter
+        false,  // LineDetector
         false,  // BarcodeRecognition
         false,  // ImageFilter
         false   // OcrRecognition
     };
 
-    std::array<int, STEP_COUNT> stepOrder = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    std::array<int, STEP_COUNT> stepOrder = {0, 1, 2, 3, 4, 5, 6, 7, 8};
 
     // ========== 扩展功能开关（不在 StepType 枚举中） ==========
     bool enableObjectDetection = false;  ///< 在 Pipeline 末尾启用 YOLO 目标检测
