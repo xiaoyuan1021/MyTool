@@ -250,7 +250,53 @@ void ExtractTabWidget::calculateRegionFeatures(const QVector<QPointF>& points)
     OpenCVAlgorithm analyzer;
     QVector<RegionFeature> features = analyzer.analyzeRegionsInPolygon(points, processedImg);
 
-    if (features.isEmpty()) return;
+    if (features.isEmpty()) {
+        if (m_ui && m_ui->label_featureRange) {
+            m_ui->label_featureRange->setText("区域内无匹配区域");
+        }
+        return;
+    }
+
+    // 更新label_featureRange显示区域特征
+    if (m_ui && m_ui->label_featureRange && m_ui->comboBox_select) {
+        // 获取当前选择的特征类型
+        int featureIndex = m_ui->comboBox_select->currentIndex();
+        ShapeFeature feature = static_cast<ShapeFeature>(featureIndex);
+        const char* featureName = getFeatureName(feature);
+        QString featureDisplayName = getFeatureDisplayName(feature);
+        
+        // 计算该特征的范围
+        double minValue = 0, maxValue = 0;
+        bool hasValue = false;
+        
+        for (const auto& f : features) {
+            double value = 0;
+            if (strcmp(featureName, "area") == 0) value = f.area;
+            else if (strcmp(featureName, "circularity") == 0) value = f.circularity;
+            else if (strcmp(featureName, "width") == 0) value = f.width;
+            else if (strcmp(featureName, "height") == 0) value = f.height;
+            
+            if (!hasValue) {
+                minValue = value;
+                maxValue = value;
+                hasValue = true;
+            } else {
+                minValue = std::min(minValue, value);
+                maxValue = std::max(maxValue, value);
+            }
+        }
+        
+        QString text = QString("区域内找到 <b>%1</b> 个连通域<br>").arg(features.size());
+        if (hasValue) {
+            text += QString("%1 范围: %2 ~ %3")
+                .arg(featureDisplayName)
+                .arg(minValue, 0, 'f', 2)
+                .arg(maxValue, 0, 'f', 2);
+        }
+        
+        m_ui->label_featureRange->setTextFormat(Qt::RichText);
+        m_ui->label_featureRange->setText(text);
+    }
 
     Logger::instance()->info("========== ROI 区域特征分析 ==========");
     Logger::instance()->info(QString("找到 %1 个连通域").arg(features.size()));
