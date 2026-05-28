@@ -130,8 +130,8 @@ void ImageView::mousePressEvent(QMouseEvent *event)
         return;
     }
 
-    // ROI编辑模式 - 调整大小（仅左键触发）
-    if (m_roiState == RoiState::Editing && event->button() == Qt::LeftButton)
+    // ROI编辑/就绪模式 - 调整大小（仅左键触发）
+    if ((m_roiState == RoiState::Editing || m_roiState == RoiState::Ready) && event->button() == Qt::LeftButton)
     {
         RoiHandle handle = getRoiHandleAtPos(viewPosToImagePos(event->pos()));
         if (handle != None)
@@ -382,7 +382,7 @@ void ImageView::mouseMoveEvent(QMouseEvent *event)
     }
 
     // 当没有拖拽且不在任何绘制模式时，检测鼠标位置以更新光标
-    if (m_roiState == RoiState::Editing && !m_polygonMode && !m_rectangleMode && !m_referenceLineMode) {
+    if ((m_roiState == RoiState::Editing || m_roiState == RoiState::Ready) && !m_polygonMode && !m_rectangleMode && !m_referenceLineMode) {
         QPointF imgPos = viewPosToImagePos(event->pos());
         RoiHandle handle = getRoiHandleAtPos(imgPos);
         setCursorForHandle(handle);
@@ -452,7 +452,7 @@ void ImageView::mouseReleaseEvent(QMouseEvent *event)
         }
         
         // 恢复光标
-        if (m_roiState == RoiState::Editing && m_roiRectItem) {
+        if ((m_roiState == RoiState::Editing || m_roiState == RoiState::Ready) && m_roiRectItem) {
             QPointF imgPos = viewPosToImagePos(event->pos());
             RoiHandle handle = getRoiHandleAtPos(imgPos);
             setCursorForHandle(handle);
