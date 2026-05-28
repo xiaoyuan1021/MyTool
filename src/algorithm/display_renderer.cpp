@@ -250,23 +250,21 @@ cv::Mat drawOcrOverlay(const cv::Mat& bgr, const QVector<OcrRegion>& regions)
         painter.setFont(font);
 
         for (const auto& region : regions) {
-            QPen pen(QColor(0, 255, 0), 2);
-            painter.setPen(pen);
-            painter.drawRect(region.x, region.y, region.width, region.height);
+            QFontMetrics fm(font);
+            QRect textRect = fm.boundingRect(region.text);
+
+            // 先画标签背景（黑底），再画绿色边框，避免 brush 状态残留导致边框被填充
+            int labelX = region.x;
+            int labelY = std::max(region.y - 5, textRect.height() + 5);
 
             QString label = region.text;
             if (region.confidence > 0) {
                 label += QString(" (%1%)").arg(region.confidence * 100, 0, 'f', 1);
             }
-
             if (label.length() > 30) {
                 label = label.left(27) + "...";
             }
-
-            QFontMetrics fm(font);
-            QRect textRect = fm.boundingRect(label);
-            int labelX = region.x;
-            int labelY = std::max(region.y - 5, textRect.height() + 5);
+            textRect = fm.boundingRect(label);
 
             QRect bgRect(labelX, labelY - textRect.height() - 4,
                         textRect.width() + 6, textRect.height() + 6);
@@ -275,7 +273,13 @@ cv::Mat drawOcrOverlay(const cv::Mat& bgr, const QVector<OcrRegion>& regions)
             painter.drawRect(bgRect);
 
             painter.setPen(QColor(255, 255, 255));
+            painter.setBrush(Qt::NoBrush);
             painter.drawText(labelX + 3, labelY - 3, label);
+
+            // 最后画绿色边框（brush 已重置为 NoBrush，不会被填充）
+            painter.setPen(QPen(QColor(0, 255, 0), 2));
+            painter.setBrush(Qt::NoBrush);
+            painter.drawRect(region.x, region.y, region.width, region.height);
         }
 
         painter.end();

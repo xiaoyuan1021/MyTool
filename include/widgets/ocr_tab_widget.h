@@ -35,7 +35,6 @@ signals:
     void processRequested();
 
 private slots:
-    void onLanguageChanged(int index);
     void onRecognizeClicked();
     void onCopyResultClicked();
     void onResetClicked();
@@ -51,7 +50,6 @@ private:
     bool m_manualOcrTrigger = false;
 
     // UI 控件 - 配置部分
-    QComboBox* m_languageCombo;
     QComboBox* m_pageModeCombo;
     QPushButton* m_recognizeBtn;
     QPushButton* m_copyBtn;

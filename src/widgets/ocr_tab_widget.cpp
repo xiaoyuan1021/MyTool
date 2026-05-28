@@ -28,21 +28,15 @@ void OcrTabWidget::setupUI()
     auto* mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(8, 8, 8, 8);
 
-    // 语言选择
-    auto* langGroup = new QGroupBox("识别设置");
+    // 排列模式
+    auto* langGroup = new QGroupBox("排列模式");
     auto* langLayout = new QFormLayout(langGroup);
-    m_languageCombo = new QComboBox();
-    m_languageCombo->addItem("中文+英文", "chi_sim+eng");
-    m_languageCombo->addItem("仅中文", "chi_sim");
-    m_languageCombo->addItem("仅英文", "eng");
-    langLayout->addRow("识别语言:", m_languageCombo);
-    
+
     m_pageModeCombo = new QComboBox();
-    m_pageModeCombo->addItem("自动检测", 0);
     m_pageModeCombo->addItem("单行文字", 1);
     m_pageModeCombo->addItem("多行文字", 2);
     langLayout->addRow("文字排列:", m_pageModeCombo);
-    
+
     mainLayout->addWidget(langGroup);
 
     // 操作提示
@@ -103,17 +97,9 @@ void OcrTabWidget::setupUI()
     mainLayout->addWidget(resultGroup);
     mainLayout->addStretch();
 
-    // 连接信号
-    connect(m_languageCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this, &OcrTabWidget::onLanguageChanged);
+    // 连接信号（切换排列模式时同步配置，不自动触发识别）
     connect(m_pageModeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this, &OcrTabWidget::onLanguageChanged);
-}
-
-void OcrTabWidget::onLanguageChanged(int index)
-{
-    Q_UNUSED(index);
-    syncConfigToPipeline();
+            this, [this]() { syncConfigToPipeline(); });
 }
 
 void OcrTabWidget::onRecognizeClicked()
@@ -148,7 +134,6 @@ void OcrTabWidget::onCopyResultClicked()
 void OcrTabWidget::onResetClicked()
 {
     clearResults();
-    m_languageCombo->setCurrentIndex(0);
     m_pageModeCombo->setCurrentIndex(0);
 
     syncConfigToPipeline();
@@ -159,7 +144,6 @@ void OcrTabWidget::syncConfigToPipeline()
     if (!m_pipelineManager) return;
 
     m_pipelineManager->updateConfig([&](PipelineConfig& cfg) {
-        cfg.ocr.language = m_languageCombo->currentData().toString();
         cfg.ocr.pageMode = m_pageModeCombo->currentData().toInt();
     });
 
@@ -178,7 +162,6 @@ void OcrTabWidget::clearResults()
 
 void OcrTabWidget::saveToConfig(PipelineConfig& config) const
 {
-    config.ocr.language = m_languageCombo->currentData().toString();
     config.ocr.pageMode = m_pageModeCombo->currentData().toInt();
 }
 
@@ -186,10 +169,6 @@ void OcrTabWidget::loadFromConfig(const PipelineConfig& config)
 {
     const auto& cfg = config.ocr;
 
-    int langIndex = m_languageCombo->findData(cfg.language);
-    if (langIndex >= 0) {
-        m_languageCombo->setCurrentIndex(langIndex);
-    }
     int pageModeIndex = m_pageModeCombo->findData(cfg.pageMode);
     if (pageModeIndex >= 0) {
         m_pageModeCombo->setCurrentIndex(pageModeIndex);
