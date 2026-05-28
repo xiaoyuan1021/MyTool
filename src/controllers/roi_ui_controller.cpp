@@ -556,8 +556,6 @@ void RoiUiController::deleteDetectionItem(const QString& roiId, const QString& d
 void RoiUiController::saveCurrentRoiPipelineConfig()
 {
     if (m_currentSelectedRoiId.isEmpty() || !m_pipelineManager) {
-        Logger::instance()->info(QString("[RoiUI] saveCurrentRoiPipelineConfig: 跳过 (selectedId=%1, pipeline=%2)")
-            .arg(m_currentSelectedRoiId).arg(m_pipelineManager ? "有效" : "nullptr"));
         return;
     }
     
@@ -570,7 +568,9 @@ void RoiUiController::saveCurrentRoiPipelineConfig()
             .arg(roi->pipelineConfig.enhance.contrast)
             .arg(roi->pipelineConfig.enhance.gamma));
     } else {
-        Logger::instance()->warning(QString("[RoiUI] saveCurrentRoiPipelineConfig: ROI不存在, id=%1").arg(m_currentSelectedRoiId));
+        // ROI已不存在（切换图片/profile后），清理幽灵引用
+        Logger::instance()->debug(QString("[RoiUI] saveCurrentRoiPipelineConfig: 清理幽灵ROI引用, id=%1").arg(m_currentSelectedRoiId));
+        m_currentSelectedRoiId.clear();
     }
 }
 
@@ -589,7 +589,7 @@ void RoiUiController::loadRoiPipelineConfig(const QString& roiId)
         
         emit roiPipelineConfigChanged(roi->pipelineConfig);
         
-        Logger::instance()->info(QString("[RoiUI] 已加载ROI [%1] 的Pipeline配置: brightness=%2, contrast=%3, gamma=%4, sharpen=%5, channel=%6")
+        Logger::instance()->debug(QString("[RoiUI] 已加载ROI [%1] 的Pipeline配置: brightness=%2, contrast=%3, gamma=%4, sharpen=%5, channel=%6")
             .arg(roi->roiName)
             .arg(roi->pipelineConfig.enhance.brightness)
             .arg(roi->pipelineConfig.enhance.contrast)
@@ -597,7 +597,7 @@ void RoiUiController::loadRoiPipelineConfig(const QString& roiId)
             .arg(roi->pipelineConfig.enhance.sharpen)
             .arg(static_cast<int>(roi->pipelineConfig.colorFilter.channel)));
     } else {
-        Logger::instance()->warning(QString("[RoiUI] loadRoiPipelineConfig: ROI不存在, id=%1").arg(roiId));
+        Logger::instance()->debug(QString("[RoiUI] loadRoiPipelineConfig: ROI不存在, id=%1").arg(roiId));
     }
 }
 

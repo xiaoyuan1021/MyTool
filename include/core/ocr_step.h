@@ -16,6 +16,7 @@ public:
     StepOcrRecognition();
     ~StepOcrRecognition() override;
     void run(PipelineContext& ctx) override;
+    StepType stepType() const override { return StepType::OcrRecognition; }
 
 private:
     static cv::Mat deskew(const cv::Mat& gray, cv::Mat& rotMatrixOut);

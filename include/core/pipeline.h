@@ -59,7 +59,7 @@ class IPipelineStep
 public:
     virtual ~IPipelineStep()=default;
     virtual void run(PipelineContext& ctx)=0;
-
+    virtual StepType stepType() const=0;
 };
 
 

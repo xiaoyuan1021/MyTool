@@ -15,6 +15,7 @@ public:
     ~StepBarcodeRecognition();
 
     void run(PipelineContext& ctx) override;
+    StepType stepType() const override { return StepType::BarcodeRecognition; }
 
 private:
     ZXingBarcodeReader reader_;

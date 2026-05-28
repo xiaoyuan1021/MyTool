@@ -166,6 +166,7 @@ void Logger::info(const QString &message)
 
 void Logger::warning(const QString &message)
 {
+    if (message.trimmed().isEmpty()) return;
     QMutexLocker locker(&m_mutex);
     if (m_colorLogger) {
         m_colorLogger->warn(message.toStdString());

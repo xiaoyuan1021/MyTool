@@ -9,6 +9,7 @@ class StepColorChannel:public IPipelineStep
 {
 public:
     void run(PipelineContext &ctx) override;
+    StepType stepType() const override { return StepType::ColorChannel; }
 };
 
 // 2) 增强参数
@@ -18,6 +19,7 @@ public:
     explicit StepEnhance(ImageProcessor* proc) : proc_(proc) {}
 
     void run(PipelineContext& ctx) override;
+    StepType stepType() const override { return StepType::Enhance; }
 private:
     ImageProcessor* proc_ = nullptr;
 };
@@ -28,6 +30,7 @@ class StepFilter : public IPipelineStep
 public:
     StepFilter(ImageProcessor* proc) : m_processor(proc) {}
     void run(PipelineContext& ctx) override;
+    StepType stepType() const override { return StepType::Filter; }
 private:
     ImageProcessor* m_processor = nullptr;
 };
@@ -40,6 +43,7 @@ public:
         : m_processor(proc), m_algorithmQueue(queue) {}
 
     void run(PipelineContext& ctx) override;
+    StepType stepType() const override { return StepType::AlgorithmQueue; }
 private:
     ImageProcessor* m_processor = nullptr;
     const QVector<AlgorithmStep>* m_algorithmQueue = nullptr;
@@ -50,6 +54,7 @@ class StepShapeFilter : public IPipelineStep
 {
 public:
     void run(PipelineContext& ctx) override;
+    StepType stepType() const override { return StepType::ShapeFilter; }
 private:
     cv::Mat applyFilter(const cv::Mat& regions, const ShapeFilterConfig& config);
 
@@ -63,6 +68,7 @@ class StepLineDetector : public IPipelineStep
 {
 public:
     void run(PipelineContext& ctx) override;
+    StepType stepType() const override { return StepType::LineDetector; }
 private:
     void runLineDetect(PipelineContext& ctx);
     void runReferenceLineMatch(PipelineContext& ctx);
@@ -73,4 +79,5 @@ class StepImageFilter : public IPipelineStep
 {
 public:
     void run(PipelineContext& ctx) override;
+    StepType stepType() const override { return StepType::ImageFilter; }
 };
