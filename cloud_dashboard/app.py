@@ -311,6 +311,9 @@ devices: dict = {}
 MAX_RESULTS = 2000
 results_deque = deque(maxlen=MAX_RESULTS)
 
+# Maximum entries for hourly stats to prevent memory growth
+MAX_HOURLY_ENTRIES = 168  # 7 days * 24 hours
+
 stats = {
     "total": 0,
     "passed": 0,
@@ -335,13 +338,19 @@ mqtt_connected = False
 def broadcast_sse(event: str, data: dict):
     with _sse_lock:
         dead = []
-        for q in sse_clients:
+        for q in list(sse_clients):  # Use list() to avoid modification during iteration
             try:
                 q.put_nowait((event, data))
             except queue.Full:
                 dead.append(q)
+            except Exception:
+                # Queue might be closed or in bad state
+                dead.append(q)
         for q in dead:
-            sse_clients.remove(q)
+            try:
+                sse_clients.remove(q)
+            except ValueError:
+                pass  # Already removed
 
 
 def now_ts() -> int:
@@ -477,6 +486,12 @@ def _handle_result(payload: dict):
         hour_stat["passed"] += 1
     else:
         hour_stat["failed"] += 1
+
+    # Trim hourly stats to prevent memory growth
+    if len(stats["by_hour"]) > MAX_HOURLY_ENTRIES:
+        sorted_hours = sorted(stats["by_hour"].keys())
+        for old_hour in sorted_hours[:-MAX_HOURLY_ENTRIES]:
+            del stats["by_hour"][old_hour]
 
     # 更新设备
     if device_id in devices:

@@ -1093,13 +1093,34 @@
 
     <!-- ============ JavaScript ============ -->
     <script>
+        // ===== Global Cleanup State =====
+        let activeTimers = [];
+        let currentEventSource = null;
+        let statsFetchPending = false;
+
+        function registerTimer(id) {
+            activeTimers.push(id);
+        }
+
+        function clearAllTimers() {
+            activeTimers.forEach(id => clearInterval(id));
+            activeTimers = [];
+        }
+
+        function closeEventSource() {
+            if (currentEventSource) {
+                currentEventSource.close();
+                currentEventSource = null;
+            }
+        }
+
         // ===== Time =====
         function updateTime() {
             const now = new Date();
             document.getElementById('headerTime').textContent = now.toLocaleString('zh-CN', { hour12: false });
         }
         updateTime();
-        setInterval(updateTime, 1000);
+        registerTimer(setInterval(updateTime, 1000));
 
         // ===== Charts =====
         let trendChart = null;
@@ -1266,7 +1287,11 @@
         let resultCount = 0;
 
         function connectSSE() {
+            // Close existing connection before creating new one
+            closeEventSource();
+
             const evtSource = new EventSource('/stream');
+            currentEventSource = evtSource;
 
             evtSource.addEventListener('connected', function() {
                 console.log('[SSE] 已连接');
@@ -1294,8 +1319,14 @@
                 // Toast
                 showToast(data);
 
-                // Refresh stats from server periodically
-                fetchStats();
+                // Debounce fetchStats to avoid excessive polling
+                if (!statsFetchPending) {
+                    statsFetchPending = true;
+                    setTimeout(() => {
+                        fetchStats();
+                        statsFetchPending = false;
+                    }, 2000);
+                }
             });
 
             evtSource.addEventListener('heartbeat', function(e) {
@@ -1305,6 +1336,8 @@
 
             evtSource.onerror = function() {
                 console.log('[SSE] 连接断开，5秒后重连...');
+                // Close before reconnecting
+                closeEventSource();
                 setTimeout(connectSSE, 5000);
             };
         }
@@ -1633,29 +1666,35 @@
         }
 
         function loadHistoryFilters() {
-            // Load devices
+            // Load devices - clear existing options first (keep first option)
+            const deviceSelect = document.getElementById('historyDevice');
+            while (deviceSelect.options.length > 1) {
+                deviceSelect.remove(1);
+            }
             fetch('/api/devices')
                 .then(r => r.json())
                 .then(devices => {
-                    const select = document.getElementById('historyDevice');
                     devices.forEach(d => {
                         const opt = document.createElement('option');
                         opt.value = d.device_id;
                         opt.textContent = d.device_id;
-                        select.appendChild(opt);
+                        deviceSelect.appendChild(opt);
                     });
                 });
 
-            // Load ROI names
+            // Load ROI names - clear existing options first (keep first option)
+            const roiSelect = document.getElementById('historyRoi');
+            while (roiSelect.options.length > 1) {
+                roiSelect.remove(1);
+            }
             fetch('/api/stats/by-roi')
                 .then(r => r.json())
                 .then(roiStats => {
-                    const select = document.getElementById('historyRoi');
                     Object.keys(roiStats).forEach(name => {
                         const opt = document.createElement('option');
                         opt.value = name;
                         opt.textContent = name;
-                        select.appendChild(opt);
+                        roiSelect.appendChild(opt);
                     });
                 });
         }
@@ -1671,12 +1710,19 @@
             connectSSE();
 
             // Periodic polling as backup
-            setInterval(fetchStats, 5000);
-            setInterval(fetchDevices, 5000);
-            setInterval(fetchResults, 8000);
+            registerTimer(setInterval(fetchStats, 5000));
+            registerTimer(setInterval(fetchDevices, 5000));
+            registerTimer(setInterval(fetchResults, 8000));
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            clearAllTimers();
+            closeEventSource();
         });
 
         // ===== Host Info (LAN IP) =====
+        let hostInfoBound = false;
         function fetchHostInfo() {
             fetch('/api/host-info')
                 .then(r => r.json())
@@ -1686,13 +1732,18 @@
                     const container = document.getElementById('lanInfo');
                     el.textContent = 'http://' + addr;
                     container.style.display = 'flex';
-                    container.onclick = function() {
-                        navigator.clipboard.writeText('http://' + addr).then(() => {
-                            const old = el.textContent;
-                            el.textContent = '已复制!';
-                            setTimeout(() => el.textContent = old, 1500);
-                        });
-                    };
+
+                    // Only bind click handler once
+                    if (!hostInfoBound) {
+                        hostInfoBound = true;
+                        container.onclick = function() {
+                            navigator.clipboard.writeText('http://' + addr).then(() => {
+                                const old = el.textContent;
+                                el.textContent = '已复制!';
+                                setTimeout(() => el.textContent = old, 1500);
+                            });
+                        };
+                    }
                 });
         }
     </script>
