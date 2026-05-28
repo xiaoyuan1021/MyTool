@@ -59,7 +59,10 @@ public:
     void setTabNames(const QStringList& tabNames) { m_tabNames = tabNames; }
 
     /// 将UI信号连接到Controller（从MainWindow迁移）
-    void setupConnections(RoiUiController* roiController, std::function<void(const QString&)> ensureTabFunc);
+    /// @param triggerPipeline Pipeline执行触发回调
+    void setupConnections(RoiUiController* roiController,
+                          std::function<void(const QString&)> ensureTabFunc,
+                          std::function<void()> triggerPipeline = nullptr);
 
 signals:
     // 检测项变更信号
@@ -72,6 +75,7 @@ private:
     RoiManager& m_roiManager;
     QTabWidget* m_tabWidget;
     QStringList m_tabNames;
+    std::function<void()> m_triggerPipeline;  // Pipeline执行触发回调
 };
 
 #endif // DETECTION_UI_CONTROLLER_H

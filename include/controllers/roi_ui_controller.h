@@ -126,6 +126,12 @@ private:
     /// 删除ROI并刷新UI（统一删除逻辑）
     void removeRoiAndRefresh(const QString& roiId);
 
+    /// 重建树形视图的节点（纯UI操作，不涉及配置保存或选择恢复）
+    void rebuildTreeItems();
+
+    /// 恢复树形视图选中状态，并在选中变化时同步Pipeline配置和ImageView
+    void restoreSelection();
+
     RoiManager& m_roiManager;
     PipelineManager* m_pipelineManager;
     ImageView* m_view;

@@ -382,7 +382,7 @@ target_include_directories(VisionTool PRIVATE
 
 target_link_libraries(VisionTool PRIVATE
     debug "${TESSERACT_ROOT}/lib/tesseract55d.lib"
-    optimized "${TESSERACT_ROOT}/lib/tesseract55d.lib"
+    optimized "${TESSERACT_ROOT}/lib/tesseract55.lib"
 )
 
 # 拷贝 Tesseract DLL 到输出目录

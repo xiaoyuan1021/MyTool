@@ -311,7 +311,11 @@ void MainWindow::setupControllers()
     m_roiUiController->setupTreeView(ui->treeView);
     m_roiUiController->setupDisplayConnections(m_tabManager);
     m_detectionUiController->setupConnections(m_roiUiController,
-        [this](const QString& tabName) { ensureTabExists(tabName); });
+        [this](const QString& tabName) { ensureTabExists(tabName); },
+        [this]() {
+            m_pipelineMode = PipelineMode::Execute;
+            requestRefresh();
+        });
 }
 
 void MainWindow::setupControllerConnections()

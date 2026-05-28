@@ -119,13 +119,7 @@ void RoiUiController::removeRoiAndRefresh(const QString& roiId)
         m_currentSelectedRoiId.clear();
     }
 
-    QString previousSelectedId = m_currentSelectedRoiId;
     refreshRoiTreeView();
-
-    // 如果自动选择改变了选中的ROI，加载新ROI的配置
-    if (m_currentSelectedRoiId != previousSelectedId && !m_currentSelectedRoiId.isEmpty()) {
-        loadRoiPipelineConfig(m_currentSelectedRoiId);
-    }
 
     emit roiChanged();
     Logger::instance()->info(QString("已删除ROI: %1").arg(roiName));
@@ -273,59 +267,67 @@ void RoiUiController::onSwitchRoiClicked()
 void RoiUiController::refreshRoiTreeView()
 {
     if (!m_treeView) return;
-    
-    // 刷新前保存当前ROI的PipelineConfig
+
+    // 1. 保存当前ROI的Pipeline配置（防止数据丢失）
     saveCurrentRoiPipelineConfig();
-    
-    // 保存当前选中的ROI ID，以便刷新后恢复选中状态
-    QString previouslySelectedRoiId = m_currentSelectedRoiId;
-    
+
+    // 2. 重建树形视图节点
+    rebuildTreeItems();
+
+    // 3. 恢复选中状态，并在选中变化时同步Pipeline配置和ImageView
+    restoreSelection();
+}
+
+void RoiUiController::rebuildTreeItems()
+{
     // 阻塞信号，防止setCurrentItem触发itemClicked递归
     m_treeView->blockSignals(true);
     m_treeView->clear();
     m_treeView->blockSignals(false);
-    
+
     const QList<RoiConfig> rois = m_roiManager.getRoiConfigs();
-    
-    QTreeWidgetItem* itemToSelect = nullptr;  // 要选中的项目
-    
+
+    // 保存重建前的选中ID，用于后续恢复
+    QString previouslySelectedRoiId = m_currentSelectedRoiId;
+
+    QTreeWidgetItem* itemToSelect = nullptr;
+
     for (const auto& roi : rois) {
         // 创建ROI节点
         QTreeWidgetItem* roiItem = new QTreeWidgetItem(m_treeView);
-        
+
         // 显示格式：ROI名称 [检测项类型]
         QString detectionTypes;
         for (int i = 0; i < roi.detectionItems.size(); ++i) {
             if (i > 0) detectionTypes += ", ";
             detectionTypes += detectionTypeToString(roi.detectionItems[i].type);
         }
-        
+
         if (detectionTypes.isEmpty()) {
             roiItem->setText(0, roi.roiName);
         } else {
             roiItem->setText(0, QString("%1 [%2]").arg(roi.roiName).arg(detectionTypes));
         }
-        
+
         roiItem->setData(0, Qt::UserRole, roi.roiId);
         roiItem->setFlags(roiItem->flags() | Qt::ItemIsSelectable | Qt::ItemIsEnabled);
-        
+
         // 设置ROI颜色
         QColor roiColor(roi.color);
         roiItem->setForeground(0, QBrush(roiColor));
-        
+
         // 记录需要选中的项目
         if (roi.roiId == previouslySelectedRoiId) {
             itemToSelect = roiItem;
         }
-        
-        // 添加检测项子节点（简化显示）
+
+        // 添加检测项子节点
         for (const auto& detection : roi.detectionItems) {
             QTreeWidgetItem* detectionItem = new QTreeWidgetItem(roiItem);
             detectionItem->setText(0, detection.itemName);
             detectionItem->setData(0, Qt::UserRole, detection.itemId);
-            detectionItem->setData(0, Qt::UserRole + 1, "detection"); // 标记为检测项
-            
-            // 根据检测类型设置颜色
+            detectionItem->setData(0, Qt::UserRole + 1, "detection");
+
             QColor detectionColor;
             switch (detection.type) {
                 case DetectionType::Blob:
@@ -347,50 +349,59 @@ void RoiUiController::refreshRoiTreeView()
             detectionItem->setForeground(0, QBrush(detectionColor));
         }
     }
-    
-    // 展开所有项
+
     m_treeView->expandAll();
-    
-    // 恢复选中状态（阻塞信号避免递归触发itemClicked）
+
+    // 临时保存 itemToSelect 引用，供 restoreSelection 使用
+    // 通过设置当前选中项来传递信息（blockSignals 已解除）
     m_treeView->blockSignals(true);
-    QString newSelectedId;
     if (itemToSelect) {
         m_treeView->setCurrentItem(itemToSelect);
-        newSelectedId = itemToSelect->data(0, Qt::UserRole).toString();
     } else if (m_treeView->topLevelItemCount() > 0) {
-        QTreeWidgetItem* lastItem = m_treeView->topLevelItem(
-            m_treeView->topLevelItemCount() - 1
-        );
-        m_treeView->setCurrentItem(lastItem);
-        newSelectedId = lastItem->data(0, Qt::UserRole).toString();
+        // 没有匹配项时，选择第一个ROI（而非最后一个，避免覆盖用户预期）
+        m_treeView->setCurrentItem(m_treeView->topLevelItem(0));
     }
-    
-    // 【Bug3修复】检测选中ID是否发生变化，如果变化了需要加载新ROI的配置
+    m_treeView->blockSignals(false);
+}
+
+void RoiUiController::restoreSelection()
+{
+    // 读取当前树形视图的选中项
+    m_treeView->blockSignals(true);
+    QTreeWidgetItem* currentItem = m_treeView->currentItem();
+    QString newSelectedId;
+    if (currentItem) {
+        // 如果选中的是检测项，取父ROI的ID
+        QString itemType = currentItem->data(0, Qt::UserRole + 1).toString();
+        if (itemType == "detection" && currentItem->parent()) {
+            newSelectedId = currentItem->parent()->data(0, Qt::UserRole).toString();
+        } else {
+            newSelectedId = currentItem->data(0, Qt::UserRole).toString();
+        }
+    }
+    m_treeView->blockSignals(false);
+
     bool selectionChanged = (newSelectedId != m_currentSelectedRoiId);
     m_currentSelectedRoiId = newSelectedId;
-    m_treeView->blockSignals(false);
-    
-    // 如果选中ID发生了变化（如删除后自动选择了另一个ROI），
-    // 需要加载新ROI的PipelineConfig到PipelineManager，确保UI显示正确的配置
-    if (selectionChanged && !m_currentSelectedRoiId.isEmpty()) {
-        loadRoiPipelineConfig(m_currentSelectedRoiId);
-        
-        // 【P1修复】同步激活ROI到图像视图，保持树形视图与图像显示一致
-        RoiConfig* roi = m_roiManager.getRoiConfig(m_currentSelectedRoiId);
-        if (roi) {
-            m_view->clearRoi();
-            // 已知ROI ID时直接使用setActiveRoi，避免setRoi的矩形匹配问题
-            m_roiManager.setActiveRoi(roi->roiId);
-            emit roiDisplayChanged(m_currentSelectedRoiId);
-        }
-    } else if (selectionChanged && m_currentSelectedRoiId.isEmpty()) {
-        // 【Bug修复】新图片没有ROI时，复位Pipeline配置为默认值，
-        // 防止旧图片的增强参数（如brightness=-28）残留在PipelineManager中，
-        // 导致新图片运行Pipeline时发黑或显示异常
-        if (m_pipelineManager) {
-            m_pipelineManager->resetConfigToDefaults();
-            emit roiPipelineConfigChanged(m_pipelineManager->getConfigSnapshot());
-            Logger::instance()->info("[RoiUI] 无ROI，已复位配置为默认值");
+
+    if (selectionChanged) {
+        if (!m_currentSelectedRoiId.isEmpty()) {
+            // 选中了新ROI，加载其Pipeline配置并激活显示
+            loadRoiPipelineConfig(m_currentSelectedRoiId);
+
+            RoiConfig* roi = m_roiManager.getRoiConfig(m_currentSelectedRoiId);
+            if (roi) {
+                m_view->clearRoi();
+                m_roiManager.setActiveRoi(roi->roiId);
+                emit roiDisplayChanged(m_currentSelectedRoiId);
+            }
+        } else {
+            // 没有ROI了，复位Pipeline配置为默认值
+            if (m_pipelineManager) {
+                m_pipelineManager->resetConfigToDefaults();
+                emit roiPipelineConfigChanged(m_pipelineManager->getConfigSnapshot());
+                Logger::instance()->info("[RoiUI] 无ROI，已复位配置为默认值");
+            }
         }
     }
 }
@@ -528,7 +539,7 @@ void RoiUiController::deleteDetectionItem(const QString& roiId, const QString& d
         QMessageBox::warning(nullptr, "警告", "未找到选中的ROI");
         return;
     }
-    
+
     // 查找检测项名称用于确认提示
     QString detectionName;
     for (const auto& detection : roi->detectionItems) {
@@ -537,17 +548,18 @@ void RoiUiController::deleteDetectionItem(const QString& roiId, const QString& d
             break;
         }
     }
-    
+
     // 确认删除
     QMessageBox::StandardButton reply = QMessageBox::question(
         nullptr, "确认删除",
         QString("确定要删除检测项 \"%1\" 吗？").arg(detectionName.isEmpty() ? detectionId : detectionName),
         QMessageBox::Yes | QMessageBox::No
     );
-    
+
     if (reply == QMessageBox::Yes) {
         roi->removeDetectionItem(detectionId);
         refreshRoiTreeView();
+        emit roiChanged();
         emit detectionItemDeleted(roiId, detectionId);
         Logger::instance()->info(QString("已删除检测项: %1").arg(detectionName.isEmpty() ? detectionId : detectionName));
     }

@@ -118,6 +118,12 @@ void DetectionUiController::onDeleteDetectionClicked(const QString& roiId, const
 
     roi->removeDetectionItem(detectionId);
     emit detectionChanged();
+
+    // 触发Pipeline重新执行，刷新画布显示
+    if (m_triggerPipeline) {
+        m_triggerPipeline();
+    }
+
     Logger::instance()->info(QString("已删除检测项: %1").arg(detectionId));
 }
 
@@ -266,8 +272,11 @@ bool DetectionUiController::handleDeleteFromTree(QTreeWidget* treeWidget)
 }
 
 void DetectionUiController::setupConnections(
-    RoiUiController* roiController, std::function<void(const QString&)> ensureTabFunc)
+    RoiUiController* roiController, std::function<void(const QString&)> ensureTabFunc,
+    std::function<void()> triggerPipeline)
 {
+    m_triggerPipeline = triggerPipeline;
+
     // 检测项变更时刷新ROI树形视图
     connect(this, &DetectionUiController::detectionChanged,
             this, [roiController]() {
