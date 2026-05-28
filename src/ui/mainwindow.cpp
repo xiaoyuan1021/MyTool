@@ -617,10 +617,15 @@ void MainWindow::on_btn_importConfig_clicked() { m_configController->loadConfig(
 
 // ========== 自动检测 ==========
 
-void MainWindow::on_btn_startAutoDetection_clicked()
+void MainWindow::startAutoDetection()
 {
     m_roiUiController->saveCurrentRoiPipelineConfig();
     m_autoDetectionController->startDetection();
+}
+
+void MainWindow::on_btn_startAutoDetection_clicked()
+{
+    startAutoDetection();
 }
 
 void MainWindow::on_btn_stopAutoDetection_clicked()
@@ -654,12 +659,16 @@ void MainWindow::setupMqtt()
     connect(m_mqttManager, &MqttManager::startDetectionRequested,
             this, [this]() {
         m_toast->showMessage("收到云端指令: 开始批量检测");
-        on_btn_startAutoDetection_clicked();
+        startAutoDetection();
     });
     connect(m_mqttManager, &MqttManager::stopDetectionRequested,
             this, [this]() {
         m_toast->showMessage("收到云端指令: 停止批量检测");
         on_btn_stopAutoDetection_clicked();
+    });
+    connect(m_mqttManager, &MqttManager::pingRequested,
+            this, [this]() {
+        m_toast->showMessage("收到云端指令: Ping - 已回复心跳");
     });
 }
 

@@ -75,6 +75,7 @@ private slots:
     void on_btn_saveConfig_clicked();
     void on_btn_importConfig_clicked();
     void on_btn_startAutoDetection_clicked();
+    void startAutoDetection();
     void on_btn_stopAutoDetection_clicked();
     void on_btn_cloudPlatform_clicked();
     void on_btn_saveToProfile_clicked();

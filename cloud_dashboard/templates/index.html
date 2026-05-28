@@ -592,6 +592,92 @@
             background: rgba(139, 92, 246, 0.08);
         }
 
+        /* ===== History Query ===== */
+        .history-filter {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .filter-group label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .filter-group select {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            padding: 8px 12px;
+            font-size: 13px;
+            min-width: 140px;
+            outline: none;
+            cursor: pointer;
+            transition: border-color var(--transition);
+        }
+
+        .filter-group select:focus {
+            border-color: var(--accent-blue);
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 16px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        .page-btn {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .page-btn:hover:not(:disabled) {
+            background: var(--bg-card-hover);
+            border-color: var(--accent-blue);
+        }
+
+        .page-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .page-info {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        @media (max-width: 900px) {
+            .history-filter {
+                flex-direction: column;
+            }
+            .filter-group select {
+                width: 100%;
+            }
+        }
+
         /* ===== Toast ===== */
         .toast-container {
             position: fixed;
@@ -915,6 +1001,87 @@
                         <i class="fas fa-chart-simple"></i>
                         <p>暂无 ROI 统计数据</p>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Query -->
+        <div class="card" style="margin-top:20px;">
+            <div class="card-header">
+                <div class="card-title"><i class="fas fa-history"></i> 历史数据查询</div>
+                <span class="card-badge" id="historyTotal">0 条</span>
+            </div>
+            <div class="card-body">
+                <!-- Filter Bar -->
+                <div class="history-filter">
+                    <div class="filter-group">
+                        <label>设备</label>
+                        <select id="historyDevice">
+                            <option value="">全部设备</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>ROI</label>
+                        <select id="historyRoi">
+                            <option value="">全部 ROI</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>状态</label>
+                        <select id="historyStatus">
+                            <option value="">全部</option>
+                            <option value="true">合格</option>
+                            <option value="false">不合格</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>时间范围</label>
+                        <select id="historyDays">
+                            <option value="">全部时间</option>
+                            <option value="1">最近 1 天</option>
+                            <option value="7">最近 7 天</option>
+                            <option value="30">最近 30 天</option>
+                        </select>
+                    </div>
+                    <button class="cmd-btn primary" onclick="queryHistory()" style="min-width:100px;">
+                        <i class="fas fa-search"></i> 查询
+                    </button>
+                    <button class="cmd-btn success" onclick="exportHistory()" style="min-width:100px;">
+                        <i class="fas fa-download"></i> 导出
+                    </button>
+                </div>
+
+                <!-- History Table -->
+                <div class="table-wrap" style="max-height:400px;margin-top:15px;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>时间</th>
+                                <th>设备</th>
+                                <th>ROI</th>
+                                <th>结果</th>
+                                <th>区域数</th>
+                                <th>条码</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyBody">
+                        </tbody>
+                    </table>
+                </div>
+                <div class="empty-state" id="historyEmpty">
+                    <i class="fas fa-search"></i>
+                    <p>点击"查询"按钮检索历史数据</p>
+                </div>
+
+                <!-- Pagination -->
+                <div class="pagination" id="historyPagination">
+                    <button class="page-btn" onclick="historyPrevPage()" id="historyPrevBtn" disabled>
+                        <i class="fas fa-chevron-left"></i> 上一页
+                    </button>
+                    <span class="page-info" id="historyPageInfo">第 1 页 / 共 1 页</span>
+                    <button class="page-btn" onclick="historyNextPage()" id="historyNextBtn" disabled>
+                        下一页 <i class="fas fa-chevron-right"></i>
+                    </button>
                 </div>
             </div>
         </div>
@@ -1336,6 +1503,163 @@
                 });
         }
 
+        // ===== History Query =====
+        let historyPage = 1;
+        let historyPageSize = 20;
+        let historyTotalPages = 1;
+
+        function queryHistory(page = 1) {
+            historyPage = page;
+            const device = document.getElementById('historyDevice').value;
+            const roi = document.getElementById('historyRoi').value;
+            const passed = document.getElementById('historyStatus').value;
+            const days = document.getElementById('historyDays').value;
+
+            let url = `/api/results/history?page=${page}&page_size=${historyPageSize}`;
+            if (device) url += `&device=${encodeURIComponent(device)}`;
+            if (roi) url += `&roi=${encodeURIComponent(roi)}`;
+            if (passed) url += `&passed=${passed}`;
+            if (days) url += `&days=${days}`;
+
+            fetch(url)
+                .then(r => r.json())
+                .then(data => {
+                    const tbody = document.getElementById('historyBody');
+                    const empty = document.getElementById('historyEmpty');
+                    const pagination = document.getElementById('historyPagination');
+
+                    if (!data.items || data.items.length === 0) {
+                        tbody.innerHTML = '';
+                        empty.style.display = 'flex';
+                        empty.innerHTML = '<i class="fas fa-inbox"></i><p>未找到匹配的历史数据</p>';
+                        pagination.style.display = 'none';
+                        document.getElementById('historyTotal').textContent = '0 条';
+                        return;
+                    }
+
+                    empty.style.display = 'none';
+                    pagination.style.display = 'flex';
+
+                    // Update total count
+                    document.getElementById('historyTotal').textContent = data.total + ' 条';
+
+                    // Calculate total pages
+                    historyTotalPages = Math.ceil(data.total / historyPageSize) || 1;
+
+                    // Render rows
+                    tbody.innerHTML = data.items.map(item => {
+                        const time = item.dateTime || '--';
+                        const badge = item.passed ?
+                            '<span class="badge-pass"><i class="fas fa-check"></i> PASS</span>' :
+                            '<span class="badge-fail"><i class="fas fa-times"></i> FAIL</span>';
+                        const barcodeIcon = item.hasBarcode ? '<i class="fas fa-qrcode" style="color:var(--accent-cyan)"></i>' : '--';
+
+                        return `
+                            <tr>
+                                <td style="font-size:12px;color:var(--text-secondary)">${time}</td>
+                                <td class="device-name" style="font-size:12px">${item.deviceId || '--'}</td>
+                                <td>${item.roiName || '全图'}</td>
+                                <td>${badge}</td>
+                                <td>${item.totalRegionCount ?? '--'}</td>
+                                <td>${barcodeIcon}</td>
+                            </tr>`;
+                    }).join('');
+
+                    // Update pagination
+                    updateHistoryPagination();
+                })
+                .catch(err => {
+                    console.error('History query failed:', err);
+                });
+        }
+
+        function updateHistoryPagination() {
+            document.getElementById('historyPageInfo').textContent =
+                `第 ${historyPage} 页 / 共 ${historyTotalPages} 页`;
+            document.getElementById('historyPrevBtn').disabled = historyPage <= 1;
+            document.getElementById('historyNextBtn').disabled = historyPage >= historyTotalPages;
+        }
+
+        function historyPrevPage() {
+            if (historyPage > 1) queryHistory(historyPage - 1);
+        }
+
+        function historyNextPage() {
+            if (historyPage < historyTotalPages) queryHistory(historyPage + 1);
+        }
+
+        function exportHistory() {
+            const device = document.getElementById('historyDevice').value;
+            const roi = document.getElementById('historyRoi').value;
+            const passed = document.getElementById('historyStatus').value;
+            const days = document.getElementById('historyDays').value;
+
+            let url = `/api/results/history?page=1&page_size=10000`;
+            if (device) url += `&device=${encodeURIComponent(device)}`;
+            if (roi) url += `&roi=${encodeURIComponent(roi)}`;
+            if (passed) url += `&passed=${passed}`;
+            if (days) url += `&days=${days}`;
+
+            fetch(url)
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.items || data.items.length === 0) {
+                        alert('没有可导出的数据');
+                        return;
+                    }
+
+                    // Build CSV
+                    const headers = ['时间', '设备', 'ROI', '结果', '区域数', '条码'];
+                    const rows = data.items.map(item => [
+                        item.dateTime || '',
+                        item.deviceId || '',
+                        item.roiName || '',
+                        item.passed ? '合格' : '不合格',
+                        item.totalRegionCount ?? '',
+                        item.hasBarcode ? '有' : '无'
+                    ]);
+
+                    let csv = '\uFEFF'; // BOM for Chinese
+                    csv += headers.join(',') + '\n';
+                    csv += rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+
+                    // Download
+                    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `检测历史_${new Date().toISOString().slice(0,10)}.csv`;
+                    link.click();
+                });
+        }
+
+        function loadHistoryFilters() {
+            // Load devices
+            fetch('/api/devices')
+                .then(r => r.json())
+                .then(devices => {
+                    const select = document.getElementById('historyDevice');
+                    devices.forEach(d => {
+                        const opt = document.createElement('option');
+                        opt.value = d.device_id;
+                        opt.textContent = d.device_id;
+                        select.appendChild(opt);
+                    });
+                });
+
+            // Load ROI names
+            fetch('/api/stats/by-roi')
+                .then(r => r.json())
+                .then(roiStats => {
+                    const select = document.getElementById('historyRoi');
+                    Object.keys(roiStats).forEach(name => {
+                        const opt = document.createElement('option');
+                        opt.value = name;
+                        opt.textContent = name;
+                        select.appendChild(opt);
+                    });
+                });
+        }
+
         // ===== Init =====
         document.addEventListener('DOMContentLoaded', function() {
             initCharts();
@@ -1343,6 +1667,7 @@
             fetchStats();
             fetchDevices();
             fetchResults();
+            loadHistoryFilters();
             connectSSE();
 
             // Periodic polling as backup

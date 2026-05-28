@@ -167,6 +167,7 @@ void MqttManager::parseCommand(const QJsonObject& json)
         emit stopDetectionRequested();
     } else if (cmd == "ping") {
         Logger::instance()->info("[MQTT] 触发: 回复心跳");
+        emit pingRequested();
         onSendHeartbeat();
     } else {
         Logger::instance()->warning(QString("[MQTT] 未知指令: %1").arg(cmd));

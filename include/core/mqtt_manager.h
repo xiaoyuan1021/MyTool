@@ -63,6 +63,9 @@ signals:
     /// 停止批量检测
     void stopDetectionRequested();
 
+    /// Ping指令：测试设备连通性
+    void pingRequested();
+
     // 连接状态
     void mqttConnected();
     void mqttDisconnected();
