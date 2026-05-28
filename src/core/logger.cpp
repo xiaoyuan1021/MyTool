@@ -1,6 +1,20 @@
 #include "logger.h"
 
 // ============================================================
+// 辅助函数：将日志级别字符串转换为spdlog级别枚举
+// ============================================================
+static spdlog::level::level_enum logLevelFromString(const QString& levelStr)
+{
+    QString lower = levelStr.toLower();
+    if (lower == "debug") return spdlog::level::debug;
+    if (lower == "info") return spdlog::level::info;
+    if (lower == "warning" || lower == "warn") return spdlog::level::warn;
+    if (lower == "error" || lower == "err") return spdlog::level::err;
+    if (lower == "critical") return spdlog::level::critical;
+    return spdlog::level::info;  // 默认为info级别
+}
+
+// ============================================================
 // Qt 全局消息处理：将 qDebug/qInfo/qWarning/qCritical 路由到 spdlog
 // ============================================================
 static void qtMessageHandler(QtMsgType type, const QMessageLogContext &ctx, const QString &msg)
@@ -33,7 +47,8 @@ void Logger::setTextEdit(QTextEdit *textdEdit)
 
     if (m_textEdit) {
         // 创建 spdlog qt color sink（UI 彩色输出）
-        auto qtSink = std::make_shared<spdlog::sinks::qt_color_sink_mt>(m_textEdit, 1000, false, true);
+        m_uiSink = std::make_shared<spdlog::sinks::qt_color_sink_mt>(m_textEdit, 1000, false, true);
+        auto qtSink = m_uiSink;
 
         // 自定义颜色配置
         QTextCharFormat infoFormat;
@@ -212,6 +227,12 @@ void Logger::outputLogsWithColor(const QStringList& logs)
         return;
     }
 
+    // 获取当前UI日志级别
+    spdlog::level::level_enum currentLevel = spdlog::level::debug;
+    if (m_uiSink) {
+        currentLevel = m_uiSink->level();
+    }
+
     for (const QString& log : logs) {
         int levelStart = log.indexOf('[');
         int levelEnd = log.indexOf(']', levelStart);
@@ -219,6 +240,12 @@ void Logger::outputLogsWithColor(const QStringList& logs)
         if (levelStart != -1 && levelEnd != -1 && levelEnd > levelStart) {
             QString levelStr = log.mid(levelStart + 1, levelEnd - levelStart - 1).toLower();
             QString message = log.mid(levelEnd + 2);
+
+            // 检查日志级别是否满足当前UI级别
+            spdlog::level::level_enum logLevel = logLevelFromString(levelStr);
+            if (logLevel < currentLevel) {
+                continue;  // 跳过低于当前级别的日志
+            }
 
             if (levelStr == "info") {
                 m_colorLogger->info(message.toStdString());
@@ -257,4 +284,21 @@ Logger::~Logger()
         m_colorLogger->flush();
     }
     spdlog::shutdown();
+}
+
+void Logger::setUILogLevel(spdlog::level::level_enum level)
+{
+    QMutexLocker locker(&m_mutex);
+    if (m_uiSink) {
+        m_uiSink->set_level(level);
+    }
+}
+
+spdlog::level::level_enum Logger::uiLogLevel() const
+{
+    QMutexLocker locker(&m_mutex);
+    if (m_uiSink) {
+        return m_uiSink->level();
+    }
+    return spdlog::level::debug;
 }

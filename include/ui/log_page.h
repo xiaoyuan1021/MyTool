@@ -31,8 +31,12 @@ private slots:
     void on_btn_clearLog_clicked();
     void on_btn_openLog_clicked();
     void on_btn_home_clicked();
+    void on_combo_logLevel_currentIndexChanged(int index);
 
 private:
+    void loadLogLevelConfig();
+    void saveLogLevelConfig(int level);
+
     Ui::LogPage* m_ui;
 };
 

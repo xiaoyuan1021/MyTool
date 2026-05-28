@@ -34,6 +34,10 @@ public:
     QStringList getRecentLogs(int count = 100) const;
     void outputLogsWithColor(const QStringList& logs);
 
+    // UI日志级别控制
+    void setUILogLevel(spdlog::level::level_enum level);
+    spdlog::level::level_enum uiLogLevel() const;
+
 signals:
     void logMessage(const QString& message);
 
@@ -46,6 +50,7 @@ private:
     // spdlog logger: qt_color_sink (UI) + basic_file_sink (file)
     std::shared_ptr<spdlog::logger> m_colorLogger;
     std::shared_ptr<spdlog::sinks::basic_file_sink_mt> m_fileSink;
+    std::shared_ptr<spdlog::sinks::qt_color_sink_mt> m_uiSink;
 
     QString m_logFilePath;
 

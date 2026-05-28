@@ -44,19 +44,61 @@
      <property name="spacing">
       <number>10</number>
      </property>
-     <item>
-      <widget class="QPushButton" name="btn_home">
-       <property name="minimumSize">
-        <size>
-         <width>80</width>
-         <height>32</height>
-        </size>
-       </property>
-       <property name="text">
-        <string>返回主页</string>
-       </property>
-      </widget>
-     </item>
+      <item>
+       <widget class="QPushButton" name="btn_home">
+        <property name="minimumSize">
+         <size>
+          <width>80</width>
+          <height>32</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>返回主页</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_logLevel">
+        <property name="text">
+         <string>日志级别：</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="combo_logLevel">
+        <property name="minimumSize">
+         <size>
+          <width>100</width>
+          <height>32</height>
+         </size>
+        </property>
+        <item>
+         <property name="text">
+          <string>全部</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Debug</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Info</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Warning</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Error</string>
+         </property>
+        </item>
+       </widget>
+      </item>
      <item>
       <widget class="QPushButton" name="btn_clearLog">
        <property name="minimumSize">

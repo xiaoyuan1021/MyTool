@@ -488,6 +488,9 @@ void ExtractTabWidget::loadFromConfig(const PipelineConfig& config)
 
 void ExtractTabWidget::updateFromPipeline(const PipelineContext& ctx)
 {
+    // 如果没有配置筛选条件，不需要计算特征范围
+    if (m_filterConditions.isEmpty()) return;
+
     // 管道执行完成后，更新筛选结果到QLabel
     // 只有当有筛选条件时才更新（reason非空表示筛选执行了）
     if (!ctx.reason.isEmpty()) {
