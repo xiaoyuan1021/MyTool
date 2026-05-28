@@ -299,18 +299,12 @@ void MainWindow::setupControllers()
                                                 m_roiUiController, m_toast, this, this);
 
     // 初始化控制器 UI
-    // 检测状态标签（创建并放置到资源列表GroupBox中）
+    // 检测状态标签（创建并放置到状态栏）
     auto* detectionStatusLabel = new QLabel("就绪");
     detectionStatusLabel->setObjectName("label_detectionStatus");
     detectionStatusLabel->setStyleSheet(
         "font-size: 11px; color: #6B7280; padding: 2px 4px;");
-    auto* resGroup = findChild<QGroupBox*>("groupBox_resources");
-    if (resGroup) {
-        auto* layout = qobject_cast<QVBoxLayout*>(resGroup->layout());
-        if (layout) {
-            layout->insertWidget(0, detectionStatusLabel);
-        }
-    }
+    ui->statusbar->insertPermanentWidget(1, detectionStatusLabel);
     m_autoDetectionController->setupUiConnections(
         ui->btn_startAutoDetection, ui->btn_stopAutoDetection,
         ui->statusbar, detectionStatusLabel);

@@ -143,33 +143,55 @@ QPushButton#btn_cloudPlatform:hover {
 }
 
 /* =========================
-   主页/日志 导航按钮 — 透明底 + 悬停填充
+   主页按钮 — 绿色渐变
    ========================= */
-QPushButton#btn_Home,
-QPushButton#btn_Log {
-    background: transparent;
-    color: #5A6C7D;
-    border: 1px solid transparent;
+QPushButton#btn_Home {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop:0 #4CAF50, stop:1 #45A049);
+    color: white;
+    border: none;
     border-radius: 6px;
-    font-weight: normal;
-    font-size: 12px;
+    font-weight: bold;
+    font-size: 13px;
     padding: 5px 14px;
 }
 
-QPushButton#btn_Home:hover,
-QPushButton#btn_Log:hover {
-    background: rgba(79, 172, 254, 0.08);
-    color: #4FACFE;
-    border: 1px solid rgba(79, 172, 254, 0.2);
+QPushButton#btn_Home:hover {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop:0 #45A049, stop:1 #3D8B40);
 }
 
-QPushButton#btn_Home:pressed,
-QPushButton#btn_Log:pressed {
-    background: rgba(79, 172, 254, 0.15);
+QPushButton#btn_Home:pressed {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop:0 #3D8B40, stop:1 #357A38);
 }
 
 /* =========================
-   左侧面板按钮组 — 白底灰边
+   日志按钮 — 橙色渐变
+   ========================= */
+QPushButton#btn_Log {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop:0 #FF9800, stop:1 #F57C00);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 13px;
+    padding: 5px 14px;
+}
+
+QPushButton#btn_Log:hover {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop:0 #F57C00, stop:1 #EF6C00);
+}
+
+QPushButton#btn_Log:pressed {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop:0 #EF6C00, stop:1 #E65100);
+}
+
+/* =========================
+   左侧面板按钮组 — 白底灰边 + 悬停渐变
    ========================= */
 QWidget#widget_roiPanel QPushButton {
     background: #FFFFFF;
@@ -177,18 +199,29 @@ QWidget#widget_roiPanel QPushButton {
     border: 1px solid #E2E8F0;
     border-radius: 6px;
     font-weight: normal;
-    font-size: 11px;
-    padding: 5px 10px;
+    font-size: 13px;
+    padding: 6px 10px;
+    min-height: 20px;
 }
 
 QWidget#widget_roiPanel QPushButton:hover {
-    background: #F0F7FF;
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop:0 #F0F7FF, stop:1 #E8F4FF);
     border-color: #4FACFE;
     color: #4FACFE;
+    border-width: 1.5px;
 }
 
 QWidget#widget_roiPanel QPushButton:pressed {
-    background: #E0EFFA;
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop:0 #E0EFFA, stop:1 #D0E8F5);
+    border-color: #3A9BE8;
+}
+
+QWidget#widget_roiPanel QPushButton:disabled {
+    background: #F8FAFC;
+    color: #A0AEC0;
+    border-color: #EDF2F7;
 }
 
 /* =========================
@@ -347,11 +380,11 @@ QTabWidget::pane {
 QTabBar::tab {
     background: transparent;
     color: #8A9BAE;
-    padding: 8px 18px;
+    padding: 10px 20px;
     margin-right: 2px;
     border-top-left-radius: 8px;
     border-top-right-radius: 8px;
-    font-size: 12px;
+    font-size: 14px;
 }
 
 QTabBar::tab:selected {
