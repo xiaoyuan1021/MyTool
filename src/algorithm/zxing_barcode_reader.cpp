@@ -154,13 +154,52 @@ QVector<ZXingBarcodeResult> ZXingBarcodeReader::decodeImage(const cv::Mat& gray)
 
             auto position = barcode.position();
 
+            qDebug() << "[ZXing] corners:"
+                     << "TL=" << position.topLeft().x << "," << position.topLeft().y
+                     << "TR=" << position.topRight().x << "," << position.topRight().y
+                     << "BR=" << position.bottomRight().x << "," << position.bottomRight().y
+                     << "BL=" << position.bottomLeft().x << "," << position.bottomLeft().y
+                     << "format=" << result.type;
+
             if (position.topLeft().x != 0 || position.topLeft().y != 0 ||
                 position.bottomRight().x != 0 || position.bottomRight().y != 0)
             {
-                double x = std::min(position.topLeft().x, position.bottomLeft().x);
-                double y = std::min(position.topLeft().y, position.topRight().y);
-                double w = std::abs(position.bottomRight().x - position.topLeft().x);
-                double h = std::abs(position.bottomRight().y - position.topLeft().y);
+                double xs[4] = {
+                    static_cast<double>(position.topLeft().x),
+                    static_cast<double>(position.topRight().x),
+                    static_cast<double>(position.bottomRight().x),
+                    static_cast<double>(position.bottomLeft().x)
+                };
+                double ys[4] = {
+                    static_cast<double>(position.topLeft().y),
+                    static_cast<double>(position.topRight().y),
+                    static_cast<double>(position.bottomRight().y),
+                    static_cast<double>(position.bottomLeft().y)
+                };
+                double x = *std::min_element(xs, xs + 4);
+                double y = *std::min_element(ys, ys + 4);
+                double maxX = *std::max_element(xs, xs + 4);
+                double maxY = *std::max_element(ys, ys + 4);
+                double w = maxX - x;
+                double h = maxY - y;
+
+                auto fmt = barcode.format();
+                bool is1D = (fmt != ZXing::BarcodeFormat::QRCode &&
+                             fmt != ZXing::BarcodeFormat::DataMatrix &&
+                             fmt != ZXing::BarcodeFormat::Aztec &&
+                             fmt != ZXing::BarcodeFormat::PDF417);
+
+                if (is1D && w > 0 && h > 0)
+                {
+                    double padX = w * 0.08;
+                    double padY = h * 0.5;
+                    x = std::max(0.0, x - padX);
+                    y = std::max(0.0, y - padY);
+                    w = std::min(static_cast<double>(gray.cols) - x, w + padX * 2);
+                    h = std::min(static_cast<double>(gray.rows) - y, h + padY * 2);
+                }
+
+                qDebug() << "[ZXing] bbox:" << x << y << w << h << "is1D=" << is1D;
 
                 result.location = QRectF(x, y, w, h);
             }
