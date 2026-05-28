@@ -43,14 +43,6 @@ cv::Mat StepOcrRecognition::deskew(const cv::Mat& gray, cv::Mat& rotMatrixOut)
     return rotated;
 }
 
-cv::Mat StepOcrRecognition::enhanceContrast(const cv::Mat& gray)
-{
-    cv::Mat result;
-    cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(2.0, cv::Size(8, 8));
-    clahe->apply(gray, result);
-    return result;
-}
-
 void StepOcrRecognition::initTesseract(const QString& language)
 {
     if (m_api && m_cachedLanguage == language) return;
@@ -97,14 +89,11 @@ void StepOcrRecognition::run(PipelineContext& ctx)
     cv::Mat rotMatrix;
     gray = deskew(gray, rotMatrix);
 
-    // 2. CLAHE自适应对比度增强
-    gray = enhanceContrast(gray);
-
     if (!gray.isContinuous()) {
         gray = gray.clone();
     }
 
-    // 3. 复用Tesseract实例
+    // 2. 复用Tesseract实例
     initTesseract(cfg.language);
     if (!m_api) {
         ctx.reason = "OCR初始化失败: 请检查tessdata目录";
@@ -132,6 +121,7 @@ void StepOcrRecognition::run(PipelineContext& ctx)
     m_api->SetVariable("textord_heavy_nr", "1");
     m_api->SetVariable("tessedit_unrej_trust_wd", "1");
 
+    // SetVariable 必须在 SetImage 之前调用，否则部分变量（textord/tessedit 类）不生效
     m_api->SetImage(gray.data, static_cast<int>(gray.cols), static_cast<int>(gray.rows),
                     gray.channels(), static_cast<int>(gray.step));
 
@@ -158,19 +148,29 @@ void StepOcrRecognition::run(PipelineContext& ctx)
                     int left, top, right, bottom;
                     ri->BoundingBox(tesseract::RIL_WORD, &left, &top, &right, &bottom);
 
-                    // 如果有纠偏，将坐标映射回原图
+                    // 如果有纠偏，将坐标映射回原图（变换4个角点取包围盒）
                     if (!rotMatrix.empty()) {
                         cv::Mat invRot;
                         cv::invertAffineTransform(rotMatrix, invRot);
-                        std::vector<cv::Point2f> pts = {
-                            cv::Point2f(static_cast<float>(left), static_cast<float>(top)),
-                            cv::Point2f(static_cast<float>(right), static_cast<float>(bottom))
+                        std::vector<cv::Point2f> corners = {
+                            cv::Point2f(static_cast<float>(left),  static_cast<float>(top)),
+                            cv::Point2f(static_cast<float>(right), static_cast<float>(top)),
+                            cv::Point2f(static_cast<float>(right), static_cast<float>(bottom)),
+                            cv::Point2f(static_cast<float>(left),  static_cast<float>(bottom))
                         };
-                        cv::transform(pts, pts, invRot);
-                        left = static_cast<int>(pts[0].x);
-                        top = static_cast<int>(pts[0].y);
-                        right = static_cast<int>(pts[1].x);
-                        bottom = static_cast<int>(pts[1].y);
+                        cv::transform(corners, corners, invRot);
+                        float minX = corners[0].x, maxX = corners[0].x;
+                        float minY = corners[0].y, maxY = corners[0].y;
+                        for (int k = 1; k < 4; ++k) {
+                            if (corners[k].x < minX) minX = corners[k].x;
+                            if (corners[k].x > maxX) maxX = corners[k].x;
+                            if (corners[k].y < minY) minY = corners[k].y;
+                            if (corners[k].y > maxY) maxY = corners[k].y;
+                        }
+                        left   = static_cast<int>(minX);
+                        top    = static_cast<int>(minY);
+                        right  = static_cast<int>(maxX);
+                        bottom = static_cast<int>(maxY);
                     }
 
                     OcrRegion region;
@@ -192,9 +192,12 @@ void StepOcrRecognition::run(PipelineContext& ctx)
                               });
 
                     auto isCjk = [](const QString& text) -> bool {
-                        if (text.isEmpty()) return false;
-                        QChar c = text.at(0);
-                        return c.unicode() >= 0x4E00 && c.unicode() <= 0x9FFF;
+                        for (const QChar& c : text) {
+                            if (c.unicode() >= 0x4E00 && c.unicode() <= 0x9FFF) {
+                                return true;
+                            }
+                        }
+                        return false;
                     };
 
                     QVector<OcrRegion> merged;

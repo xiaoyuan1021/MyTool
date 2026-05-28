@@ -20,7 +20,6 @@ public:
 
 private:
     static cv::Mat deskew(const cv::Mat& gray, cv::Mat& rotMatrixOut);
-    static cv::Mat enhanceContrast(const cv::Mat& gray);
     void initTesseract(const QString& language);
 
     std::unique_ptr<tesseract::TessBaseAPI> m_api;

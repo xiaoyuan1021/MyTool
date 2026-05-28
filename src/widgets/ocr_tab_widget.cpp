@@ -221,17 +221,25 @@ void OcrTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
 
 void OcrTabWidget::updateFromPipeline(const PipelineContext& ctx)
 {
+    // 非手动触发时，忽略管线执行的结果（防止其他检测类型清空OCR结果）
+    // 但允许外部清空通知（config为空表示图片切换等场景）
+    if (!m_manualOcrTrigger && ctx.config != nullptr) {
+        return;
+    }
+
+    if (m_manualOcrTrigger) {
+        m_manualOcrTrigger = false;
+    }
+
     // 如果是清空操作（空的ocrText），直接执行
     if (ctx.ocrText.isEmpty() && ctx.ocrRegions.isEmpty()) {
         m_resultTextEdit->clear();
         updateRegionsTable(QVector<OcrRegion>());
-        m_statusLabel->setText("状态：未识别");
+        m_statusLabel->setText("等待识别...");
+        m_statusLabel->setStyleSheet("font-weight: bold; color: gray;");
+        m_copyBtn->setEnabled(false);
         return;
     }
-    
-    // 非手动触发时忽略自动Pipeline结果，防止切换图片后Tab被自动更新
-    if (!m_manualOcrTrigger) return;
-    m_manualOcrTrigger = false;
 
     // 更新识别文本
     m_resultTextEdit->setText(ctx.ocrText);

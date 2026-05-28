@@ -1,5 +1,6 @@
 #include "controllers/detection_ui_controller.h"
 #include "controllers/roi_ui_controller.h"
+#include "config/detection_config_types.h"
 #include "logger.h"
 #include "widgets/tab_manager.h"
 #include "widgets/judge_tab_widget.h"
@@ -181,6 +182,20 @@ void DetectionUiController::onDetectionItemSelected(const QString& roiId, const 
                     pipelineManager->getLastContext().regionCount
                 );
             }
+        }
+
+        // 将检测项的独立配置同步到Pipeline全局配置
+        if (detection.type == DetectionType::Ocr) {
+            OcrDetectionConfig ocrCfg;
+            ocrCfg.fromJson(detection.config);
+            pipelineManager->updateConfig([&](PipelineConfig& pipelineConfig) {
+                pipelineConfig.ocr.language = ocrCfg.language;
+                pipelineConfig.ocr.pageMode = ocrCfg.pageMode;
+                pipelineConfig.ocr.dpi = ocrCfg.dpi;
+                pipelineConfig.ocr.confidenceThreshold = ocrCfg.confidenceThreshold;
+                pipelineConfig.ocr.whitelist = ocrCfg.whitelist;
+                pipelineConfig.enhance = ocrCfg.enhance;
+            });
         }
 
         break;
