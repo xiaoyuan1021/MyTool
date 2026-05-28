@@ -4,6 +4,9 @@
 #include "config/config_manager.h"
 #include "ui/slider_spinbox_binder.h"
 #include "controllers/roi_ui_controller.h"
+#include "image_view.h"
+#include "algorithm/image_utils.h"
+#include <opencv2/imgproc.hpp>
 
 EnhanceTabWidget::EnhanceTabWidget(PipelineManager* pipelineManager, QWidget* parent)
     : QWidget(parent)
@@ -44,29 +47,29 @@ EnhanceTabWidget::EnhanceTabWidget(PipelineManager* pipelineManager, QWidget* pa
 void EnhanceTabWidget::on_Slider_brightness_valueChanged(int value)
 {
     Q_UNUSED(value);
-    syncConfigToPipeline();
-    emit processRequested();
+    syncConfigToPipeline(false);
+    previewEnhance();
 }
 
 void EnhanceTabWidget::on_Slider_contrast_valueChanged(int value)
 {
     Q_UNUSED(value);
-    syncConfigToPipeline();
-    emit processRequested();
+    syncConfigToPipeline(false);
+    previewEnhance();
 }
 
 void EnhanceTabWidget::on_Slider_gamma_valueChanged(int value)
 {
     Q_UNUSED(value);
-    syncConfigToPipeline();
-    emit processRequested();
+    syncConfigToPipeline(false);
+    previewEnhance();
 }
 
 void EnhanceTabWidget::on_Slider_sharpen_valueChanged(int value)
 {
     Q_UNUSED(value);
-    syncConfigToPipeline();
-    emit processRequested();
+    syncConfigToPipeline(false);
+    previewEnhance();
 }
 
 void EnhanceTabWidget::on_btn_resetBC_clicked()
@@ -89,6 +92,9 @@ void EnhanceTabWidget::on_btn_saveBC_clicked()
 {
     EnhancementState current = captureState();
     pushSnapshot(current);
+    syncConfigToPipeline(false);
+    // 仅保存配置到 PipelineManager，不触发 Pipeline 执行
+    // 用户需要手动触发 Pipeline 执行
 }
 
 void EnhanceTabWidget::on_btn_undoBC_clicked()
@@ -173,7 +179,7 @@ void EnhanceTabWidget::updateUndoUi()
     m_ui->btn_undoBC->setEnabled(hasSnapshot && canStepBack);
 }
 
-void EnhanceTabWidget::syncConfigToPipeline()
+void EnhanceTabWidget::syncConfigToPipeline(bool emitSignal)
 {
     EnhancementState current = captureState();
     PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
@@ -184,7 +190,49 @@ void EnhanceTabWidget::syncConfigToPipeline()
     m_pipelineManager->setConfig(cfg);
     
     // 通知外部将配置回写到当前ROI，防止ROI之间配置串扰
-    emit enhanceConfigChanged();
+    if (emitSignal) {
+        emit enhanceConfigChanged();
+    }
+}
+
+void EnhanceTabWidget::previewEnhance()
+{
+    if (!m_view || !m_roiManager) return;
+
+    // 获取当前 ROI 图像（与 Pipeline 使用相同的基图）
+    cv::Mat base = m_roiManager->getCurrentImage();
+    if (base.empty()) return;
+
+    // 获取当前增强参数
+    int brightness = m_ui->Slider_brightness->value();
+    int contrast   = m_ui->Slider_contrast->value();
+    int gamma      = m_ui->Slider_gamma->value();
+    int sharpen    = m_ui->Slider_sharpen->value();
+
+    // 轻量增强处理：亮度/对比度 + Gamma + 锐化（与 Pipeline adjustParameter 保持一致）
+    cv::Mat result = base.clone();
+
+    // 亮度 + 对比度
+    result.convertTo(result, -1, contrast / 100.0, brightness);
+
+    // Gamma 校正（与 Pipeline adjustParameter 保持一致）
+    double g = gamma / 100.0;
+    cv::Mat lookUpLUT(1, 256, CV_8U);
+    uchar* p = lookUpLUT.ptr();
+    for (int i = 0; i < 256; ++i) {
+        p[i] = cv::saturate_cast<uchar>(std::pow(i / 255.0, g) * 255.0);
+    }
+    cv::LUT(result, lookUpLUT, result);
+
+    // 锐化（USM，与 ImageProcessor::adjustParameter 一致）
+    double sharpenVal = sharpen / 100.0;
+    if (sharpenVal > 0.0) {
+        cv::Mat blurred;
+        cv::GaussianBlur(result, blurred, cv::Size(0, 0), 1.0);
+        cv::addWeighted(result, 1.0 + sharpenVal, blurred, -sharpenVal, 0, result);
+    }
+
+    m_view->setImage(ImageUtils::matToQImage(result));
 }
 
 EnhanceTabWidget::~EnhanceTabWidget()
@@ -247,11 +295,13 @@ void EnhanceTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
                                       std::function<void()> onConfigChanged,
                                       std::function<void()> onExecuteRequested)
 {
-    Q_UNUSED(pm); Q_UNUSED(rm); Q_UNUSED(view);
+    Q_UNUSED(pm);
+    m_view = view;
+    m_roiManager = rm;
     connect(this, &EnhanceTabWidget::enhanceConfigChanged,
             this, [onConfigChanged]() { onConfigChanged(); });
     connect(this, &EnhanceTabWidget::processRequested,
-            this, [onConfigChanged]() { onConfigChanged(); });
+            this, [onExecuteRequested]() { onExecuteRequested(); });
 }
 
 // ========== IConfigurableTab 接口实现 ==========

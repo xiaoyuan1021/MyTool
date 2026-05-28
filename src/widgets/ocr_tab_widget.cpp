@@ -99,7 +99,7 @@ void OcrTabWidget::setupUI()
 
     // 连接信号（切换排列模式时同步配置，不自动触发识别）
     connect(m_pageModeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this, [this]() { syncConfigToPipeline(); });
+            this, [this]() { syncConfigToPipeline(false); });
 }
 
 void OcrTabWidget::onRecognizeClicked()
@@ -139,7 +139,7 @@ void OcrTabWidget::onResetClicked()
     syncConfigToPipeline();
 }
 
-void OcrTabWidget::syncConfigToPipeline()
+void OcrTabWidget::syncConfigToPipeline(bool emitSignal)
 {
     if (!m_pipelineManager) return;
 
@@ -147,7 +147,9 @@ void OcrTabWidget::syncConfigToPipeline()
         cfg.ocr.pageMode = m_pageModeCombo->currentData().toInt();
     });
 
-    emit ocrConfigChanged();
+    if (emitSignal) {
+        emit ocrConfigChanged();
+    }
 }
 
 void OcrTabWidget::clearResults()

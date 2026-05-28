@@ -64,9 +64,13 @@ private:
     void applyStateQuiet(const EnhancementState& state);
     void pushSnapshot(const EnhancementState& state);
     void updateUndoUi();
-    void syncConfigToPipeline();
+    void syncConfigToPipeline(bool emitSignal = true);
+    /// 轻量预览：仅对基图做增强处理并更新画布，不执行完整 Pipeline
+    void previewEnhance();
     
     QStack<EnhancementState> m_enhancementHistory;
     Ui::EnhanceTabWidget* m_ui;
     PipelineManager* m_pipelineManager;
+    ImageView* m_view = nullptr;
+    RoiManager* m_roiManager = nullptr;
 };

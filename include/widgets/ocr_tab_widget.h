@@ -41,7 +41,7 @@ private slots:
 
 private:
     void setupUI();
-    void syncConfigToPipeline();
+    void syncConfigToPipeline(bool emitSignal = true);
     void clearResults();
     void updateRegionsTable(const QVector<OcrRegion>& regions);
 
