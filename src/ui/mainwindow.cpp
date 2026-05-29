@@ -300,7 +300,7 @@ void MainWindow::setupControllers()
 
     // 初始化控制器 UI
     // 检测状态标签（创建并放置到状态栏）
-    auto* detectionStatusLabel = new QLabel("就绪");
+    auto* detectionStatusLabel = new QLabel("");
     detectionStatusLabel->setObjectName("label_detectionStatus");
     detectionStatusLabel->setStyleSheet(
         "font-size: 11px; color: #6B7280; padding: 2px 4px;");

@@ -672,6 +672,8 @@ def stream():
             sse_clients.append(q)
         try:
             yield f"event: connected\ndata: {json.dumps({'ok': True})}\n\n"
+            # 立即发送当前MQTT状态
+            yield f"event: mqtt_status\ndata: {json.dumps({'connected': mqtt_connected})}\n\n"
             while True:
                 event, data = q.get()
                 yield f"event: {event}\ndata: {json.dumps(data)}\n\n"
@@ -758,6 +760,330 @@ def api_simulate():
         time.sleep(0.05)
 
     return jsonify({"ok": True, "simulated": count})
+
+
+# =========================================================================
+# 调试 API (仅开发使用)
+# =========================================================================
+
+@app.route("/api/debug/update-stats", methods=["POST"])
+def api_debug_update_stats():
+    """更新统计数据（同步写入数据库）"""
+    try:
+        body = request.get_json(force=True)
+        total = body.get("total", 0)
+        passed = body.get("passed", 0)
+        failed = body.get("failed", 0)
+
+        stats["total"] = total
+        stats["passed"] = passed
+        stats["failed"] = failed
+
+        # 同步写入数据库：用虚拟结果记录来保持一致性
+        with _sqlite_lock:
+            conn = get_db()
+            # 先清空，再按新数值插入占位记录
+            conn.execute("DELETE FROM results")
+            for i in range(total):
+                p = i < passed
+                conn.execute(
+                    "INSERT INTO results(report_id,device_id,roi_name,passed,fail_reason,"
+                    "total_region_count,region_count,barcode_count,has_barcode,"
+                    "timestamp,date_time,raw_json) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (
+                        f"debug-{i}", "__debug__", "全图", 1 if p else 0, "",
+                        0, 0, 0, 0,
+                        now_ts(), now_str(),
+                        json.dumps({"debug": True, "passed": p}, ensure_ascii=False),
+                    ),
+                )
+            conn.commit()
+            conn.close()
+
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/debug/update-roi", methods=["POST"])
+def api_debug_update_roi():
+    """更新ROI数据（同步写入数据库）"""
+    try:
+        body = request.get_json(force=True)
+        old_name = body.get("oldName")
+        new_name = body.get("newName", old_name)
+        total = body.get("total", 0)
+        passed = body.get("passed", 0)
+        failed = total - passed
+
+        if not old_name:
+            return jsonify({"error": "请指定要更新的ROI"}), 400
+
+        # 更新内存统计
+        if old_name in stats["by_roi"]:
+            del stats["by_roi"][old_name]
+        stats["by_roi"][new_name] = {
+            "total": total,
+            "passed": passed,
+            "failed": failed
+        }
+
+        # 更新数据库中的ROI名称（列 + raw_json 内部）
+        with _sqlite_lock:
+            conn = get_db()
+            if old_name != new_name:
+                # 更新 roi_name 列
+                conn.execute("UPDATE results SET roi_name=? WHERE roi_name=?", (new_name, old_name))
+                # 同步更新 raw_json 中的 roiName 字段
+                rows = conn.execute("SELECT id, raw_json FROM results WHERE roi_name=?", (new_name,)).fetchall()
+                for row in rows:
+                    try:
+                        obj = json.loads(row["raw_json"])
+                        obj["roiName"] = new_name
+                        conn.execute("UPDATE results SET raw_json=? WHERE id=?",
+                                     (json.dumps(obj, ensure_ascii=False), row["id"]))
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+            conn.commit()
+            conn.close()
+
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/debug/add-roi", methods=["POST"])
+def api_debug_add_roi():
+    """添加新的ROI（同步写入数据库）"""
+    try:
+        body = request.get_json(force=True)
+        name = body.get("name")
+        total = body.get("total", 0)
+        passed = body.get("passed", 0)
+        failed = total - passed
+
+        if not name:
+            return jsonify({"error": "ROI名称不能为空"}), 400
+
+        stats["by_roi"][name] = {
+            "total": total,
+            "passed": passed,
+            "failed": failed
+        }
+
+        # 写入数据库占位记录
+        with _sqlite_lock:
+            conn = get_db()
+            for i in range(total):
+                p = i < passed
+                conn.execute(
+                    "INSERT INTO results(report_id,device_id,roi_name,passed,fail_reason,"
+                    "total_region_count,region_count,barcode_count,has_barcode,"
+                    "timestamp,date_time,raw_json) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (
+                        f"debug-roi-{name}-{i}", "__debug__", name, 1 if p else 0, "",
+                        0, 0, 0, 0,
+                        now_ts(), now_str(),
+                        json.dumps({"debug": True, "passed": p}, ensure_ascii=False),
+                    ),
+                )
+            conn.commit()
+            conn.close()
+
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/debug/delete-roi", methods=["POST"])
+def api_debug_delete_roi():
+    """删除ROI"""
+    try:
+        body = request.get_json(force=True)
+        name = body.get("name")
+        
+        if name in stats["by_roi"]:
+            del stats["by_roi"][name]
+        
+        # 从数据库中删除该ROI的数据
+        with _sqlite_lock:
+            conn = get_db()
+            conn.execute("DELETE FROM results WHERE roi_name=?", (name,))
+            conn.commit()
+            conn.close()
+        
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/debug/update-device", methods=["POST"])
+def api_debug_update_device():
+    """更新设备状态"""
+    try:
+        body = request.get_json(force=True)
+        device_id = body.get("deviceId")
+        status = body.get("status", "online")
+        result_count = body.get("resultCount", 0)
+        uptime = body.get("uptime", 0)
+        
+        if device_id in devices:
+            devices[device_id]["status"] = status
+            devices[device_id]["result_count"] = result_count
+            devices[device_id]["uptime"] = uptime
+            devices[device_id]["last_heartbeat"] = now_str()
+            devices[device_id]["last_ts"] = time.time()
+            
+            # 更新数据库
+            db_upsert_device(device_id, devices[device_id])
+        else:
+            # 创建新设备
+            devices[device_id] = {
+                "device_id": device_id,
+                "status": status,
+                "first_seen": now_str(),
+                "last_heartbeat": now_str(),
+                "last_ts": time.time(),
+                "uptime": uptime,
+                "result_count": result_count,
+                "last_result": None
+            }
+            db_upsert_device(device_id, devices[device_id])
+        
+        broadcast_sse("heartbeat", {"deviceId": device_id})
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/debug/add-device", methods=["POST"])
+def api_debug_add_device():
+    """添加新设备"""
+    try:
+        body = request.get_json(force=True)
+        device_id = body.get("deviceId")
+        status = body.get("status", "online")
+        result_count = body.get("resultCount", 0)
+        uptime = body.get("uptime", 0)
+        
+        devices[device_id] = {
+            "device_id": device_id,
+            "status": status,
+            "first_seen": now_str(),
+            "last_heartbeat": now_str(),
+            "last_ts": time.time(),
+            "uptime": uptime,
+            "result_count": result_count,
+            "last_result": None
+        }
+        
+        db_upsert_device(device_id, devices[device_id])
+        broadcast_sse("heartbeat", {"deviceId": device_id})
+        
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/debug/generate-demo", methods=["POST"])
+def api_debug_generate_demo():
+    """生成演示数据"""
+    try:
+        import random
+        
+        device_ids = ["edge-device-01", "edge-device-02", "edge-device-03"]
+        roi_names = ["PCB-焊点检测", "元件定位", "条码识别", "外观瑕疵", "尺寸测量"]
+        fail_reasons = ["区域面积超出阈值", "圆度不达标", "条码无法解码", "模板匹配失败", "亮度异常"]
+        
+        # 生成设备
+        device_count = 0
+        for device_id in device_ids:
+            if device_id not in devices:
+                _handle_heartbeat({
+                    "deviceId": device_id,
+                    "status": "online",
+                    "ts": now_ts(),
+                    "uptime": random.randint(3600, 86400)
+                })
+                device_count += 1
+        
+        # 生成检测结果
+        result_count = 0
+        for _ in range(50):
+            device_id = random.choice(device_ids)
+            roi_name = random.choice(roi_names)
+            passed = random.random() < 0.85
+            
+            payload = {
+                "reportId": uuid.uuid4().hex[:16],
+                "deviceId": device_id,
+                "roiName": roi_name,
+                "timestamp": now_ts(),
+                "dateTime": now_str(),
+                "result": {
+                    "passed": passed,
+                    "failReason": "" if passed else random.choice(fail_reasons),
+                    "totalRegionCount": random.randint(1, 10),
+                },
+                "regions": [],
+                "barcodes": [{"type": "QRCode", "data": f"DEMO-{uuid.uuid4().hex[:8].upper()}"}]
+                if random.random() < 0.3 else []
+            }
+            
+            _handle_result(payload)
+            result_count += 1
+        
+        return jsonify({"ok": True, "count": result_count, "deviceCount": device_count})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/debug/clear-data", methods=["POST"])
+def api_debug_clear_data():
+    """清空所有数据"""
+    try:
+        # 清空内存数据
+        devices.clear()
+        results_deque.clear()
+        stats["total"] = 0
+        stats["passed"] = 0
+        stats["failed"] = 0
+        stats["by_roi"].clear()
+        stats["by_hour"].clear()
+        
+        # 清空数据库
+        with _sqlite_lock:
+            conn = get_db()
+            conn.execute("DELETE FROM devices")
+            conn.execute("DELETE FROM results")
+            conn.execute("DELETE FROM heartbeats")
+            conn.commit()
+            conn.close()
+        
+        broadcast_sse("heartbeat", {"deviceId": "all", "status": "cleared"})
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/debug/export")
+def api_debug_export():
+    """导出调试数据"""
+    try:
+        data = {
+            "stats": {
+                "total": stats["total"],
+                "passed": stats["passed"],
+                "failed": stats["failed"],
+                "by_roi": dict(stats["by_roi"]),
+                "by_hour": dict(stats["by_hour"])
+            },
+            "devices": list(devices.values()),
+            "results": list(results_deque)[-100:]  # 最近100条
+        }
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # =========================================================================

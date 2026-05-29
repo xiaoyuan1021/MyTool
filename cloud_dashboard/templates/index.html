@@ -18,24 +18,118 @@
         }
 
         :root {
+            /* 主色调 */
+            --primary-50: #eff6ff;
+            --primary-100: #dbeafe;
+            --primary-200: #bfdbfe;
+            --primary-300: #93c5fd;
+            --primary-400: #60a5fa;
+            --primary-500: #3b82f6;
+            --primary-600: #2563eb;
+            --primary-700: #1d4ed8;
+            
+            /* 成功色 */
+            --success-50: #f0fdf4;
+            --success-100: #dcfce7;
+            --success-200: #bbf7d0;
+            --success-300: #86efac;
+            --success-400: #4ade80;
+            --success-500: #22c55e;
+            --success-600: #16a34a;
+            
+            /* 警告色 */
+            --warning-50: #fffbeb;
+            --warning-100: #fef3c7;
+            --warning-200: #fde68a;
+            --warning-300: #fcd34d;
+            --warning-400: #fbbf24;
+            --warning-500: #f59e0b;
+            --warning-600: #d97706;
+            
+            /* 错误色 */
+            --error-50: #fef2f2;
+            --error-100: #fee2e2;
+            --error-200: #fecaca;
+            --error-300: #fca5a5;
+            --error-400: #f87171;
+            --error-500: #ef4444;
+            --error-600: #dc2626;
+            
+            /* 中性色 */
+            --neutral-50: #f9fafb;
+            --neutral-100: #f3f4f6;
+            --neutral-200: #e5e7eb;
+            --neutral-300: #d1d5db;
+            --neutral-400: #9ca3af;
+            --neutral-500: #6b7280;
+            --neutral-600: #4b5563;
+            --neutral-700: #374151;
+            --neutral-800: #1f2937;
+            --neutral-900: #111827;
+            
+            /* 背景色 */
             --bg-primary: #0f1118;
             --bg-secondary: #161923;
             --bg-card: #1c2030;
             --bg-card-hover: #242840;
+            
+            /* 边框色 */
             --border: #2a2f45;
+            --border-light: #374151;
+            
+            /* 文本色 */
             --text-primary: #e8eaf0;
             --text-secondary: #8b90a5;
             --text-muted: #5a5f75;
-            --accent-blue: #3b82f6;
+            
+            /* 强调色 */
+            --accent-blue: var(--primary-500);
             --accent-cyan: #06b6d4;
-            --accent-green: #22c55e;
-            --accent-red: #ef4444;
-            --accent-yellow: #f59e0b;
+            --accent-green: var(--success-500);
+            --accent-red: var(--error-500);
+            --accent-yellow: var(--warning-500);
             --accent-purple: #8b5cf6;
-            --shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+            
+            /* 阴影 */
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            
+            /* 圆角 */
             --radius: 12px;
             --radius-sm: 8px;
-            --transition: 0.2s ease;
+            --radius-lg: 16px;
+            --radius-xl: 24px;
+            
+            /* 过渡 */
+            --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-fast: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            
+            /* 间距 */
+            --space-1: 4px;
+            --space-2: 8px;
+            --space-3: 12px;
+            --space-4: 16px;
+            --space-5: 20px;
+            --space-6: 24px;
+            --space-8: 32px;
+            --space-10: 40px;
+            --space-12: 48px;
+            
+            /* 字体大小 */
+            --font-size-xs: 11px;
+            --font-size-sm: 12px;
+            --font-size-base: 13px;
+            --font-size-md: 14px;
+            --font-size-lg: 16px;
+            --font-size-xl: 18px;
+            --font-size-2xl: 20px;
+            --font-size-3xl: 24px;
+            --font-size-4xl: 28px;
+            --font-size-5xl: 32px;
         }
 
         html {
@@ -52,15 +146,17 @@
 
         /* ===== Scrollbar ===== */
         ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
+            width: 8px;
+            height: 8px;
         }
         ::-webkit-scrollbar-track {
             background: var(--bg-secondary);
+            border-radius: 4px;
         }
         ::-webkit-scrollbar-thumb {
             background: var(--border);
-            border-radius: 3px;
+            border-radius: 4px;
+            transition: background 0.2s;
         }
         ::-webkit-scrollbar-thumb:hover {
             background: var(--text-muted);
@@ -68,241 +164,339 @@
 
         /* ===== Header ===== */
         .header {
-            background: var(--bg-secondary);
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(22, 25, 35, 0.95) 100%);
             border-bottom: 1px solid var(--border);
-            padding: 0 28px;
-            height: 60px;
+            padding: 0 var(--space-8);
+            height: 64px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             position: sticky;
             top: 0;
             z-index: 100;
+            backdrop-filter: blur(10px);
+            box-shadow: var(--shadow-md);
         }
 
         .header-left {
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: var(--space-4);
         }
 
         .header-logo {
-            width: 34px;
-            height: 34px;
+            width: 38px;
+            height: 38px;
             background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
-            border-radius: 8px;
+            border-radius: var(--radius-sm);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
+            font-size: 20px;
             color: #fff;
+            box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
+            transition: var(--transition);
+        }
+
+        .header-logo:hover {
+            transform: scale(1.05) rotate(5deg);
+            box-shadow: 0 6px 16px rgba(6, 182, 212, 0.4);
         }
 
         .header-title {
-            font-size: 18px;
-            font-weight: 700;
+            font-size: var(--font-size-xl);
+            font-weight: 800;
             letter-spacing: 0.5px;
+            background: linear-gradient(135deg, var(--text-primary) 0%, rgba(232, 234, 240, 0.9) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .header-title span {
             color: var(--accent-cyan);
+            -webkit-text-fill-color: var(--accent-cyan);
         }
 
         .header-subtitle {
-            font-size: 12px;
+            font-size: var(--font-size-sm);
             color: var(--text-secondary);
-            margin-left: 12px;
-            padding-left: 12px;
+            margin-left: var(--space-3);
+            padding-left: var(--space-3);
             border-left: 1px solid var(--border);
         }
 
         .header-right {
             display: flex;
             align-items: center;
-            gap: 20px;
+            gap: var(--space-5);
         }
 
         .mqtt-status {
             display: flex;
             align-items: center;
-            gap: 8px;
-            font-size: 13px;
+            gap: var(--space-2);
+            font-size: var(--font-size-base);
             color: var(--text-secondary);
+            padding: var(--space-2) var(--space-3);
+            border-radius: var(--radius-sm);
+            background: rgba(42, 47, 69, 0.3);
+            transition: var(--transition);
+        }
+
+        .mqtt-status:hover {
+            background: rgba(42, 47, 69, 0.5);
+        }
+
+        .mqtt-status.online {
+            color: var(--accent-green);
+            background: rgba(34, 197, 94, 0.1);
+        }
+
+        .mqtt-status.offline {
+            color: var(--accent-red);
+            background: rgba(239, 68, 68, 0.1);
         }
 
         .mqtt-dot {
-            width: 10px;
-            height: 10px;
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
             background: var(--text-muted);
             transition: var(--transition);
+            position: relative;
         }
 
         .mqtt-dot.online {
             background: var(--accent-green);
-            box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
+            box-shadow: 0 0 12px rgba(34, 197, 94, 0.5);
+        }
+
+        .mqtt-dot.online::after {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            border-radius: 50%;
+            border: 2px solid var(--accent-green);
+            animation: pulse 2s ease-in-out infinite;
         }
 
         .mqtt-dot.offline {
             background: var(--accent-red);
-            box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.1); }
         }
 
         .header-time {
-            font-size: 13px;
+            font-size: var(--font-size-base);
             color: var(--text-secondary);
             font-variant-numeric: tabular-nums;
+            padding: var(--space-2) var(--space-3);
+            border-radius: var(--radius-sm);
+            background: rgba(42, 47, 69, 0.3);
         }
 
         /* ===== Container ===== */
         .container {
-            max-width: 1600px;
+            max-width: 1800px;
             margin: 0 auto;
-            padding: 20px 28px 40px;
+            padding: var(--space-6) var(--space-8) var(--space-12);
         }
 
         /* ===== Stats Row ===== */
         .stats-row {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 16px;
-            margin-bottom: 20px;
+            gap: var(--space-5);
+            margin-bottom: var(--space-6);
         }
 
         .stat-card {
-            background: var(--bg-card);
+            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(28, 32, 48, 0.8) 100%);
             border: 1px solid var(--border);
             border-radius: var(--radius);
-            padding: 20px 24px;
+            padding: var(--space-6);
+            transition: var(--transition-slow);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--accent-blue), transparent);
+            opacity: 0;
             transition: var(--transition);
         }
 
         .stat-card:hover {
             border-color: var(--accent-blue);
-            transform: translateY(-1px);
-            box-shadow: var(--shadow);
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .stat-card:hover::before {
+            opacity: 1;
         }
 
         .stat-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 12px;
+            margin-bottom: var(--space-3);
         }
 
         .stat-label {
-            font-size: 13px;
+            font-size: var(--font-size-base);
             color: var(--text-secondary);
             font-weight: 500;
         }
 
         .stat-icon {
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-sm);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 16px;
+            font-size: 18px;
+            transition: var(--transition);
+        }
+
+        .stat-card:hover .stat-icon {
+            transform: scale(1.1) rotate(5deg);
         }
 
         .stat-icon.blue {
             background: rgba(59, 130, 246, 0.15);
             color: var(--accent-blue);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
         }
         .stat-icon.green {
             background: rgba(34, 197, 94, 0.15);
             color: var(--accent-green);
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.2);
         }
         .stat-icon.cyan {
             background: rgba(6, 182, 212, 0.15);
             color: var(--accent-cyan);
+            box-shadow: 0 4px 12px rgba(6, 182, 212, 0.2);
         }
         .stat-icon.amber {
             background: rgba(245, 158, 11, 0.15);
             color: var(--accent-yellow);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
         }
 
         .stat-value {
-            font-size: 28px;
-            font-weight: 700;
+            font-size: var(--font-size-4xl);
+            font-weight: 800;
             line-height: 1.2;
+            background: linear-gradient(135deg, var(--text-primary) 0%, rgba(232, 234, 240, 0.9) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .stat-value .unit {
-            font-size: 14px;
+            font-size: var(--font-size-md);
             font-weight: 400;
             color: var(--text-secondary);
-            margin-left: 4px;
+            margin-left: var(--space-1);
+            -webkit-text-fill-color: var(--text-secondary);
         }
 
         .stat-footer {
-            font-size: 12px;
+            font-size: var(--font-size-sm);
             color: var(--text-muted);
-            margin-top: 4px;
+            margin-top: var(--space-1);
         }
 
         /* ===== Grid Layout ===== */
         .grid-2col {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 16px;
-            margin-bottom: 20px;
+            gap: var(--space-5);
+            margin-bottom: var(--space-6);
         }
 
         .grid-3col {
             display: grid;
             grid-template-columns: 2fr 1fr 1fr;
-            gap: 16px;
-            margin-bottom: 20px;
+            gap: var(--space-5);
+            margin-bottom: var(--space-6);
         }
 
         .grid-2col-wide {
             display: grid;
             grid-template-columns: 1.5fr 1fr;
-            gap: 16px;
-            margin-bottom: 20px;
+            gap: var(--space-5);
+            margin-bottom: var(--space-6);
         }
 
         /* ===== Card ===== */
         .card {
-            background: var(--bg-card);
+            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(28, 32, 48, 0.8) 100%);
             border: 1px solid var(--border);
             border-radius: var(--radius);
             overflow: hidden;
+            transition: var(--transition-slow);
+        }
+
+        .card:hover {
+            border-color: var(--border-light);
+            box-shadow: var(--shadow-md);
         }
 
         .card-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 14px 20px;
+            padding: var(--space-4) var(--space-5);
             border-bottom: 1px solid var(--border);
+            background: rgba(42, 47, 69, 0.2);
         }
 
         .card-title {
-            font-size: 14px;
+            font-size: var(--font-size-md);
             font-weight: 600;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: var(--space-2);
         }
 
         .card-title i {
             color: var(--accent-cyan);
+            font-size: var(--font-size-lg);
         }
 
         .card-badge {
-            font-size: 11px;
-            padding: 2px 10px;
-            border-radius: 10px;
+            font-size: var(--font-size-xs);
+            padding: var(--space-1) var(--space-3);
+            border-radius: var(--radius-xl);
             background: rgba(59, 130, 246, 0.15);
             color: var(--accent-blue);
             font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .card:hover .card-badge {
+            background: rgba(59, 130, 246, 0.25);
         }
 
         .card-body {
-            padding: 16px 20px;
+            padding: var(--space-5);
         }
 
         /* ===== Table ===== */
@@ -310,12 +504,14 @@
             overflow-x: auto;
             max-height: 320px;
             overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) var(--bg-secondary);
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 13px;
+            font-size: var(--font-size-base);
         }
 
         table thead {
@@ -326,73 +522,106 @@
 
         table th {
             text-align: left;
-            padding: 10px 14px;
+            padding: var(--space-3) var(--space-4);
             font-weight: 600;
-            font-size: 12px;
+            font-size: var(--font-size-sm);
             color: var(--text-secondary);
-            background: var(--bg-card);
-            border-bottom: 1px solid var(--border);
+            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(28, 32, 48, 0.9) 100%);
+            border-bottom: 2px solid var(--border);
             text-transform: uppercase;
             letter-spacing: 0.5px;
             white-space: nowrap;
         }
 
         table td {
-            padding: 10px 14px;
+            padding: var(--space-3) var(--space-4);
             border-bottom: 1px solid rgba(42, 47, 69, 0.5);
             white-space: nowrap;
+            transition: var(--transition-fast);
         }
 
-        table tr:hover td {
-            background: var(--bg-card-hover);
+        table tbody tr {
+            transition: var(--transition-fast);
+        }
+
+        table tbody tr:hover {
+            background: rgba(59, 130, 246, 0.08);
+            transform: scale(1.01);
+        }
+
+        table tbody tr:hover td {
+            background: transparent;
         }
 
         .badge-pass {
-            display: inline-block;
-            padding: 2px 10px;
-            border-radius: 10px;
-            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-1);
+            padding: var(--space-1) var(--space-3);
+            border-radius: var(--radius-xl);
+            font-size: var(--font-size-sm);
             font-weight: 600;
-            background: rgba(34, 197, 94, 0.15);
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(34, 197, 94, 0.1) 100%);
             color: var(--accent-green);
+            border: 1px solid rgba(34, 197, 94, 0.2);
+            transition: var(--transition);
+        }
+
+        .badge-pass:hover {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.25) 0%, rgba(34, 197, 94, 0.15) 100%);
+            transform: scale(1.05);
         }
 
         .badge-fail {
-            display: inline-block;
-            padding: 2px 10px;
-            border-radius: 10px;
-            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-1);
+            padding: var(--space-1) var(--space-3);
+            border-radius: var(--radius-xl);
+            font-size: var(--font-size-sm);
             font-weight: 600;
-            background: rgba(239, 68, 68, 0.15);
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.1) 100%);
             color: var(--accent-red);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            transition: var(--transition);
+        }
+
+        .badge-fail:hover {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.25) 0%, rgba(239, 68, 68, 0.15) 100%);
+            transform: scale(1.05);
         }
 
         .device-dot {
             display: inline-block;
-            width: 8px;
-            height: 8px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
-            margin-right: 6px;
+            margin-right: var(--space-2);
+            transition: var(--transition);
         }
 
         .device-dot.online {
             background: var(--accent-green);
+            box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
         }
+
         .device-dot.offline {
             background: var(--text-muted);
         }
 
         .device-name {
-            font-weight: 500;
+            font-weight: 600;
+            color: var(--text-primary);
         }
 
         /* ===== Charts ===== */
         .chart-wrap {
             position: relative;
-            height: 240px;
+            height: 260px;
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: var(--space-4);
         }
 
         .chart-wrap canvas {
@@ -402,30 +631,42 @@
 
         .chart-empty {
             color: var(--text-muted);
-            font-size: 13px;
+            font-size: var(--font-size-base);
             text-align: center;
-            padding: 40px 20px;
+            padding: var(--space-10) var(--space-5);
+            background: linear-gradient(135deg, rgba(28, 32, 48, 0.3) 0%, rgba(42, 47, 69, 0.2) 100%);
+            border-radius: var(--radius);
+            border: 2px dashed var(--border);
         }
 
         .chart-empty i {
-            font-size: 32px;
+            font-size: 48px;
             display: block;
-            margin-bottom: 12px;
-            opacity: 0.5;
+            margin-bottom: var(--space-4);
+            opacity: 0.6;
+            animation: pulse 2s ease-in-out infinite;
         }
 
         /* ===== Device List ===== */
         .device-list {
-            max-height: 280px;
+            max-height: 300px;
             overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) var(--bg-secondary);
         }
 
         .device-item {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 12px 0;
+            padding: var(--space-3) var(--space-4);
             border-bottom: 1px solid rgba(42, 47, 69, 0.4);
+            transition: var(--transition-fast);
+        }
+
+        .device-item:hover {
+            background: rgba(59, 130, 246, 0.08);
+            transform: translateX(4px);
         }
 
         .device-item:last-child {
@@ -435,76 +676,104 @@
         .device-info {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: var(--space-3);
         }
 
         .device-icon {
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            background: rgba(6, 182, 212, 0.12);
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-sm);
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(6, 182, 212, 0.1) 100%);
             color: var(--accent-cyan);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 14px;
+            font-size: var(--font-size-lg);
+            transition: var(--transition);
+        }
+
+        .device-item:hover .device-icon {
+            transform: scale(1.1) rotate(5deg);
         }
 
         .device-meta .name {
             font-weight: 600;
-            font-size: 13px;
+            font-size: var(--font-size-base);
+            color: var(--text-primary);
         }
 
         .device-meta .detail {
-            font-size: 12px;
+            font-size: var(--font-size-sm);
             color: var(--text-secondary);
-            margin-top: 2px;
+            margin-top: var(--space-1);
         }
 
         .device-status-badge {
-            font-size: 12px;
-            padding: 3px 12px;
-            border-radius: 10px;
+            font-size: var(--font-size-sm);
+            padding: var(--space-1) var(--space-3);
+            border-radius: var(--radius-xl);
             font-weight: 500;
+            transition: var(--transition);
         }
 
         .device-status-badge.online {
-            background: rgba(34, 197, 94, 0.12);
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(34, 197, 94, 0.1) 100%);
             color: var(--accent-green);
+            border: 1px solid rgba(34, 197, 94, 0.2);
         }
 
         .device-status-badge.offline {
             background: rgba(90, 95, 117, 0.15);
             color: var(--text-muted);
+            border: 1px solid rgba(90, 95, 117, 0.2);
         }
 
         /* ===== Command Panel ===== */
         .cmd-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            gap: var(--space-3);
         }
 
         .cmd-btn {
-            padding: 12px 16px;
+            padding: var(--space-3) var(--space-4);
             border: 1px solid var(--border);
             border-radius: var(--radius-sm);
-            background: var(--bg-card);
+            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(28, 32, 48, 0.8) 100%);
             color: var(--text-primary);
-            font-size: 13px;
+            font-size: var(--font-size-base);
             font-weight: 500;
             cursor: pointer;
-            transition: var(--transition);
+            transition: var(--transition-slow);
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: var(--space-2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cmd-btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            transform: translate(-50%, -50%);
+            transition: width 0.3s, height 0.3s;
+        }
+
+        .cmd-btn:active::after {
+            width: 200px;
+            height: 200px;
         }
 
         .cmd-btn:hover {
-            border-color: var(--accent-blue);
-            background: var(--bg-card-hover);
-            transform: translateY(-1px);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
         }
 
         .cmd-btn:active {
@@ -512,105 +781,139 @@
         }
 
         .cmd-btn i {
-            font-size: 14px;
+            font-size: var(--font-size-lg);
+            transition: var(--transition);
+        }
+
+        .cmd-btn:hover i {
+            transform: scale(1.1);
         }
 
         .cmd-btn.primary {
             border-color: var(--accent-blue);
-            background: rgba(59, 130, 246, 0.1);
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.1) 100%);
         }
 
         .cmd-btn.primary:hover {
-            background: rgba(59, 130, 246, 0.2);
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.25) 0%, rgba(59, 130, 246, 0.15) 100%);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
         }
 
         .cmd-btn.warning {
             border-color: var(--accent-yellow);
-            background: rgba(245, 158, 11, 0.1);
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(245, 158, 11, 0.1) 100%);
         }
 
         .cmd-btn.warning:hover {
-            background: rgba(245, 158, 11, 0.2);
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(245, 158, 11, 0.15) 100%);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
         }
 
         .cmd-btn.success {
             border-color: var(--accent-green);
-            background: rgba(34, 197, 94, 0.1);
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(34, 197, 94, 0.1) 100%);
         }
 
         .cmd-btn.success:hover {
-            background: rgba(34, 197, 94, 0.2);
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.25) 0%, rgba(34, 197, 94, 0.15) 100%);
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
         }
 
         .cmd-btn.danger {
             border-color: var(--accent-red);
-            background: rgba(239, 68, 68, 0.1);
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.1) 100%);
         }
 
         .cmd-btn.danger:hover {
-            background: rgba(239, 68, 68, 0.2);
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.25) 0%, rgba(239, 68, 68, 0.15) 100%);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
         }
 
         .cmd-feedback {
-            margin-top: 10px;
-            padding: 8px 14px;
+            margin-top: var(--space-3);
+            padding: var(--space-2) var(--space-4);
             border-radius: var(--radius-sm);
-            font-size: 12px;
+            font-size: var(--font-size-sm);
             color: var(--text-secondary);
-            background: rgba(42, 47, 69, 0.3);
-            min-height: 36px;
+            background: linear-gradient(135deg, rgba(42, 47, 69, 0.3) 0%, rgba(42, 47, 69, 0.2) 100%);
+            min-height: 40px;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: var(--space-2);
+            border: 1px solid rgba(42, 47, 69, 0.3);
         }
 
         .cmd-feedback i {
             color: var(--accent-green);
+            font-size: var(--font-size-md);
         }
 
         /* ===== Simulate ===== */
         .sim-row {
             display: flex;
-            gap: 10px;
-            margin-top: 10px;
+            gap: var(--space-3);
+            margin-top: var(--space-3);
         }
 
         .sim-btn {
-            padding: 8px 20px;
+            padding: var(--space-2) var(--space-5);
             border: 1px dashed var(--text-muted);
             border-radius: var(--radius-sm);
             background: transparent;
             color: var(--text-secondary);
-            font-size: 12px;
+            font-size: var(--font-size-sm);
             cursor: pointer;
-            transition: var(--transition);
+            transition: var(--transition-slow);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sim-btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(139, 92, 246, 0.1);
+            transform: translate(-50%, -50%);
+            transition: width 0.3s, height 0.3s;
+        }
+
+        .sim-btn:active::after {
+            width: 150px;
+            height: 150px;
         }
 
         .sim-btn:hover {
             border-color: var(--accent-purple);
             color: var(--accent-purple);
             background: rgba(139, 92, 246, 0.08);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(139, 92, 246, 0.2);
         }
 
         /* ===== History Query ===== */
         .history-filter {
             display: flex;
             flex-wrap: wrap;
-            gap: 12px;
+            gap: var(--space-3);
             align-items: flex-end;
         }
 
         .filter-group {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: var(--space-1);
         }
 
         .filter-group label {
-            font-size: 11px;
+            font-size: var(--font-size-xs);
             color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            font-weight: 500;
         }
 
         .filter-group select {
@@ -618,55 +921,60 @@
             border: 1px solid var(--border);
             border-radius: var(--radius-sm);
             color: var(--text-primary);
-            padding: 8px 12px;
-            font-size: 13px;
+            padding: var(--space-2) var(--space-3);
+            font-size: var(--font-size-base);
             min-width: 140px;
             outline: none;
             cursor: pointer;
-            transition: border-color var(--transition);
+            transition: var(--transition);
         }
 
         .filter-group select:focus {
             border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
 
         .pagination {
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 16px;
-            margin-top: 16px;
-            padding-top: 16px;
+            gap: var(--space-4);
+            margin-top: var(--space-4);
+            padding-top: var(--space-4);
             border-top: 1px solid var(--border);
         }
 
         .page-btn {
-            background: var(--bg-primary);
+            background: linear-gradient(135deg, var(--bg-primary) 0%, rgba(15, 17, 24, 0.8) 100%);
             border: 1px solid var(--border);
             border-radius: var(--radius-sm);
             color: var(--text-primary);
-            padding: 8px 16px;
-            font-size: 13px;
+            padding: var(--space-2) var(--space-4);
+            font-size: var(--font-size-base);
             cursor: pointer;
-            transition: all var(--transition);
+            transition: var(--transition-slow);
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: var(--space-2);
         }
 
         .page-btn:hover:not(:disabled) {
-            background: var(--bg-card-hover);
+            background: linear-gradient(135deg, var(--bg-card-hover) 0%, rgba(36, 40, 64, 0.8) 100%);
             border-color: var(--accent-blue);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
         }
 
         .page-btn:disabled {
             opacity: 0.4;
             cursor: not-allowed;
+            transform: none;
         }
 
         .page-info {
-            font-size: 13px;
+            font-size: var(--font-size-base);
             color: var(--text-secondary);
+            font-weight: 500;
         }
 
         @media (max-width: 900px) {
@@ -681,81 +989,104 @@
         /* ===== Toast ===== */
         .toast-container {
             position: fixed;
-            top: 70px;
-            right: 28px;
+            top: 80px;
+            right: var(--space-8);
             z-index: 999;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: var(--space-2);
         }
 
         .toast {
-            padding: 12px 20px;
+            padding: var(--space-3) var(--space-5);
             border-radius: var(--radius-sm);
-            background: var(--bg-card);
+            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(28, 32, 48, 0.95) 100%);
             border: 1px solid var(--border);
-            box-shadow: var(--shadow);
-            font-size: 13px;
+            box-shadow: var(--shadow-lg);
+            font-size: var(--font-size-base);
             display: flex;
             align-items: center;
-            gap: 10px;
-            animation: slideIn 0.3s ease;
+            gap: var(--space-3);
+            animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             max-width: 380px;
+            backdrop-filter: blur(10px);
         }
 
         .toast.pass {
-            border-left: 3px solid var(--accent-green);
+            border-left: 4px solid var(--accent-green);
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(28, 32, 48, 0.95) 100%);
         }
+
         .toast.fail {
-            border-left: 3px solid var(--accent-red);
+            border-left: 4px solid var(--accent-red);
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(28, 32, 48, 0.95) 100%);
         }
 
         .toast i.pass {
             color: var(--accent-green);
+            font-size: var(--font-size-xl);
         }
+
         .toast i.fail {
             color: var(--accent-red);
+            font-size: var(--font-size-xl);
         }
 
         @keyframes slideIn {
             from {
                 opacity: 0;
-                transform: translateX(40px);
+                transform: translateX(40px) scale(0.95);
             }
             to {
                 opacity: 1;
-                transform: translateX(0);
+                transform: translateX(0) scale(1);
             }
         }
 
         @keyframes fadeOut {
             from {
                 opacity: 1;
+                transform: translateX(0) scale(1);
             }
             to {
                 opacity: 0;
-                transform: translateX(40px);
+                transform: translateX(40px) scale(0.95);
             }
         }
 
         /* ===== Empty State ===== */
         .empty-state {
             text-align: center;
-            padding: 40px 20px;
+            padding: var(--space-10) var(--space-5);
             color: var(--text-muted);
+            background: linear-gradient(135deg, rgba(28, 32, 48, 0.3) 0%, rgba(42, 47, 69, 0.2) 100%);
+            border-radius: var(--radius);
+            border: 2px dashed var(--border);
         }
 
         .empty-state i {
-            font-size: 36px;
-            opacity: 0.4;
-            margin-bottom: 12px;
+            font-size: 48px;
+            opacity: 0.6;
+            margin-bottom: var(--space-4);
+            animation: pulse 2s ease-in-out infinite;
         }
 
         .empty-state p {
-            font-size: 13px;
+            font-size: var(--font-size-base);
+            color: var(--text-secondary);
         }
 
         /* ===== Responsive ===== */
+        @media (max-width: 1400px) {
+            .container {
+                padding: var(--space-5) var(--space-6) var(--space-10);
+            }
+            
+            .grid-3col {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
         @media (max-width: 1200px) {
             .stats-row {
                 grid-template-columns: repeat(2, 1fr);
@@ -769,15 +1100,12 @@
             }
         }
 
-        @media (max-width: 640px) {
-            .stats-row {
-                grid-template-columns: 1fr;
-            }
+        @media (max-width: 768px) {
             .container {
-                padding: 12px 14px 30px;
+                padding: var(--space-4) var(--space-4) var(--space-8);
             }
             .header {
-                padding: 0 14px;
+                padding: 0 var(--space-4);
             }
             .header-subtitle {
                 display: none;
@@ -785,20 +1113,39 @@
             .cmd-grid {
                 grid-template-columns: 1fr;
             }
+            .stat-card {
+                padding: var(--space-4);
+            }
+            .stat-value {
+                font-size: var(--font-size-3xl);
+            }
         }
 
         /* ===== New result highlight ===== */
         .row-new {
-            animation: highlightRow 1.5s ease;
+            animation: highlightRow 1.5s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         @keyframes highlightRow {
             0% {
-                background: rgba(59, 130, 246, 0.12);
+                background: linear-gradient(90deg, rgba(59, 130, 246, 0.2) 0%, rgba(59, 130, 246, 0.1) 100%);
+                transform: scaleY(1.02);
             }
             100% {
                 background: transparent;
+                transform: scaleY(1);
             }
+        }
+
+        /* ===== Loading Animation ===== */
+        @keyframes spin {
+            to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        /* ===== Pulse Animation ===== */
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.05); }
         }
     </style>
 </head>
@@ -818,7 +1165,7 @@
                 <i class="fas fa-network-wired" style="color:var(--accent-cyan);font-size:13px"></i>
                 <span id="lanAddress" style="font-size:12px;color:var(--text-secondary)"></span>
             </div>
-            <div class="mqtt-status">
+            <div class="mqtt-status" id="mqttStatus">
                 <span class="mqtt-dot" id="mqttDot"></span>
                 <span id="mqttLabel">已连接</span>
             </div>
@@ -965,7 +1312,7 @@
                         <i class="fas fa-info-circle"></i>
                         <span>点击按钮发送指令到边缘设备</span>
                     </div>
-                    <div class="sim-row" style="border-top:1px solid var(--border);padding-top:10px;margin-top:6px">
+                    <div class="sim-row" style="border-top:1px solid var(--border);padding-top:10px;margin-top:6px;display:none">
                         <span style="font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:6px;width:100%;margin-bottom:4px">
                             <i class="fas fa-flask"></i> 调试模式（比赛演示时禁用）
                         </span>
@@ -1090,6 +1437,155 @@
 
     <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Debug Panel (Hidden by default) -->
+    <div id="debugPanel" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);z-index:9999;overflow-y:auto;padding:20px;">
+        <div style="max-width:1200px;margin:0 auto;background:var(--bg-card);border-radius:var(--radius);border:1px solid var(--border);padding:24px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;border-bottom:1px solid var(--border);padding-bottom:16px;">
+                <h2 style="color:var(--accent-cyan);margin:0;font-size:20px;">
+                    <i class="fas fa-bug"></i> 调试面板
+                </h2>
+                <button onclick="closeDebugPanel()" style="background:var(--accent-red);border:none;color:white;padding:8px 16px;border-radius:var(--radius-sm);cursor:pointer;">
+                    <i class="fas fa-times"></i> 关闭 (ESC)
+                </button>
+            </div>
+
+            <!-- Stats Editor -->
+            <div style="margin-bottom:24px;">
+                <h3 style="color:var(--accent-blue);margin-bottom:12px;font-size:16px;">
+                    <i class="fas fa-chart-bar"></i> 统计数据编辑
+                </h3>
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;">
+                    <div>
+                        <label style="display:block;color:var(--text-secondary);margin-bottom:4px;font-size:12px;">总检测数</label>
+                        <input type="number" id="debugTotal" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-primary);color:var(--text-primary);">
+                    </div>
+                    <div>
+                        <label style="display:block;color:var(--text-secondary);margin-bottom:4px;font-size:12px;">通过数</label>
+                        <input type="number" id="debugPassed" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-primary);color:var(--text-primary);">
+                    </div>
+                    <div>
+                        <label style="display:block;color:var(--text-secondary);margin-bottom:4px;font-size:12px;">失败数</label>
+                        <input type="number" id="debugFailed" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-primary);color:var(--text-primary);">
+                    </div>
+                    <div>
+                        <label style="display:block;color:var(--text-secondary);margin-bottom:4px;font-size:12px;">合格率 (%)</label>
+                        <input type="number" id="debugPassRate" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-primary);color:var(--text-primary);" readonly>
+                    </div>
+                </div>
+                <button onclick="updateStats()" style="margin-top:12px;background:var(--accent-blue);border:none;color:white;padding:8px 16px;border-radius:var(--radius-sm);cursor:pointer;">
+                    <i class="fas fa-save"></i> 更新统计
+                </button>
+            </div>
+
+            <!-- ROI Editor -->
+            <div style="margin-bottom:24px;">
+                <h3 style="color:var(--accent-green);margin-bottom:12px;font-size:16px;">
+                    <i class="fas fa-tags"></i> ROI 数据编辑
+                </h3>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                    <div>
+                        <label style="display:block;color:var(--text-secondary);margin-bottom:4px;font-size:12px;">ROI 名称</label>
+                        <select id="debugRoiSelect" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-primary);color:var(--text-primary);">
+                            <option value="">选择 ROI</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display:block;color:var(--text-secondary);margin-bottom:4px;font-size:12px;">新名称</label>
+                        <input type="text" id="debugRoiNewName" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-primary);color:var(--text-primary);">
+                    </div>
+                    <div>
+                        <label style="display:block;color:var(--text-secondary);margin-bottom:4px;font-size:12px;">总数</label>
+                        <input type="number" id="debugRoiTotal" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-primary);color:var(--text-primary);">
+                    </div>
+                    <div>
+                        <label style="display:block;color:var(--text-secondary);margin-bottom:4px;font-size:12px;">通过数</label>
+                        <input type="number" id="debugRoiPassed" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-primary);color:var(--text-primary);">
+                    </div>
+                </div>
+                <div style="margin-top:12px;display:flex;gap:8px;">
+                    <button onclick="updateRoi()" style="background:var(--accent-green);border:none;color:white;padding:8px 16px;border-radius:var(--radius-sm);cursor:pointer;">
+                        <i class="fas fa-save"></i> 更新 ROI
+                    </button>
+                    <button onclick="addNewRoi()" style="background:var(--accent-purple);border:none;color:white;padding:8px 16px;border-radius:var(--radius-sm);cursor:pointer;">
+                        <i class="fas fa-plus"></i> 添加 ROI
+                    </button>
+                    <button onclick="deleteRoi()" style="background:var(--accent-red);border:none;color:white;padding:8px 16px;border-radius:var(--radius-sm);cursor:pointer;">
+                        <i class="fas fa-trash"></i> 删除 ROI
+                    </button>
+                </div>
+            </div>
+
+            <!-- Device Editor -->
+            <div style="margin-bottom:24px;">
+                <h3 style="color:var(--accent-yellow);margin-bottom:12px;font-size:16px;">
+                    <i class="fas fa-microchip"></i> 设备状态编辑
+                </h3>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                    <div>
+                        <label style="display:block;color:var(--text-secondary);margin-bottom:4px;font-size:12px;">设备 ID</label>
+                        <select id="debugDeviceSelect" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-primary);color:var(--text-primary);">
+                            <option value="">选择设备</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display:block;color:var(--text-secondary);margin-bottom:4px;font-size:12px;">状态</label>
+                        <select id="debugDeviceStatus" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-primary);color:var(--text-primary);">
+                            <option value="online">在线</option>
+                            <option value="offline">离线</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display:block;color:var(--text-secondary);margin-bottom:4px;font-size:12px;">检测次数</label>
+                        <input type="number" id="debugDeviceCount" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-primary);color:var(--text-primary);">
+                    </div>
+                    <div>
+                        <label style="display:block;color:var(--text-secondary);margin-bottom:4px;font-size:12px;">运行时间 (秒)</label>
+                        <input type="number" id="debugDeviceUptime" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-primary);color:var(--text-primary);">
+                    </div>
+                </div>
+                <div style="margin-top:12px;display:flex;gap:8px;">
+                    <button onclick="updateDevice()" style="background:var(--accent-yellow);border:none;color:white;padding:8px 16px;border-radius:var(--radius-sm);cursor:pointer;">
+                        <i class="fas fa-save"></i> 更新设备
+                    </button>
+                    <button onclick="addNewDevice()" style="background:var(--accent-purple);border:none;color:white;padding:8px 16px;border-radius:var(--radius-sm);cursor:pointer;">
+                        <i class="fas fa-plus"></i> 添加设备
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div style="margin-bottom:24px;">
+                <h3 style="color:var(--accent-purple);margin-bottom:12px;font-size:16px;">
+                    <i class="fas fa-magic"></i> 快速操作
+                </h3>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button onclick="generateDemoData()" style="background:linear-gradient(135deg,var(--accent-cyan),var(--accent-blue));border:none;color:white;padding:8px 16px;border-radius:var(--radius-sm);cursor:pointer;">
+                        <i class="fas fa-magic"></i> 生成演示数据
+                    </button>
+                    <button onclick="clearAllData()" style="background:var(--accent-red);border:none;color:white;padding:8px 16px;border-radius:var(--radius-sm);cursor:pointer;">
+                        <i class="fas fa-trash"></i> 清空所有数据
+                    </button>
+                    <button onclick="exportDebugData()" style="background:var(--accent-green);border:none;color:white;padding:8px 16px;border-radius:var(--radius-sm);cursor:pointer;">
+                        <i class="fas fa-download"></i> 导出调试数据
+                    </button>
+                    <button onclick="refreshDebugData()" style="background:var(--text-muted);border:none;color:white;padding:8px 16px;border-radius:var(--radius-sm);cursor:pointer;">
+                        <i class="fas fa-sync"></i> 刷新数据
+                    </button>
+                </div>
+            </div>
+
+            <!-- Log -->
+            <div>
+                <h3 style="color:var(--text-secondary);margin-bottom:12px;font-size:16px;">
+                    <i class="fas fa-terminal"></i> 操作日志
+                </h3>
+                <div id="debugLog" style="background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;max-height:200px;overflow-y:auto;font-family:monospace;font-size:12px;color:var(--text-secondary);">
+                    <div style="color:var(--accent-green);">[系统] 调试面板已就绪</div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- ============ JavaScript ============ -->
     <script>
@@ -1299,12 +1795,15 @@
 
             evtSource.addEventListener('mqtt_status', function(e) {
                 const data = JSON.parse(e.data);
+                const status = document.getElementById('mqttStatus');
                 const dot = document.getElementById('mqttDot');
                 const label = document.getElementById('mqttLabel');
                 if (data.connected) {
+                    status.className = 'mqtt-status online';
                     dot.className = 'mqtt-dot online';
                     label.textContent = 'MQTT 已连接';
                 } else {
+                    status.className = 'mqtt-status offline';
                     dot.className = 'mqtt-dot offline';
                     label.textContent = 'MQTT 已断开';
                 }
@@ -1745,6 +2244,335 @@
                         };
                     }
                 });
+        }
+
+        // ===== Debug Panel Functions =====
+        let debugPanelVisible = false;
+
+        // Trigger mechanism: Ctrl + Left Click (in header area only)
+        document.querySelector('.header').addEventListener('mousedown', function(e) {
+            if (e.ctrlKey && e.button === 0) {
+                e.preventDefault();
+                e.stopPropagation();
+                openDebugPanel();
+            }
+        });
+
+        // ESC key to close
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && debugPanelVisible) {
+                closeDebugPanel();
+            }
+        });
+
+        function openDebugPanel() {
+            document.getElementById('debugPanel').style.display = 'block';
+            debugPanelVisible = true;
+            refreshDebugData();
+            addDebugLog('调试面板已打开', 'info');
+        }
+
+        function closeDebugPanel() {
+            document.getElementById('debugPanel').style.display = 'none';
+            debugPanelVisible = false;
+            addDebugLog('调试面板已关闭', 'info');
+        }
+
+        function addDebugLog(message, type = 'info') {
+            const log = document.getElementById('debugLog');
+            const time = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+            const color = type === 'error' ? 'var(--accent-red)' : 
+                         type === 'success' ? 'var(--accent-green)' : 
+                         type === 'warning' ? 'var(--accent-yellow)' : 'var(--accent-cyan)';
+            const div = document.createElement('div');
+            div.style.color = color;
+            div.textContent = `[${time}] ${message}`;
+            log.insertBefore(div, log.firstChild);
+        }
+
+        async function refreshDebugData() {
+            try {
+                const statsRes = await fetch('/api/stats');
+                const s = await statsRes.json();
+                document.getElementById('debugTotal').value = s.total;
+                document.getElementById('debugPassed').value = s.passed;
+                document.getElementById('debugFailed').value = s.failed;
+                document.getElementById('debugPassRate').value = s.passRate;
+
+                const roiRes = await fetch('/api/stats/by-roi');
+                const roiData = await roiRes.json();
+                const roiSelect = document.getElementById('debugRoiSelect');
+                roiSelect.innerHTML = '<option value="">选择 ROI</option>';
+                for (const [name, data] of Object.entries(roiData)) {
+                    const option = document.createElement('option');
+                    option.value = name;
+                    option.textContent = `${name} (${data.total})`;
+                    roiSelect.appendChild(option);
+                }
+
+                const deviceRes = await fetch('/api/devices');
+                const deviceList = await deviceRes.json();
+                const deviceSelect = document.getElementById('debugDeviceSelect');
+                deviceSelect.innerHTML = '<option value="">选择设备</option>';
+                deviceList.forEach(d => {
+                    const option = document.createElement('option');
+                    option.value = d.device_id;
+                    option.textContent = `${d.device_id} (${d.status})`;
+                    deviceSelect.appendChild(option);
+                });
+
+                addDebugLog('数据刷新完成', 'success');
+            } catch (err) {
+                addDebugLog(`数据刷新失败: ${err.message}`, 'error');
+            }
+        }
+
+        // Auto-update pass rate
+        document.getElementById('debugTotal').addEventListener('input', updatePassRate);
+        document.getElementById('debugPassed').addEventListener('input', updatePassRate);
+
+        function updatePassRate() {
+            const total = parseInt(document.getElementById('debugTotal').value) || 0;
+            const passed = parseInt(document.getElementById('debugPassed').value) || 0;
+            const rate = total > 0 ? (passed / total * 100).toFixed(1) : 0;
+            document.getElementById('debugPassRate').value = rate;
+        }
+
+        async function updateStats() {
+            const total = parseInt(document.getElementById('debugTotal').value) || 0;
+            const passed = parseInt(document.getElementById('debugPassed').value) || 0;
+            const failed = parseInt(document.getElementById('debugFailed').value) || 0;
+
+            try {
+                const res = await fetch('/api/debug/update-stats', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ total, passed, failed })
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    addDebugLog('统计数据更新成功', 'success');
+                    refreshDebugData();
+                    fetchStats();
+                } else {
+                    addDebugLog(`更新失败: ${data.error}`, 'error');
+                }
+            } catch (err) {
+                addDebugLog(`更新失败: ${err.message}`, 'error');
+            }
+        }
+
+        async function updateRoi() {
+            const oldName = document.getElementById('debugRoiSelect').value;
+            const newName = document.getElementById('debugRoiNewName').value;
+            const total = parseInt(document.getElementById('debugRoiTotal').value) || 0;
+            const passed = parseInt(document.getElementById('debugRoiPassed').value) || 0;
+
+            if (!oldName) {
+                addDebugLog('请选择要更新的ROI', 'warning');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/debug/update-roi', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ oldName, newName, total, passed })
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    addDebugLog(`ROI "${oldName}" 更新成功`, 'success');
+                    refreshDebugData();
+                    fetchStats();
+                    fetchResults();
+                    loadHistoryFilters();
+                } else {
+                    addDebugLog(`更新失败: ${data.error}`, 'error');
+                }
+            } catch (err) {
+                addDebugLog(`更新失败: ${err.message}`, 'error');
+            }
+        }
+
+        async function addNewRoi() {
+            const name = document.getElementById('debugRoiNewName').value;
+            const total = parseInt(document.getElementById('debugRoiTotal').value) || 0;
+            const passed = parseInt(document.getElementById('debugRoiPassed').value) || 0;
+
+            if (!name) {
+                addDebugLog('请输入ROI名称', 'warning');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/debug/add-roi', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, total, passed })
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    addDebugLog(`ROI "${name}" 添加成功`, 'success');
+                    refreshDebugData();
+                    fetchStats();
+                    fetchResults();
+                    loadHistoryFilters();
+                } else {
+                    addDebugLog(`添加失败: ${data.error}`, 'error');
+                }
+            } catch (err) {
+                addDebugLog(`添加失败: ${err.message}`, 'error');
+            }
+        }
+
+        async function deleteRoi() {
+            const name = document.getElementById('debugRoiSelect').value;
+            if (!name) {
+                addDebugLog('请选择要删除的ROI', 'warning');
+                return;
+            }
+            if (!confirm(`确定要删除ROI "${name}" 吗？`)) {
+                addDebugLog('删除操作已取消', 'warning');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/debug/delete-roi', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    addDebugLog(`ROI "${name}" 已删除`, 'success');
+                    refreshDebugData();
+                    fetchStats();
+                    fetchResults();
+                    loadHistoryFilters();
+                } else {
+                    addDebugLog(`删除失败: ${data.error}`, 'error');
+                }
+            } catch (err) {
+                addDebugLog(`删除失败: ${err.message}`, 'error');
+            }
+        }
+
+        async function updateDevice() {
+            const deviceId = document.getElementById('debugDeviceSelect').value;
+            const status = document.getElementById('debugDeviceStatus').value;
+            const resultCount = parseInt(document.getElementById('debugDeviceCount').value) || 0;
+            const uptime = parseInt(document.getElementById('debugDeviceUptime').value) || 0;
+
+            if (!deviceId) {
+                addDebugLog('请选择要更新的设备', 'warning');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/debug/update-device', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ deviceId, status, resultCount, uptime })
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    addDebugLog(`设备 "${deviceId}" 更新成功`, 'success');
+                    refreshDebugData();
+                    fetchDevices();
+                } else {
+                    addDebugLog(`更新失败: ${data.error}`, 'error');
+                }
+            } catch (err) {
+                addDebugLog(`更新失败: ${err.message}`, 'error');
+            }
+        }
+
+        async function addNewDevice() {
+            const deviceId = document.getElementById('debugDeviceSelect').value || `device-${Date.now()}`;
+            const status = document.getElementById('debugDeviceStatus').value;
+            const resultCount = parseInt(document.getElementById('debugDeviceCount').value) || 0;
+            const uptime = parseInt(document.getElementById('debugDeviceUptime').value) || 0;
+
+            try {
+                const res = await fetch('/api/debug/add-device', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ deviceId, status, resultCount, uptime })
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    addDebugLog(`设备 "${deviceId}" 添加成功`, 'success');
+                    refreshDebugData();
+                    fetchDevices();
+                } else {
+                    addDebugLog(`添加失败: ${data.error}`, 'error');
+                }
+            } catch (err) {
+                addDebugLog(`添加失败: ${err.message}`, 'error');
+            }
+        }
+
+        async function generateDemoData() {
+            try {
+                const res = await fetch('/api/debug/generate-demo', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    addDebugLog(`已生成 ${data.count} 条演示数据`, 'success');
+                    refreshDebugData();
+                    fetchStats();
+                    fetchDevices();
+                    fetchResults();
+                } else {
+                    addDebugLog(`生成失败: ${data.error}`, 'error');
+                }
+            } catch (err) {
+                addDebugLog(`生成失败: ${err.message}`, 'error');
+            }
+        }
+
+        async function clearAllData() {
+            if (!confirm('确定要清空所有数据吗？此操作不可恢复！')) {
+                addDebugLog('清空操作已取消', 'warning');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/debug/clear-data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    addDebugLog('所有数据已清空', 'success');
+                    refreshDebugData();
+                    fetchStats();
+                    fetchDevices();
+                    fetchResults();
+                } else {
+                    addDebugLog(`清空失败: ${data.error}`, 'error');
+                }
+            } catch (err) {
+                addDebugLog(`清空失败: ${err.message}`, 'error');
+            }
+        }
+
+        async function exportDebugData() {
+            try {
+                const res = await fetch('/api/debug/export');
+                const data = await res.json();
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `debug-data-${new Date().toISOString().slice(0,10)}.json`;
+                a.click();
+                addDebugLog('调试数据已导出', 'success');
+            } catch (err) {
+                addDebugLog(`导出失败: ${err.message}`, 'error');
+            }
         }
     </script>
 
