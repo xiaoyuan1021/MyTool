@@ -103,6 +103,9 @@
           <property name="text">
            <string>配置路径</string>
           </property>
+          <property name="visible">
+           <bool>false</bool>
+          </property>
          </widget>
         </item>
         <item>
@@ -113,12 +116,18 @@
           <property name="placeholderText">
            <string>可选配置文件...</string>
           </property>
+          <property name="visible">
+           <bool>false</bool>
+          </property>
          </widget>
         </item>
         <item>
          <widget class="QPushButton" name="btn_browseConfig">
           <property name="text">
            <string>浏览</string>
+          </property>
+          <property name="visible">
+           <bool>false</bool>
           </property>
          </widget>
         </item>

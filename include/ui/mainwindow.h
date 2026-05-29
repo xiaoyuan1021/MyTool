@@ -65,7 +65,7 @@ public:
     void requestRefresh();
 
 private slots:
-    void on_btn_openVideo_clicked();
+    void on_btn_pipelineConfig_clicked();
     void on_btn_addROI_clicked();
     void on_btn_deleteROI_clicked();
     void on_btn_switchROI_clicked();

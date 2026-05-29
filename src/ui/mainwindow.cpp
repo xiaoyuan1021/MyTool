@@ -532,40 +532,16 @@ void MainWindow::showImage(const cv::Mat &img)
 
 // ========== 文件操作 ==========
 
-void MainWindow::on_btn_openVideo_clicked()
+void MainWindow::on_btn_pipelineConfig_clicked()
 {
-    // 确保视频Tab已创建（懒加载）
-    ensureTabExists("视频");
+    // 跳转到「步骤」Tab（Pipeline配置页面）
+    ensureTabExists("步骤");
 
-    auto* videoTab = m_tabManager->getTabAs<VideoTabWidget>("视频");
-    if (!videoTab) {
-        Logger::instance()->error("视频Tab组件创建失败");
-        return;
-    }
-
-    VideoManager* videoManager = videoTab->getVideoManager();
-    if (!videoManager) {
-        Logger::instance()->error("无法获取视频管理器");
-        return;
-    }
-
-    QString filePath = QFileDialog::getOpenFileName(
-        this, "选择视频文件", "",
-        "视频文件 (*.mp4 *.avi *.mov *.mkv *.wmv);;所有文件 (*.*)");
-
-    if (filePath.isEmpty()) {
-        Logger::instance()->info("用户取消了文件选择");
-        return;
-    }
-
-    if (videoManager->openFile(filePath)) {
-        int videoTabIndex = ui->tabWidget->indexOf(videoTab);
-        if (videoTabIndex >= 0) {
-            ui->tabWidget->setCurrentIndex(videoTabIndex);
+    for (int i = 0; i < ui->tabWidget->count(); ++i) {
+        if (ui->tabWidget->tabText(i) == "步骤") {
+            ui->tabWidget->setCurrentIndex(i);
+            break;
         }
-        Logger::instance()->info(QString("打开视频成功: %1").arg(filePath));
-    } else {
-        Logger::instance()->error(QString("视频管理器打开文件失败: %1").arg(filePath));
     }
 }
 

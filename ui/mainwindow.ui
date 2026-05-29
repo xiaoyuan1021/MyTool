@@ -350,16 +350,16 @@
                   </layout>
                  </item>
                  <item>
-                   <widget class="QPushButton" name="btn_openVideo">
-                    <property name="minimumSize">
-                     <size>
-                      <width>0</width>
-                      <height>34</height>
-                     </size>
-                    </property>
-                    <property name="text">
-                     <string>📹 打开视频</string>
-                    </property>
+                   <widget class="QPushButton" name="btn_pipelineConfig">
+                     <property name="minimumSize">
+                      <size>
+                       <width>0</width>
+                       <height>34</height>
+                      </size>
+                     </property>
+                     <property name="text">
+                      <string>Pipeline 配置</string>
+                     </property>
                    </widget>
                  </item>
                 </layout>
