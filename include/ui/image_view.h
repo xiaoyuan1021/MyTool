@@ -66,6 +66,7 @@ public:
     // 参考线绘制
     void startReferenceLineDrawing();
     void clearReferenceLine();
+    void showReferenceLineHint(const QString& text);
 
     QVector<QPointF> getPolygonPoints() const;
 
@@ -158,8 +159,11 @@ private:
     
     // 参考线绘制
     bool m_referenceLineMode = false;
+    bool m_referenceLineWaitingConfirm = false;  // 等待右键确认
     QPointF m_refLineStartPosImg;
     QGraphicsLineItem *m_referenceLineItem = nullptr;
+    QGraphicsLineItem *m_refLinePreviewItem = nullptr;  // 预览线
+    QGraphicsTextItem *m_refLineHintItem = nullptr;     // 提示文字
 };
 
 #endif // IMAGE_VIEW_H

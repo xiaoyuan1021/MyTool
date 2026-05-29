@@ -61,13 +61,25 @@ void LineDetectTabWidget::initialize()
 
     connect(m_ui->comboBox_lineAlgorithm,&QComboBox::currentIndexChanged,this,&LineDetectTabWidget::onLineAlgorithmChanged);
     connect(m_ui->btn_applyLineDetecter,&QPushButton::clicked,this,&LineDetectTabWidget::handleApply);
+
+    // Slider变化时触发Pipeline（SpinBox通过bindSliderAndSpinBox同步值，不重复连接）
     connect(m_ui->Slider_HoughPThreshold,&QSlider::valueChanged,this,&LineDetectTabWidget::onLineThresholdChanged);
     connect(m_ui->Slider_HoughPMinLineLength,&QSlider::valueChanged,this,&LineDetectTabWidget::onLineMinLengthChanged);
     connect(m_ui->Slider_HoughPMaxLineGap,&QSlider::valueChanged,this,&LineDetectTabWidget::onLineMaxGapChanged);
 
-    connect(m_ui->SpinBox_HoughPThreshold, QOverload<int>::of(&QSpinBox::valueChanged), this, &LineDetectTabWidget::onLineThresholdChanged);
-    connect(m_ui->SpinBox_HoughPMinLineLength, QOverload<int>::of(&QSpinBox::valueChanged), this, &LineDetectTabWidget::onLineMinLengthChanged);
-    connect(m_ui->SpinBox_HoughPMaxLineGap, QOverload<int>::of(&QSpinBox::valueChanged), this, &LineDetectTabWidget::onLineMaxGapChanged);
+    // SpinBox直接输入时也触发Pipeline（用信号阻断防止Slider回调时重复触发）
+    connect(m_ui->SpinBox_HoughPThreshold, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int value) {
+        const QSignalBlocker b(m_ui->Slider_HoughPThreshold);
+        onLineThresholdChanged(value);
+    });
+    connect(m_ui->SpinBox_HoughPMinLineLength, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int value) {
+        const QSignalBlocker b(m_ui->Slider_HoughPMinLineLength);
+        onLineMinLengthChanged(value);
+    });
+    connect(m_ui->SpinBox_HoughPMaxLineGap, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int value) {
+        const QSignalBlocker b(m_ui->Slider_HoughPMaxLineGap);
+        onLineMaxGapChanged(value);
+    });
 
     bindSliderAndSpinBox(m_ui->Slider_HoughPThreshold, m_ui->SpinBox_HoughPThreshold);
     bindSliderAndSpinBox(m_ui->Slider_HoughPMinLineLength, m_ui->SpinBox_HoughPMinLineLength);
@@ -174,9 +186,14 @@ void LineDetectTabWidget::handleApply()
         cfg.lineDetect.enabled = false;
         Logger::instance()->info("使用参考线匹配模式检测直线");
     } else {
-        // 普通直线检测模式：禁用参考线匹配
+        // 普通直线检测模式
         cfg.lineDetect.enabled = true;
-        cfg.lineDetect.enableReferenceLineMatch = false;
+        // 如果用户勾选了参考线匹配但参考线无效，提示而不重置勾选状态
+        if (cfg.lineDetect.enableReferenceLineMatch && !cfg.lineDetect.referenceLineValid) {
+            m_ui->label_referenceLineStatus->setText(
+                "状态：参考线未绘制，已切换为普通直线检测模式\n请先绘制参考线再启用参考线匹配");
+            m_ui->label_referenceLineStatus->setStyleSheet("color: #F59E0B;");
+        }
         Logger::instance()->info("使用普通直线检测模式");
     }
     m_pipelineManager->setConfig(cfg);
@@ -225,15 +242,22 @@ void LineDetectTabWidget::onReferenceLineEnabledChanged(bool enabled)
 {
     if (!m_pipelineManager) return;
 
-    {
-        PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
-        cfg.lineDetect.enableReferenceLineMatch = enabled;
-        // 如果启用参考线匹配，禁用普通直线检测
-        if (enabled) {
-            cfg.lineDetect.enabled = false;
-        }
-        m_pipelineManager->setConfig(cfg);
+    PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
+
+    if (enabled && !cfg.lineDetect.referenceLineValid) {
+        // 启用参考线匹配但未绘制参考线，提示用户
+        m_ui->label_referenceLineStatus->setText(
+            "状态：请先点击\"绘制参考线\"按钮在图像上绘制参考线");
+        m_ui->label_referenceLineStatus->setStyleSheet("color: #F59E0B;");
+    } else {
+        m_ui->label_referenceLineStatus->setStyleSheet("");
     }
+
+    cfg.lineDetect.enableReferenceLineMatch = enabled;
+    if (enabled) {
+        cfg.lineDetect.enabled = false;
+    }
+    m_pipelineManager->setConfig(cfg);
 
     updateReferenceLineStatus();
 
@@ -278,18 +302,13 @@ void LineDetectTabWidget::onAngleThresholdChanged(double value)
 {
     if (!m_pipelineManager) return;
 
-    {
-        PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
-        cfg.lineDetect.angleThreshold = value;
-        m_pipelineManager->setConfig(cfg);
-    }
+    PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
+    cfg.lineDetect.angleThreshold = value;
+    m_pipelineManager->setConfig(cfg);
 
-    {
-        PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
-        if (cfg.lineDetect.enableReferenceLineMatch && cfg.lineDetect.referenceLineValid) {
-            if (m_onExecutePipeline) {
-                m_onExecutePipeline();
-            }
+    if (cfg.lineDetect.enableReferenceLineMatch && cfg.lineDetect.referenceLineValid) {
+        if (m_onExecutePipeline) {
+            m_onExecutePipeline();
         }
     }
 }
@@ -298,18 +317,13 @@ void LineDetectTabWidget::onDistanceThresholdChanged(double value)
 {
     if (!m_pipelineManager) return;
 
-    {
-        PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
-        cfg.lineDetect.distanceThreshold = value;
-        m_pipelineManager->setConfig(cfg);
-    }
+    PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
+    cfg.lineDetect.distanceThreshold = value;
+    m_pipelineManager->setConfig(cfg);
 
-    {
-        PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
-        if (cfg.lineDetect.enableReferenceLineMatch && cfg.lineDetect.referenceLineValid) {
-            if (m_onExecutePipeline) {
-                m_onExecutePipeline();
-            }
+    if (cfg.lineDetect.enableReferenceLineMatch && cfg.lineDetect.referenceLineValid) {
+        if (m_onExecutePipeline) {
+            m_onExecutePipeline();
         }
     }
 }
@@ -318,18 +332,13 @@ void LineDetectTabWidget::onSearchRegionWidthChanged(int value)
 {
     if (!m_pipelineManager) return;
 
-    {
-        PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
-        cfg.lineDetect.searchRegionWidth = value;
-        m_pipelineManager->setConfig(cfg);
-    }
+    PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
+    cfg.lineDetect.searchRegionWidth = value;
+    m_pipelineManager->setConfig(cfg);
 
-    {
-        PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
-        if (cfg.lineDetect.enableReferenceLineMatch && cfg.lineDetect.referenceLineValid) {
-            if (m_onExecutePipeline) {
-                m_onExecutePipeline();
-            }
+    if (cfg.lineDetect.enableReferenceLineMatch && cfg.lineDetect.referenceLineValid) {
+        if (m_onExecutePipeline) {
+            m_onExecutePipeline();
         }
     }
 }

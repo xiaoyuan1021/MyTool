@@ -238,42 +238,96 @@ void ImageView::handleReferenceLinePressEvent(QMouseEvent *event)
         QPointF imgPos = viewPosToImagePos(event->pos());
         
         if (m_refLineStartPosImg.isNull()) {
+            // 设置起点
             m_refLineStartPosImg = imgPos;
+            m_referenceLineWaitingConfirm = false;
+            
+            // 显示起点标记
+            showReferenceLineHint("已设置起点，请继续点击设置终点");
+            
             Logger::instance()->info(QString("参考线起点已设置: (%1, %2)，请点击终点")
                 .arg(imgPos.x(), 0, 'f', 1)
                 .arg(imgPos.y(), 0, 'f', 1));
-        } else {
-            if (m_referenceLineItem) {
-                delete m_referenceLineItem;
-                m_referenceLineItem = nullptr;
+        } else if (!m_referenceLineWaitingConfirm) {
+            // 设置终点，显示预览，等待右键确认
+            if (m_refLinePreviewItem) {
+                delete m_refLinePreviewItem;
+                m_refLinePreviewItem = nullptr;
             }
-            
-            m_referenceLineItem = new QGraphicsLineItem(
-                QLineF(m_refLineStartPosImg, imgPos), m_pixmapItem);
             
             QSize imgSize = getImageSize();
             double imageScale = std::max(imgSize.width(), imgSize.height()) / 5000.0;
             double adaptiveWidth = std::max(3.0, imageScale * 4.0);
             
-            QPen linePen(QColor(255, 255, 0), adaptiveWidth, Qt::DashLine);
-            m_referenceLineItem->setPen(linePen);
+            m_refLinePreviewItem = new QGraphicsLineItem(
+                QLineF(m_refLineStartPosImg, imgPos), m_pixmapItem);
+            m_refLinePreviewItem->setPen(QPen(QColor(255, 255, 0), adaptiveWidth, Qt::DashLine));
             
-            cv::Point2f start(m_refLineStartPosImg.x(), m_refLineStartPosImg.y());
-            cv::Point2f end(imgPos.x(), imgPos.y());
-            emit referenceLineDrawn(start, end);
+            m_referenceLineWaitingConfirm = true;
+            showReferenceLineHint("预览线已显示，右键确认绘制 / 左键重新设置终点");
             
-            Logger::instance()->info(QString("参考线绘制完成: 起点(%1,%2) -> 终点(%3,%4)")
-                .arg(start.x, 0, 'f', 1).arg(start.y, 0, 'f', 1)
-                .arg(end.x, 0, 'f', 1).arg(end.y, 0, 'f', 1));
+            Logger::instance()->info(QString("参考线终点已设置: (%1, %2)，右键确认")
+                .arg(imgPos.x(), 0, 'f', 1)
+                .arg(imgPos.y(), 0, 'f', 1));
+        } else {
+            // 已在等待确认状态，左键点击重新设置终点
+            if (m_refLinePreviewItem) {
+                delete m_refLinePreviewItem;
+                m_refLinePreviewItem = nullptr;
+            }
             
-            m_referenceLineMode = false;
+            QSize imgSize = getImageSize();
+            double imageScale = std::max(imgSize.width(), imgSize.height()) / 5000.0;
+            double adaptiveWidth = std::max(3.0, imageScale * 4.0);
+            
+            m_refLinePreviewItem = new QGraphicsLineItem(
+                QLineF(m_refLineStartPosImg, imgPos), m_pixmapItem);
+            m_refLinePreviewItem->setPen(QPen(QColor(255, 255, 0), adaptiveWidth, Qt::DashLine));
+            
+            showReferenceLineHint("预览线已更新，右键确认绘制");
         }
         
         event->accept();
     } else if (event->button() == Qt::RightButton) {
-        m_referenceLineMode = false;
-        m_refLineStartPosImg = QPointF();
-        Logger::instance()->info("参考线绘制已取消");
+        if (m_referenceLineWaitingConfirm && m_refLinePreviewItem) {
+            // 右键确认：将预览线转为正式参考线
+            QLineF line = m_refLinePreviewItem->line();
+            cv::Point2f start(line.p1().x(), line.p1().y());
+            cv::Point2f end(line.p2().x(), line.p2().y());
+            
+            // 创建正式参考线
+            if (m_referenceLineItem) {
+                delete m_referenceLineItem;
+                m_referenceLineItem = nullptr;
+            }
+            
+            QSize imgSize = getImageSize();
+            double imageScale = std::max(imgSize.width(), imgSize.height()) / 5000.0;
+            double adaptiveWidth = std::max(3.0, imageScale * 4.0);
+            
+            m_referenceLineItem = new QGraphicsLineItem(
+                QLineF(m_refLineStartPosImg, QPointF(end.x, end.y)), m_pixmapItem);
+            m_referenceLineItem->setPen(QPen(QColor(0, 255, 0), adaptiveWidth, Qt::SolidLine));
+            
+            // 删除预览线
+            delete m_refLinePreviewItem;
+            m_refLinePreviewItem = nullptr;
+            
+            emit referenceLineDrawn(start, end);
+            
+            Logger::instance()->info(QString("参考线绘制确认: 起点(%1,%2) -> 终点(%3,%4)")
+                .arg(start.x, 0, 'f', 1).arg(start.y, 0, 'f', 1)
+                .arg(end.x, 0, 'f', 1).arg(end.y, 0, 'f', 1));
+            
+            showReferenceLineHint("参考线已确认，可继续操作");
+            m_referenceLineMode = false;
+            m_referenceLineWaitingConfirm = false;
+        } else {
+            // 右键取消（未设置终点时）
+            clearReferenceLine();
+            Logger::instance()->info("参考线绘制已取消");
+        }
+        
         event->accept();
     }
 }
@@ -409,6 +463,26 @@ void ImageView::mouseMoveEvent(QMouseEvent *event)
         QPointF curImgPos = viewPosToImagePos(event->pos());
         QRectF rect(m_rectStartPosImg, curImgPos);
         m_rectItem->setRect(rect.normalized());
+        event->accept();
+        return;
+    }
+
+    // 参考线绘制中：显示预览线
+    if (m_referenceLineMode && !m_refLineStartPosImg.isNull() && !m_referenceLineWaitingConfirm)
+    {
+        QPointF curImgPos = viewPosToImagePos(event->pos());
+        
+        if (m_refLinePreviewItem) {
+            m_refLinePreviewItem->setLine(QLineF(m_refLineStartPosImg, curImgPos));
+        } else {
+            QSize imgSize = getImageSize();
+            double imageScale = std::max(imgSize.width(), imgSize.height()) / 5000.0;
+            double adaptiveWidth = std::max(3.0, imageScale * 4.0);
+            
+            m_refLinePreviewItem = new QGraphicsLineItem(
+                QLineF(m_refLineStartPosImg, curImgPos), m_pixmapItem);
+            m_refLinePreviewItem->setPen(QPen(QColor(255, 255, 0, 128), adaptiveWidth, Qt::DashLine));
+        }
         event->accept();
         return;
     }
@@ -705,6 +779,7 @@ void ImageView::clearRectangleDrawing()
 void ImageView::startReferenceLineDrawing()
 {
     m_referenceLineMode = true;
+    m_referenceLineWaitingConfirm = false;
     m_refLineStartPosImg = QPointF();
     
     // 清除旧的参考线
@@ -712,19 +787,52 @@ void ImageView::startReferenceLineDrawing()
         delete m_referenceLineItem;
         m_referenceLineItem = nullptr;
     }
+    if (m_refLinePreviewItem) {
+        delete m_refLinePreviewItem;
+        m_refLinePreviewItem = nullptr;
+    }
     
-    Logger::instance()->info("请在图像上点击绘制参考线起点");
+    // 显示提示文字
+    showReferenceLineHint("请左键点击设置参考线起点");
+    
+    Logger::instance()->info("参考线绘制模式已启动，请点击设置起点");
 }
 
 void ImageView::clearReferenceLine()
 {
     m_referenceLineMode = false;
+    m_referenceLineWaitingConfirm = false;
     m_refLineStartPosImg = QPointF();
     
     if (m_referenceLineItem) {
         delete m_referenceLineItem;
         m_referenceLineItem = nullptr;
     }
+    if (m_refLinePreviewItem) {
+        delete m_refLinePreviewItem;
+        m_refLinePreviewItem = nullptr;
+    }
+    if (m_refLineHintItem) {
+        delete m_refLineHintItem;
+        m_refLineHintItem = nullptr;
+    }
+}
+
+void ImageView::showReferenceLineHint(const QString& text)
+{
+    if (m_refLineHintItem) {
+        delete m_refLineHintItem;
+        m_refLineHintItem = nullptr;
+    }
+    
+    m_refLineHintItem = new QGraphicsTextItem(m_pixmapItem);
+    m_refLineHintItem->setPlainText(text);
+    m_refLineHintItem->setDefaultTextColor(QColor(255, 200, 0));
+    QFont f("Microsoft YaHei", 12);
+    f.setBold(true);
+    m_refLineHintItem->setFont(f);
+    m_refLineHintItem->setPos(10, 10);
+    m_refLineHintItem->setZValue(100);
 }
 
 void ImageView::resetZoom()
