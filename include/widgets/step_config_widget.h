@@ -13,6 +13,7 @@
 #include "config/pipeline_config.h"
 #include "widgets/i_tab_interfaces.h"
 
+class QLabel;
 class PipelineManager;
 
 /**
@@ -55,10 +56,14 @@ private:
         QStringList   tabNames;          // 勾选后要显示的Tab名
         QList<int>    backendIndices;    // stepEnabled[] 下标（-1 = 无对应）
         bool          alwaysOn = false;  // 始终勾选且不可拖拽
+        const char*   icon = "";         // 步骤图标（Unicode符号）
+        const char*   description = "";  // 步骤描述
+        const char*   color = "#4FACFE"; // 步骤主题色
     };
 
     void setupUI();
     void rebuildStepItems();
+    void updatePipelinePreview();
     QStringList collectEnabledTabNames();
     void applyTabVisibility();
     int  entryIndexForFrame(QObject* obj) const;
@@ -68,8 +73,9 @@ private:
     static const int       kStepCount;
 
     PipelineManager*         m_pipelineManager = nullptr;
-    std::function<void()> m_onExecutePipeline;
+    std::function<void()>    m_onExecutePipeline;
     QPushButton*             m_applyBtn = nullptr;
+    QLabel*                  m_previewStepsLabel = nullptr;
 
     QWidget*                 m_stepContainer = nullptr;
     QVBoxLayout*             m_stepLayout = nullptr;
