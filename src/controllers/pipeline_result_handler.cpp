@@ -4,6 +4,7 @@
 #include "widgets/i_tab_interfaces.h"
 #include "widgets/object_detection_tab_widget.h"
 #include "logger.h"
+#include "utils/benchmark.h"
 
 PipelineResultHandler::PipelineResultHandler(QObject *parent)
     : QObject(parent)
@@ -34,16 +35,22 @@ void PipelineResultHandler::onPipelineResult(const PipelineResult& result)
         // 通过 IResultUpdatable 接口分发结果
         distributeResults(ctx);
 
-        // 目标检测特殊处理（不走 Pipeline）
-        handleObjectDetection(displayImage);
+        // 目标检测特殊处理（不走 Pipeline），单独计时
+        double pipelineMs = result.elapsedMs();
+        double detectionMs = 0;
+        {
+            BenchmarkTimer t("ObjectDetection", &detectionMs);
+            handleObjectDetection(displayImage);
+        }
 
         if (m_imageView) {
             QImage qimg = ImageUtils::matToQImage(displayImage);
             m_imageView->setImage(qimg);
         }
 
-        // 显示处理时间
-        QString msg = QString("处理完成 (%1 ms)").arg(result.elapsedMs(), 0, 'f', 1);
+        // 显示总处理时间（Pipeline + 目标检测）
+        double totalMs = pipelineMs + detectionMs;
+        QString msg = QString("处理完成 (%1 ms)").arg(totalMs, 0, 'f', 1);
         emit statusMessage(msg, 2000);
     } catch (const cv::Exception& ex) {
         qDebug() << "[PipelineResult] OpenCV错误:" << ex.what();

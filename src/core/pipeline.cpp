@@ -88,6 +88,7 @@ void Pipeline::run(PipelineContext& ctx)
         if (step) {
             // 根据当前配置的 stepEnabled 跳过未启用的步骤
             if (ctx.config && !ctx.config->stepEnabled[static_cast<int>(step->stepType())]) {
+                qDebug() << "[Pipeline] 步骤" << i << "已禁用，跳过";
                 continue;
             }
             step->run(ctx);
