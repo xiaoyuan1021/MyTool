@@ -40,35 +40,19 @@ EnhanceTabWidget::EnhanceTabWidget(PipelineManager* pipelineManager, QWidget* pa
     m_ui->spinBox_sharpen->setValue(100);
     bindSliderAndSpinBox(m_ui->Slider_sharpen, m_ui->spinBox_sharpen);
 
+    // 所有 slider 变化统一走 onSliderChanged
+    connect(m_ui->Slider_brightness, &QSlider::valueChanged, this, &EnhanceTabWidget::onSliderChanged);
+    connect(m_ui->Slider_contrast, &QSlider::valueChanged, this, &EnhanceTabWidget::onSliderChanged);
+    connect(m_ui->Slider_gamma, &QSlider::valueChanged, this, &EnhanceTabWidget::onSliderChanged);
+    connect(m_ui->Slider_sharpen, &QSlider::valueChanged, this, &EnhanceTabWidget::onSliderChanged);
+
     m_enhancementHistory.push(captureState());
     updateUndoUi();
 }
 
-void EnhanceTabWidget::on_Slider_brightness_valueChanged(int value)
+void EnhanceTabWidget::onSliderChanged()
 {
-    Q_UNUSED(value);
-    syncConfigToPipeline(false);
-    previewEnhance();
-}
-
-void EnhanceTabWidget::on_Slider_contrast_valueChanged(int value)
-{
-    Q_UNUSED(value);
-    syncConfigToPipeline(false);
-    previewEnhance();
-}
-
-void EnhanceTabWidget::on_Slider_gamma_valueChanged(int value)
-{
-    Q_UNUSED(value);
-    syncConfigToPipeline(false);
-    previewEnhance();
-}
-
-void EnhanceTabWidget::on_Slider_sharpen_valueChanged(int value)
-{
-    Q_UNUSED(value);
-    syncConfigToPipeline(false);
+    syncConfigToPipeline();
     previewEnhance();
 }
 
@@ -92,9 +76,7 @@ void EnhanceTabWidget::on_btn_saveBC_clicked()
 {
     EnhancementState current = captureState();
     pushSnapshot(current);
-    syncConfigToPipeline(false);
-    // 仅保存配置到 PipelineManager，不触发 Pipeline 执行
-    // 用户需要手动触发 Pipeline 执行
+    syncConfigToPipeline();
 }
 
 void EnhanceTabWidget::on_btn_undoBC_clicked()
@@ -179,7 +161,7 @@ void EnhanceTabWidget::updateUndoUi()
     m_ui->btn_undoBC->setEnabled(hasSnapshot && canStepBack);
 }
 
-void EnhanceTabWidget::syncConfigToPipeline(bool emitSignal)
+void EnhanceTabWidget::syncConfigToPipeline()
 {
     EnhancementState current = captureState();
     PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
@@ -188,11 +170,6 @@ void EnhanceTabWidget::syncConfigToPipeline(bool emitSignal)
     cfg.enhance.gamma = current.gamma;
     cfg.enhance.sharpen = current.sharpen;
     m_pipelineManager->setConfig(cfg);
-    
-    // 通知外部将配置回写到当前ROI，防止ROI之间配置串扰
-    if (emitSignal) {
-        emit enhanceConfigChanged();
-    }
 }
 
 void EnhanceTabWidget::previewEnhance()
@@ -290,18 +267,15 @@ void EnhanceTabWidget::applyStateQuiet(const EnhancementState &state)
     m_pipelineManager->setConfig(cfg);
 }
 
-void EnhanceTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
-                                      ImageView* view, RoiUiController* roiCtrl,
-                                      std::function<void()> onConfigChanged,
-                                      std::function<void()> onExecuteRequested)
+void EnhanceTabWidget::connectSignals(const SignalContext& ctx,
+                                      std::function<void()> onExecutePipeline,
+                                      std::function<void()> onConfigSaved)
 {
-    Q_UNUSED(pm);
-    m_view = view;
-    m_roiManager = rm;
-    connect(this, &EnhanceTabWidget::enhanceConfigChanged,
-            this, [onConfigChanged]() { onConfigChanged(); });
+    Q_UNUSED(onConfigSaved);
+    m_view = ctx.view;
+    m_roiManager = ctx.roiManager;
     connect(this, &EnhanceTabWidget::processRequested,
-            this, [onExecuteRequested]() { onExecuteRequested(); });
+            this, [onExecutePipeline]() { onExecutePipeline(); });
 }
 
 // ========== IConfigurableTab 接口实现 ==========

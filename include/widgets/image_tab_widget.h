@@ -17,10 +17,9 @@ public:
     explicit ImageTabWidget(PipelineManager* pipelineManager, QWidget* parent = nullptr);
     ~ImageTabWidget();
 
-    void connectSignals(PipelineManager* pm, RoiManager* rm,
-                        ImageView* view, RoiUiController* roiCtrl,
-                        std::function<void()> onConfigChanged,
-                        std::function<void()> onExecuteRequested) override;
+    void connectSignals(const SignalContext& ctx,
+                        std::function<void()> onExecutePipeline,
+                        std::function<void()> onConfigSaved = nullptr) override;
 
 signals:
     void channelChanged(int channel);

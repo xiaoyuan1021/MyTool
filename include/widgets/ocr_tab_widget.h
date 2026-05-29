@@ -25,13 +25,11 @@ public:
     // IResultUpdatable 接口实现
     void updateFromPipeline(const PipelineContext& ctx) override;
 
-    void connectSignals(PipelineManager* pm, RoiManager* rm,
-                        ImageView* view, RoiUiController* roiCtrl,
-                        std::function<void()> onConfigChanged,
-                        std::function<void()> onExecuteRequested) override;
+    void connectSignals(const SignalContext& ctx,
+                        std::function<void()> onExecutePipeline,
+                        std::function<void()> onConfigSaved = nullptr) override;
 
 signals:
-    void ocrConfigChanged();
     void processRequested();
 
 private slots:
@@ -41,7 +39,7 @@ private slots:
 
 private:
     void setupUI();
-    void syncConfigToPipeline(bool emitSignal = true);
+    void syncConfigToPipeline();
     void clearResults();
     void updateRegionsTable(const QVector<OcrRegion>& regions);
 

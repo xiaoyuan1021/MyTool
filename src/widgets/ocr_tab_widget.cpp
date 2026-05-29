@@ -99,7 +99,7 @@ void OcrTabWidget::setupUI()
 
     // 连接信号（切换排列模式时同步配置，不自动触发识别）
     connect(m_pageModeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this, [this]() { syncConfigToPipeline(false); });
+            this, [this]() { syncConfigToPipeline(); });
 }
 
 void OcrTabWidget::onRecognizeClicked()
@@ -139,17 +139,13 @@ void OcrTabWidget::onResetClicked()
     syncConfigToPipeline();
 }
 
-void OcrTabWidget::syncConfigToPipeline(bool emitSignal)
+void OcrTabWidget::syncConfigToPipeline()
 {
     if (!m_pipelineManager) return;
 
     m_pipelineManager->updateConfig([&](PipelineConfig& cfg) {
         cfg.ocr.pageMode = m_pageModeCombo->currentData().toInt();
     });
-
-    if (emitSignal) {
-        emit ocrConfigChanged();
-    }
 }
 
 void OcrTabWidget::clearResults()
@@ -177,26 +173,19 @@ void OcrTabWidget::loadFromConfig(const PipelineConfig& config)
     }
 }
 
-void OcrTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
-                                  ImageView* view, RoiUiController* roiCtrl,
-                                  std::function<void()> onConfigChanged,
-                                  std::function<void()> onExecuteRequested)
+void OcrTabWidget::connectSignals(const SignalContext& ctx,
+                                  std::function<void()> onExecutePipeline,
+                                  std::function<void()> onConfigSaved)
 {
-    Q_UNUSED(pm);
-    Q_UNUSED(view);
-    Q_UNUSED(roiCtrl);
+    Q_UNUSED(onConfigSaved);
 
     // 图片切换时清空上次识别结果，防止旧图结果自动显示在新图Tab中
-    if (rm) {
-        connect(rm, &RoiManager::currentImageChanged, this, &OcrTabWidget::clearResults);
+    if (ctx.roiManager) {
+        connect(ctx.roiManager, &RoiManager::currentImageChanged, this, &OcrTabWidget::clearResults);
     }
 
-    connect(this, &OcrTabWidget::processRequested, this, [onExecuteRequested]() {
-        if (onExecuteRequested) onExecuteRequested();
-    });
-
-    connect(this, &OcrTabWidget::ocrConfigChanged, this, [onConfigChanged]() {
-        if (onConfigChanged) onConfigChanged();
+    connect(this, &OcrTabWidget::processRequested, this, [onExecutePipeline]() {
+        if (onExecutePipeline) onExecutePipeline();
     });
 }
 

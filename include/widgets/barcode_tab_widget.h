@@ -41,10 +41,9 @@ public:
     // IResultUpdatable 接口实现
     void updateFromPipeline(const PipelineContext& ctx) override;
 
-    void connectSignals(PipelineManager* pm, RoiManager* rm,
-                        ImageView* view, RoiUiController* roiCtrl,
-                        std::function<void()> onConfigChanged,
-                        std::function<void()> onExecuteRequested) override;
+    void connectSignals(const SignalContext& ctx,
+                        std::function<void()> onExecutePipeline,
+                        std::function<void()> onConfigSaved = nullptr) override;
 
 private:
     PipelineManager* m_pipelineManager;

@@ -64,16 +64,16 @@ StepConfigWidget::StepConfigWidget(PipelineManager* pipelineManager,
     rebuildStepItems();
 }
 
-void StepConfigWidget::connectSignals(PipelineManager* pm, RoiManager*,
-                                      ImageView*, RoiUiController* roiCtrl,
-                                      std::function<void()> requestRefresh,
-                                      std::function<void()>)
+void StepConfigWidget::connectSignals(const SignalContext& ctx,
+                                      std::function<void()> onExecutePipeline,
+                                      std::function<void()> onConfigSaved)
 {
-    m_pipelineManager = pm;
-    m_requestRefresh = std::move(requestRefresh);
+    Q_UNUSED(onConfigSaved);
+    m_pipelineManager = ctx.pipelineManager;
+    m_onExecutePipeline = std::move(onExecutePipeline);
 
-    if (roiCtrl) {
-        connect(roiCtrl, &RoiUiController::roiPipelineConfigChanged,
+    if (ctx.roiCtrl) {
+        connect(ctx.roiCtrl, &RoiUiController::roiPipelineConfigChanged,
                 this, [this](const PipelineConfig&) {
             rebuildStepItems();
         });
@@ -402,7 +402,7 @@ void StepConfigWidget::onApplyClicked()
 
     // ---- 5) 触发刷新 ----
     emit stepConfigChanged();
-    if (m_requestRefresh) m_requestRefresh();
+    if (m_onExecutePipeline) m_onExecutePipeline();
 }
 
 // ========== Tab 管理 ==========

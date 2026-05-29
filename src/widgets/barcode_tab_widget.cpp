@@ -186,16 +186,14 @@ void BarcodeTabWidget::handleApply()
     emit requestApplyBarcodeSettings();
 }
 
-void BarcodeTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
-                                      ImageView* view, RoiUiController* roiCtrl,
-                                      std::function<void()> onConfigChanged,
-                                      std::function<void()> onExecuteRequested)
+void BarcodeTabWidget::connectSignals(const SignalContext& ctx,
+                                      std::function<void()> onExecutePipeline,
+                                      std::function<void()> onConfigSaved)
 {
-    Q_UNUSED(pm); Q_UNUSED(rm); Q_UNUSED(view); Q_UNUSED(roiCtrl);
-    Q_UNUSED(onConfigChanged);
+    Q_UNUSED(ctx); Q_UNUSED(onConfigSaved);
     // 条码识别需要用户点击"应用"按钮才执行，不使用自动预览
     connect(this, &BarcodeTabWidget::requestApplyBarcodeSettings,
-            this, onExecuteRequested);
+            this, onExecutePipeline);
 }
 
 // ========== IConfigurableTab 接口实现 ==========

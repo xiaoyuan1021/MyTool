@@ -344,12 +344,8 @@ void MainWindow::setupControllerConnections()
             auto* connectable = dynamic_cast<ISignalConnectable*>(widget);
             if (connectable) {
                 connectable->connectSignals(
-                    m_pipelineManager, &m_roiManager, m_view, m_roiUiController,
-                    [this]() { 
-                        // 配置参数变化：始终执行pipeline以实时预览
-                        requestRefresh();
-                    },
-                    [this]() { 
+                    {m_pipelineManager, &m_roiManager, m_view, m_roiUiController},
+                    [this]() {
                         // 用户主动请求执行：切换到执行模式
                         m_pipelineMode = PipelineMode::Execute;
                         requestRefresh();

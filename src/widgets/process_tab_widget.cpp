@@ -258,12 +258,11 @@ void ProcessTabWidget::loadAlgorithmParameters(int index)
     m_loadingParameters = false;
 }
 
-void ProcessTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
-                                      ImageView* view, RoiUiController* roiCtrl,
-                                      std::function<void()> onConfigChanged,
-                                      std::function<void()> onExecuteRequested)
+void ProcessTabWidget::connectSignals(const SignalContext& ctx,
+                                      std::function<void()> onExecutePipeline,
+                                      std::function<void()> onConfigSaved)
 {
-    Q_UNUSED(pm); Q_UNUSED(rm); Q_UNUSED(view); Q_UNUSED(roiCtrl); Q_UNUSED(onExecuteRequested);
+    Q_UNUSED(ctx); Q_UNUSED(onConfigSaved);
     connect(this, &ProcessTabWidget::algorithmChanged,
-            this, [onConfigChanged]() { onConfigChanged(); });
+            this, [onExecutePipeline]() { onExecutePipeline(); });
 }

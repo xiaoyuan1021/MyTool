@@ -55,17 +55,16 @@ void ImageTabWidget::on_comboBox_channels_currentIndexChanged(int index)
     
 }
 
-void ImageTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
-                                    ImageView* view, RoiUiController* roiCtrl,
-                                    std::function<void()> onConfigChanged,
-                                    std::function<void()> onExecuteRequested)
+void ImageTabWidget::connectSignals(const SignalContext& ctx,
+                                    std::function<void()> onExecutePipeline,
+                                    std::function<void()> onConfigSaved)
 {
     connect(this, &ImageTabWidget::channelChanged,
-            this, [pm, onConfigChanged](int channel) {
-                pm->updateConfig([channel](PipelineConfig& cfg) {
+            this, [ctx, onExecutePipeline](int channel) {
+                ctx.pipelineManager->updateConfig([channel](PipelineConfig& cfg) {
                     cfg.colorFilter.channel = static_cast<ChannelMode>(channel);
                 });
-                onConfigChanged();
+                onExecutePipeline();
             });
 }
 

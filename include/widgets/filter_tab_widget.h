@@ -22,10 +22,9 @@ public:
     void saveToConfig(PipelineConfig& config) const override;
     void loadFromConfig(const PipelineConfig& config) override;
 
-    void connectSignals(PipelineManager* pm, RoiManager* rm,
-                        ImageView* view, RoiUiController* roiCtrl,
-                         std::function<void()> onConfigChanged,
-                         std::function<void()> onExecuteRequested) override;
+    void connectSignals(const SignalContext& ctx,
+                        std::function<void()> onExecutePipeline,
+                        std::function<void()> onConfigSaved = nullptr) override;
 
 signals:
     void filterConfigChanged();

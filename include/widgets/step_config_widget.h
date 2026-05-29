@@ -34,10 +34,9 @@ public:
     explicit StepConfigWidget(PipelineManager* pipelineManager,
                               QWidget* parent = nullptr);
 
-    void connectSignals(PipelineManager* pm, RoiManager* rm,
-                        ImageView* view, RoiUiController* roiCtrl,
-                        std::function<void()> requestRefresh,
-                        std::function<void()> processAndDisplay) override;
+    void connectSignals(const SignalContext& ctx,
+                        std::function<void()> onExecutePipeline,
+                        std::function<void()> onConfigSaved = nullptr) override;
 
 signals:
     void stepConfigChanged();
@@ -69,7 +68,7 @@ private:
     static const int       kStepCount;
 
     PipelineManager*         m_pipelineManager = nullptr;
-    std::function<void()>    m_requestRefresh;
+    std::function<void()> m_onExecutePipeline;
     QPushButton*             m_applyBtn = nullptr;
 
     QWidget*                 m_stepContainer = nullptr;

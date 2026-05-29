@@ -489,13 +489,11 @@ void TemplateTabWidget::updateUIState(bool hasTemplate)
     }
 }
 
-void TemplateTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
-                                       ImageView* view, RoiUiController* roiCtrl,
-                                       std::function<void()> requestRefresh,
-                                       std::function<void()> processAndDisplay)
+void TemplateTabWidget::connectSignals(const SignalContext& ctx,
+                                       std::function<void()> onExecutePipeline,
+                                       std::function<void()> onConfigSaved)
 {
-    Q_UNUSED(pm); Q_UNUSED(roiCtrl); Q_UNUSED(requestRefresh);
-    Q_UNUSED(processAndDisplay);
+    Q_UNUSED(onExecutePipeline); Q_UNUSED(onConfigSaved);
     connect(this, &TemplateTabWidget::imageToShow,
             this, [this](const cv::Mat& img) {
                 if (!img.empty() && m_view) {

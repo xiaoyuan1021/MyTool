@@ -273,21 +273,20 @@ void VideoTabWidget::updateProgress()
     m_isUpdatingProgress = false;
 }
 
-void VideoTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
-                                    ImageView* view, RoiUiController* roiCtrl,
-                                    std::function<void()> requestRefresh,
-                                    std::function<void()> processAndDisplay)
+void VideoTabWidget::connectSignals(const SignalContext& ctx,
+                                    std::function<void()> onExecutePipeline,
+                                    std::function<void()> onConfigSaved)
 {
+    Q_UNUSED(onConfigSaved);
     connect(this, &VideoTabWidget::videoFrameReady,
-            this, [rm, view, requestRefresh, processAndDisplay](const cv::Mat& frame) {
+            this, [rm = ctx.roiManager, view = ctx.view, onExecutePipeline](const cv::Mat& frame) {
                 if (!frame.empty()) {
                     rm->setFullImage(frame);
                     view->clearRoi();
                     // 直接将视频帧显示到画布上
                     view->setImage(ImageUtils::matToQImage(frame));
                     // 设置脏标记并立即触发Pipeline处理
-                    requestRefresh();
-                    processAndDisplay();
+                    onExecutePipeline();
                 }
             });
 }

@@ -262,12 +262,11 @@ void ObjectDetectionTabWidget::updateDetectionResults(const std::vector<Detectio
     m_ui->label_status->setText(QString("状态：检测到 %1 个目标").arg(results.size()));
 }
 
-void ObjectDetectionTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
-                                              ImageView* view, RoiUiController* roiCtrl,
-                                              std::function<void()> onConfigChanged,
-                                              std::function<void()> onExecuteRequested)
+void ObjectDetectionTabWidget::connectSignals(const SignalContext& ctx,
+                                              std::function<void()> onExecutePipeline,
+                                              std::function<void()> onConfigSaved)
 {
-    Q_UNUSED(pm); Q_UNUSED(rm); Q_UNUSED(view); Q_UNUSED(roiCtrl); Q_UNUSED(onExecuteRequested);
+    Q_UNUSED(ctx); Q_UNUSED(onConfigSaved);
     connect(this, &ObjectDetectionTabWidget::detectionConfigChanged,
-            this, [onConfigChanged]() { onConfigChanged(); });
+            this, [onExecutePipeline]() { onExecutePipeline(); });
 }

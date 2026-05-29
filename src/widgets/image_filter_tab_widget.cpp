@@ -319,21 +319,18 @@ void ImageFilterTabWidget::loadFromConfig(const PipelineConfig& config)
     updateParamVisibility();
 }
 
-void ImageFilterTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
-                                          ImageView* view, RoiUiController* roiCtrl,
-                                          std::function<void()> onConfigChanged,
-                                          std::function<void()> onExecuteRequested)
+void ImageFilterTabWidget::connectSignals(const SignalContext& ctx,
+                                          std::function<void()> onExecutePipeline,
+                                          std::function<void()> onConfigSaved)
 {
-    Q_UNUSED(rm);
-    Q_UNUSED(view);
-    Q_UNUSED(roiCtrl);
+    Q_UNUSED(onConfigSaved);
 
-    connect(this, &ImageFilterTabWidget::processRequested, this, [onExecuteRequested]() {
-        if (onExecuteRequested) onExecuteRequested();
+    connect(this, &ImageFilterTabWidget::processRequested, this, [onExecutePipeline]() {
+        if (onExecutePipeline) onExecutePipeline();
     });
 
-    connect(this, &ImageFilterTabWidget::filterConfigChanged, this, [onConfigChanged]() {
-        if (onConfigChanged) onConfigChanged();
+    connect(this, &ImageFilterTabWidget::filterConfigChanged, this, [onExecutePipeline]() {
+        if (onExecutePipeline) onExecutePipeline();
     });
 }
 

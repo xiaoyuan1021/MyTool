@@ -35,10 +35,9 @@ public:
 
     void initialize();
 
-    void connectSignals(PipelineManager* pm, RoiManager* rm,
-                        ImageView* view, RoiUiController* roiCtrl,
-                        std::function<void()> requestRefresh,
-                        std::function<void()> processAndDisplay) override;
+    void connectSignals(const SignalContext& ctx,
+                        std::function<void()> onExecutePipeline,
+                        std::function<void()> onConfigSaved = nullptr) override;
 
     // 策略管理
     void setMatchType(MatchType type);

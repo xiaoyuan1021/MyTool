@@ -30,26 +30,15 @@ public:
     void saveToConfig(PipelineConfig& config) const override;
     void loadFromConfig(const PipelineConfig& config) override;
 
-    void connectSignals(PipelineManager* pm, RoiManager* rm,
-                        ImageView* view, RoiUiController* roiCtrl,
-                        std::function<void()> onConfigChanged,
-                        std::function<void()> onExecuteRequested) override;
+    void connectSignals(const SignalContext& ctx,
+                        std::function<void()> onExecutePipeline,
+                        std::function<void()> onConfigSaved = nullptr) override;
 
 signals:
-    void brightnessChanged(int);
-    void contrastChanged(int);
-    void gammaChanged(int);
-    void sharpenChanged(int);
     void processRequested();
-    /** 增强参数变化时触发，用于通知外部将配置回写到当前ROI */
-    void enhanceConfigChanged();
 
 private slots:
-
-    void on_Slider_brightness_valueChanged(int value);
-    void on_Slider_contrast_valueChanged(int value);
-    void on_Slider_gamma_valueChanged(int value);
-    void on_Slider_sharpen_valueChanged(int value);
+    void onSliderChanged();
     void on_btn_resetBC_clicked();
     void on_btn_saveBC_clicked();
     void on_btn_undoBC_clicked();
@@ -64,7 +53,7 @@ private:
     void applyStateQuiet(const EnhancementState& state);
     void pushSnapshot(const EnhancementState& state);
     void updateUndoUi();
-    void syncConfigToPipeline(bool emitSignal = true);
+    void syncConfigToPipeline();
     /// 轻量预览：仅对基图做增强处理并更新画布，不执行完整 Pipeline
     void previewEnhance();
     

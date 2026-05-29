@@ -27,10 +27,9 @@ public:
     void saveToConfig(PipelineConfig& config) const override;
     void loadFromConfig(const PipelineConfig& config) override;
 
-    void connectSignals(PipelineManager* pm, RoiManager* rm,
-                        ImageView* view, RoiUiController* roiCtrl,
-                        std::function<void()> requestRefresh,
-                        std::function<void()> processAndDisplay) override;
+    void connectSignals(const SignalContext& ctx,
+                        std::function<void()> onExecutePipeline,
+                        std::function<void()> onConfigSaved = nullptr) override;
 
 signals:
     /// 判定参数变化信号（min/max值改变时触发，用于同步到DetectionItem.config）

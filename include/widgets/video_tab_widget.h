@@ -22,10 +22,9 @@ public:
     // 获取视频管理器实例
     VideoManager* getVideoManager() const { return m_videoManager; }
 
-    void connectSignals(PipelineManager* pm, RoiManager* rm,
-                        ImageView* view, RoiUiController* roiCtrl,
-                        std::function<void()> requestRefresh,
-                        std::function<void()> processAndDisplay) override;
+    void connectSignals(const SignalContext& ctx,
+                        std::function<void()> onExecutePipeline,
+                        std::function<void()> onConfigSaved = nullptr) override;
 
 signals:
     void videoFrameReady(const cv::Mat& frame);

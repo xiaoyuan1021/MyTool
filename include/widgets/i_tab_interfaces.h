@@ -30,21 +30,28 @@ public:
 // ISignalConnectable — Tab Widget 信号连接接口
 // ============================================================
 
+/// Tab 信号连接所需的依赖上下文
+struct SignalContext {
+    PipelineManager* pipelineManager;
+    RoiManager* roiManager;
+    ImageView* view;
+    RoiUiController* roiCtrl;
+};
+
 /**
  * @brief 每个需要与外部模块建立信号连接的 Tab Widget 都应实现此接口。
- * 
+ *
  * 回调说明：
- * - onConfigChanged: 配置参数变化时调用，用于更新预览（不执行pipeline）
- * - onExecuteRequested: 用户主动请求执行时调用
+ * - onExecutePipeline: 用户主动触发 Pipeline 执行（切换到 Execute 模式）
+ * - onConfigSaved: 配置保存到 PipelineManager（不触发 Pipeline）
  */
 class ISignalConnectable
 {
 public:
     virtual ~ISignalConnectable() = default;
-    virtual void connectSignals(PipelineManager* pm, RoiManager* rm,
-                                ImageView* view, RoiUiController* roiCtrl,
-                                std::function<void()> onConfigChanged,
-                                std::function<void()> onExecuteRequested) = 0;
+    virtual void connectSignals(const SignalContext& ctx,
+                                std::function<void()> onExecutePipeline,
+                                std::function<void()> onConfigSaved = nullptr) = 0;
 };
 
 // ============================================================

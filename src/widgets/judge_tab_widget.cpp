@@ -92,14 +92,13 @@ void JudgeTabWidget::onJudgeValueChanged()
     emit judgeConfigChanged(minCount, maxCount);
 }
 
-void JudgeTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
-                                    ImageView* view, RoiUiController* roiCtrl,
-                                    std::function<void()> requestRefresh,
-                                    std::function<void()> processAndDisplay)
+void JudgeTabWidget::connectSignals(const SignalContext& ctx,
+                                    std::function<void()> onExecutePipeline,
+                                    std::function<void()> onConfigSaved)
 {
-    Q_UNUSED(pm); Q_UNUSED(rm); Q_UNUSED(view); Q_UNUSED(requestRefresh); Q_UNUSED(processAndDisplay);
+    Q_UNUSED(onExecutePipeline); Q_UNUSED(onConfigSaved);
     connect(this, &JudgeTabWidget::judgeConfigChanged,
-            roiCtrl, &RoiUiController::updateBlobDetectionConfig);
+            ctx.roiCtrl, &RoiUiController::updateBlobDetectionConfig);
 }
 
 // ========== IConfigurableTab 接口实现 ==========

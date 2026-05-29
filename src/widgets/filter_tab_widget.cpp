@@ -268,14 +268,13 @@ void FilterTabWidget::setFilterConfig(int mode, int grayLow, int grayHigh)
     m_ui->spinBox_grayHigh->setValue(grayHigh);
 }
 
-void FilterTabWidget::connectSignals(PipelineManager* pm, RoiManager* rm,
-                                     ImageView* view, RoiUiController* roiCtrl,
-                                     std::function<void()> onConfigChanged,
-                                     std::function<void()> onExecuteRequested)
+void FilterTabWidget::connectSignals(const SignalContext& ctx,
+                                     std::function<void()> onExecutePipeline,
+                                     std::function<void()> onConfigSaved)
 {
-    Q_UNUSED(pm); Q_UNUSED(rm); Q_UNUSED(view); Q_UNUSED(roiCtrl);
+    Q_UNUSED(ctx); Q_UNUSED(onConfigSaved);
     connect(this, &FilterTabWidget::filterConfigChanged,
-            this, [onConfigChanged]() { onConfigChanged(); });
+            this, [onExecutePipeline]() { onExecutePipeline(); });
 }
 
 // ========== IConfigurableTab 接口实现 ==========

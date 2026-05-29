@@ -24,14 +24,13 @@ public:
     // IResultUpdatable 接口实现
     void updateFromPipeline(const PipelineContext& ctx) override;
 
-    void connectSignals(PipelineManager* pm, RoiManager* rm,
-                        ImageView* view, RoiUiController* roiCtrl,
-                        std::function<void()> onConfigChanged,
-                        std::function<void()> onExecuteRequested) override;
+    void connectSignals(const SignalContext& ctx,
+                        std::function<void()> onExecutePipeline,
+                        std::function<void()> onConfigSaved = nullptr) override;
 
 private:
     PipelineManager* m_pipelineManager;
-    std::function<void()> m_onConfigChanged;
+    std::function<void()> m_onExecutePipeline;
     Ui::LineTabForm* m_ui;
 
     // 复用 LineDetectConfig 类型定义（独立实例，不影响其他 Config）
