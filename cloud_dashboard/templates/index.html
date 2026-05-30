@@ -1781,6 +1781,7 @@
 
         // ===== SSE =====
         let resultCount = 0;
+        let initialResultsLoaded = false;
 
         function connectSSE() {
             // Close existing connection before creating new one
@@ -1811,7 +1812,6 @@
 
             evtSource.addEventListener('result', function(e) {
                 const data = JSON.parse(e.data);
-                resultCount++;
                 addResultRow(data);
                 updateStats(data);
 
@@ -1823,6 +1823,7 @@
                     statsFetchPending = true;
                     setTimeout(() => {
                         fetchStats();
+                        fetchTodayStats();
                         statsFetchPending = false;
                     }, 2000);
                 }
@@ -1873,6 +1874,7 @@
                 tbody.removeChild(tbody.lastChild);
             }
 
+            resultCount++;
             document.getElementById('resultCount').textContent = resultCount + ' 条';
 
             // Remove highlight after animation
@@ -1894,7 +1896,6 @@
             document.getElementById('statFailed').textContent = localFailed;
             const rate = localTotal > 0 ? (localPassed / localTotal * 100).toFixed(1) : 0;
             document.getElementById('statPassRate').textContent = rate;
-            document.getElementById('statToday').textContent = localTotal;
         }
 
         function syncLocalStats(serverTotal, serverPassed, serverFailed) {
@@ -1914,7 +1915,6 @@
                     document.getElementById('statFailed').textContent = s.failed;
                     document.getElementById('statDevices').textContent = s.onlineCount;
                     document.getElementById('statTotalDevices').textContent = s.deviceCount;
-                    document.getElementById('statToday').textContent = s.total;
                 })
                 .catch(err => console.error('[Stats] fetchStats failed:', err));
         }
@@ -1965,6 +1965,16 @@
                     if (results.length > 0) {
                         document.getElementById('resultsEmpty').style.display = 'none';
                         updateTrendChart(results);
+
+                        // 初始加载时填充结果表格
+                        if (!initialResultsLoaded) {
+                            initialResultsLoaded = true;
+                            const tbody = document.getElementById('resultsBody');
+                            tbody.innerHTML = '';
+                            results.slice().reverse().forEach(r => {
+                                addResultRow(r);
+                            });
+                        }
                     }
                 });
 
@@ -1974,6 +1984,17 @@
                     updateRoiChart(roiStats);
                     updateRoiStatsTable(roiStats);
                 });
+        }
+
+        function fetchTodayStats() {
+            fetch('/api/stats/today')
+                .then(r => r.json())
+                .then(s => {
+                    document.getElementById('statToday').textContent = s.total;
+                    document.getElementById('statTodayLabel').textContent =
+                        `合格 ${s.passed} / 不合格 ${s.failed}`;
+                })
+                .catch(() => {});
         }
 
         // ===== Show Toast =====
@@ -2224,6 +2245,7 @@
             initCharts();
             fetchHostInfo();
             fetchStats();
+            fetchTodayStats();
             fetchDevices();
             fetchResults();
             loadHistoryFilters();
@@ -2231,6 +2253,7 @@
 
             // Periodic polling as backup
             registerTimer(setInterval(fetchStats, 5000));
+            registerTimer(setInterval(fetchTodayStats, 10000));
             registerTimer(setInterval(fetchDevices, 5000));
             registerTimer(setInterval(fetchResults, 8000));
         });

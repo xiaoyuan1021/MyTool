@@ -59,53 +59,55 @@ def get_db() -> sqlite3.Connection:
 
 def init_db():
     conn = get_db()
-    conn.executescript("""
-        CREATE TABLE IF NOT EXISTS devices (
-            device_id    TEXT PRIMARY KEY,
-            status       TEXT DEFAULT 'online',
-            first_seen   TEXT,
-            last_heartbeat TEXT,
-            last_ts      REAL,
-            uptime       REAL DEFAULT 0,
-            result_count INTEGER DEFAULT 0,
-            last_result_json TEXT
-        );
+    try:
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS devices (
+                device_id    TEXT PRIMARY KEY,
+                status       TEXT DEFAULT 'online',
+                first_seen   TEXT,
+                last_heartbeat TEXT,
+                last_ts      REAL,
+                uptime       REAL DEFAULT 0,
+                result_count INTEGER DEFAULT 0,
+                last_result_json TEXT
+            );
 
-        CREATE TABLE IF NOT EXISTS results (
-            id                INTEGER PRIMARY KEY AUTOINCREMENT,
-            report_id         TEXT,
-            device_id         TEXT,
-            roi_name          TEXT,
-            passed            INTEGER,
-            fail_reason       TEXT,
-            total_region_count INTEGER DEFAULT 0,
-            region_count      INTEGER DEFAULT 0,
-            barcode_count     INTEGER DEFAULT 0,
-            has_barcode       INTEGER DEFAULT 0,
-            timestamp         INTEGER,
-            date_time         TEXT,
-            raw_json          TEXT,
-            created_at        TEXT DEFAULT (datetime('now','localtime'))
-        );
+            CREATE TABLE IF NOT EXISTS results (
+                id                INTEGER PRIMARY KEY AUTOINCREMENT,
+                report_id         TEXT,
+                device_id         TEXT,
+                roi_name          TEXT,
+                passed            INTEGER,
+                fail_reason       TEXT,
+                total_region_count INTEGER DEFAULT 0,
+                region_count      INTEGER DEFAULT 0,
+                barcode_count     INTEGER DEFAULT 0,
+                has_barcode       INTEGER DEFAULT 0,
+                timestamp         INTEGER,
+                date_time         TEXT,
+                raw_json          TEXT,
+                created_at        TEXT DEFAULT (datetime('now','localtime'))
+            );
 
-        CREATE TABLE IF NOT EXISTS heartbeats (
-            id        INTEGER PRIMARY KEY AUTOINCREMENT,
-            device_id TEXT,
-            status    TEXT,
-            uptime    REAL,
-            ts        INTEGER,
-            created_at TEXT DEFAULT (datetime('now','localtime'))
-        );
+            CREATE TABLE IF NOT EXISTS heartbeats (
+                id        INTEGER PRIMARY KEY AUTOINCREMENT,
+                device_id TEXT,
+                status    TEXT,
+                uptime    REAL,
+                ts        INTEGER,
+                created_at TEXT DEFAULT (datetime('now','localtime'))
+            );
 
-        CREATE INDEX IF NOT EXISTS idx_results_ts     ON results(timestamp);
-        CREATE INDEX IF NOT EXISTS idx_results_device ON results(device_id);
-        CREATE INDEX IF NOT EXISTS idx_results_pass   ON results(passed);
-        CREATE INDEX IF NOT EXISTS idx_results_roi    ON results(roi_name);
-        CREATE INDEX IF NOT EXISTS idx_hb_device      ON heartbeats(device_id);
-        CREATE INDEX IF NOT EXISTS idx_hb_ts          ON heartbeats(ts);
-    """)
-    conn.commit()
-    conn.close()
+            CREATE INDEX IF NOT EXISTS idx_results_ts     ON results(timestamp);
+            CREATE INDEX IF NOT EXISTS idx_results_device ON results(device_id);
+            CREATE INDEX IF NOT EXISTS idx_results_pass   ON results(passed);
+            CREATE INDEX IF NOT EXISTS idx_results_roi    ON results(roi_name);
+            CREATE INDEX IF NOT EXISTS idx_hb_device      ON heartbeats(device_id);
+            CREATE INDEX IF NOT EXISTS idx_hb_ts          ON heartbeats(ts);
+        """)
+        conn.commit()
+    finally:
+        conn.close()
     print(f"[DB] SQLite 初始化完成: {DB_PATH}")
 
 
@@ -114,62 +116,68 @@ def init_db():
 def db_upsert_device(device_id: str, data: dict):
     with _sqlite_lock:
         conn = get_db()
-        conn.execute("""
-            INSERT INTO devices(device_id,status,first_seen,last_heartbeat,last_ts,uptime,result_count,last_result_json)
-            VALUES(?,?,?,?,?,?,?,?)
-            ON CONFLICT(device_id) DO UPDATE SET
-                status=excluded.status, last_heartbeat=excluded.last_heartbeat,
-                last_ts=excluded.last_ts, uptime=excluded.uptime,
-                result_count=excluded.result_count, last_result_json=excluded.last_result_json
-        """, (
-            device_id,
-            data.get("status", "online"),
-            data.get("first_seen", datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
-            data.get("last_heartbeat", datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
-            data.get("last_ts", time.time()),
-            data.get("uptime", 0),
-            data.get("result_count", 0),
-            json.dumps(data.get("last_result"), ensure_ascii=False) if data.get("last_result") else None,
-        ))
-        conn.commit()
-        conn.close()
+        try:
+            conn.execute("""
+                INSERT INTO devices(device_id,status,first_seen,last_heartbeat,last_ts,uptime,result_count,last_result_json)
+                VALUES(?,?,?,?,?,?,?,?)
+                ON CONFLICT(device_id) DO UPDATE SET
+                    status=excluded.status, last_heartbeat=excluded.last_heartbeat,
+                    last_ts=excluded.last_ts, uptime=excluded.uptime,
+                    result_count=excluded.result_count, last_result_json=excluded.last_result_json
+            """, (
+                device_id,
+                data.get("status", "online"),
+                data.get("first_seen", datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+                data.get("last_heartbeat", datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+                data.get("last_ts", time.time()),
+                data.get("uptime", 0),
+                data.get("result_count", 0),
+                json.dumps(data.get("last_result"), ensure_ascii=False) if data.get("last_result") else None,
+            ))
+            conn.commit()
+        finally:
+            conn.close()
 
 
 def db_insert_result(record: dict):
     with _sqlite_lock:
         conn = get_db()
-        conn.execute("""
-            INSERT INTO results(report_id,device_id,roi_name,passed,fail_reason,
-                                total_region_count,region_count,barcode_count,has_barcode,
-                                timestamp,date_time,raw_json)
-            VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
-        """, (
-            record.get("reportId", ""),
-            record.get("deviceId", ""),
-            record.get("roiName", ""),
-            1 if record.get("passed") else 0,
-            record.get("failReason", ""),
-            record.get("totalRegionCount", 0),
-            record.get("regionCount", 0),
-            record.get("barcodeCount", 0),
-            1 if record.get("hasBarcode") else 0,
-            record.get("timestamp", int(time.time() * 1000)),
-            record.get("dateTime", datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
-            json.dumps(record, ensure_ascii=False),
-        ))
-        conn.commit()
-        conn.close()
+        try:
+            conn.execute("""
+                INSERT INTO results(report_id,device_id,roi_name,passed,fail_reason,
+                                    total_region_count,region_count,barcode_count,has_barcode,
+                                    timestamp,date_time,raw_json)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
+            """, (
+                record.get("reportId", ""),
+                record.get("deviceId", ""),
+                record.get("roiName", ""),
+                1 if record.get("passed") else 0,
+                record.get("failReason", ""),
+                record.get("totalRegionCount", 0),
+                record.get("regionCount", 0),
+                record.get("barcodeCount", 0),
+                1 if record.get("hasBarcode") else 0,
+                record.get("timestamp", int(time.time() * 1000)),
+                record.get("dateTime", datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+                json.dumps(record, ensure_ascii=False),
+            ))
+            conn.commit()
+        finally:
+            conn.close()
 
 
 def db_insert_heartbeat(device_id: str, status: str, uptime: float, ts: int):
     with _sqlite_lock:
         conn = get_db()
-        conn.execute(
-            "INSERT INTO heartbeats(device_id,status,uptime,ts) VALUES(?,?,?,?)",
-            (device_id, status, uptime, ts),
-        )
-        conn.commit()
-        conn.close()
+        try:
+            conn.execute(
+                "INSERT INTO heartbeats(device_id,status,uptime,ts) VALUES(?,?,?,?)",
+                (device_id, status, uptime, ts),
+            )
+            conn.commit()
+        finally:
+            conn.close()
 
 
 # -------- 读操作 --------
@@ -177,84 +185,131 @@ def db_insert_heartbeat(device_id: str, status: str, uptime: float, ts: int):
 def db_load_devices() -> dict:
     """从 SQLite 加载所有设备到内存"""
     conn = get_db()
-    rows = conn.execute("SELECT * FROM devices").fetchall()
-    result = {}
-    for r in rows:
-        last_result = json.loads(r["last_result_json"]) if r["last_result_json"] else None
-        result[r["device_id"]] = {
-            "device_id": r["device_id"],
-            "status": r["status"],
-            "first_seen": r["first_seen"],
-            "last_heartbeat": r["last_heartbeat"],
-            "last_ts": r["last_ts"] or 0,
-            "uptime": r["uptime"] or 0,
-            "result_count": r["result_count"] or 0,
-            "last_result": last_result,
-        }
-    conn.close()
-    return result
+    try:
+        rows = conn.execute("SELECT * FROM devices").fetchall()
+        result = {}
+        for r in rows:
+            last_result = json.loads(r["last_result_json"]) if r["last_result_json"] else None
+            result[r["device_id"]] = {
+                "device_id": r["device_id"],
+                "status": r["status"],
+                "first_seen": r["first_seen"],
+                "last_heartbeat": r["last_heartbeat"],
+                "last_ts": r["last_ts"] or 0,
+                "uptime": r["uptime"] or 0,
+                "result_count": r["result_count"] or 0,
+                "last_result": last_result,
+            }
+        return result
+    finally:
+        conn.close()
 
 
 def db_load_recent_results(limit: int = 500) -> list:
     """从 SQLite 加载最近 N 条结果到内存缓存"""
     conn = get_db()
-    rows = conn.execute(
-        "SELECT raw_json FROM results ORDER BY id DESC LIMIT ?", (limit,)
-    ).fetchall()
-    conn.close()
-    loaded = []
-    for r in reversed(rows):
-        try:
-            loaded.append(json.loads(r["raw_json"]))
-        except (json.JSONDecodeError, TypeError):
-            pass
-    return loaded
+    try:
+        rows = conn.execute(
+            "SELECT raw_json FROM results ORDER BY id DESC LIMIT ?", (limit,)
+        ).fetchall()
+        loaded = []
+        for r in reversed(rows):
+            try:
+                loaded.append(json.loads(r["raw_json"]))
+            except (json.JSONDecodeError, TypeError):
+                pass
+        return loaded
+    finally:
+        conn.close()
 
 
 def db_load_by_hour() -> dict:
-    """从 SQLite 聚合小时维度统计"""
+    """从 SQLite 聚合小时维度统计（统一 date_time 中的 T 为空格）"""
     conn = get_db()
-    rows = conn.execute("""
-        SELECT substr(date_time,1,13)||':00' AS hour,
-               COUNT(*) AS total,
-               SUM(passed) AS passed,
-               SUM(CASE WHEN passed=0 THEN 1 ELSE 0 END) AS failed
-        FROM results
-        GROUP BY hour
-        ORDER BY hour
-    """).fetchall()
-    conn.close()
-    result = {}
-    for r in rows:
-        result[r["hour"]] = {
-            "total": r["total"],
-            "passed": r["passed"],
-            "failed": r["failed"],
-        }
-    return result
+    try:
+        rows = conn.execute("""
+            SELECT substr(replace(date_time,'T',' '),1,13)||':00' AS hour,
+                   COUNT(*) AS total,
+                   SUM(passed) AS passed,
+                   SUM(CASE WHEN passed=0 THEN 1 ELSE 0 END) AS failed
+            FROM results
+            GROUP BY hour
+            ORDER BY hour
+        """).fetchall()
+        result = {}
+        for r in rows:
+            result[r["hour"]] = {
+                "total": r["total"],
+                "passed": r["passed"],
+                "failed": r["failed"],
+            }
+        return result
+    finally:
+        conn.close()
 
 
 def db_load_by_roi() -> dict:
     """从 SQLite 聚合 ROI 维度统计"""
     conn = get_db()
-    rows = conn.execute("""
-        SELECT roi_name,
-               COUNT(*) AS total,
-               SUM(passed) AS passed,
-               SUM(CASE WHEN passed=0 THEN 1 ELSE 0 END) AS failed
-        FROM results
-        GROUP BY roi_name
-        ORDER BY total DESC
-    """).fetchall()
-    conn.close()
-    result = {}
-    for r in rows:
-        result[r["roi_name"]] = {
-            "total": r["total"],
-            "passed": r["passed"],
-            "failed": r["failed"],
+    try:
+        rows = conn.execute("""
+            SELECT roi_name,
+                   COUNT(*) AS total,
+                   SUM(passed) AS passed,
+                   SUM(CASE WHEN passed=0 THEN 1 ELSE 0 END) AS failed
+            FROM results
+            GROUP BY roi_name
+            ORDER BY total DESC
+        """).fetchall()
+        result = {}
+        for r in rows:
+            result[r["roi_name"]] = {
+                "total": r["total"],
+                "passed": r["passed"],
+                "failed": r["failed"],
+            }
+        return result
+    finally:
+        conn.close()
+
+
+def db_load_total_stats() -> dict:
+    """从 SQLite 加载全局累计统计"""
+    conn = get_db()
+    try:
+        row = conn.execute("""
+            SELECT COUNT(*) AS total,
+                   SUM(passed) AS passed,
+                   SUM(CASE WHEN passed=0 THEN 1 ELSE 0 END) AS failed
+            FROM results
+        """).fetchone()
+        return {
+            "total": row["total"] or 0,
+            "passed": row["passed"] or 0,
+            "failed": row["failed"] or 0,
         }
-    return result
+    finally:
+        conn.close()
+
+
+def db_load_today_stats() -> dict:
+    """从 SQLite 加载今日统计"""
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    conn = get_db()
+    try:
+        row = conn.execute("""
+            SELECT COUNT(*) AS total,
+                   SUM(passed) AS passed,
+                   SUM(CASE WHEN passed=0 THEN 1 ELSE 0 END) AS failed
+            FROM results WHERE date_time LIKE ?
+        """, (f"{today_str}%",)).fetchone()
+        return {
+            "total": row["total"] or 0,
+            "passed": row["passed"] or 0,
+            "failed": row["failed"] or 0,
+        }
+    finally:
+        conn.close()
 
 
 def db_query_history(device_id: str = None, roi_name: str = None,
@@ -262,45 +317,45 @@ def db_query_history(device_id: str = None, roi_name: str = None,
                      page: int = 1, page_size: int = 50) -> dict:
     """通用历史查询"""
     conn = get_db()
-    conditions = []
-    params = []
+    try:
+        conditions = []
+        params = []
 
-    if device_id:
-        conditions.append("device_id=?")
-        params.append(device_id)
-    if roi_name:
-        conditions.append("roi_name=?")
-        params.append(roi_name)
-    if passed is not None:
-        conditions.append("passed=?")
-        params.append(1 if passed else 0)
-    if days:
-        cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
-        conditions.append("date_time>=?")
-        params.append(cutoff)
+        if device_id:
+            conditions.append("device_id=?")
+            params.append(device_id)
+        if roi_name:
+            conditions.append("roi_name=?")
+            params.append(roi_name)
+        if passed is not None:
+            conditions.append("passed=?")
+            params.append(1 if passed else 0)
+        if days:
+            cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
+            conditions.append("date_time>=?")
+            params.append(cutoff)
 
-    where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+        where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
 
-    # 总数
-    count_row = conn.execute(f"SELECT COUNT(*) AS cnt FROM results {where}", params).fetchone()
-    total = count_row["cnt"] if count_row else 0
+        count_row = conn.execute(f"SELECT COUNT(*) AS cnt FROM results {where}", params).fetchone()
+        total = count_row["cnt"] if count_row else 0
 
-    # 分页
-    offset = (page - 1) * page_size
-    rows = conn.execute(
-        f"SELECT raw_json FROM results {where} ORDER BY id DESC LIMIT ? OFFSET ?",
-        params + [page_size, offset],
-    ).fetchall()
-    conn.close()
+        offset = (page - 1) * page_size
+        rows = conn.execute(
+            f"SELECT raw_json FROM results {where} ORDER BY id DESC LIMIT ? OFFSET ?",
+            params + [page_size, offset],
+        ).fetchall()
 
-    items = []
-    for r in rows:
-        try:
-            items.append(json.loads(r["raw_json"]))
-        except (json.JSONDecodeError, TypeError):
-            pass
+        items = []
+        for r in rows:
+            try:
+                items.append(json.loads(r["raw_json"]))
+            except (json.JSONDecodeError, TypeError):
+                pass
 
-    return {"total": total, "page": page, "page_size": page_size, "items": items}
+        return {"total": total, "page": page, "page_size": page_size, "items": items}
+    finally:
+        conn.close()
 
 
 # =========================================================================
@@ -311,7 +366,6 @@ devices: dict = {}
 MAX_RESULTS = 2000
 results_deque = deque(maxlen=MAX_RESULTS)
 
-# Maximum entries for hourly stats to prevent memory growth
 MAX_HOURLY_ENTRIES = 168  # 7 days * 24 hours
 
 stats = {
@@ -321,6 +375,8 @@ stats = {
     "by_roi": defaultdict(lambda: {"total": 0, "passed": 0, "failed": 0}),
     "by_hour": defaultdict(lambda: {"total": 0, "passed": 0, "failed": 0}),
 }
+
+_data_lock = threading.Lock()
 
 # SSE 客户端
 sse_clients: list[queue.Queue] = []
@@ -338,19 +394,18 @@ mqtt_connected = False
 def broadcast_sse(event: str, data: dict):
     with _sse_lock:
         dead = []
-        for q in list(sse_clients):  # Use list() to avoid modification during iteration
+        for q in list(sse_clients):
             try:
                 q.put_nowait((event, data))
             except queue.Full:
                 dead.append(q)
             except Exception:
-                # Queue might be closed or in bad state
                 dead.append(q)
         for q in dead:
             try:
                 sse_clients.remove(q)
             except ValueError:
-                pass  # Already removed
+                pass
 
 
 def now_ts() -> int:
@@ -366,7 +421,7 @@ def get_lan_ip() -> str:
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.settimeout(0.1)
-        s.connect(("10.254.254.254", 1))  # 不需要真的连上
+        s.connect(("10.254.254.254", 1))
         ip = s.getsockname()[0]
         s.close()
         return ip
@@ -418,25 +473,25 @@ def _handle_heartbeat(payload: dict):
     now = time.time()
     now_str_val = now_str()
 
-    if device_id not in devices:
-        devices[device_id] = {
-            "device_id": device_id,
-            "status": "online",
-            "first_seen": now_str_val,
-            "last_heartbeat": now_str_val,
-            "last_ts": now,
-            "uptime": payload.get("uptime", 0),
-            "result_count": 0,
-            "last_result": None,
-        }
-    else:
-        dev = devices[device_id]
-        dev["status"] = "online"
-        dev["last_heartbeat"] = now_str_val
-        dev["last_ts"] = now
-        dev["uptime"] = payload.get("uptime", dev["uptime"])
+    with _data_lock:
+        if device_id not in devices:
+            devices[device_id] = {
+                "device_id": device_id,
+                "status": "online",
+                "first_seen": now_str_val,
+                "last_heartbeat": now_str_val,
+                "last_ts": now,
+                "uptime": payload.get("uptime", 0),
+                "result_count": 0,
+                "last_result": None,
+            }
+        else:
+            dev = devices[device_id]
+            dev["status"] = "online"
+            dev["last_heartbeat"] = now_str_val
+            dev["last_ts"] = now
+            dev["uptime"] = payload.get("uptime", dev["uptime"])
 
-    # 持久化
     db_upsert_device(device_id, devices[device_id])
     db_insert_heartbeat(device_id, "online", payload.get("uptime", 0), payload.get("ts", int(now * 1000)))
 
@@ -465,36 +520,51 @@ def _handle_result(payload: dict):
 
     results_deque.append(record)
 
-    # 更新统计
-    stats["total"] += 1
-    if passed:
-        stats["passed"] += 1
-    else:
-        stats["failed"] += 1
+    with _data_lock:
+        # 自动注册未知设备
+        if device_id not in devices:
+            now_str_val = now_str()
+            devices[device_id] = {
+                "device_id": device_id,
+                "status": "online",
+                "first_seen": now_str_val,
+                "last_heartbeat": now_str_val,
+                "last_ts": time.time(),
+                "uptime": 0,
+                "result_count": 0,
+                "last_result": None,
+            }
+            db_upsert_device(device_id, devices[device_id])
 
-    roi_stat = stats["by_roi"][roi_name]
-    roi_stat["total"] += 1
-    if passed:
-        roi_stat["passed"] += 1
-    else:
-        roi_stat["failed"] += 1
+        # 更新统计
+        stats["total"] += 1
+        if passed:
+            stats["passed"] += 1
+        else:
+            stats["failed"] += 1
 
-    hour_key = datetime.now().strftime("%Y-%m-%d %H:00")
-    hour_stat = stats["by_hour"][hour_key]
-    hour_stat["total"] += 1
-    if passed:
-        hour_stat["passed"] += 1
-    else:
-        hour_stat["failed"] += 1
+        roi_stat = stats["by_roi"][roi_name]
+        roi_stat["total"] += 1
+        if passed:
+            roi_stat["passed"] += 1
+        else:
+            roi_stat["failed"] += 1
 
-    # Trim hourly stats to prevent memory growth
-    if len(stats["by_hour"]) > MAX_HOURLY_ENTRIES:
-        sorted_hours = sorted(stats["by_hour"].keys())
-        for old_hour in sorted_hours[:-MAX_HOURLY_ENTRIES]:
-            del stats["by_hour"][old_hour]
+        hour_key = datetime.now().strftime("%Y-%m-%d %H:00")
+        hour_stat = stats["by_hour"][hour_key]
+        hour_stat["total"] += 1
+        if passed:
+            hour_stat["passed"] += 1
+        else:
+            hour_stat["failed"] += 1
 
-    # 更新设备
-    if device_id in devices:
+        # Trim hourly stats
+        if len(stats["by_hour"]) > MAX_HOURLY_ENTRIES:
+            sorted_hours = sorted(stats["by_hour"].keys())
+            for old_hour in sorted_hours[:-MAX_HOURLY_ENTRIES]:
+                del stats["by_hour"][old_hour]
+
+        # 更新设备
         dev = devices[device_id]
         dev["result_count"] = dev.get("result_count", 0) + 1
         dev["last_result"] = {
@@ -502,9 +572,8 @@ def _handle_result(payload: dict):
             "roiName": roi_name,
             "dateTime": record["dateTime"],
         }
-        db_upsert_device(device_id, dev)
 
-    # 持久化结果
+    db_upsert_device(device_id, devices[device_id])
     db_insert_result(record)
 
     broadcast_sse("result", record)
@@ -516,10 +585,13 @@ def check_device_timeout():
         time.sleep(15)
         now = time.time()
         now_str_val = now_str()
-        for device_id, dev in list(devices.items()):
+        with _data_lock:
+            device_list = list(devices.items())
+        for device_id, dev in device_list:
             if dev["status"] == "online" and (now - dev.get("last_ts", 0)) > DEVICE_TIMEOUT_SECONDS:
-                dev["status"] = "offline"
-                dev["last_heartbeat"] = now_str_val
+                with _data_lock:
+                    dev["status"] = "offline"
+                    dev["last_heartbeat"] = now_str_val
                 db_upsert_device(device_id, dev)
                 broadcast_sse("heartbeat", {"deviceId": device_id, "status": "offline"})
 
@@ -558,12 +630,13 @@ def index():
 
 @app.route("/api/status")
 def api_status():
-    return jsonify({
-        "mqtt_connected": mqtt_connected,
-        "device_count": len(devices),
-        "online_count": sum(1 for d in devices.values() if d["status"] == "online"),
-        "total_results": stats["total"],
-    })
+    with _data_lock:
+        return jsonify({
+            "mqtt_connected": mqtt_connected,
+            "device_count": len(devices),
+            "online_count": sum(1 for d in devices.values() if d["status"] == "online"),
+            "total_results": stats["total"],
+        })
 
 
 @app.route("/api/host-info")
@@ -576,20 +649,42 @@ def api_host_info():
 
 @app.route("/api/stats")
 def api_stats():
-    pass_rate = round(stats["passed"] / stats["total"] * 100, 1) if stats["total"] else 0
+    total_stats = db_load_total_stats()
+    with _data_lock:
+        device_count = len(devices)
+        online_count = sum(1 for d in devices.values() if d["status"] == "online")
+    pass_rate = round(total_stats["passed"] / total_stats["total"] * 100, 1) if total_stats["total"] else 0
     return jsonify({
-        "total": stats["total"],
-        "passed": stats["passed"],
-        "failed": stats["failed"],
+        "total": total_stats["total"],
+        "passed": total_stats["passed"],
+        "failed": total_stats["failed"],
         "passRate": pass_rate,
-        "deviceCount": len(devices),
-        "onlineCount": sum(1 for d in devices.values() if d["status"] == "online"),
+        "deviceCount": device_count,
+        "onlineCount": online_count,
+    })
+
+
+@app.route("/api/stats/today")
+def api_stats_today():
+    today = db_load_today_stats()
+    with _data_lock:
+        device_count = len(devices)
+        online_count = sum(1 for d in devices.values() if d["status"] == "online")
+    pass_rate = round(today["passed"] / today["total"] * 100, 1) if today["total"] else 0
+    return jsonify({
+        "total": today["total"],
+        "passed": today["passed"],
+        "failed": today["failed"],
+        "passRate": pass_rate,
+        "deviceCount": device_count,
+        "onlineCount": online_count,
     })
 
 
 @app.route("/api/devices")
 def api_devices():
-    return jsonify(list(devices.values()))
+    with _data_lock:
+        return jsonify(list(devices.values()))
 
 
 @app.route("/api/results")
@@ -603,26 +698,26 @@ def api_results():
 def api_results_recent():
     limit = request.args.get("limit", 50, type=int)
     all_results = list(results_deque)
-    recent = all_results[-limit:]
-    return jsonify([
-        {"index": i, "passed": r["passed"], "roiName": r["roiName"],
-         "dateTime": r["dateTime"], "deviceId": r["deviceId"]}
-        for i, r in enumerate(recent)
-    ])
+    return jsonify(all_results[-limit:])
 
 
 @app.route("/api/stats/by-roi")
 def api_stats_by_roi():
-    """ROI 统计：优先内存，回退到 SQLite"""
-    if stats["by_roi"]:
-        return jsonify(dict(stats["by_roi"]))
+    with _data_lock:
+        has_roi = bool(stats["by_roi"])
+    if has_roi:
+        with _data_lock:
+            return jsonify(dict(stats["by_roi"]))
     return jsonify(db_load_by_roi())
 
 
 @app.route("/api/stats/by-hour")
 def api_stats_by_hour():
-    if stats["by_hour"]:
-        return jsonify(dict(stats["by_hour"]))
+    with _data_lock:
+        has_hour = bool(stats["by_hour"])
+    if has_hour:
+        with _data_lock:
+            return jsonify(dict(stats["by_hour"]))
     return jsonify(db_load_by_hour())
 
 
@@ -649,16 +744,46 @@ def api_results_history():
 
 @app.route("/api/results/summary")
 def api_results_summary():
-    """时间段聚合统计"""
+    """时间段聚合统计 - 按 days 过滤"""
     days = request.args.get("days", 7, type=int)
+
+    conn = get_db()
+    try:
+        if days:
+            cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
+            row = conn.execute("""
+                SELECT COUNT(*) AS total,
+                       SUM(passed) AS passed,
+                       SUM(CASE WHEN passed=0 THEN 1 ELSE 0 END) AS failed
+                FROM results WHERE date_time >= ?
+            """, (cutoff,)).fetchone()
+        else:
+            row = conn.execute("""
+                SELECT COUNT(*) AS total,
+                       SUM(passed) AS passed,
+                       SUM(CASE WHEN passed=0 THEN 1 ELSE 0 END) AS failed
+                FROM results
+            """).fetchone()
+    finally:
+        conn.close()
+
+    total = row["total"] or 0
+    passed = row["passed"] or 0
+    failed = row["failed"] or 0
+    pass_rate = round(passed / total * 100, 1) if total else 0
+
+    with _data_lock:
+        device_count = len(devices)
+        online_count = sum(1 for d in devices.values() if d["status"] == "online")
+
     return jsonify({
-        "total": stats["total"],
-        "passed": stats["passed"],
-        "failed": stats["failed"],
-        "passRate": round(stats["passed"] / stats["total"] * 100, 1) if stats["total"] else 0,
-        "deviceCount": len(devices),
-        "onlineCount": sum(1 for d in devices.values() if d["status"] == "online"),
-        "period": f"{days}天",
+        "total": total,
+        "passed": passed,
+        "failed": failed,
+        "passRate": pass_rate,
+        "deviceCount": device_count,
+        "onlineCount": online_count,
+        "period": f"{days}天" if days else "全部",
     })
 
 
@@ -672,11 +797,13 @@ def stream():
             sse_clients.append(q)
         try:
             yield f"event: connected\ndata: {json.dumps({'ok': True})}\n\n"
-            # 立即发送当前MQTT状态
             yield f"event: mqtt_status\ndata: {json.dumps({'connected': mqtt_connected})}\n\n"
             while True:
-                event, data = q.get()
-                yield f"event: {event}\ndata: {json.dumps(data)}\n\n"
+                try:
+                    event, data = q.get(timeout=30)
+                    yield f"event: {event}\ndata: {json.dumps(data)}\n\n"
+                except queue.Empty:
+                    yield ": keepalive\n\n"
         except GeneratorExit:
             pass
         finally:
@@ -768,37 +895,17 @@ def api_simulate():
 
 @app.route("/api/debug/update-stats", methods=["POST"])
 def api_debug_update_stats():
-    """更新统计数据（同步写入数据库）"""
+    """更新统计数据（不删除真实数据，仅在内存中覆盖统计值）"""
     try:
         body = request.get_json(force=True)
         total = body.get("total", 0)
         passed = body.get("passed", 0)
         failed = body.get("failed", 0)
 
-        stats["total"] = total
-        stats["passed"] = passed
-        stats["failed"] = failed
-
-        # 同步写入数据库：用虚拟结果记录来保持一致性
-        with _sqlite_lock:
-            conn = get_db()
-            # 先清空，再按新数值插入占位记录
-            conn.execute("DELETE FROM results")
-            for i in range(total):
-                p = i < passed
-                conn.execute(
-                    "INSERT INTO results(report_id,device_id,roi_name,passed,fail_reason,"
-                    "total_region_count,region_count,barcode_count,has_barcode,"
-                    "timestamp,date_time,raw_json) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
-                    (
-                        f"debug-{i}", "__debug__", "全图", 1 if p else 0, "",
-                        0, 0, 0, 0,
-                        now_ts(), now_str(),
-                        json.dumps({"debug": True, "passed": p}, ensure_ascii=False),
-                    ),
-                )
-            conn.commit()
-            conn.close()
+        with _data_lock:
+            stats["total"] = total
+            stats["passed"] = passed
+            stats["failed"] = failed
 
         return jsonify({"ok": True})
     except Exception as e:
@@ -819,33 +926,32 @@ def api_debug_update_roi():
         if not old_name:
             return jsonify({"error": "请指定要更新的ROI"}), 400
 
-        # 更新内存统计
-        if old_name in stats["by_roi"]:
-            del stats["by_roi"][old_name]
-        stats["by_roi"][new_name] = {
-            "total": total,
-            "passed": passed,
-            "failed": failed
-        }
+        with _data_lock:
+            if old_name in stats["by_roi"]:
+                del stats["by_roi"][old_name]
+            stats["by_roi"][new_name] = {
+                "total": total,
+                "passed": passed,
+                "failed": failed
+            }
 
-        # 更新数据库中的ROI名称（列 + raw_json 内部）
         with _sqlite_lock:
             conn = get_db()
-            if old_name != new_name:
-                # 更新 roi_name 列
-                conn.execute("UPDATE results SET roi_name=? WHERE roi_name=?", (new_name, old_name))
-                # 同步更新 raw_json 中的 roiName 字段
-                rows = conn.execute("SELECT id, raw_json FROM results WHERE roi_name=?", (new_name,)).fetchall()
-                for row in rows:
-                    try:
-                        obj = json.loads(row["raw_json"])
-                        obj["roiName"] = new_name
-                        conn.execute("UPDATE results SET raw_json=? WHERE id=?",
-                                     (json.dumps(obj, ensure_ascii=False), row["id"]))
-                    except (json.JSONDecodeError, TypeError):
-                        pass
-            conn.commit()
-            conn.close()
+            try:
+                if old_name != new_name:
+                    conn.execute("UPDATE results SET roi_name=? WHERE roi_name=?", (new_name, old_name))
+                    rows = conn.execute("SELECT id, raw_json FROM results WHERE roi_name=?", (new_name,)).fetchall()
+                    for row in rows:
+                        try:
+                            obj = json.loads(row["raw_json"])
+                            obj["roiName"] = new_name
+                            conn.execute("UPDATE results SET raw_json=? WHERE id=?",
+                                         (json.dumps(obj, ensure_ascii=False), row["id"]))
+                        except (json.JSONDecodeError, TypeError):
+                            pass
+                conn.commit()
+            finally:
+                conn.close()
 
         return jsonify({"ok": True})
     except Exception as e:
@@ -865,30 +971,32 @@ def api_debug_add_roi():
         if not name:
             return jsonify({"error": "ROI名称不能为空"}), 400
 
-        stats["by_roi"][name] = {
-            "total": total,
-            "passed": passed,
-            "failed": failed
-        }
+        with _data_lock:
+            stats["by_roi"][name] = {
+                "total": total,
+                "passed": passed,
+                "failed": failed
+            }
 
-        # 写入数据库占位记录
         with _sqlite_lock:
             conn = get_db()
-            for i in range(total):
-                p = i < passed
-                conn.execute(
-                    "INSERT INTO results(report_id,device_id,roi_name,passed,fail_reason,"
-                    "total_region_count,region_count,barcode_count,has_barcode,"
-                    "timestamp,date_time,raw_json) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
-                    (
-                        f"debug-roi-{name}-{i}", "__debug__", name, 1 if p else 0, "",
-                        0, 0, 0, 0,
-                        now_ts(), now_str(),
-                        json.dumps({"debug": True, "passed": p}, ensure_ascii=False),
-                    ),
-                )
-            conn.commit()
-            conn.close()
+            try:
+                for i in range(total):
+                    p = i < passed
+                    conn.execute(
+                        "INSERT INTO results(report_id,device_id,roi_name,passed,fail_reason,"
+                        "total_region_count,region_count,barcode_count,has_barcode,"
+                        "timestamp,date_time,raw_json) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+                        (
+                            f"debug-roi-{name}-{i}", "__debug__", name, 1 if p else 0, "",
+                            0, 0, 0, 0,
+                            now_ts(), now_str(),
+                            json.dumps({"debug": True, "passed": p}, ensure_ascii=False),
+                        ),
+                    )
+                conn.commit()
+            finally:
+                conn.close()
 
         return jsonify({"ok": True})
     except Exception as e:
@@ -897,22 +1005,29 @@ def api_debug_add_roi():
 
 @app.route("/api/debug/delete-roi", methods=["POST"])
 def api_debug_delete_roi():
-    """删除ROI"""
+    """删除ROI并同步全局统计"""
     try:
         body = request.get_json(force=True)
         name = body.get("name")
-        
-        if name in stats["by_roi"]:
-            del stats["by_roi"][name]
-        
-        # 从数据库中删除该ROI的数据
+
+        removed = {"total": 0, "passed": 0, "failed": 0}
+        with _data_lock:
+            if name in stats["by_roi"]:
+                removed = dict(stats["by_roi"][name])
+                del stats["by_roi"][name]
+                stats["total"] -= removed["total"]
+                stats["passed"] -= removed["passed"]
+                stats["failed"] -= removed["failed"]
+
         with _sqlite_lock:
             conn = get_db()
-            conn.execute("DELETE FROM results WHERE roi_name=?", (name,))
-            conn.commit()
-            conn.close()
-        
-        return jsonify({"ok": True})
+            try:
+                conn.execute("DELETE FROM results WHERE roi_name=?", (name,))
+                conn.commit()
+            finally:
+                conn.close()
+
+        return jsonify({"ok": True, "removed": removed})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -926,30 +1041,27 @@ def api_debug_update_device():
         status = body.get("status", "online")
         result_count = body.get("resultCount", 0)
         uptime = body.get("uptime", 0)
-        
-        if device_id in devices:
-            devices[device_id]["status"] = status
-            devices[device_id]["result_count"] = result_count
-            devices[device_id]["uptime"] = uptime
-            devices[device_id]["last_heartbeat"] = now_str()
-            devices[device_id]["last_ts"] = time.time()
-            
-            # 更新数据库
-            db_upsert_device(device_id, devices[device_id])
-        else:
-            # 创建新设备
-            devices[device_id] = {
-                "device_id": device_id,
-                "status": status,
-                "first_seen": now_str(),
-                "last_heartbeat": now_str(),
-                "last_ts": time.time(),
-                "uptime": uptime,
-                "result_count": result_count,
-                "last_result": None
-            }
-            db_upsert_device(device_id, devices[device_id])
-        
+
+        with _data_lock:
+            if device_id in devices:
+                devices[device_id]["status"] = status
+                devices[device_id]["result_count"] = result_count
+                devices[device_id]["uptime"] = uptime
+                devices[device_id]["last_heartbeat"] = now_str()
+                devices[device_id]["last_ts"] = time.time()
+            else:
+                devices[device_id] = {
+                    "device_id": device_id,
+                    "status": status,
+                    "first_seen": now_str(),
+                    "last_heartbeat": now_str(),
+                    "last_ts": time.time(),
+                    "uptime": uptime,
+                    "result_count": result_count,
+                    "last_result": None
+                }
+
+        db_upsert_device(device_id, devices[device_id])
         broadcast_sse("heartbeat", {"deviceId": device_id})
         return jsonify({"ok": True})
     except Exception as e:
@@ -965,21 +1077,22 @@ def api_debug_add_device():
         status = body.get("status", "online")
         result_count = body.get("resultCount", 0)
         uptime = body.get("uptime", 0)
-        
-        devices[device_id] = {
-            "device_id": device_id,
-            "status": status,
-            "first_seen": now_str(),
-            "last_heartbeat": now_str(),
-            "last_ts": time.time(),
-            "uptime": uptime,
-            "result_count": result_count,
-            "last_result": None
-        }
-        
+
+        with _data_lock:
+            devices[device_id] = {
+                "device_id": device_id,
+                "status": status,
+                "first_seen": now_str(),
+                "last_heartbeat": now_str(),
+                "last_ts": time.time(),
+                "uptime": uptime,
+                "result_count": result_count,
+                "last_result": None
+            }
+
         db_upsert_device(device_id, devices[device_id])
         broadcast_sse("heartbeat", {"deviceId": device_id})
-        
+
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -990,12 +1103,11 @@ def api_debug_generate_demo():
     """生成演示数据"""
     try:
         import random
-        
+
         device_ids = ["edge-device-01", "edge-device-02", "edge-device-03"]
         roi_names = ["PCB-焊点检测", "元件定位", "条码识别", "外观瑕疵", "尺寸测量"]
         fail_reasons = ["区域面积超出阈值", "圆度不达标", "条码无法解码", "模板匹配失败", "亮度异常"]
-        
-        # 生成设备
+
         device_count = 0
         for device_id in device_ids:
             if device_id not in devices:
@@ -1006,14 +1118,13 @@ def api_debug_generate_demo():
                     "uptime": random.randint(3600, 86400)
                 })
                 device_count += 1
-        
-        # 生成检测结果
+
         result_count = 0
         for _ in range(50):
             device_id = random.choice(device_ids)
             roi_name = random.choice(roi_names)
             passed = random.random() < 0.85
-            
+
             payload = {
                 "reportId": uuid.uuid4().hex[:16],
                 "deviceId": device_id,
@@ -1029,10 +1140,10 @@ def api_debug_generate_demo():
                 "barcodes": [{"type": "QRCode", "data": f"DEMO-{uuid.uuid4().hex[:8].upper()}"}]
                 if random.random() < 0.3 else []
             }
-            
+
             _handle_result(payload)
             result_count += 1
-        
+
         return jsonify({"ok": True, "count": result_count, "deviceCount": device_count})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -1042,45 +1153,63 @@ def api_debug_generate_demo():
 def api_debug_clear_data():
     """清空所有数据"""
     try:
-        # 清空内存数据
-        devices.clear()
-        results_deque.clear()
-        stats["total"] = 0
-        stats["passed"] = 0
-        stats["failed"] = 0
-        stats["by_roi"].clear()
-        stats["by_hour"].clear()
-        
-        # 清空数据库
+        with _data_lock:
+            devices.clear()
+            results_deque.clear()
+            stats["total"] = 0
+            stats["passed"] = 0
+            stats["failed"] = 0
+            stats["by_roi"].clear()
+            stats["by_hour"].clear()
+
         with _sqlite_lock:
             conn = get_db()
-            conn.execute("DELETE FROM devices")
-            conn.execute("DELETE FROM results")
-            conn.execute("DELETE FROM heartbeats")
-            conn.commit()
-            conn.close()
-        
+            try:
+                conn.execute("DELETE FROM devices")
+                conn.execute("DELETE FROM results")
+                conn.execute("DELETE FROM heartbeats")
+                conn.commit()
+            finally:
+                conn.close()
+
         broadcast_sse("heartbeat", {"deviceId": "all", "status": "cleared"})
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/debug/diag")
+def api_debug_diag():
+    """诊断启动加载状态"""
+    total_db = db_load_total_stats()
+    today_db = db_load_today_stats()
+    return jsonify({
+        "memory_stats": {"total": stats["total"], "passed": stats["passed"], "failed": stats["failed"]},
+        "db_total": total_db,
+        "db_today": today_db,
+        "devices_in_mem": len(devices),
+        "deque_len": len(results_deque),
+        "by_roi_count": len(stats["by_roi"]),
+        "by_hour_count": len(stats["by_hour"]),
+    })
+
+
 @app.route("/api/debug/export")
 def api_debug_export():
     """导出调试数据"""
     try:
-        data = {
-            "stats": {
-                "total": stats["total"],
-                "passed": stats["passed"],
-                "failed": stats["failed"],
-                "by_roi": dict(stats["by_roi"]),
-                "by_hour": dict(stats["by_hour"])
-            },
-            "devices": list(devices.values()),
-            "results": list(results_deque)[-100:]  # 最近100条
-        }
+        with _data_lock:
+            data = {
+                "stats": {
+                    "total": stats["total"],
+                    "passed": stats["passed"],
+                    "failed": stats["failed"],
+                    "by_roi": dict(stats["by_roi"]),
+                    "by_hour": dict(stats["by_hour"])
+                },
+                "devices": list(devices.values()),
+                "results": list(results_deque)[-100:]
+            }
         return jsonify(data)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -1099,38 +1228,40 @@ if __name__ == "__main__":
     # 初始化 SQLite + 加载历史数据
     init_db()
 
-    loaded_devices = db_load_devices()
-    devices.update(loaded_devices)
+    try:
+        loaded_devices = db_load_devices()
+        devices.update(loaded_devices)
+        print(f"[DB] 已加载 {len(loaded_devices)} 台设备")
+    except Exception as e:
+        print(f"[DB] 加载设备失败: {e}")
 
-    loaded_results = db_load_recent_results(500)
-    for r in loaded_results:
-        results_deque.append(r)
-        stats["total"] += 1
-        if r.get("passed"):
-            stats["passed"] += 1
-        else:
-            stats["failed"] += 1
+    try:
+        total_stats = db_load_total_stats()
+        stats["total"] = total_stats["total"]
+        stats["passed"] = total_stats["passed"]
+        stats["failed"] = total_stats["failed"]
+        print(f"[DB] 全量统计: total={stats['total']}, passed={stats['passed']}, failed={stats['failed']}")
+    except Exception as e:
+        print(f"[DB] 加载统计失败: {e}")
 
-    # 重建内存统计
-    stats["by_roi"].clear()
-    stats["by_hour"].clear()
-    for r in results_deque:
-        roi = r.get("roiName", "全图")
-        stats["by_roi"][roi]["total"] += 1
-        if r.get("passed"):
-            stats["by_roi"][roi]["passed"] += 1
-        else:
-            stats["by_roi"][roi]["failed"] += 1
+    try:
+        stats["by_roi"].clear()
+        stats["by_hour"].clear()
+        for roi_name, roi_data in db_load_by_roi().items():
+            stats["by_roi"][roi_name] = roi_data
+        for hour_key, hour_data in db_load_by_hour().items():
+            stats["by_hour"][hour_key] = hour_data
+        print(f"[DB] ROI 统计: {len(stats['by_roi'])} 个, 小时统计: {len(stats['by_hour'])} 个")
+    except Exception as e:
+        print(f"[DB] 加载维度统计失败: {e}")
 
-        dt = r.get("dateTime", "")
-        hour_key = dt[:13] + ":00" if len(dt) >= 13 else datetime.now().strftime("%Y-%m-%d %H:00")
-        stats["by_hour"][hour_key]["total"] += 1
-        if r.get("passed"):
-            stats["by_hour"][hour_key]["passed"] += 1
-        else:
-            stats["by_hour"][hour_key]["failed"] += 1
-
-    print(f"[DB] 已加载 {len(loaded_devices)} 台设备, {len(loaded_results)} 条结果")
+    try:
+        loaded_results = db_load_recent_results(500)
+        for r in loaded_results:
+            results_deque.append(r)
+        print(f"[DB] 已加载 {len(loaded_results)} 条最近结果到缓存")
+    except Exception as e:
+        print(f"[DB] 加载结果失败: {e}")
 
     # 初始化 MQTT
     init_mqtt()
