@@ -357,12 +357,12 @@
                         document.getElementById('resultsEmpty').style.display = 'none';
                         updateTrendChart(results);
 
-                        // 初始加载时填充结果表格
+                        // 初始加载时填充结果表格（API 返回最旧在前，逐条插顶自动倒序）
                         if (!initialResultsLoaded) {
                             initialResultsLoaded = true;
                             const tbody = document.getElementById('resultsBody');
                             tbody.innerHTML = '';
-                            results.slice().reverse().forEach(r => {
+                            results.forEach(r => {
                                 addResultRow(r);
                             });
                         }
@@ -982,9 +982,10 @@
 
         async function generateDemoData() {
             try {
-                const res = await fetch('/api/debug/generate-demo', {
+                const res = await fetch('/api/simulate', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ count: 10 })
                 });
                 const data = await res.json();
                 if (data.ok) {

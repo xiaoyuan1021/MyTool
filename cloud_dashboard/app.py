@@ -265,8 +265,6 @@ def api_send_command():
 
 @app.route("/api/simulate", methods=["POST"])
 def api_simulate():
-    if not os.environ.get("ENABLE_SIMULATE"):
-        return jsonify({"error": "模拟数据接口已禁用"}), 403
     import random, uuid
     body = request.get_json(force=True) or {}
     count = min(body.get("count", 1), 20)
@@ -291,7 +289,7 @@ def api_simulate():
                                    "ts": now_ts(), "uptime": random.randint(60, 36000)})
         handler._handle_result(payload)
         time.sleep(0.05)
-    return jsonify({"ok": True, "simulated": count})
+    return jsonify({"ok": True, "count": count})
 
 
 # ========== 调试 API ==========
@@ -350,15 +348,22 @@ def api_debug_update_roi():
     try:
         body = request.get_json(force=True)
         old_name = body.get("oldName")
-        new_name = body.get("newName", old_name)
+        new_name = body.get("newName", old_name) or old_name
         total = body.get("total", 0)
         passed = body.get("passed", 0)
         if not old_name:
             return jsonify({"error": "请指定要更新的ROI"}), 400
         with app_state["data_lock"]:
-            if old_name in app_state["stats"]["by_roi"]:
+            old_data = app_state["stats"]["by_roi"].get(new_name, {"total": 0, "passed": 0, "failed": 0})
+            if old_name in app_state["stats"]["by_roi"] and old_name != new_name:
                 del app_state["stats"]["by_roi"][old_name]
             app_state["stats"]["by_roi"][new_name] = {"total": total, "passed": passed, "failed": total - passed}
+            delta_total = total - old_data["total"]
+            delta_passed = passed - old_data["passed"]
+            delta_failed = (total - passed) - old_data["failed"]
+            app_state["stats"]["total"] += delta_total
+            app_state["stats"]["passed"] += delta_passed
+            app_state["stats"]["failed"] += delta_failed
         import sqlite3
         from config import DB_PATH
         conn = sqlite3.connect(DB_PATH)
@@ -403,6 +408,9 @@ def api_debug_add_roi():
             return jsonify({"error": "ROI名称不能为空"}), 400
         with app_state["data_lock"]:
             app_state["stats"]["by_roi"][name] = {"total": total, "passed": passed, "failed": total - passed}
+            app_state["stats"]["total"] += total
+            app_state["stats"]["passed"] += passed
+            app_state["stats"]["failed"] += (total - passed)
         import sqlite3, uuid as _uuid
         from config import DB_PATH
         conn = sqlite3.connect(DB_PATH)
@@ -436,6 +444,12 @@ def api_debug_delete_roi():
             if name in app_state["stats"]["by_roi"]:
                 removed = dict(app_state["stats"]["by_roi"][name])
                 del app_state["stats"]["by_roi"][name]
+                app_state["stats"]["total"] -= removed["total"]
+                app_state["stats"]["passed"] -= removed["passed"]
+                app_state["stats"]["failed"] -= removed["failed"]
+                app_state["stats"]["total"] = max(0, app_state["stats"]["total"])
+                app_state["stats"]["passed"] = max(0, app_state["stats"]["passed"])
+                app_state["stats"]["failed"] = max(0, app_state["stats"]["failed"])
         import sqlite3
         from config import DB_PATH
         conn = sqlite3.connect(DB_PATH)
