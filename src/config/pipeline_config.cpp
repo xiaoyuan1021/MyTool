@@ -63,6 +63,26 @@ QJsonObject PipelineConfig::toJson() const {
     obj["stepOrder"] = orderArr;
     obj["enableObjectDetection"] = enableObjectDetection;
 
+    // 形状筛选参数
+    obj["shapeFilter"] = shapeFilter.toJson();
+
+    // 算法队列
+    QJsonArray algoArr;
+    for (const auto& step : algorithmQueue) {
+        QJsonObject algoObj;
+        algoObj["name"] = step.name;
+        algoObj["type"] = step.type;
+        algoObj["enabled"] = step.enabled;
+        algoObj["description"] = step.description;
+        QJsonObject paramsObj;
+        for (auto it = step.params.constBegin(); it != step.params.constEnd(); ++it) {
+            paramsObj[it.key()] = QJsonValue::fromVariant(it.value());
+        }
+        algoObj["params"] = paramsObj;
+        algoArr.append(algoObj);
+    }
+    obj["algorithmQueue"] = algoArr;
+
     return obj;
 }
 
@@ -146,6 +166,28 @@ void PipelineConfig::fromJson(const QJsonObject& obj) {
     }
 
     enableObjectDetection = obj["enableObjectDetection"].toBool(false);
+
+    // 形状筛选参数
+    if (obj.contains("shapeFilter")) {
+        shapeFilter.fromJson(obj["shapeFilter"].toObject());
+    }
+
+    // 算法队列
+    algorithmQueue.clear();
+    QJsonArray algoArr = obj["algorithmQueue"].toArray();
+    for (const auto& val : algoArr) {
+        QJsonObject algoObj = val.toObject();
+        AlgorithmStep step;
+        step.name = algoObj["name"].toString();
+        step.type = algoObj["type"].toString();
+        step.enabled = algoObj["enabled"].toBool(true);
+        step.description = algoObj["description"].toString();
+        QJsonObject paramsObj = algoObj["params"].toObject();
+        for (auto it = paramsObj.constBegin(); it != paramsObj.constEnd(); ++it) {
+            step.params[it.key()] = it.value().toVariant();
+        }
+        algorithmQueue.append(step);
+    }
 }
 
 // ========== LineDetectConfig 序列化 ==========

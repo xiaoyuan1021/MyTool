@@ -30,6 +30,7 @@ app_state = {
     "results_deque": deque(maxlen=MAX_RESULTS),
     "stats": {
         "total": 0, "passed": 0, "failed": 0,
+        "today": 0, "today_passed": 0, "today_failed": 0,
         "by_roi": defaultdict(lambda: {"total": 0, "passed": 0, "failed": 0}),
         "by_hour": defaultdict(lambda: {"total": 0, "passed": 0, "failed": 0}),
     },
@@ -108,28 +109,35 @@ def api_host_info():
 
 @app.route("/api/stats")
 def api_stats():
-    total_stats = db_load_total_stats()
     with app_state["data_lock"]:
+        total = app_state["stats"]["total"]
+        passed = app_state["stats"]["passed"]
+        failed = app_state["stats"]["failed"]
         device_count = len(app_state["devices"])
         online_count = sum(1 for d in app_state["devices"].values() if d["status"] == "online")
-    pass_rate = round(total_stats["passed"] / total_stats["total"] * 100, 1) if total_stats["total"] else 0
+    pass_rate = round(passed / total * 100, 1) if total else 0
     return jsonify({
-        "total": total_stats["total"], "passed": total_stats["passed"],
-        "failed": total_stats["failed"], "passRate": pass_rate,
-        "deviceCount": device_count, "onlineCount": online_count,
+        "total": total,
+        "passed": passed,
+        "failed": failed,
+        "passRate": pass_rate,
+        "deviceCount": device_count,
+        "onlineCount": online_count,
     })
 
 
 @app.route("/api/stats/today")
 def api_stats_today():
-    today = db_load_today_stats()
     with app_state["data_lock"]:
+        today_total = app_state["stats"]["today"]
+        today_passed = app_state["stats"]["today_passed"]
+        today_failed = app_state["stats"]["today_failed"]
         device_count = len(app_state["devices"])
         online_count = sum(1 for d in app_state["devices"].values() if d["status"] == "online")
-    pass_rate = round(today["passed"] / today["total"] * 100, 1) if today["total"] else 0
+    pass_rate = round(today_passed / today_total * 100, 1) if today_total else 0
     return jsonify({
-        "total": today["total"], "passed": today["passed"],
-        "failed": today["failed"], "passRate": pass_rate,
+        "total": today_total, "passed": today_passed,
+        "failed": today_failed, "passRate": pass_rate,
         "deviceCount": device_count, "onlineCount": online_count,
     })
 
@@ -282,10 +290,12 @@ def api_debug_diag():
             "memory_stats": {"total": app_state["stats"]["total"], "passed": app_state["stats"]["passed"],
                              "failed": app_state["stats"]["failed"]},
             "db_total": total_db, "db_today": today_db,
+            "api_stats_now": {"total": total_db["total"], "passed": total_db["passed"], "failed": total_db["failed"]},
             "devices_in_mem": len(app_state["devices"]),
             "deque_len": len(app_state["results_deque"]),
             "by_roi_count": len(app_state["stats"]["by_roi"]),
             "by_hour_count": len(app_state["stats"]["by_hour"]),
+            "db_path": os.path.abspath(os.path.join(os.path.dirname(__file__), "dashboard.db")),
         })
 
 
@@ -301,26 +311,10 @@ def api_debug_update_stats():
             app_state["stats"]["total"] = total
             app_state["stats"]["passed"] = passed
             app_state["stats"]["failed"] = failed
-
-        import sqlite3
-        from config import DB_PATH
-        conn = sqlite3.connect(DB_PATH)
-        try:
-            conn.execute("DELETE FROM results")
-            for i in range(total):
-                p = i < passed
-                conn.execute(
-                    "INSERT INTO results(report_id,device_id,roi_name,passed,fail_reason,"
-                    "total_region_count,region_count,barcode_count,has_barcode,"
-                    "timestamp,date_time,raw_json) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
-                    (f"debug-{i}", "__debug__", "全图", 1 if p else 0, "",
-                     0, 0, 0, 0, int(time.time() * 1000),
-                     datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                     json.dumps({"debug": True, "passed": p}, ensure_ascii=False)),
-                )
-            conn.commit()
-        finally:
-            conn.close()
+            today_stats = db_load_today_stats()
+            app_state["stats"]["today"] = today_stats["total"]
+            app_state["stats"]["today_passed"] = today_stats["passed"]
+            app_state["stats"]["today_failed"] = today_stats["failed"]
 
         app_state["results_deque"].clear()
         loaded = db_load_recent_results(500)
@@ -500,6 +494,9 @@ def api_debug_clear_data():
             app_state["stats"]["total"] = 0
             app_state["stats"]["passed"] = 0
             app_state["stats"]["failed"] = 0
+            app_state["stats"]["today"] = 0
+            app_state["stats"]["today_passed"] = 0
+            app_state["stats"]["today_failed"] = 0
             app_state["stats"]["by_roi"].clear()
             app_state["stats"]["by_hour"].clear()
         import sqlite3
@@ -548,6 +545,8 @@ if __name__ == "__main__":
 
     init_db()
 
+    today_str = datetime.now().strftime("%Y-%m-%d")
+
     try:
         loaded_devices = db_load_devices()
         app_state["devices"].update(loaded_devices)
@@ -557,10 +556,15 @@ if __name__ == "__main__":
 
     try:
         total_stats = db_load_total_stats()
+        today_stats = db_load_today_stats()
         app_state["stats"]["total"] = total_stats["total"]
         app_state["stats"]["passed"] = total_stats["passed"]
         app_state["stats"]["failed"] = total_stats["failed"]
+        app_state["stats"]["today"] = today_stats["total"]
+        app_state["stats"]["today_passed"] = today_stats["passed"]
+        app_state["stats"]["today_failed"] = today_stats["failed"]
         print(f"[DB] 全量统计: total={total_stats['total']}, passed={total_stats['passed']}, failed={total_stats['failed']}")
+        print(f"[DB] 今日统计: total={today_stats['total']}, passed={today_stats['passed']}, failed={today_stats['failed']}")
     except Exception as e:
         print(f"[DB] 加载统计失败: {e}")
 

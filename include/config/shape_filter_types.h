@@ -12,6 +12,8 @@
 #include <QString>
 #include <QStringList>
 #include <QVector>
+#include <QJsonObject>
+#include <QJsonArray>
 
 /**
  * 形状特征类型枚举
@@ -233,6 +235,44 @@ struct ShapeFilterConfig
     {
         conditions.clear();
         mode = ShapeFilterLogicMode::And;
+    }
+
+    /**
+     * JSON 序列化
+     */
+    QJsonObject toJson() const
+    {
+        QJsonObject obj;
+        obj["mode"] = static_cast<int>(mode);
+        QJsonArray condArr;
+        for (const auto& cond : conditions) {
+            QJsonObject cObj;
+            cObj["feature"] = static_cast<int>(cond.feature);
+            cObj["minValue"] = cond.minValue;
+            cObj["maxValue"] = cond.maxValue;
+            condArr.append(cObj);
+        }
+        obj["conditions"] = condArr;
+        return obj;
+    }
+
+    /**
+     * JSON 反序列化
+     */
+    void fromJson(const QJsonObject& obj)
+    {
+        if (obj.isEmpty()) return;
+        mode = static_cast<ShapeFilterLogicMode>(obj["mode"].toInt(0));
+        conditions.clear();
+        QJsonArray condArr = obj["conditions"].toArray();
+        for (const auto& val : condArr) {
+            QJsonObject cObj = val.toObject();
+            FilterCondition cond;
+            cond.feature = static_cast<ShapeFeature>(cObj["feature"].toInt(0));
+            cond.minValue = cObj["minValue"].toDouble(0);
+            cond.maxValue = cObj["maxValue"].toDouble(1e18);
+            conditions.append(cond);
+        }
     }
 };
 

@@ -2,7 +2,9 @@
 
 #include <QJsonObject>
 #include <QStringList>
+#include <QVector>
 #include <array>
+#include "algorithm_step.h"
 #include <opencv2/core.hpp>
 #include "config/shape_filter_types.h"
 
@@ -466,6 +468,9 @@ struct PipelineConfig
 
     // ========== 扩展功能开关（不在 StepType 枚举中） ==========
     bool enableObjectDetection = false;  ///< 在 Pipeline 末尾启用 YOLO 目标检测
+
+    // ========== 算法队列（每个ROI独立保存） ==========
+    QVector<AlgorithmStep> algorithmQueue;  ///< 形态学等算法步骤队列
 
     /**
      * @brief 重置所有配置为出厂默认值

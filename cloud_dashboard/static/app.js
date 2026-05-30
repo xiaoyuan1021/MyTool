@@ -222,20 +222,10 @@
             evtSource.addEventListener('result', function(e) {
                 const data = JSON.parse(e.data);
                 addResultRow(data);
-                updateStats(data);
+                updateStats();
 
                 // Toast
                 showToast(data);
-
-                // Debounce fetchStats to avoid excessive polling
-                if (!statsFetchPending) {
-                    statsFetchPending = true;
-                    setTimeout(() => {
-                        fetchStats();
-                        fetchTodayStats();
-                        statsFetchPending = false;
-                    }, 2000);
-                }
             });
 
             evtSource.addEventListener('heartbeat', function(e) {
@@ -291,33 +281,22 @@
         }
 
         // ===== Update Stats =====
-        let localTotal = 0;
-        let localPassed = 0;
-        let localFailed = 0;
 
-        function updateStats(data) {
-            localTotal++;
-            if (data.passed) localPassed++;
-            else localFailed++;
-
-            document.getElementById('statTotal').textContent = localTotal;
-            document.getElementById('statPassed').textContent = localPassed;
-            document.getElementById('statFailed').textContent = localFailed;
-            const rate = localTotal > 0 ? (localPassed / localTotal * 100).toFixed(1) : 0;
-            document.getElementById('statPassRate').textContent = rate;
-        }
-
-        function syncLocalStats(serverTotal, serverPassed, serverFailed) {
-            localTotal = serverTotal;
-            localPassed = serverPassed;
-            localFailed = serverFailed;
+        function updateStats() {
+            if (!statsFetchPending) {
+                statsFetchPending = true;
+                setTimeout(() => {
+                    fetchStats();
+                    fetchTodayStats();
+                    statsFetchPending = false;
+                }, 500);
+            }
         }
 
         function fetchStats() {
             fetch('/api/stats')
                 .then(r => r.json())
                 .then(s => {
-                    syncLocalStats(s.total, s.passed, s.failed);
                     document.getElementById('statTotal').textContent = s.total;
                     document.getElementById('statPassRate').textContent = s.passRate;
                     document.getElementById('statPassed').textContent = s.passed;

@@ -239,6 +239,9 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
 
             bool allPassed = true;
             QString failReason;
+            int totalRegionCount = 0;
+            std::vector<RegionFeature> allRegionFeatures;
+            QVector<BarcodeResult> allBarcodeResults;
 
             Logger::instance()->debug(QString("[检测] ROI配置数量: %1").arg(roiConfigs.size()));
 
@@ -439,6 +442,12 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
                 Logger::instance()->debug(QString("[检测] ROI '%1' 最终结果: %2")
                     .arg(roiConfig.roiName).arg(roiPassed ? "PASS" : "FAIL"));
 
+                // 累加各ROI的检测数据
+                totalRegionCount += ctx.regionCount;
+                allRegionFeatures.insert(allRegionFeatures.end(),
+                    ctx.regionFeatures.begin(), ctx.regionFeatures.end());
+                allBarcodeResults.append(ctx.barcodeResults);
+
                 if (!roiPassed) {
                     allPassed = false;
                     if (!failReason.isEmpty()) failReason += "; ";
@@ -453,9 +462,13 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
             Logger::instance()->debug(QString("[检测] 整体结果: %1, reason=%2")
                 .arg(allPassed ? "PASS" : "FAIL").arg(failReason.isEmpty() ? "无" : failReason));
 
+            // 汇总所有ROI的检测数据到 resultCtx
             PipelineContext resultCtx;
             resultCtx.pass = allPassed;
             resultCtx.reason = failReason;
+            resultCtx.regionCount = totalRegionCount;
+            resultCtx.regionFeatures = allRegionFeatures;
+            resultCtx.barcodeResults = allBarcodeResults;
             return resultCtx;
             } catch (const cv::Exception& ex) {
                 Logger::instance()->error(QString("[检测] OpenCV错误: %1").arg(ex.what()));

@@ -44,7 +44,10 @@ public:
     PipelineConfig getConfigSnapshot() const { return m_config; }
 
     // 设置配置（仅UI线程调用）
-    void setConfig(const PipelineConfig& config) { m_config = config; }
+    void setConfig(const PipelineConfig& config) {
+        m_config = config;
+        m_algorithmQueue = config.algorithmQueue;
+    }
 
     /// 批量修改配置（推荐方式）
     void updateConfig(std::function<void(PipelineConfig&)> updater) {

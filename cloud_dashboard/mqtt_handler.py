@@ -31,7 +31,7 @@ class MQTTHandler:
         else:
             print(f"[MQTT] 连接失败, reason_code={reason_code}")
 
-    def on_disconnect(self, client, userdata, reason_code, properties=None):
+    def on_disconnect(self, client, userdata, flags, reason_code, properties=None):
         self.s["mqtt_connected"] = False
         print(f"[MQTT] 断开连接 (reason_code={reason_code})")
         self._broadcast_sse("mqtt_status", {"connected": False})
@@ -49,21 +49,21 @@ class MQTTHandler:
     def _handle_heartbeat(self, payload):
         device_id = payload.get("deviceId", "unknown")
         now = time.time()
-        now_str_val = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         devices = self.s["devices"]
 
         with self.s["data_lock"]:
             if device_id not in devices:
                 devices[device_id] = {
                     "device_id": device_id, "status": "online",
-                    "first_seen": now_str_val, "last_heartbeat": now_str_val,
+                    "first_seen": now_str, "last_heartbeat": now_str,
                     "last_ts": now, "uptime": payload.get("uptime", 0),
                     "result_count": 0, "last_result": None,
                 }
             else:
                 dev = devices[device_id]
                 dev["status"] = "online"
-                dev["last_heartbeat"] = now_str_val
+                dev["last_heartbeat"] = now_str
                 dev["last_ts"] = now
                 dev["uptime"] = payload.get("uptime", dev["uptime"])
 
@@ -86,16 +86,17 @@ class MQTTHandler:
         result_obj = payload.get("result", {})
         passed = result_obj.get("passed", True)
         roi_name = payload.get("roiName", "全图")
+        dt_str = payload.get("dateTime", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
         record = {
-            "reportId": payload.get("reportId", ""),
+            "reportId": report_id,
             "deviceId": device_id,
             "roiName": roi_name,
             "passed": passed,
             "failReason": result_obj.get("failReason", ""),
             "totalRegionCount": result_obj.get("totalRegionCount", 0),
             "timestamp": payload.get("timestamp", int(time.time() * 1000)),
-            "dateTime": payload.get("dateTime", datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+            "dateTime": dt_str,
             "regionCount": len(payload.get("regions", [])),
             "barcodeCount": len(payload.get("barcodes", [])),
             "hasBarcode": len(payload.get("barcodes", [])) > 0,
@@ -103,40 +104,41 @@ class MQTTHandler:
 
         self.s["results_deque"].append(record)
 
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        is_today = dt_str.startswith(today_str)
+
         with self.s["data_lock"]:
             devices = self.s["devices"]
             stats = self.s["stats"]
 
             if device_id not in devices:
-                now_str_val = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 devices[device_id] = {
                     "device_id": device_id, "status": "online",
-                    "first_seen": now_str_val, "last_heartbeat": now_str_val,
+                    "first_seen": now_str, "last_heartbeat": now_str,
                     "last_ts": time.time(), "uptime": 0,
                     "result_count": 0, "last_result": None,
                 }
-                db_upsert_device(device_id, devices[device_id])
 
             stats["total"] += 1
-            if passed:
-                stats["passed"] += 1
-            else:
-                stats["failed"] += 1
+            stats["passed"] += passed
+            stats["failed"] += (0 if passed else 1)
+
+            if is_today:
+                stats["today"] += 1
+                stats["today_passed"] += passed
+                stats["today_failed"] += (0 if passed else 1)
 
             roi_stat = stats["by_roi"][roi_name]
             roi_stat["total"] += 1
-            if passed:
-                roi_stat["passed"] += 1
-            else:
-                roi_stat["failed"] += 1
+            roi_stat["passed"] += passed
+            roi_stat["failed"] += (0 if passed else 1)
 
             hour_key = datetime.now().strftime("%Y-%m-%d %H:00")
             hour_stat = stats["by_hour"][hour_key]
             hour_stat["total"] += 1
-            if passed:
-                hour_stat["passed"] += 1
-            else:
-                hour_stat["failed"] += 1
+            hour_stat["passed"] += passed
+            hour_stat["failed"] += (0 if passed else 1)
 
             if len(stats["by_hour"]) > 168:
                 sorted_hours = sorted(stats["by_hour"].keys())
@@ -145,28 +147,27 @@ class MQTTHandler:
 
             dev = devices[device_id]
             dev["result_count"] = dev.get("result_count", 0) + 1
-            dev["last_result"] = {
-                "passed": passed, "roiName": roi_name,
-                "dateTime": record["dateTime"],
-            }
+            dev["last_result"] = {"passed": passed, "roiName": roi_name, "dateTime": dt_str}
 
         db_upsert_device(device_id, devices[device_id])
-        db_insert_result(record)
+        try:
+            db_insert_result(record)
+        except Exception as e:
+            print(f"[MQTT] db_insert_result FAILED: {e}")
         self._broadcast_sse("result", record)
 
     def check_device_timeout(self):
         while True:
             time.sleep(15)
             now = time.time()
-            now_str_val = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            devices = self.s["devices"]
+            now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             with self.s["data_lock"]:
-                device_list = list(devices.items())
+                device_list = list(self.s["devices"].items())
             for device_id, dev in device_list:
                 if dev["status"] == "online" and (now - dev.get("last_ts", 0)) > DEVICE_TIMEOUT_SECONDS:
                     with self.s["data_lock"]:
                         dev["status"] = "offline"
-                        dev["last_heartbeat"] = now_str_val
+                        dev["last_heartbeat"] = now_str
                     db_upsert_device(device_id, dev)
                     self._broadcast_sse("heartbeat", {"deviceId": device_id, "status": "offline"})
 

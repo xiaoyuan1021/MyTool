@@ -38,6 +38,7 @@ void PipelineManager::resetConfigToDefaults()
 void PipelineManager::addAlgorithmStep(const AlgorithmStep& step)
 {
     m_algorithmQueue.append(step);
+    m_config.algorithmQueue = m_algorithmQueue;
     emit algorithmQueueChanged(m_algorithmQueue.size());
 }
 
@@ -46,6 +47,7 @@ void PipelineManager::removeAlgorithmStep(int index)
     if (index >= 0 && index < m_algorithmQueue.size())
     {
         m_algorithmQueue.removeAt(index);
+        m_config.algorithmQueue = m_algorithmQueue;
         emit algorithmQueueChanged(m_algorithmQueue.size());
     }
 }
@@ -55,6 +57,7 @@ void PipelineManager::swapAlgorithmStep(int index1, int index2)
     if (index1 < m_algorithmQueue.size() && index2 < m_algorithmQueue.size())
     {
         m_algorithmQueue.swapItemsAt(index1, index2);
+        m_config.algorithmQueue = m_algorithmQueue;
         emit algorithmQueueChanged(m_algorithmQueue.size());
     }
 }
@@ -62,6 +65,7 @@ void PipelineManager::swapAlgorithmStep(int index1, int index2)
 void PipelineManager::clearAlgorithmQueue()
 {
     m_algorithmQueue.clear();
+    m_config.algorithmQueue.clear();
     emit algorithmQueueChanged(0);
 }
 
@@ -77,6 +81,14 @@ PipelineContext PipelineManager::execute(const cv::Mat& inputImage, const Pipeli
     // 标记后台Pipeline开始运行（用于reset安全）
     m_pipelineRunning.storeRelease(1);
 
+    // 【关键修复】保存共享状态，每个ROI执行后恢复，防止跨ROI污染
+    QVector<AlgorithmStep> savedAlgorithmQueue = m_algorithmQueue;
+    ShapeFilterConfig savedShapeFilter = m_config.shapeFilter;
+
+    // 使用ROI专属的算法队列和形状滤波配置
+    m_algorithmQueue = config.algorithmQueue;
+    m_config.shapeFilter = config.shapeFilter;
+
     // 使用局部context，不共享可变状态
     PipelineContext ctx;
     ctx.srcBgr = inputImage;
@@ -91,11 +103,15 @@ PipelineContext PipelineManager::execute(const cv::Mat& inputImage, const Pipeli
     } catch (const std::exception& ex) {
         qDebug() << "[PipelineManager] Pipeline执行异常:" << ex.what();
         Logger::instance()->error(QString("Pipeline执行异常: %1").arg(ex.what()));
+        m_algorithmQueue = savedAlgorithmQueue;
+        m_config.shapeFilter = savedShapeFilter;
         m_pipelineRunning.storeRelease(0);
         return PipelineContext();
     } catch (...) {
         qDebug() << "[PipelineManager] Pipeline执行未知异常";
         Logger::instance()->error("Pipeline执行未知异常");
+        m_algorithmQueue = savedAlgorithmQueue;
+        m_config.shapeFilter = savedShapeFilter;
         m_pipelineRunning.storeRelease(0);
         return PipelineContext();
     }
@@ -106,11 +122,16 @@ PipelineContext PipelineManager::execute(const cv::Mat& inputImage, const Pipeli
         m_lastContext = ctx;
     }
 
+    // 【关键修复】恢复共享状态，让UI线程看到原始配置
+    m_algorithmQueue = savedAlgorithmQueue;
+    m_config.shapeFilter = savedShapeFilter;
+
     m_pipelineRunning.storeRelease(0);
 
     // 处理延迟重置（execute执行期间UI线程请求的reset）
     if (m_hasPendingReset.loadAcquire()) {
         m_algorithmQueue.clear();
+        m_config.algorithmQueue.clear();
         m_config.shapeFilter.clear();
         m_displayMode = DisplayConfig::Mode::MaskGreenWhite;
         m_overlayAlpha = AppConstants::DEFAULT_OVERLAY_ALPHA;
@@ -142,6 +163,7 @@ void PipelineManager::updateAlgorithmStep(int index, const AlgorithmStep& step)
     if (index >= 0 && index < m_algorithmQueue.size())
     {
         m_algorithmQueue[index] = step;
+        m_config.algorithmQueue = m_algorithmQueue;
         emit algorithmQueueChanged(m_algorithmQueue.size());
     }
 }
@@ -181,6 +203,7 @@ void PipelineManager::resetPipeline()
 
     // Pipeline未在运行，直接执行重置（无需加锁，因为在UI线程且无并发）
     m_algorithmQueue.clear();
+    m_config.algorithmQueue.clear();
     m_config.shapeFilter.clear();
     m_displayMode = DisplayConfig::Mode::MaskGreenWhite;
     m_overlayAlpha = AppConstants::DEFAULT_OVERLAY_ALPHA;
@@ -218,6 +241,8 @@ void PipelineManager::initPipeline()
 {
     m_pipeline = Pipeline();
 
+    // 【关键修复】始终添加所有步骤，由 ctx.config->stepEnabled 在运行时控制跳过
+    // 这样不同ROI可以有不同的步骤组合，不受全局m_config限制
     std::map<int, std::unique_ptr<IPipelineStep>> allSteps;
     allSteps[0] = std::make_unique<StepColorChannel>();
     allSteps[1] = std::make_unique<StepEnhance>(m_processor.get());
@@ -229,8 +254,9 @@ void PipelineManager::initPipeline()
     allSteps[7] = std::make_unique<StepImageFilter>();
     allSteps[8] = std::make_unique<StepOcrRecognition>();
 
+    // 按默认顺序添加所有步骤
     for (int idx : m_config.stepOrder) {
-        if (m_config.stepEnabled[idx] && allSteps.contains(idx)) {
+        if (allSteps.contains(idx)) {
             m_pipeline.add(std::move(allSteps[idx]));
         }
     }
