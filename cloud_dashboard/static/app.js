@@ -801,7 +801,7 @@
             document.getElementById('debugPassRate').value = rate;
         }
 
-        async function updateStats() {
+        async function updateDebugStats() {
             const total = parseInt(document.getElementById('debugTotal').value) || 0;
             const passed = parseInt(document.getElementById('debugPassed').value) || 0;
             const failed = parseInt(document.getElementById('debugFailed').value) || 0;
