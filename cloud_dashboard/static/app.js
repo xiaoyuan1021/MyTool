@@ -222,6 +222,7 @@
             evtSource.addEventListener('result', function(e) {
                 const data = JSON.parse(e.data);
                 addResultRow(data);
+                console.log(`[DEBUG] SSE result 事件触发 updateStats`);
                 updateStats();
 
                 // Toast
@@ -286,6 +287,7 @@
             if (!statsFetchPending) {
                 statsFetchPending = true;
                 setTimeout(() => {
+                    console.log(`[DEBUG] updateStats → fetchStats + fetchTodayStats`);
                     fetchStats();
                     fetchTodayStats();
                     statsFetchPending = false;
@@ -297,6 +299,7 @@
             fetch('/api/stats')
                 .then(r => r.json())
                 .then(s => {
+                    console.log(`[DEBUG] fetchStats 更新主看板: total=${s.total}, passed=${s.passed}`);
                     document.getElementById('statTotal').textContent = s.total;
                     document.getElementById('statPassRate').textContent = s.passRate;
                     document.getElementById('statPassed').textContent = s.passed;
@@ -726,6 +729,7 @@
             try {
                 const statsRes = await fetch('/api/stats');
                 const s = await statsRes.json();
+                console.log(`[DEBUG] refreshDebugData 收到: total=${s.total}, passed=${s.passed}, failed=${s.failed}, passRate=${s.passRate}`);
                 document.getElementById('debugTotal').value = s.total;
                 document.getElementById('debugPassed').value = s.passed;
                 document.getElementById('debugFailed').value = s.failed;
@@ -805,6 +809,7 @@
             const total = parseInt(document.getElementById('debugTotal').value) || 0;
             const passed = parseInt(document.getElementById('debugPassed').value) || 0;
             const failed = parseInt(document.getElementById('debugFailed').value) || 0;
+            console.log(`[DEBUG] updateDebugStats 发送: total=${total}, passed=${passed}, failed=${failed}`);
 
             try {
                 const res = await fetch('/api/debug/update-stats', {

@@ -11,6 +11,9 @@ from datetime import datetime
 from config import MQTT_CONFIG, DEVICE_TIMEOUT_SECONDS
 from db import db_upsert_device, db_insert_result, db_insert_heartbeat
 
+import logging
+_log = logging.getLogger("dashboard").info
+
 
 class MQTTHandler:
     def __init__(self, app_state):
@@ -21,7 +24,7 @@ class MQTTHandler:
     def on_connect(self, client, userdata, flags, reason_code, properties=None):
         if reason_code == 0:
             self.s["mqtt_connected"] = True
-            print(f"[MQTT] 已连接 {MQTT_CONFIG['host']}:{MQTT_CONFIG['port']}")
+            _log(f"[MQTT] 已连接 {MQTT_CONFIG['host']}:{MQTT_CONFIG['port']}")
             topics = [
                 (MQTT_CONFIG["topics"]["results"], MQTT_CONFIG["qos"]),
                 (MQTT_CONFIG["topics"]["heartbeat"], MQTT_CONFIG["qos"]),
@@ -29,11 +32,11 @@ class MQTTHandler:
             client.subscribe(topics)
             self._broadcast_sse("mqtt_status", {"connected": True})
         else:
-            print(f"[MQTT] 连接失败, reason_code={reason_code}")
+            _log(f"[MQTT] 连接失败, reason_code={reason_code}")
 
     def on_disconnect(self, client, userdata, flags, reason_code, properties=None):
         self.s["mqtt_connected"] = False
-        print(f"[MQTT] 断开连接 (reason_code={reason_code})")
+        _log(f"[MQTT] 断开连接 (reason_code={reason_code})")
         self._broadcast_sse("mqtt_status", {"connected": False})
 
     def on_message(self, client, userdata, msg):
@@ -153,7 +156,7 @@ class MQTTHandler:
         try:
             db_insert_result(record)
         except Exception as e:
-            print(f"[MQTT] db_insert_result FAILED: {e}")
+            _log(f"[MQTT] db_insert_result FAILED: {e}")
         self._broadcast_sse("result", record)
 
     def check_device_timeout(self):

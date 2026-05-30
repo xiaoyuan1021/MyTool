@@ -10,6 +10,9 @@ from datetime import datetime, timedelta
 
 from config import DB_PATH
 
+import logging
+_log = logging.getLogger("dashboard").info
+
 _sqlite_lock = threading.Lock()
 
 
@@ -69,7 +72,7 @@ def init_db():
         conn.commit()
     finally:
         conn.close()
-    print(f"[DB] SQLite 初始化完成: {DB_PATH}")
+    _log(f"[DB] SQLite 初始化完成: {DB_PATH}")
 
 
 def db_upsert_device(device_id: str, data: dict):

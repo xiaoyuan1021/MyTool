@@ -6,8 +6,22 @@ import json
 import os
 import queue
 import socket
+import sys
 import threading
 import time
+
+# ===== 日志同时输出到文件和控制台 =====
+import logging
+_log_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dashboard.log")
+_log_handler = logging.FileHandler(_log_file, encoding="utf-8")
+_log_handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s", datefmt="%H:%M:%S"))
+_console_handler = logging.StreamHandler(sys.stdout)
+_console_handler.setFormatter(logging.Formatter("%(message)s"))
+_logging = logging.getLogger("dashboard")
+_logging.setLevel(logging.DEBUG)
+_logging.addHandler(_log_handler)
+_logging.addHandler(_console_handler)
+_log = _logging.info
 from collections import deque, defaultdict
 from datetime import datetime
 
@@ -79,9 +93,9 @@ def init_mqtt():
     try:
         client.connect(cfg["host"], cfg["port"], cfg["keepalive"])
         client.loop_start()
-        print(f"[MQTT] 正在连接 {cfg['host']}:{cfg['port']}...")
+        _log(f"[MQTT] 正在连接 {cfg['host']}:{cfg['port']}...")
     except Exception as e:
-        print(f"[MQTT] 连接失败: {e}")
+        _log(f"[MQTT] 连接失败: {e}")
 
 
 # ========== 路由 ==========
@@ -116,6 +130,7 @@ def api_stats():
         device_count = len(app_state["devices"])
         online_count = sum(1 for d in app_state["devices"].values() if d["status"] == "online")
     pass_rate = round(passed / total * 100, 1) if total else 0
+    _log(f"[DEBUG] GET /api/stats → total={total}, passed={passed}, failed={failed}, passRate={pass_rate}")
     return jsonify({
         "total": total,
         "passed": passed,
@@ -308,6 +323,7 @@ def api_debug_update_stats():
         failed = body.get("failed", 0)
 
         with app_state["data_lock"]:
+            old = dict(app_state["stats"])
             app_state["stats"]["total"] = total
             app_state["stats"]["passed"] = passed
             app_state["stats"]["failed"] = failed
@@ -315,6 +331,9 @@ def api_debug_update_stats():
             app_state["stats"]["today"] = today_stats["total"]
             app_state["stats"]["today_passed"] = today_stats["passed"]
             app_state["stats"]["today_failed"] = today_stats["failed"]
+        _log(f"[DEBUG] update-stats 收到 total={total}, passed={passed}, failed={failed}")
+        _log(f"[DEBUG] update-stats 之前 stats: total={old['total']}, passed={old['passed']}, failed={old['failed']}, today={old['today']}")
+        _log(f"[DEBUG] update-stats 之后 stats: total={app_state['stats']['total']}, passed={app_state['stats']['passed']}, failed={app_state['stats']['failed']}, today={app_state['stats']['today']}")
 
         app_state["results_deque"].clear()
         loaded = db_load_recent_results(500)
@@ -538,10 +557,10 @@ def api_debug_export():
 # ========== 启动 ==========
 
 if __name__ == "__main__":
-    print("=" * 50)
-    print("EdgeVision Cloud Dashboard")
-    print("边云协同智能视觉检测云平台")
-    print("=" * 50)
+    _log("=" * 50)
+    _log("EdgeVision Cloud Dashboard")
+    _log("边云协同智能视觉检测云平台")
+    _log("=" * 50)
 
     init_db()
 
@@ -550,9 +569,9 @@ if __name__ == "__main__":
     try:
         loaded_devices = db_load_devices()
         app_state["devices"].update(loaded_devices)
-        print(f"[DB] 已加载 {len(loaded_devices)} 台设备")
+        _log(f"[DB] 已加载 {len(loaded_devices)} 台设备")
     except Exception as e:
-        print(f"[DB] 加载设备失败: {e}")
+        _log(f"[DB] 加载设备失败: {e}")
 
     try:
         total_stats = db_load_total_stats()
@@ -563,10 +582,10 @@ if __name__ == "__main__":
         app_state["stats"]["today"] = today_stats["total"]
         app_state["stats"]["today_passed"] = today_stats["passed"]
         app_state["stats"]["today_failed"] = today_stats["failed"]
-        print(f"[DB] 全量统计: total={total_stats['total']}, passed={total_stats['passed']}, failed={total_stats['failed']}")
-        print(f"[DB] 今日统计: total={today_stats['total']}, passed={today_stats['passed']}, failed={today_stats['failed']}")
+        _log(f"[DB] 全量统计: total={total_stats['total']}, passed={total_stats['passed']}, failed={total_stats['failed']}")
+        _log(f"[DB] 今日统计: total={today_stats['total']}, passed={today_stats['passed']}, failed={today_stats['failed']}")
     except Exception as e:
-        print(f"[DB] 加载统计失败: {e}")
+        _log(f"[DB] 加载统计失败: {e}")
 
     try:
         app_state["stats"]["by_roi"].clear()
@@ -575,17 +594,17 @@ if __name__ == "__main__":
             app_state["stats"]["by_roi"][roi_name] = roi_data
         for hour_key, hour_data in db_load_by_hour().items():
             app_state["stats"]["by_hour"][hour_key] = hour_data
-        print(f"[DB] ROI 统计: {len(app_state['stats']['by_roi'])} 个, 小时统计: {len(app_state['stats']['by_hour'])} 个")
+        _log(f"[DB] ROI 统计: {len(app_state['stats']['by_roi'])} 个, 小时统计: {len(app_state['stats']['by_hour'])} 个")
     except Exception as e:
-        print(f"[DB] 加载维度统计失败: {e}")
+        _log(f"[DB] 加载维度统计失败: {e}")
 
     try:
         loaded_results = db_load_recent_results(500)
         for r in loaded_results:
             app_state["results_deque"].append(r)
-        print(f"[DB] 已加载 {len(loaded_results)} 条最近结果到缓存")
+        _log(f"[DB] 已加载 {len(loaded_results)} 条最近结果到缓存")
     except Exception as e:
-        print(f"[DB] 加载结果失败: {e}")
+        _log(f"[DB] 加载结果失败: {e}")
 
     init_mqtt()
 
@@ -594,8 +613,8 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     try:
         from waitress import serve
-        print(f"[Server] 启动 waitress 服务器 http://0.0.0.0:{port}")
+        _log(f"[Server] 启动 waitress 服务器 http://0.0.0.0:{port}")
         serve(app, host="0.0.0.0", port=port, threads=8)
     except ImportError:
-        print(f"[Server] waitress 未安装，使用 Flask 开发服务器 http://127.0.0.1:{port}")
+        _log(f"[Server] waitress 未安装，使用 Flask 开发服务器 http://127.0.0.1:{port}")
         app.run(host="0.0.0.0", port=port, debug=False, threaded=True)
