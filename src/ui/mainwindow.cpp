@@ -294,6 +294,7 @@ void MainWindow::setupControllers()
     m_detectionUiController = new DetectionUiController(m_roiManager, ui->tabWidget, this);
     m_configController = new ConfigController(m_pipelineManager, m_roiManager, this);
     m_autoDetectionController = new AutoDetectionController(m_pipelineManager, &m_roiManager, this);
+    m_autoDetectionController->setTabManager(m_tabManager);
     m_profileController = new ProfileController(m_profileManager, &m_roiManager,
                                                 m_pipelineManager, m_tabManager,
                                                 m_roiUiController, m_toast, this, this);

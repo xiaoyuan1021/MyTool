@@ -7,7 +7,6 @@
 #include "widgets/tab_manager.h"
 #include <QFileInfo>
 #include <QCoreApplication>
-#include <QApplication>
 #include <QtConcurrent/QtConcurrent>
 #include <QFutureWatcher>
 
@@ -200,6 +199,7 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
 {
     // 捕获需要的指针和数据（按值），避免在后台线程中捕获 this
     QPointer<PipelineManager> pipelinePtr = m_pipeline;
+    TabManager* tabMgrPtr = m_tabManager;
     QList<RoiConfig> roiConfigs = task.roiConfigs;  // 值拷贝，线程安全
     QString imagePath = task.imagePath;
     QString imageName = task.imageName;
@@ -210,7 +210,7 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
     // 使用 QtConcurrent 在后台线程执行，避免阻塞 UI
     // 注意：lambda中无法使用emit logMessage（无this指针），使用Logger::instance()代替
     QFuture<PipelineContext> future = QtConcurrent::run(
-        [pipelinePtr, imagePath, roiConfigs]() -> PipelineContext {
+        [pipelinePtr, tabMgrPtr, imagePath, roiConfigs]() -> PipelineContext {
             try {
             // 【P0修复】检查PipelineManager是否已被释放
             if (!pipelinePtr) {
@@ -363,19 +363,19 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
                         ObjectDetectionConfig objConfig;
                         objConfig.fromJson(detItem.config);
 
-                        // 如果设置了期望数量，需要执行目标检测
+                        // 总是执行目标检测
                         int detectedCount = 0;
-                        if (objConfig.expectedCount > 0) {
-                            // 执行目标检测
-                            if (auto* objTab = qApp->findChild<TabManager*>()->getTabAs<ObjectDetectionTabWidget>("目标检测")) {
-                                if (objTab->isModelLoaded()) {
-                                    std::vector<DetectionResult> detResults = objTab->runDetection(roiImage);
-                                    detectedCount = static_cast<int>(detResults.size());
-                                    Logger::instance()->debug(QString("[检测] 目标检测执行完成: 检测到%1个目标").arg(detectedCount));
-                                } else {
-                                    Logger::instance()->warning("[检测] 目标检测模型未加载，跳过数量检查");
-                                }
+                        auto* objTab = tabMgrPtr ? tabMgrPtr->getTabAs<ObjectDetectionTabWidget>("目标检测") : nullptr;
+                        if (objTab) {
+                            if (objTab->isModelLoaded()) {
+                                std::vector<DetectionResult> detResults = objTab->runDetection(roiImage);
+                                detectedCount = static_cast<int>(detResults.size());
+                                Logger::instance()->debug(QString("[检测] 目标检测执行完成: 检测到%1个目标").arg(detectedCount));
+                            } else {
+                                Logger::instance()->warning("[检测] 目标检测模型未加载，跳过数量检查");
                             }
+                        } else {
+                            Logger::instance()->warning("[检测] 目标检测Tab未找到");
                         }
 
                         int expectedCount = objConfig.expectedCount;

@@ -1880,14 +1880,34 @@
         }
 
         // ===== Update Stats =====
+        let localTotal = 0;
+        let localPassed = 0;
+        let localFailed = 0;
+
         function updateStats(data) {
-            // Use server data for accurate stats
+            localTotal++;
+            if (data.passed) localPassed++;
+            else localFailed++;
+
+            document.getElementById('statTotal').textContent = localTotal;
+            document.getElementById('statPassed').textContent = localPassed;
+            document.getElementById('statFailed').textContent = localFailed;
+            const rate = localTotal > 0 ? (localPassed / localTotal * 100).toFixed(1) : 0;
+            document.getElementById('statPassRate').textContent = rate;
+            document.getElementById('statToday').textContent = localTotal;
+        }
+
+        function syncLocalStats(serverTotal, serverPassed, serverFailed) {
+            localTotal = serverTotal;
+            localPassed = serverPassed;
+            localFailed = serverFailed;
         }
 
         function fetchStats() {
             fetch('/api/stats')
                 .then(r => r.json())
                 .then(s => {
+                    syncLocalStats(s.total, s.passed, s.failed);
                     document.getElementById('statTotal').textContent = s.total;
                     document.getElementById('statPassRate').textContent = s.passRate;
                     document.getElementById('statPassed').textContent = s.passed;
@@ -1895,7 +1915,8 @@
                     document.getElementById('statDevices').textContent = s.onlineCount;
                     document.getElementById('statTotalDevices').textContent = s.deviceCount;
                     document.getElementById('statToday').textContent = s.total;
-                });
+                })
+                .catch(err => console.error('[Stats] fetchStats failed:', err));
         }
 
         function fetchDevices() {

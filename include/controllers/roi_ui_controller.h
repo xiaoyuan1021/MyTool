@@ -80,6 +80,9 @@ public:
     /// 更新当前选中ROI的 OCR 检测项判定参数（由 OcrTab 触发）
     void updateOcrDetectionConfig(const QString& expectedText, bool matchExact);
 
+    /// 更新当前选中ROI的 目标检测 检测项判定参数（由 ObjectDetectionTab 触发）
+    void updateObjectDetectionConfig(int expectedCount);
+
     // 创建覆盖整图的ROI（无需用户绘制），返回ROI ID
     QString addFullImageRoi();
 

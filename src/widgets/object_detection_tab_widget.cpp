@@ -1,6 +1,7 @@
 #include "widgets/object_detection_tab_widget.h"
 #include "ui_object_detection_tab.h"
 #include "logger.h"
+#include "controllers/roi_ui_controller.h"
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QDebug>
@@ -47,11 +48,6 @@ void ObjectDetectionTabWidget::setupConnections()
                 emit detectionConfigChanged();
             }
         });
-
-    // 期望数量变化时保存到配置
-    connect(m_ui->spinBox_expectedCount, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int value) {
-        m_expectedCount = value;
-    });
 }
 
 void ObjectDetectionTabWidget::onBrowseModel()
@@ -92,7 +88,7 @@ void ObjectDetectionTabWidget::onApplyClicked()
         m_ui->label_status->setText("状态：模型已就绪");
         m_pipelineManager->updateConfig([this](PipelineConfig& cfg) {
             cfg.enableObjectDetection = true;
-            cfg.objectDetection.expectedCount = m_expectedCount;
+            cfg.objectDetection.expectedCount = m_ui->spinBox_expectedCount->value();
         });
         emit detectionConfigChanged();
         return;
@@ -135,7 +131,7 @@ void ObjectDetectionTabWidget::onApplyClicked()
             m_currentModelPath = modelPath;
             m_pipelineManager->updateConfig([this](PipelineConfig& cfg) {
                 cfg.enableObjectDetection = true;
-                cfg.objectDetection.expectedCount = m_expectedCount;
+                cfg.objectDetection.expectedCount = m_ui->spinBox_expectedCount->value();
             });
             // 尝试从 ORT 或 DNN 获取模型输入尺寸
             int modelW = 0, modelH = 0;
@@ -270,10 +266,17 @@ void ObjectDetectionTabWidget::updateDetectionResults(const std::vector<Detectio
 }
 
 void ObjectDetectionTabWidget::connectSignals(const SignalContext& ctx,
-                                              std::function<void()> onExecutePipeline,
-                                              std::function<void()> onConfigSaved)
+                                               std::function<void()> onExecutePipeline,
+                                               std::function<void()> onConfigSaved)
 {
-    Q_UNUSED(ctx); Q_UNUSED(onConfigSaved);
+    Q_UNUSED(onConfigSaved);
     connect(this, &ObjectDetectionTabWidget::detectionConfigChanged,
             this, [onExecutePipeline]() { onExecutePipeline(); });
+
+    // 期望数量变化时同步到DetectionItem.config
+    connect(m_ui->spinBox_expectedCount, QOverload<int>::of(&QSpinBox::valueChanged), this, [this, ctx](int value) {
+        if (ctx.roiCtrl) {
+            ctx.roiCtrl->updateObjectDetectionConfig(value);
+        }
+    });
 }

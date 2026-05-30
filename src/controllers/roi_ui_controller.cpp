@@ -697,3 +697,19 @@ void RoiUiController::updateOcrDetectionConfig(const QString& expectedText, bool
         }
     }
 }
+
+void RoiUiController::updateObjectDetectionConfig(int expectedCount)
+{
+    RoiConfig* roi = m_roiManager.getRoiConfig(m_currentSelectedRoiId);
+    if (!roi) return;
+    for (auto& detItem : roi->detectionItems) {
+        if (detItem.type == DetectionType::ObjectDetection && detItem.enabled) {
+            ObjectDetectionConfig objConfig;
+            objConfig.fromJson(detItem.config);
+            objConfig.expectedCount = expectedCount;
+            detItem.config = objConfig.toJson();
+            Logger::instance()->info(QString("[RoiUiController] 目标检测判定参数已更新: expectedCount=%1").arg(expectedCount));
+            break;
+        }
+    }
+}

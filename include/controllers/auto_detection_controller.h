@@ -13,6 +13,9 @@
 #include "roi_manager.h"
 #include "data/detection_result_report.h"
 
+// 前向声明
+class TabManager;
+
 /**
  * 检测统计信息
  */
@@ -89,6 +92,9 @@ public:
 
     ~AutoDetectionController() = default;
 
+    /// 设置TabManager引用（用于目标检测Tab访问）
+    void setTabManager(TabManager* tabManager) { m_tabManager = tabManager; }
+
     // ==================== 控制接口 ====================
 
     /// 开始批量检测（从RoiManager自动获取图片和ROI配置）
@@ -162,6 +168,7 @@ private:
 
     QPointer<PipelineManager> m_pipeline;
     RoiManager* m_roiManager;
+    TabManager* m_tabManager = nullptr;
 
     QList<ImageDetectionTask> m_tasks;    ///< 待检测任务列表
     int m_currentIndex = 0;
