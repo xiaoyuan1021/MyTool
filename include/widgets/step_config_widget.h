@@ -63,6 +63,7 @@ private:
 
     void setupUI();
     void rebuildStepItems();
+    void rebuildGridLayout();
     void updatePipelinePreview();
     QStringList collectEnabledTabNames();
     void applyTabVisibility();

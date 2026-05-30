@@ -156,7 +156,6 @@ bool StepConfigWidget::eventFilter(QObject* obj, QEvent* event)
             int draggedEntry = dp->mimeData()->data(kMimeType).toInt();
             int targetPos = dropTargetIndex(dp->position().toPoint());
 
-            // 从 layout 中移除源 widget
             QFrame* sourceFrame = nullptr;
             int sourcePos = -1;
             for (int i = 0; i < m_stepFrames.size(); ++i) {
@@ -168,19 +167,16 @@ bool StepConfigWidget::eventFilter(QObject* obj, QEvent* event)
             }
             if (!sourceFrame) break;
 
-            m_stepLayout->removeWidget(sourceFrame);
             m_stepFrames.removeAt(sourcePos);
 
-            // 计算插入位置（移除后调整）
             if (sourcePos < targetPos) --targetPos;
             targetPos = qBound(0, targetPos, m_stepFrames.size());
 
-            m_stepLayout->insertWidget(targetPos, sourceFrame);
             m_stepFrames.insert(targetPos, sourceFrame);
 
-            dp->acceptProposedAction();
+            rebuildGridLayout();
 
-            // 拖拽完成后实时更新预览
+            dp->acceptProposedAction();
             updatePipelinePreview();
             break;
         }
@@ -352,13 +348,11 @@ void StepConfigWidget::rebuildStepItems()
 
     const auto& config = m_pipelineManager->config();
 
-    // 提取可排序的条目索引（排除 alwaysOn）
     QList<int> sortableEntries;
     for (int i = 0; i < kStepCount; ++i) {
         if (!kSteps[i].alwaysOn) sortableEntries.append(i);
     }
 
-    // 按 stepOrder 排序
     std::sort(sortableEntries.begin(), sortableEntries.end(),
               [&](int a, int b) {
         auto firstPos = [&](int entryIdx) -> int {
@@ -373,7 +367,6 @@ void StepConfigWidget::rebuildStepItems()
         return firstPos(a) < firstPos(b);
     });
 
-    // 清除旧 widget
     m_dragSource = nullptr;
     for (auto* f : m_stepFrames) {
         f->removeEventFilter(this);
@@ -381,31 +374,19 @@ void StepConfigWidget::rebuildStepItems()
     }
     m_stepFrames.clear();
 
-    // 清除 layout 中的所有 item（包括 spacer）
     while (m_stepLayout->count() > 0) {
         auto* item = m_stepLayout->takeAt(0);
         delete item;
     }
 
-    // 创建网格布局，每行2个
-    const int columnsPerRow = 2;
-    QGridLayout* gridLayout = new QGridLayout();
-    gridLayout->setSpacing(8);
-    gridLayout->setContentsMargins(0, 0, 0, 0);
-
-    // 创建新的步骤项
-    int stepNum = 1;
     for (int i = 0; i < sortableEntries.size(); ++i) {
         int entryIdx = sortableEntries[i];
-        int row = i / columnsPerRow;
-        int col = i % columnsPerRow;
 
         auto* frame = new QFrame();
         frame->setObjectName("stepCard");
         frame->setCursor(Qt::OpenHandCursor);
         frame->setMinimumHeight(56);
-        
-        // 确定步骤状态颜色
+
         bool anyEnabled = false;
         for (int idx : kSteps[entryIdx].backendIndices) {
             if (idx >= 0 && m_pipelineManager->isStepEnabled(idx)) {
@@ -442,7 +423,6 @@ void StepConfigWidget::rebuildStepItems()
         hbox->setContentsMargins(10, 8, 10, 8);
         hbox->setSpacing(6);
 
-        // 拖拽手柄
         auto* dragHandle = new QLabel("::", frame);
         dragHandle->setStyleSheet(
             "QLabel { color: #94A3B8; font-size: 14px; padding: 0 2px; background: transparent; }");
@@ -450,8 +430,7 @@ void StepConfigWidget::rebuildStepItems()
         dragHandle->setToolTip("拖拽调整顺序");
         hbox->addWidget(dragHandle);
 
-        // 步骤编号圆圈
-        auto* numberLabel = new QLabel(QString::number(stepNum), frame);
+        auto* numberLabel = new QLabel(QString::number(i + 1), frame);
         numberLabel->setAlignment(Qt::AlignCenter);
         numberLabel->setFixedSize(24, 24);
         numberLabel->setStyleSheet(QString(
@@ -463,7 +442,6 @@ void StepConfigWidget::rebuildStepItems()
         ).arg(anyEnabled ? stepColor : "#94A3B8"));
         hbox->addWidget(numberLabel);
 
-        // 步骤图标（缩写文字 + 主题色背景）
         auto* iconLabel = new QLabel(QString::fromUtf8(kSteps[entryIdx].icon), frame);
         iconLabel->setAlignment(Qt::AlignCenter);
         iconLabel->setFixedSize(26, 18);
@@ -476,7 +454,6 @@ void StepConfigWidget::rebuildStepItems()
         ).arg(anyEnabled ? stepColor : "#94A3B8"));
         hbox->addWidget(iconLabel);
 
-        // 步骤名称
         auto* nameLabel = new QLabel(
             QString::fromUtf8(kSteps[entryIdx].displayName), frame);
         nameLabel->setStyleSheet(QString(
@@ -484,7 +461,6 @@ void StepConfigWidget::rebuildStepItems()
         ).arg(anyEnabled ? "#1E293B" : "#475569"));
         hbox->addWidget(nameLabel, 1);
 
-        // 复选框
         auto* cb = new QCheckBox(frame);
         cb->setChecked(anyEnabled);
         cb->setToolTip(anyEnabled ? "已启用" : "点击启用");
@@ -508,28 +484,56 @@ void StepConfigWidget::rebuildStepItems()
         ).arg(borderColor, stepColor));
         hbox->addWidget(cb);
 
-        // 勾选状态改变时实时更新预览
         connect(cb, &QCheckBox::toggled, this, &StepConfigWidget::updatePipelinePreview);
 
         frame->setProperty("entryIndex", entryIdx);
         frame->setProperty("stepColor", stepColor);
         frame->installEventFilter(this);
 
-        gridLayout->addWidget(frame, row, col);
         m_stepFrames.append(frame);
-        stepNum++;
     }
 
-    // 让所有列均匀分布
-    for (int col = 0; col < columnsPerRow; ++col) {
-        gridLayout->setColumnStretch(col, 1);
+    rebuildGridLayout();
+    updatePipelinePreview();
+}
+
+void StepConfigWidget::rebuildGridLayout()
+{
+    const int columnsPerRow = 2;
+
+    for (int i = m_stepLayout->count() - 1; i >= 0; --i) {
+        auto* item = m_stepLayout->takeAt(i);
+        if (item->layout()) {
+            QGridLayout* oldGrid = qobject_cast<QGridLayout*>(item->layout());
+            if (oldGrid) {
+                QLayoutItem* child;
+                while ((child = oldGrid->takeAt(0)) != nullptr) {
+                    if (child->widget()) child->widget()->setParent(nullptr);
+                    delete child;
+                }
+            }
+            delete item->layout();
+        } else {
+            delete item;
+        }
+    }
+
+    QGridLayout* gridLayout = new QGridLayout();
+    gridLayout->setSpacing(8);
+    gridLayout->setContentsMargins(0, 0, 0, 0);
+
+    for (int i = 0; i < m_stepFrames.size(); ++i) {
+        int row = i / columnsPerRow;
+        int col = i % columnsPerRow;
+        gridLayout->addWidget(m_stepFrames[i], row, col);
+    }
+
+    for (int c = 0; c < columnsPerRow; ++c) {
+        gridLayout->setColumnStretch(c, 1);
     }
 
     m_stepLayout->addLayout(gridLayout);
     m_stepLayout->addStretch();
-
-    // 更新流程预览
-    updatePipelinePreview();
 }
 
 // ========== 流程预览更新 ==========
