@@ -7,6 +7,7 @@
 #include <QLabel>
 #include <QTabWidget>
 #include <QHBoxLayout>
+#include <QGridLayout>
 #include <QSet>
 #include <QApplication>
 #include <QDrag>
@@ -19,37 +20,19 @@
 
 // ============================================================
 // UI 步骤条目表 —— 新增/修改步骤只需改这里
-//
-// 字段说明：
-//   displayName     复选框文字
-//   tabNames        勾选后要显示/隐藏的右侧Tab名称
-//   backendIndices  对应 PipelineConfig::stepEnabled[] 的下标
-//                   （-1=无对应后端步骤，仅控制Tab显隐）
-//   alwaysOn        固定勾选且不可拖拽
-//   icon            步骤图标（Unicode符号）
-//   description     步骤描述（tooltip显示）
-//   color           步骤主题色
 // ============================================================
 const StepConfigWidget::StepEntry StepConfigWidget::kSteps[] = {
     {"颜色通道",      {"图像"},        {0},           false, "CH", "选择颜色通道：Gray/RGB/HSV", "#4FACFE"},
     {"图像增强",      {"增强"},        {1},           false, "EN", "亮度/对比度/Gamma/锐化", "#7C4DFF"},
-    // 统一过滤（灰度/RGB/HSV）
     {"颜色过滤",      {"颜色过滤"},    {2},           false, "FT", "灰度/RGB/HSV范围过滤", "#00BFA5"},
     {"算法处理",      {"处理"},        {3},           false, "AL", "形态学操作：开闭运算/膨胀腐蚀", "#FF6D00"},
     {"形状筛选",      {"提取"},        {4},           false, "SF", "面积/圆度/凸性/矩形度筛选", "#E91E63"},
-    // 直线检测（含参考线匹配）
     {"直线检测",      {"直线"},        {5},           false, "LD", "HoughP/LSD/EDline直线检测", "#2196F3"},
-    // 模板匹配——无对应后端步骤，仅控制 Tab 显隐
     {"模板匹配",      {"补正"},        {-1},          false, "TM", "模板匹配定位与对齐", "#9C27B0"},
     {"条码识别",      {"条码"},        {6},           false, "BC", "QR Code/条形码识别", "#4CAF50"},
-    // 滤波去噪——对应 StepImageFilter(7)
     {"滤波去噪",      {"滤波去噪"},    {7},           false, "FN", "高斯/中值/双边滤波去噪", "#00BCD4"},
-    // 文字识别——对应 StepOcrRecognition(8)
     {"文字识别",      {"文字识别"},    {8},           false, "OC", "Tesseract OCR文字识别", "#FF5722"},
-    // 目标检测——无对应后端步骤，通过 PipelineConfig::enableObjectDetection 控制
     {"目标检测",      {"目标检测"},    {-1},          false, "DL", "YOLO深度学习目标检测", "#607D8B"},
-
-    // 步骤 Tab 自身始终显示（单独放在列表下方）
     {"步骤管理",      {"步骤"},        {-1},          true,  "PM", "管理Pipeline步骤顺序", "#795548"},
 };
 
@@ -86,12 +69,121 @@ void StepConfigWidget::connectSignals(const SignalContext& ctx,
     rebuildStepItems();
 }
 
-// ========== 事件过滤：实现拖拽 ==========
+// ========== 辅助函数 ==========
+
+int StepConfigWidget::entryIndexForFrame(QObject* obj) const
+{
+    return obj->property("entryIndex").toInt();
+}
+
+void StepConfigWidget::updateSelectedNumbers()
+{
+    for (int i = 0; i < m_selectedFrames.size(); ++i) {
+        auto* numLabel = m_selectedFrames[i]->findChild<QLabel*>("numberLabel");
+        if (numLabel) {
+            numLabel->setText(QString::number(i + 1));
+        }
+    }
+    m_emptyHintLabel->setVisible(m_selectedFrames.isEmpty());
+}
+
+// ========== 安全清理 layout（取出所有 widget 并销毁子 layout）==========
+
+static void clearLayout(QVBoxLayout* outerLayout)
+{
+    while (outerLayout->count() > 0) {
+        outerLayout->takeAt(0);
+    }
+}
+
+void StepConfigWidget::moveStepToSelected(QFrame* frame)
+{
+    int entryIdx = entryIndexForFrame(frame);
+    QString stepColor = QString::fromUtf8(kSteps[entryIdx].color);
+
+    m_availableFrames.removeOne(frame);
+
+    // 安全清理并重建待选区网格
+    clearLayout(m_availableOuterLayout);
+
+    QGridLayout* newGrid = new QGridLayout();
+    newGrid->setSpacing(6);
+    newGrid->setContentsMargins(0, 0, 0, 0);
+    for (int i = 0; i < m_availableFrames.size(); ++i) {
+        newGrid->addWidget(m_availableFrames[i], i / 2, i % 2);
+    }
+    for (int c = 0; c < 2; ++c) newGrid->setColumnStretch(c, 1);
+    m_availableOuterLayout->addLayout(newGrid);
+
+    // 确认区：显示拖拽手柄和编号
+    if (auto* handle = frame->findChild<QLabel*>("dragHandle")) {
+        handle->show();
+    }
+    if (auto* numLabel = frame->findChild<QLabel*>("numberLabel")) {
+        numLabel->show();
+    }
+
+    // 注册拖拽事件
+    frame->installEventFilter(this);
+
+    // 添加到确认区（在 stretch 之前）
+    m_selectedFrames.append(frame);
+    int layoutInsertPos = m_selectedOuterLayout->count() - 1;
+    m_selectedOuterLayout->insertWidget(layoutInsertPos, frame);
+
+    updateSelectedNumbers();
+    updatePipelinePreview();
+}
+
+void StepConfigWidget::moveStepToAvailable(QFrame* frame)
+{
+    int entryIdx = entryIndexForFrame(frame);
+    QString stepColor = QString::fromUtf8(kSteps[entryIdx].color);
+
+    m_selectedFrames.removeOne(frame);
+    m_selectedOuterLayout->removeWidget(frame);
+
+    // 取消拖拽事件
+    frame->removeEventFilter(this);
+
+    // 待选区：隐藏拖拽手柄和编号
+    if (auto* handle = frame->findChild<QLabel*>("dragHandle")) {
+        handle->hide();
+    }
+    if (auto* numLabel = frame->findChild<QLabel*>("numberLabel")) {
+        numLabel->hide();
+    }
+
+    // 更新样式为未选中
+    frame->setCursor(Qt::ArrowCursor);
+    frame->setStyleSheet(QString(
+        "QFrame#stepCard { border: 1px solid #CBD5E1; border-radius: 8px; }"
+        "QFrame#stepCard:hover { border-color: %1; }"
+    ).arg(stepColor));
+
+    // 安全清理并重建待选区网格
+    m_availableFrames.append(frame);
+    clearLayout(m_availableOuterLayout);
+
+    QGridLayout* newGrid = new QGridLayout();
+    newGrid->setSpacing(6);
+    newGrid->setContentsMargins(0, 0, 0, 0);
+    for (int i = 0; i < m_availableFrames.size(); ++i) {
+        newGrid->addWidget(m_availableFrames[i], i / 2, i % 2);
+    }
+    for (int c = 0; c < 2; ++c) newGrid->setColumnStretch(c, 1);
+    m_availableOuterLayout->addLayout(newGrid);
+
+    updateSelectedNumbers();
+    updatePipelinePreview();
+}
+
+// ========== 事件过滤：实现拖拽（仅确认区） ==========
 
 bool StepConfigWidget::eventFilter(QObject* obj, QEvent* event)
 {
-    // ---- 步骤项拖拽发起 ----
-    if (m_stepFrames.contains(static_cast<QFrame*>(obj))) {
+    // ---- 确认区步骤项拖拽发起 ----
+    if (m_selectedFrames.contains(static_cast<QFrame*>(obj))) {
         auto* frame = static_cast<QFrame*>(obj);
         switch (event->type()) {
         case QEvent::MouseButtonPress: {
@@ -132,8 +224,8 @@ bool StepConfigWidget::eventFilter(QObject* obj, QEvent* event)
         return QWidget::eventFilter(obj, event);
     }
 
-    // ---- 容器拖放 ----
-    if (obj == m_stepContainer) {
+    // ---- 确认区容器拖放 ----
+    if (obj == m_selectedContainer) {
         switch (event->type()) {
         case QEvent::DragEnter: {
             auto* de = static_cast<QDragEnterEvent*>(event);
@@ -158,23 +250,25 @@ bool StepConfigWidget::eventFilter(QObject* obj, QEvent* event)
 
             QFrame* sourceFrame = nullptr;
             int sourcePos = -1;
-            for (int i = 0; i < m_stepFrames.size(); ++i) {
-                if (entryIndexForFrame(m_stepFrames[i]) == draggedEntry) {
-                    sourceFrame = m_stepFrames[i];
+            for (int i = 0; i < m_selectedFrames.size(); ++i) {
+                if (entryIndexForFrame(m_selectedFrames[i]) == draggedEntry) {
+                    sourceFrame = m_selectedFrames[i];
                     sourcePos = i;
                     break;
                 }
             }
             if (!sourceFrame) break;
 
-            m_stepFrames.removeAt(sourcePos);
+            m_selectedFrames.removeAt(sourcePos);
+            m_selectedOuterLayout->removeWidget(sourceFrame);
 
             if (sourcePos < targetPos) --targetPos;
-            targetPos = qBound(0, targetPos, m_stepFrames.size());
+            targetPos = qBound(0, targetPos, m_selectedFrames.size());
 
-            m_stepFrames.insert(targetPos, sourceFrame);
+            m_selectedFrames.insert(targetPos, sourceFrame);
+            m_selectedOuterLayout->insertWidget(targetPos, sourceFrame);
 
-            rebuildGridLayout();
+            updateSelectedNumbers();
 
             dp->acceptProposedAction();
             updatePipelinePreview();
@@ -189,29 +283,29 @@ bool StepConfigWidget::eventFilter(QObject* obj, QEvent* event)
     return QWidget::eventFilter(obj, event);
 }
 
-int StepConfigWidget::entryIndexForFrame(QObject* obj) const
-{
-    return obj->property("entryIndex").toInt();
-}
-
 int StepConfigWidget::dropTargetIndex(const QPoint& pos) const
 {
-    for (int i = 0; i < m_stepFrames.size(); ++i) {
-        QRect r = m_stepFrames[i]->geometry();
+    for (int i = 0; i < m_selectedFrames.size(); ++i) {
+        QRect r = m_selectedFrames[i]->geometry();
         if (pos.y() < r.center().y()) return i;
     }
-    return m_stepFrames.size();
+    return m_selectedFrames.size();
 }
 
 // ========== UI 构建 ==========
 
+static const char* scrollBarStyle =
+    "QScrollBar:vertical { background-color: transparent; width: 6px; }"
+    "QScrollBar::handle:vertical { background-color: #C8D4E0; border-radius: 3px; min-height: 24px; }"
+    "QScrollBar::handle:vertical:hover { background-color: #4FACFE; }";
+
 void StepConfigWidget::setupUI()
 {
     auto* mainLayout = new QVBoxLayout(this);
-    mainLayout->setSpacing(12);
+    mainLayout->setSpacing(6);
     mainLayout->setContentsMargins(8, 8, 8, 8);
 
-    // 标题区域
+    // ---- 标题 ----
     auto* headerLayout = new QHBoxLayout();
     headerLayout->setSpacing(8);
 
@@ -222,25 +316,25 @@ void StepConfigWidget::setupUI()
         "QLabel { background-color: #4FACFE; color: white; "
         "border-radius: 14px; font-size: 14px; font-weight: bold; }");
     headerLayout->addWidget(pipelineIcon);
-    
+
     auto* titleLabel = new QLabel(QStringLiteral("检测流程配置"), this);
     titleLabel->setStyleSheet(
         "QLabel { font-size: 14px; font-weight: bold; color: #1E293B; background: transparent; }");
     headerLayout->addWidget(titleLabel);
     headerLayout->addStretch();
-    
+
     mainLayout->addLayout(headerLayout);
 
-    // 说明文字
+    // ---- 说明 ----
     auto* descLabel = new QLabel(
-        QStringLiteral("拖拽调整步骤顺序，勾选启用步骤，点击「应用」生效"),
+        QStringLiteral("勾选需要的步骤，拖拽调整执行顺序，点击「应用」生效"),
         this);
     descLabel->setStyleSheet(
         "QLabel { color: #6B7280; font-size: 11px; padding: 0 0 0 36px; background: transparent; }");
     descLabel->setWordWrap(true);
     mainLayout->addWidget(descLabel);
 
-    // 流程预览区域
+    // ---- 流程预览 ----
     auto* previewFrame = new QFrame(this);
     previewFrame->setAutoFillBackground(true);
     QPalette previewPal = previewFrame->palette();
@@ -268,9 +362,9 @@ void StepConfigWidget::setupUI()
     previewLayout->addWidget(arrow1);
 
     m_previewStepsLabel = new QLabel("...", previewFrame);
-        m_previewStepsLabel->setTextFormat(Qt::RichText);
-        m_previewStepsLabel->setStyleSheet("QLabel { background: transparent; line-height: 180%; }");
-        m_previewStepsLabel->setWordWrap(true);
+    m_previewStepsLabel->setTextFormat(Qt::RichText);
+    m_previewStepsLabel->setStyleSheet("QLabel { background: transparent; line-height: 180%; }");
+    m_previewStepsLabel->setWordWrap(true);
     previewLayout->addWidget(m_previewStepsLabel, 1);
 
     auto* arrow2 = new QLabel("->", previewFrame);
@@ -290,37 +384,75 @@ void StepConfigWidget::setupUI()
 
     mainLayout->addWidget(previewFrame);
 
-    // 可拖拽排序的步骤容器
-    m_scrollArea = new QScrollArea(this);
-    m_scrollArea->setWidgetResizable(true);
-    m_scrollArea->setFrameShape(QFrame::NoFrame);
-    m_scrollArea->setStyleSheet(
-        "QScrollArea { background: transparent; border: none; }"
-        "QScrollBar:vertical { background-color: transparent; width: 6px; }"
-        "QScrollBar::handle:vertical { background-color: #C8D4E0; border-radius: 3px; min-height: 24px; }"
-        "QScrollBar::handle:vertical:hover { background-color: #4FACFE; }");
+    // ================================================================
+    //  待选区
+    // ================================================================
+    auto* availTitle = new QLabel(QStringLiteral("▼ 可选步骤"), this);
+    availTitle->setStyleSheet(
+        "QLabel { font-size: 11px; font-weight: bold; color: #475569; "
+        "padding: 2px 0; background: transparent; }");
+    mainLayout->addWidget(availTitle);
 
-    m_stepContainer = new QWidget();
-    m_stepContainer->setAcceptDrops(true);
-    m_stepContainer->installEventFilter(this);
-    m_stepContainer->setAutoFillBackground(true);
-    QPalette containerPal;
-    containerPal.setColor(QPalette::Window, Qt::transparent);
-    m_stepContainer->setPalette(containerPal);
-    
-    m_stepLayout = new QVBoxLayout(m_stepContainer);
-    m_stepLayout->setSpacing(0);
-    m_stepLayout->setContentsMargins(0, 0, 0, 0);
+    auto* availScroll = new QScrollArea(this);
+    availScroll->setWidgetResizable(true);
+    availScroll->setFrameShape(QFrame::NoFrame);
+    availScroll->setFixedHeight(180);
+    availScroll->setStyleSheet(QString(
+        "QScrollArea { background: transparent; border: none; }") + scrollBarStyle);
 
-    m_scrollArea->setWidget(m_stepContainer);
-    mainLayout->addWidget(m_scrollArea, 1);
+    m_availableContainer = new QWidget();
+    m_availableContainer->setAutoFillBackground(true);
+    QPalette availPal;
+    availPal.setColor(QPalette::Window, Qt::transparent);
+    m_availableContainer->setPalette(availPal);
 
-    // 应用按钮区域
-    auto* btnLayout = new QHBoxLayout();
-    btnLayout->setSpacing(8);
-    
+    m_availableOuterLayout = new QVBoxLayout(m_availableContainer);
+    m_availableOuterLayout->setSpacing(0);
+    m_availableOuterLayout->setContentsMargins(0, 0, 0, 0);
+
+    availScroll->setWidget(m_availableContainer);
+    mainLayout->addWidget(availScroll);
+
+    // ================================================================
+    //  确认区
+    // ================================================================
+    auto* selTitle = new QLabel(QStringLiteral("▼ 已选步骤 (拖拽排序)"), this);
+    selTitle->setStyleSheet(
+        "QLabel { font-size: 11px; font-weight: bold; color: #475569; "
+        "padding: 2px 0; background: transparent; }");
+    mainLayout->addWidget(selTitle);
+
+    auto* selScroll = new QScrollArea(this);
+    selScroll->setWidgetResizable(true);
+    selScroll->setFrameShape(QFrame::NoFrame);
+    selScroll->setStyleSheet(QString(
+        "QScrollArea { background: transparent; border: none; }") + scrollBarStyle);
+
+    m_selectedContainer = new QWidget();
+    m_selectedContainer->setAcceptDrops(true);
+    m_selectedContainer->installEventFilter(this);
+    m_selectedContainer->setAutoFillBackground(true);
+    QPalette selPal;
+    selPal.setColor(QPalette::Window, Qt::transparent);
+    m_selectedContainer->setPalette(selPal);
+
+    m_selectedOuterLayout = new QVBoxLayout(m_selectedContainer);
+    m_selectedOuterLayout->setSpacing(4);
+    m_selectedOuterLayout->setContentsMargins(0, 0, 0, 0);
+
+    // 空状态提示
+    m_emptyHintLabel = new QLabel("请从上方勾选需要的步骤", m_selectedContainer);
+    m_emptyHintLabel->setAlignment(Qt::AlignCenter);
+    m_emptyHintLabel->setStyleSheet(
+        "QLabel { color: #94A3B8; font-size: 11px; padding: 20px 0; background: transparent; }");
+    m_selectedOuterLayout->addWidget(m_emptyHintLabel);
+
+    selScroll->setWidget(m_selectedContainer);
+    mainLayout->addWidget(selScroll, 1);
+
+    // ---- 应用按钮 ----
     m_applyBtn = new QPushButton(QStringLiteral("应用配置"), this);
-    m_applyBtn->setMinimumHeight(36);
+    m_applyBtn->setMinimumHeight(32);
     m_applyBtn->setAutoFillBackground(true);
     QPalette btnPal;
     btnPal.setColor(QPalette::Button, QColor("#4FACFE"));
@@ -329,18 +461,102 @@ void StepConfigWidget::setupUI()
     m_applyBtn->setStyleSheet(
         "QPushButton { "
         "  border: none; border-radius: 6px;"
-        "  font-weight: bold; font-size: 13px; padding: 8px 16px; "
+        "  font-weight: bold; font-size: 12px; padding: 6px 16px; "
         "  background-color: #4FACFE; color: white; "
         "}"
         "QPushButton:hover { background-color: #3D9AF0; }"
         "QPushButton:pressed { background-color: #2A85D8; }"
         "QPushButton:disabled { background-color: #B8D4E8; }");
-    btnLayout->addWidget(m_applyBtn);
-
-    mainLayout->addLayout(btnLayout);
+    mainLayout->addWidget(m_applyBtn);
 
     connect(m_applyBtn, &QPushButton::clicked, this, &StepConfigWidget::onApplyClicked);
 }
+
+// ========== 创建步骤卡片 ==========
+
+QFrame* StepConfigWidget::createStepCard(int entryIdx, bool anyEnabled, const StepConfigWidget::StepEntry& step)
+{
+    auto* frame = new QFrame();
+    frame->setObjectName("stepCard");
+    frame->setMinimumHeight(36);
+
+    QString stepColor = QString::fromUtf8(step.color);
+    QString borderColor = anyEnabled ? stepColor : "#CBD5E1";
+    QString borderWidth = anyEnabled ? "2px" : "1px";
+
+    frame->setAutoFillBackground(true);
+    QPalette pal = frame->palette();
+    pal.setColor(QPalette::Window, anyEnabled ? QColor("#FFFFFF") : QColor("#F1F5F9"));
+    frame->setPalette(pal);
+
+    frame->setStyleSheet(QString(
+        "QFrame#stepCard { border: %1 solid %2; border-radius: 8px; }"
+        "QFrame#stepCard:hover { border-color: %3; }"
+    ).arg(borderWidth, borderColor, stepColor));
+
+    auto* hbox = new QHBoxLayout(frame);
+    hbox->setContentsMargins(8, 4, 8, 4);
+    hbox->setSpacing(6);
+
+    // 拖拽手柄（确认区可见，待选区隐藏）
+    auto* dragHandle = new QLabel("::", frame);
+    dragHandle->setObjectName("dragHandle");
+    dragHandle->setStyleSheet(
+        "QLabel { color: #94A3B8; font-size: 12px; padding: 0 2px; background: transparent; }");
+    dragHandle->setCursor(Qt::OpenHandCursor);
+    dragHandle->setToolTip("拖拽调整顺序");
+    hbox->addWidget(dragHandle);
+
+    // 编号圆圈（确认区可见，待选区隐藏）
+    auto* numberLabel = new QLabel("0", frame);
+    numberLabel->setObjectName("numberLabel");
+    numberLabel->setAlignment(Qt::AlignCenter);
+    numberLabel->setFixedSize(22, 22);
+    numberLabel->setStyleSheet(QString(
+        "QLabel { background-color: %1; color: white; border-radius: 11px; "
+        "font-weight: bold; font-size: 10px; }"
+    ).arg(anyEnabled ? stepColor : "#94A3B8"));
+    hbox->addWidget(numberLabel);
+
+    // 图标
+    auto* iconLabel = new QLabel(QString::fromUtf8(step.icon), frame);
+    iconLabel->setAlignment(Qt::AlignCenter);
+    iconLabel->setFixedSize(24, 16);
+    iconLabel->setStyleSheet(QString(
+        "QLabel { background-color: %1; color: white; border-radius: 3px; "
+        "font-size: 8px; font-weight: bold; }"
+    ).arg(anyEnabled ? stepColor : "#94A3B8"));
+    hbox->addWidget(iconLabel);
+
+    // 名称
+    auto* nameLabel = new QLabel(QString::fromUtf8(step.displayName), frame);
+    nameLabel->setStyleSheet(QString(
+        "QLabel { font-weight: bold; font-size: 11px; color: %1; background: transparent; }"
+    ).arg(anyEnabled ? "#1E293B" : "#475569"));
+    hbox->addWidget(nameLabel, 1);
+
+    // 复选框
+    auto* cb = new QCheckBox(frame);
+    cb->setChecked(anyEnabled);
+    cb->setToolTip(anyEnabled ? "已启用" : "点击启用");
+    cb->setStyleSheet(QString(
+        "QCheckBox { spacing: 4px; background: transparent; }"
+        "QCheckBox::indicator { "
+        "  width: 16px; height: 16px; border: 2px solid %1; "
+        "  border-radius: 9px; background-color: #FFFFFF; image: none; }"
+        "QCheckBox::indicator:hover { border-color: %2; }"
+        "QCheckBox::indicator:checked { "
+        "  background-color: %2; border-color: %2; image: none; }"
+    ).arg(borderColor, stepColor));
+    hbox->addWidget(cb);
+
+    frame->setProperty("entryIndex", entryIdx);
+    frame->setProperty("stepColor", stepColor);
+
+    return frame;
+}
+
+// ========== 重建步骤项 ==========
 
 void StepConfigWidget::rebuildStepItems()
 {
@@ -348,12 +564,43 @@ void StepConfigWidget::rebuildStepItems()
 
     const auto& config = m_pipelineManager->config();
 
-    QList<int> sortableEntries;
-    for (int i = 0; i < kStepCount; ++i) {
-        if (!kSteps[i].alwaysOn) sortableEntries.append(i);
+    // 清理旧帧
+    m_dragSource = nullptr;
+    for (auto* f : m_availableFrames) {
+        f->removeEventFilter(this);
+        f->deleteLater();
+    }
+    for (auto* f : m_selectedFrames) {
+        f->removeEventFilter(this);
+        f->deleteLater();
+    }
+    m_availableFrames.clear();
+    m_selectedFrames.clear();
+
+    // 清空待选区 layout
+    while (m_availableOuterLayout->count() > 0) {
+        auto* item = m_availableOuterLayout->takeAt(0);
+        delete item;
+    }
+    // 清空确认区 layout
+    while (m_selectedOuterLayout->count() > 0) {
+        auto* item = m_selectedOuterLayout->takeAt(0);
+        delete item;
     }
 
-    std::sort(sortableEntries.begin(), sortableEntries.end(),
+    // 分离 alwaysOn 和可排序步骤
+    QList<int> normalEntries;
+    int alwaysOnEntry = -1;
+    for (int i = 0; i < kStepCount; ++i) {
+        if (kSteps[i].alwaysOn) {
+            alwaysOnEntry = i;
+        } else {
+            normalEntries.append(i);
+        }
+    }
+
+    // 按 stepOrder 排序可排序步骤
+    std::sort(normalEntries.begin(), normalEntries.end(),
               [&](int a, int b) {
         auto firstPos = [&](int entryIdx) -> int {
             for (int bi : kSteps[entryIdx].backendIndices) {
@@ -367,185 +614,89 @@ void StepConfigWidget::rebuildStepItems()
         return firstPos(a) < firstPos(b);
     });
 
-    m_dragSource = nullptr;
-    for (auto* f : m_stepFrames) {
-        f->removeEventFilter(this);
-        f->deleteLater();
-    }
-    m_stepFrames.clear();
-
-    while (m_stepLayout->count() > 0) {
-        auto* item = m_stepLayout->takeAt(0);
-        delete item;
-    }
-
-    for (int i = 0; i < sortableEntries.size(); ++i) {
-        int entryIdx = sortableEntries[i];
-
-        auto* frame = new QFrame();
-        frame->setObjectName("stepCard");
-        frame->setCursor(Qt::OpenHandCursor);
-        frame->setMinimumHeight(56);
-
-        bool anyEnabled = false;
+    // 判断每个步骤是否启用
+    auto isStepEnabled = [&](int entryIdx) -> bool {
         for (int idx : kSteps[entryIdx].backendIndices) {
-            if (idx >= 0 && m_pipelineManager->isStepEnabled(idx)) {
-                anyEnabled = true;
-                break;
-            }
+            if (idx >= 0 && m_pipelineManager->isStepEnabled(idx)) return true;
         }
-        if (!anyEnabled && kSteps[entryIdx].backendIndices.size() == 1
+        if (kSteps[entryIdx].backendIndices.size() == 1
             && kSteps[entryIdx].backendIndices[0] < 0
             && strcmp(kSteps[entryIdx].displayName, "目标检测") == 0) {
-            anyEnabled = config.enableObjectDetection;
+            return config.enableObjectDetection;
         }
+        return false;
+    };
 
-        QString stepColor = QString::fromUtf8(kSteps[entryIdx].color);
+    // 创建可排序步骤卡片，按启用状态分到两个区域
+    for (int entryIdx : normalEntries) {
+        bool enabled = isStepEnabled(entryIdx);
+        auto* frame = createStepCard(entryIdx, enabled, kSteps[entryIdx]);
 
-        frame->setAutoFillBackground(true);
-        QPalette pal = frame->palette();
-        pal.setColor(QPalette::Window, anyEnabled ? QColor("#FFFFFF") : QColor("#F1F5F9"));
-        frame->setPalette(pal);
-
-        QString borderColor = anyEnabled ? stepColor : "#CBD5E1";
-        QString borderWidth = anyEnabled ? "2px" : "1px";
-        frame->setStyleSheet(QString(
-            "QFrame#stepCard { "
-            "  border: %1 solid %2; "
-            "  border-radius: 8px; "
-            "}"
-            "QFrame#stepCard:hover { "
-            "  border-color: %3; "
-            "}"
-        ).arg(borderWidth, borderColor, stepColor));
-
-        auto* hbox = new QHBoxLayout(frame);
-        hbox->setContentsMargins(10, 8, 10, 8);
-        hbox->setSpacing(6);
-
-        auto* dragHandle = new QLabel("::", frame);
-        dragHandle->setStyleSheet(
-            "QLabel { color: #94A3B8; font-size: 14px; padding: 0 2px; background: transparent; }");
-        dragHandle->setCursor(Qt::OpenHandCursor);
-        dragHandle->setToolTip("拖拽调整顺序");
-        hbox->addWidget(dragHandle);
-
-        auto* numberLabel = new QLabel(QString::number(i + 1), frame);
-        numberLabel->setAlignment(Qt::AlignCenter);
-        numberLabel->setFixedSize(24, 24);
-        numberLabel->setStyleSheet(QString(
-            "QLabel { "
-            "  background-color: %1; color: white; "
-            "  border-radius: 12px; "
-            "  font-weight: bold; font-size: 11px; "
-            "}"
-        ).arg(anyEnabled ? stepColor : "#94A3B8"));
-        hbox->addWidget(numberLabel);
-
-        auto* iconLabel = new QLabel(QString::fromUtf8(kSteps[entryIdx].icon), frame);
-        iconLabel->setAlignment(Qt::AlignCenter);
-        iconLabel->setFixedSize(26, 18);
-        iconLabel->setStyleSheet(QString(
-            "QLabel { "
-            "  background-color: %1; color: white; "
-            "  border-radius: 3px; "
-            "  font-size: 9px; font-weight: bold; "
-            "}"
-        ).arg(anyEnabled ? stepColor : "#94A3B8"));
-        hbox->addWidget(iconLabel);
-
-        auto* nameLabel = new QLabel(
-            QString::fromUtf8(kSteps[entryIdx].displayName), frame);
-        nameLabel->setStyleSheet(QString(
-            "QLabel { font-weight: bold; font-size: 12px; color: %1; background: transparent; }"
-        ).arg(anyEnabled ? "#1E293B" : "#475569"));
-        hbox->addWidget(nameLabel, 1);
-
-        auto* cb = new QCheckBox(frame);
-        cb->setChecked(anyEnabled);
-        cb->setToolTip(anyEnabled ? "已启用" : "点击启用");
-        cb->setStyleSheet(QString(
-            "QCheckBox { spacing: 4px; background: transparent; }"
-            "QCheckBox::indicator { "
-            "  width: 18px; height: 18px; "
-            "  border: 2px solid %1; "
-            "  border-radius: 9px; "
-            "  background-color: #FFFFFF; "
-            "  image: none; "
-            "}"
-            "QCheckBox::indicator:hover { "
-            "  border-color: %2; "
-            "}"
-            "QCheckBox::indicator:checked { "
-            "  background-color: %2; "
-            "  border-color: %2; "
-            "  image: none; "
-            "}"
-        ).arg(borderColor, stepColor));
-        hbox->addWidget(cb);
-
-        connect(cb, &QCheckBox::toggled, this, &StepConfigWidget::updatePipelinePreview);
-
-        frame->setProperty("entryIndex", entryIdx);
-        frame->setProperty("stepColor", stepColor);
-        frame->installEventFilter(this);
-
-        m_stepFrames.append(frame);
-    }
-
-    rebuildGridLayout();
-    updatePipelinePreview();
-}
-
-void StepConfigWidget::rebuildGridLayout()
-{
-    const int columnsPerRow = 2;
-
-    for (int i = m_stepLayout->count() - 1; i >= 0; --i) {
-        auto* item = m_stepLayout->takeAt(i);
-        if (item->layout()) {
-            QGridLayout* oldGrid = qobject_cast<QGridLayout*>(item->layout());
-            if (oldGrid) {
-                QLayoutItem* child;
-                while ((child = oldGrid->takeAt(0)) != nullptr) {
-                    if (child->widget()) child->widget()->setParent(nullptr);
-                    delete child;
-                }
-            }
-            delete item->layout();
+        if (enabled) {
+            frame->setCursor(Qt::OpenHandCursor);
+            m_selectedFrames.append(frame);
         } else {
-            delete item;
+            if (auto* h = frame->findChild<QLabel*>("dragHandle")) h->hide();
+            if (auto* n = frame->findChild<QLabel*>("numberLabel")) n->hide();
+            m_availableFrames.append(frame);
         }
     }
 
-    QGridLayout* gridLayout = new QGridLayout();
-    gridLayout->setSpacing(8);
-    gridLayout->setContentsMargins(0, 0, 0, 0);
+    // 构建待选区网格（2列）
+    QGridLayout* availGrid = new QGridLayout();
+    availGrid->setSpacing(6);
+    availGrid->setContentsMargins(0, 0, 0, 0);
+    for (int i = 0; i < m_availableFrames.size(); ++i) {
+        availGrid->addWidget(m_availableFrames[i], i / 2, i % 2);
+    }
+    for (int c = 0; c < 2; ++c) availGrid->setColumnStretch(c, 1);
+    m_availableOuterLayout->addLayout(availGrid);
 
-    for (int i = 0; i < m_stepFrames.size(); ++i) {
-        int row = i / columnsPerRow;
-        int col = i % columnsPerRow;
-        gridLayout->addWidget(m_stepFrames[i], row, col);
+    // 构建确认区（单列）
+    m_selectedOuterLayout->addWidget(m_emptyHintLabel);
+    for (auto* frame : m_selectedFrames) {
+        m_selectedOuterLayout->addWidget(frame);
     }
 
-    for (int c = 0; c < columnsPerRow; ++c) {
-        gridLayout->setColumnStretch(c, 1);
+    m_selectedOuterLayout->addStretch();
+
+    // 注册确认区卡片的拖拽事件
+    for (auto* frame : m_selectedFrames) {
+        if (kSteps[entryIndexForFrame(frame)].alwaysOn) continue;
+        frame->installEventFilter(this);
     }
 
-    m_stepLayout->addLayout(gridLayout);
-    m_stepLayout->addStretch();
+    // 连接复选框信号（统一处理：勾选→确认区，取消→待选区）
+    auto allFrames = m_availableFrames + m_selectedFrames;
+    for (auto* frame : allFrames) {
+        int entryIdx = entryIndexForFrame(frame);
+        if (kSteps[entryIdx].alwaysOn) continue;
+        auto* cb = frame->findChild<QCheckBox*>();
+        if (cb) {
+            connect(cb, &QCheckBox::toggled, this, [this, frame](bool checked) {
+                if (checked && m_availableFrames.contains(frame)) {
+                    moveStepToSelected(frame);
+                } else if (!checked && m_selectedFrames.contains(frame)) {
+                    moveStepToAvailable(frame);
+                }
+            });
+        }
+    }
+
+    updateSelectedNumbers();
+    updatePipelinePreview();
 }
 
 // ========== 流程预览更新 ==========
 
 void StepConfigWidget::updatePipelinePreview()
 {
-    if (!m_previewStepsLabel || m_stepFrames.isEmpty()) return;
+    if (!m_previewStepsLabel) return;
 
-    // 收集已启用的步骤
     struct StepInfo { QString icon; QString name; QString color; };
     QList<StepInfo> enabledSteps;
-    for (auto* frame : m_stepFrames) {
+
+    for (auto* frame : m_selectedFrames) {
         int entryIdx = entryIndexForFrame(frame);
         if (entryIdx < 0) continue;
         auto* cb = frame->findChild<QCheckBox*>();
@@ -558,7 +709,6 @@ void StepConfigWidget::updatePipelinePreview()
         });
     }
 
-    // 用HTML构建彩色徽章预览（每行3个）
     if (enabledSteps.isEmpty()) {
         m_previewStepsLabel->setText("未启用任何步骤");
         m_previewStepsLabel->setStyleSheet("QLabel { color: #94A3B8; font-size: 11px; background: transparent; }");
@@ -593,16 +743,14 @@ void StepConfigWidget::onApplyClicked()
 {
     if (!m_pipelineManager) return;
 
-    // ---- 1) 从当前顺序读取勾选状态 + 排序 ----
     std::array<int, PipelineConfig::STEP_COUNT> newOrder{};
     QSet<int> placed;
     int pos = 0;
 
-    for (auto* frame : m_stepFrames) {
+    for (auto* frame : m_selectedFrames) {
         int entryIdx = entryIndexForFrame(frame);
         if (entryIdx < 0) continue;
 
-        // 查找 frame 内的 QCheckBox
         auto* cb = frame->findChild<QCheckBox*>();
         bool checked = cb && cb->isChecked();
 
@@ -617,7 +765,6 @@ void StepConfigWidget::onApplyClicked()
             }
         }
 
-        // 当启用过滤步骤时，自动设置默认过滤模式（Gray）
         if (checked && kSteps[entryIdx].backendIndices.contains(2)) {
             m_pipelineManager->updateConfig([&](PipelineConfig& cfg) {
                 if (cfg.colorFilter.mode == ImageFilterMode::None) {
@@ -626,7 +773,6 @@ void StepConfigWidget::onApplyClicked()
             });
         }
 
-        // 虚拟步骤：持久化到 PipelineConfig 独立字段
         if (kSteps[entryIdx].backendIndices.size() == 1
             && kSteps[entryIdx].backendIndices[0] < 0
             && strcmp(kSteps[entryIdx].displayName, "目标检测") == 0) {
@@ -636,7 +782,6 @@ void StepConfigWidget::onApplyClicked()
         }
     }
 
-    // 补全未出现的索引
     for (int i = 0; i < PipelineConfig::STEP_COUNT; ++i) {
         if (!placed.contains(i)) {
             newOrder[pos++] = i;
@@ -649,20 +794,11 @@ void StepConfigWidget::onApplyClicked()
         }
     });
 
-    // ---- 2) 重建 Pipeline ----
     m_pipelineManager->rebuildPipeline();
-
-    // ---- 3) 按用户排序创建 Tab ----
     emit tabsNeeded(collectEnabledTabNames());
-
-    // ---- 4) 动态显示/隐藏 ----
     applyTabVisibility();
-
-    // ---- 5) 触发刷新 ----
     emit stepConfigChanged();
     if (m_onExecutePipeline) m_onExecutePipeline();
-
-    // ---- 6) 更新流程预览 ----
     updatePipelinePreview();
 }
 
@@ -671,7 +807,7 @@ void StepConfigWidget::onApplyClicked()
 QStringList StepConfigWidget::collectEnabledTabNames()
 {
     QSet<QString> checked;
-    for (auto* frame : m_stepFrames) {
+    for (auto* frame : m_selectedFrames) {
         int entryIdx = entryIndexForFrame(frame);
         if (entryIdx < 0) continue;
         auto* cb = frame->findChild<QCheckBox*>();
@@ -683,9 +819,8 @@ QStringList StepConfigWidget::collectEnabledTabNames()
     }
     checked.insert(QStringLiteral("步骤"));
 
-    // 按用户拖拽后的顺序输出（去重）
     QStringList result;
-    for (auto* frame : m_stepFrames) {
+    for (auto* frame : m_selectedFrames) {
         int entryIdx = entryIndexForFrame(frame);
         if (entryIdx < 0) continue;
         auto* cb = frame->findChild<QCheckBox*>();
@@ -697,7 +832,6 @@ QStringList StepConfigWidget::collectEnabledTabNames()
             }
         }
     }
-    // "步骤"始终最后
     result.removeAll(QStringLiteral("步骤"));
     result.append(QStringLiteral("步骤"));
     return result;

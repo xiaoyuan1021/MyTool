@@ -63,14 +63,17 @@ private:
 
     void setupUI();
     void rebuildStepItems();
-    void rebuildGridLayout();
     void updatePipelinePreview();
     QStringList collectEnabledTabNames();
     void applyTabVisibility();
     int  entryIndexForFrame(QObject* obj) const;
     int  dropTargetIndex(const QPoint& pos) const;
+    void moveStepToSelected(QFrame* frame);
+    void moveStepToAvailable(QFrame* frame);
+    void updateSelectedNumbers();
+    static QFrame* createStepCard(int entryIdx, bool anyEnabled, const StepEntry& step);
 
-    static const StepEntry kSteps[];   // 定义在 .cpp
+    static const StepEntry kSteps[];
     static const int       kStepCount;
 
     PipelineManager*         m_pipelineManager = nullptr;
@@ -78,11 +81,16 @@ private:
     QPushButton*             m_applyBtn = nullptr;
     QLabel*                  m_previewStepsLabel = nullptr;
 
-    QWidget*                 m_stepContainer = nullptr;
-    QVBoxLayout*             m_stepLayout = nullptr;
-    QScrollArea*             m_scrollArea = nullptr;
-    QList<QFrame*>           m_stepFrames;
-    QCheckBox*               m_fixedStepCb = nullptr;
+    // 待选区
+    QWidget*                 m_availableContainer = nullptr;
+    QVBoxLayout*             m_availableOuterLayout = nullptr;
+    QList<QFrame*>           m_availableFrames;
+
+    // 确认区
+    QWidget*                 m_selectedContainer = nullptr;
+    QVBoxLayout*             m_selectedOuterLayout = nullptr;
+    QList<QFrame*>           m_selectedFrames;
+    QLabel*                  m_emptyHintLabel = nullptr;
 
     // 拖拽辅助
     QPoint                   m_dragStartPos;
