@@ -47,8 +47,8 @@ void DisplayModeManager::applyModeForCurrentTab()
 
     DisplayConfig::Mode mode = getModeForTab(idx);
 
-    // "过滤" Tab 的显示模式根据当前过滤配置动态决定
-    if (tabName == "过滤") {
+    // "颜色过滤" Tab 的显示模式根据当前过滤配置动态决定
+    if (tabName == "颜色过滤") {
         PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
         mode = (cfg.colorFilter.mode == ImageFilterMode::None)
             ? DisplayConfig::Mode::Original

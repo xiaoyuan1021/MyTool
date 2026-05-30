@@ -50,6 +50,9 @@ QJsonObject PipelineConfig::toJson() const {
     // OCR参数
     obj["ocr"] = ocr.toJson();
 
+    // 目标检测参数
+    obj["objectDetection"] = objectDetection.toJson();
+
     // 步骤控制
     QJsonArray enabledArr, orderArr;
     for (int i = 0; i < PipelineConfig::STEP_COUNT; ++i) {
@@ -121,6 +124,11 @@ void PipelineConfig::fromJson(const QJsonObject& obj) {
     // OCR参数
     if (obj.contains("ocr")) {
         ocr.fromJson(obj["ocr"].toObject());
+    }
+
+    // 目标检测参数
+    if (obj.contains("objectDetection")) {
+        objectDetection.fromJson(obj["objectDetection"].toObject());
     }
 
     // 步骤控制

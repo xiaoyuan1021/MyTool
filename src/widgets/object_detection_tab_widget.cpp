@@ -47,6 +47,11 @@ void ObjectDetectionTabWidget::setupConnections()
                 emit detectionConfigChanged();
             }
         });
+
+    // 期望数量变化时保存到配置
+    connect(m_ui->spinBox_expectedCount, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int value) {
+        m_expectedCount = value;
+    });
 }
 
 void ObjectDetectionTabWidget::onBrowseModel()
@@ -85,8 +90,9 @@ void ObjectDetectionTabWidget::onApplyClicked()
     if (m_dnnInference.isLoaded() && m_currentModelPath == modelPath) {
         qDebug() << "[ObjectDetection] model already loaded, skip reloading";
         m_ui->label_status->setText("状态：模型已就绪");
-        m_pipelineManager->updateConfig([](PipelineConfig& cfg) {
+        m_pipelineManager->updateConfig([this](PipelineConfig& cfg) {
             cfg.enableObjectDetection = true;
+            cfg.objectDetection.expectedCount = m_expectedCount;
         });
         emit detectionConfigChanged();
         return;
@@ -127,8 +133,9 @@ void ObjectDetectionTabWidget::onApplyClicked()
 
         if (result == "both" || result == "dnn") {
             m_currentModelPath = modelPath;
-            m_pipelineManager->updateConfig([](PipelineConfig& cfg) {
+            m_pipelineManager->updateConfig([this](PipelineConfig& cfg) {
                 cfg.enableObjectDetection = true;
+                cfg.objectDetection.expectedCount = m_expectedCount;
             });
             // 尝试从 ORT 或 DNN 获取模型输入尺寸
             int modelW = 0, modelH = 0;

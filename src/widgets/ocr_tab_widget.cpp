@@ -39,6 +39,20 @@ void OcrTabWidget::setupUI()
 
     mainLayout->addWidget(langGroup);
 
+    // 判定参数
+    auto* judgeGroup = new QGroupBox("判定参数");
+    auto* judgeLayout = new QFormLayout(judgeGroup);
+
+    m_expectedTextLineEdit = new QLineEdit();
+    m_expectedTextLineEdit->setPlaceholderText("留空则不检查文本内容");
+    judgeLayout->addRow("期望文本:", m_expectedTextLineEdit);
+
+    m_matchExactCheckBox = new QCheckBox("精确匹配");
+    m_matchExactCheckBox->setToolTip("勾选后必须完全匹配，不勾选则包含即可");
+    judgeLayout->addRow("", m_matchExactCheckBox);
+
+    mainLayout->addWidget(judgeGroup);
+
     // 操作提示
     m_hintLabel = new QLabel(QString::fromUtf8("提示：请先配置ROI区域，然后点击[识别]按钮进行文字识别"));
     m_hintLabel->setStyleSheet("color: #666; padding: 5px; background: #f5f5f5; border-radius: 3px;");
@@ -186,6 +200,25 @@ void OcrTabWidget::connectSignals(const SignalContext& ctx,
 
     connect(this, &OcrTabWidget::processRequested, this, [onExecutePipeline]() {
         if (onExecutePipeline) onExecutePipeline();
+    });
+
+    // 判定参数变化时同步到DetectionItem.config
+    connect(m_expectedTextLineEdit, &QLineEdit::editingFinished, this, [this, ctx]() {
+        if (ctx.roiCtrl) {
+            ctx.roiCtrl->updateOcrDetectionConfig(
+                m_expectedTextLineEdit->text(),
+                m_matchExactCheckBox->isChecked()
+            );
+        }
+    });
+    connect(m_matchExactCheckBox, &QCheckBox::toggled, this, [this, ctx](bool checked) {
+        Q_UNUSED(checked);
+        if (ctx.roiCtrl) {
+            ctx.roiCtrl->updateOcrDetectionConfig(
+                m_expectedTextLineEdit->text(),
+                m_matchExactCheckBox->isChecked()
+            );
+        }
     });
 }
 

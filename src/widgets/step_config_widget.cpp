@@ -34,7 +34,7 @@ const StepConfigWidget::StepEntry StepConfigWidget::kSteps[] = {
     {"颜色通道",      {"图像"},        {0},           false, "CH", "选择颜色通道：Gray/RGB/HSV", "#4FACFE"},
     {"图像增强",      {"增强"},        {1},           false, "EN", "亮度/对比度/Gamma/锐化", "#7C4DFF"},
     // 统一过滤（灰度/RGB/HSV）
-    {"过滤",          {"过滤"},        {2},           false, "FT", "灰度/RGB/HSV范围过滤", "#00BFA5"},
+    {"颜色过滤",      {"颜色过滤"},    {2},           false, "FT", "灰度/RGB/HSV范围过滤", "#00BFA5"},
     {"算法处理",      {"处理"},        {3},           false, "AL", "形态学操作：开闭运算/膨胀腐蚀", "#FF6D00"},
     {"形状筛选",      {"提取"},        {4},           false, "SF", "面积/圆度/凸性/矩形度筛选", "#E91E63"},
     // 直线检测（含参考线匹配）
@@ -272,9 +272,9 @@ void StepConfigWidget::setupUI()
     previewLayout->addWidget(arrow1);
 
     m_previewStepsLabel = new QLabel("...", previewFrame);
-    m_previewStepsLabel->setTextFormat(Qt::RichText);
-    m_previewStepsLabel->setStyleSheet("QLabel { background: transparent; }");
-    m_previewStepsLabel->setWordWrap(true);
+        m_previewStepsLabel->setTextFormat(Qt::RichText);
+        m_previewStepsLabel->setStyleSheet("QLabel { background: transparent; line-height: 180%; }");
+        m_previewStepsLabel->setWordWrap(true);
     previewLayout->addWidget(m_previewStepsLabel, 1);
 
     auto* arrow2 = new QLabel("->", previewFrame);
@@ -387,18 +387,18 @@ void StepConfigWidget::rebuildStepItems()
         delete item;
     }
 
+    // 创建网格布局，每行2个
+    const int columnsPerRow = 2;
+    QGridLayout* gridLayout = new QGridLayout();
+    gridLayout->setSpacing(8);
+    gridLayout->setContentsMargins(0, 0, 0, 0);
+
     // 创建新的步骤项
     int stepNum = 1;
-    for (int entryIdx : sortableEntries) {
-        // 步骤之间的连接线（除了第一个）
-        if (stepNum > 1) {
-            auto* connector = new QLabel("|", m_stepContainer);
-            connector->setAlignment(Qt::AlignCenter);
-            connector->setStyleSheet(
-                "QLabel { color: #CBD5E1; font-size: 16px; background: transparent; }");
-            connector->setFixedHeight(10);
-            m_stepLayout->addWidget(connector);
-        }
+    for (int i = 0; i < sortableEntries.size(); ++i) {
+        int entryIdx = sortableEntries[i];
+        int row = i / columnsPerRow;
+        int col = i % columnsPerRow;
 
         auto* frame = new QFrame();
         frame->setObjectName("stepCard");
@@ -439,13 +439,13 @@ void StepConfigWidget::rebuildStepItems()
         ).arg(borderWidth, borderColor, stepColor));
 
         auto* hbox = new QHBoxLayout(frame);
-        hbox->setContentsMargins(12, 10, 12, 10);
-        hbox->setSpacing(8);
+        hbox->setContentsMargins(10, 8, 10, 8);
+        hbox->setSpacing(6);
 
         // 拖拽手柄
         auto* dragHandle = new QLabel("::", frame);
         dragHandle->setStyleSheet(
-            "QLabel { color: #94A3B8; font-size: 16px; padding: 0 4px; background: transparent; }");
+            "QLabel { color: #94A3B8; font-size: 14px; padding: 0 2px; background: transparent; }");
         dragHandle->setCursor(Qt::OpenHandCursor);
         dragHandle->setToolTip("拖拽调整顺序");
         hbox->addWidget(dragHandle);
@@ -453,12 +453,12 @@ void StepConfigWidget::rebuildStepItems()
         // 步骤编号圆圈
         auto* numberLabel = new QLabel(QString::number(stepNum), frame);
         numberLabel->setAlignment(Qt::AlignCenter);
-        numberLabel->setFixedSize(28, 28);
+        numberLabel->setFixedSize(24, 24);
         numberLabel->setStyleSheet(QString(
             "QLabel { "
             "  background-color: %1; color: white; "
-            "  border-radius: 14px; "
-            "  font-weight: bold; font-size: 12px; "
+            "  border-radius: 12px; "
+            "  font-weight: bold; font-size: 11px; "
             "}"
         ).arg(anyEnabled ? stepColor : "#94A3B8"));
         hbox->addWidget(numberLabel);
@@ -466,46 +466,34 @@ void StepConfigWidget::rebuildStepItems()
         // 步骤图标（缩写文字 + 主题色背景）
         auto* iconLabel = new QLabel(QString::fromUtf8(kSteps[entryIdx].icon), frame);
         iconLabel->setAlignment(Qt::AlignCenter);
-        iconLabel->setFixedSize(28, 20);
+        iconLabel->setFixedSize(26, 18);
         iconLabel->setStyleSheet(QString(
             "QLabel { "
             "  background-color: %1; color: white; "
-            "  border-radius: 4px; "
-            "  font-size: 10px; font-weight: bold; "
+            "  border-radius: 3px; "
+            "  font-size: 9px; font-weight: bold; "
             "}"
         ).arg(anyEnabled ? stepColor : "#94A3B8"));
         hbox->addWidget(iconLabel);
 
-        // 步骤名称和描述
-        auto* textLayout = new QVBoxLayout();
-        textLayout->setSpacing(2);
-        textLayout->setContentsMargins(0, 0, 0, 0);
-
+        // 步骤名称
         auto* nameLabel = new QLabel(
             QString::fromUtf8(kSteps[entryIdx].displayName), frame);
         nameLabel->setStyleSheet(QString(
-            "QLabel { font-weight: bold; font-size: 13px; color: %1; background: transparent; }"
+            "QLabel { font-weight: bold; font-size: 12px; color: %1; background: transparent; }"
         ).arg(anyEnabled ? "#1E293B" : "#475569"));
-        textLayout->addWidget(nameLabel);
-
-        auto* descLabel = new QLabel(
-            QString::fromUtf8(kSteps[entryIdx].description), frame);
-        descLabel->setStyleSheet(
-            "QLabel { font-size: 10px; color: #64748B; background: transparent; }");
-        textLayout->addWidget(descLabel);
-
-        hbox->addLayout(textLayout, 1);
+        hbox->addWidget(nameLabel, 1);
 
         // 复选框
         auto* cb = new QCheckBox(frame);
         cb->setChecked(anyEnabled);
         cb->setToolTip(anyEnabled ? "已启用" : "点击启用");
         cb->setStyleSheet(QString(
-            "QCheckBox { spacing: 6px; background: transparent; }"
+            "QCheckBox { spacing: 4px; background: transparent; }"
             "QCheckBox::indicator { "
-            "  width: 22px; height: 22px; "
+            "  width: 18px; height: 18px; "
             "  border: 2px solid %1; "
-            "  border-radius: 11px; "
+            "  border-radius: 9px; "
             "  background-color: #FFFFFF; "
             "  image: none; "
             "}"
@@ -527,12 +515,17 @@ void StepConfigWidget::rebuildStepItems()
         frame->setProperty("stepColor", stepColor);
         frame->installEventFilter(this);
 
-        m_stepLayout->addWidget(frame);
+        gridLayout->addWidget(frame, row, col);
         m_stepFrames.append(frame);
         stepNum++;
     }
 
-    // 添加弹性空间
+    // 让所有列均匀分布
+    for (int col = 0; col < columnsPerRow; ++col) {
+        gridLayout->setColumnStretch(col, 1);
+    }
+
+    m_stepLayout->addLayout(gridLayout);
     m_stepLayout->addStretch();
 
     // 更新流程预览
@@ -561,15 +554,20 @@ void StepConfigWidget::updatePipelinePreview()
         });
     }
 
-    // 用HTML构建彩色徽章预览
+    // 用HTML构建彩色徽章预览（每行3个）
     if (enabledSteps.isEmpty()) {
         m_previewStepsLabel->setText("未启用任何步骤");
         m_previewStepsLabel->setStyleSheet("QLabel { color: #94A3B8; font-size: 11px; background: transparent; }");
     } else {
+        const int perRow = 3;
         QString html;
         for (int i = 0; i < enabledSteps.size(); ++i) {
             if (i > 0) {
-                html += "<span style='color: #94A3B8; font-size: 11px; margin: 0 2px;'> → </span>";
+                if (i % perRow == 0) {
+                    html += "<br><br>";
+                } else {
+                    html += "<span style='color: #94A3B8; font-size: 11px; margin: 0 2px;'> → </span>";
+                }
             }
             const auto& s = enabledSteps[i];
             html += QString("<span style='"

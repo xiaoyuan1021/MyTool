@@ -3,8 +3,11 @@
 #include "utils/path_utils.h"
 #include "config/detection_config_types.h"
 #include "algorithm/image_utils.h"
+#include "widgets/object_detection_tab_widget.h"
+#include "widgets/tab_manager.h"
 #include <QFileInfo>
 #include <QCoreApplication>
+#include <QApplication>
 #include <QtConcurrent/QtConcurrent>
 #include <QFutureWatcher>
 
@@ -354,6 +357,81 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
                             Logger::instance()->warning("[检测] 直线判定: NG! 未检测到直线");
                         } else {
                             Logger::instance()->debug("[检测] 直线判定: OK");
+                        }
+                    }
+                    else if (detItem.type == DetectionType::ObjectDetection) {
+                        ObjectDetectionConfig objConfig;
+                        objConfig.fromJson(detItem.config);
+
+                        // 如果设置了期望数量，需要执行目标检测
+                        int detectedCount = 0;
+                        if (objConfig.expectedCount > 0) {
+                            // 执行目标检测
+                            if (auto* objTab = qApp->findChild<TabManager*>()->getTabAs<ObjectDetectionTabWidget>("目标检测")) {
+                                if (objTab->isModelLoaded()) {
+                                    std::vector<DetectionResult> detResults = objTab->runDetection(roiImage);
+                                    detectedCount = static_cast<int>(detResults.size());
+                                    Logger::instance()->debug(QString("[检测] 目标检测执行完成: 检测到%1个目标").arg(detectedCount));
+                                } else {
+                                    Logger::instance()->warning("[检测] 目标检测模型未加载，跳过数量检查");
+                                }
+                            }
+                        }
+
+                        int expectedCount = objConfig.expectedCount;
+
+                        Logger::instance()->debug(QString("[检测] 目标检测判定: detectedCount=%1, expectedCount=%2")
+                            .arg(detectedCount).arg(expectedCount));
+
+                        // 如果设置了期望数量，检查是否匹配
+                        if (expectedCount > 0 && detectedCount != expectedCount) {
+                            roiPassed = false;
+                            roiFailReason += QString("检测到%1个目标, 期望%2个")
+                                .arg(detectedCount).arg(expectedCount);
+                            Logger::instance()->warning(QString("[检测] 目标检测判定: NG! %1").arg(roiFailReason));
+                        } else {
+                            Logger::instance()->debug("[检测] 目标检测判定: OK");
+                        }
+                    }
+                    else if (detItem.type == DetectionType::Ocr) {
+                        OcrDetectionConfig ocrConfig;
+                        ocrConfig.fromJson(detItem.config);
+
+                        QString recognizedText = ctx.ocrText.trimmed();
+                        QString expectedText = ocrConfig.expectedText.trimmed();
+
+                        Logger::instance()->debug(QString("[检测] OCR判定: recognizedText='%1', expectedText='%2'")
+                            .arg(recognizedText).arg(expectedText));
+
+                        if (expectedText.isEmpty()) {
+                            // 未设置期望文本，只要识别到文字就算OK
+                            if (recognizedText.isEmpty()) {
+                                roiPassed = false;
+                                roiFailReason += "未识别到文字";
+                                Logger::instance()->warning("[检测] OCR判定: NG! 未识别到文字");
+                            } else {
+                                Logger::instance()->debug("[检测] OCR判定: OK（未设置期望文本）");
+                            }
+                        } else {
+                            // 设置了期望文本，进行匹配
+                            bool matched = false;
+                            if (ocrConfig.matchExact) {
+                                // 精确匹配
+                                matched = (recognizedText == expectedText);
+                            } else {
+                                // 模糊匹配（包含即可）
+                                matched = recognizedText.contains(expectedText);
+                            }
+
+                            if (!matched) {
+                                roiPassed = false;
+                                roiFailReason += QString("OCR文本'%1'不匹配'%2'")
+                                    .arg(recognizedText.isEmpty() ? "(空)" : recognizedText)
+                                    .arg(expectedText);
+                                Logger::instance()->warning(QString("[检测] OCR判定: NG! %1").arg(roiFailReason));
+                            } else {
+                                Logger::instance()->debug("[检测] OCR判定: OK");
+                            }
                         }
                     }
                 }

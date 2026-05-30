@@ -6,6 +6,8 @@
 #include <QTextEdit>
 #include <QTableWidget>
 #include <QPushButton>
+#include <QLineEdit>
+#include <QCheckBox>
 #include "pipeline_manager.h"
 #include "pipeline.h"
 #include "widgets/i_tab_interfaces.h"
@@ -49,6 +51,8 @@ private:
 
     // UI 控件 - 配置部分
     QComboBox* m_pageModeCombo;
+    QLineEdit* m_expectedTextLineEdit;
+    QCheckBox* m_matchExactCheckBox;
     QPushButton* m_recognizeBtn;
     QPushButton* m_copyBtn;
     QPushButton* m_resetBtn;

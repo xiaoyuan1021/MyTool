@@ -46,6 +46,14 @@ struct PipelineContext
     QString ocrText;
     QVector<OcrRegion> ocrRegions;
 
+    // 目标检测
+    struct DetectionResult {
+        QString label;
+        float confidence;
+        QRectF bbox;
+    };
+    QVector<DetectionResult> objectDetectionResults;
+
     // ========== 可视化输出 ==========
     cv::Mat visualBase;       // 当前Tab应显示的图像
 

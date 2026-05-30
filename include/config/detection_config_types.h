@@ -99,30 +99,7 @@ struct VideoSourceConfig {
 // 注意：LineDetectionConfig 和 BarcodeRecognitionConfig 已合并到 pipeline_config.h
 // 分别为 LineDetectConfig 和 BarcodeConfig 的别名
 
-/**
- * @brief 目标检测配置参数
- */
-struct ObjectDetectionConfig {
-    // 模型参数
-    QString modelPath = "";                 // 模型文件路径（支持 ONNX/Caffe/TF/Darknet）
-    QString configPath = "";                // 配置文件路径（可选）
-    
-    // 检测参数
-    float confidenceThreshold = 0.5f;       // 置信度阈值 (0.0 ~ 1.0)
-    float nmsThreshold = 0.4f;              // 非极大值抑制阈值 (0.0 ~ 1.0)
-    int inputWidth = 640;                    // 输入宽度
-    int inputHeight = 640;                   // 输入高度
-    
-    // 显示参数
-    bool showLabels = true;                  // 是否显示标签
-    bool showConfidence = true;              // 是否显示置信度
-    bool showBoundingBox = true;             // 是否显示边框
-    int lineWidth = 2;                       // 边框线宽
-    
-    // JSON 序列化（定义在 detection_config_types.cpp）
-    QJsonObject toJson() const;
-    void fromJson(const QJsonObject& obj);
-};
+// 注意：ObjectDetectionConfig 已合并到 pipeline_config.h
 
 /**
  * @brief 视频检测配置参数（视频源 + 目标检测）

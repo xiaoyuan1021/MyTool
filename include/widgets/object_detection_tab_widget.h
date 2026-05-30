@@ -77,4 +77,5 @@ private:
     DnnInference m_dnnInference;   // OpenCV DNN（目标检测标签页使用）
     OrtInference m_ortInference;   // ONNX Runtime（视频推理使用）
     QString m_currentModelPath;    // 当前已加载的模型路径，用于避免重复加载
+    int m_expectedCount = 0;       // 期望检测数量
 };

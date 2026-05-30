@@ -103,35 +103,7 @@ void VideoSourceConfig::fromJson(const QJsonObject& obj) {
 // 注意：LineDetectionConfig 和 BarcodeRecognitionConfig 的序列化
 // 已移至 pipeline_config.cpp（LineDetectConfig::toJson/fromJson 和 BarcodeConfig::toJson/fromJson）
 
-// ========== ObjectDetectionConfig ==========
-
-QJsonObject ObjectDetectionConfig::toJson() const {
-    QJsonObject obj;
-    obj["modelPath"] = modelPath;
-    obj["configPath"] = configPath;
-    obj["confidenceThreshold"] = static_cast<double>(confidenceThreshold);
-    obj["nmsThreshold"] = static_cast<double>(nmsThreshold);
-    obj["inputWidth"] = inputWidth;
-    obj["inputHeight"] = inputHeight;
-    obj["showLabels"] = showLabels;
-    obj["showConfidence"] = showConfidence;
-    obj["showBoundingBox"] = showBoundingBox;
-    obj["lineWidth"] = lineWidth;
-    return obj;
-}
-
-void ObjectDetectionConfig::fromJson(const QJsonObject& obj) {
-    modelPath = obj["modelPath"].toString();
-    configPath = obj["configPath"].toString();
-    confidenceThreshold = static_cast<float>(obj["confidenceThreshold"].toDouble(0.5));
-    nmsThreshold = static_cast<float>(obj["nmsThreshold"].toDouble(0.4));
-    inputWidth = obj["inputWidth"].toInt(640);
-    inputHeight = obj["inputHeight"].toInt(640);
-    showLabels = obj["showLabels"].toBool(true);
-    showConfidence = obj["showConfidence"].toBool(true);
-    showBoundingBox = obj["showBoundingBox"].toBool(true);
-    lineWidth = obj["lineWidth"].toInt(2);
-}
+// 注意：ObjectDetectionConfig 的序列化已移至 pipeline_config.h（内联实现）
 
 // ========== VideoDetectionConfig ==========
 
