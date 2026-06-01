@@ -9,13 +9,16 @@
 #include <QDateTime>
 #include <QUuid>
 #include "region_feature.h"
-#include "pipeline.h"
+#include "barcode_result.h"
 
 /**
  * 检测结果上报数据结构
  * 
- * 用于标准化 Pipeline 执行结果，支持 JSON 序列化，
- * 作为 MQTT 上报的数据载体。
+ * 用于标准化检测结果，支持 JSON 序列化，作为 MQTT 上报的数据载体。
+ *
+ * 注意：此结构体用于单个ROI维度的上报。
+ * 批量检测时，由调用方（AutoDetectionController/BatchDetectionWidget）
+ * 从 RoiDetectionResult 构造，不再从 PipelineContext 直接构造。
  */
 struct DetectionResultReport
 {
@@ -47,31 +50,6 @@ struct DetectionResultReport
         : reportId(QUuid::createUuid().toString(QUuid::WithoutBraces))
         , timestamp(QDateTime::currentMSecsSinceEpoch())
     {
-    }
-
-    /**
-     * 从 PipelineContext 快速构造报告
-     * @param ctx Pipeline 执行上下文
-     * @param imageId 图片ID
-     * @param roiId ROI ID
-     * @param roiName ROI名称
-     */
-    static DetectionResultReport fromPipelineContext(
-        const PipelineContext& ctx,
-        const QString& imageId = QString(),
-        const QString& roiId = QString(),
-        const QString& roiName = QString())
-    {
-        DetectionResultReport report;
-        report.imageId = imageId;
-        report.roiId = roiId;
-        report.roiName = roiName;
-        report.passed = ctx.pass;
-        report.failReason = ctx.reason;
-        report.totalRegionCount = ctx.regionCount;
-        report.regions = ctx.regionFeatures;
-        report.barcodeResults.assign(ctx.barcodeResults.begin(), ctx.barcodeResults.end());
-        return report;
     }
 
     // ==================== JSON 序列化 ====================
