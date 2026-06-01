@@ -86,23 +86,37 @@ class MQTTHandler:
                     self._recent_results.clear()
 
         device_id = payload.get("deviceId", "unknown")
-        result_obj = payload.get("result", {})
-        passed = result_obj.get("passed", True)
+        passed = payload.get("passed", True)
         roi_name = payload.get("roiName", "全图")
+        image_name = payload.get("imageName", "")
         dt_str = payload.get("dateTime", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+        # ★ 解析检测项结果
+        item_results = payload.get("itemResults", [])
+        total_items = payload.get("totalItems", len(item_results))
+        passed_items = payload.get("passedItems", 0)
+        failed_items = payload.get("failedItems", 0)
+
+        # 提取失败的检测项信息
+        failed_item_names = []
+        for item in item_results:
+            if not item.get("passed", True):
+                failed_item_names.append(item.get("itemName", "未知"))
 
         record = {
             "reportId": report_id,
             "deviceId": device_id,
+            "imageName": image_name,
             "roiName": roi_name,
             "passed": passed,
-            "failReason": result_obj.get("failReason", ""),
-            "totalRegionCount": result_obj.get("totalRegionCount", 0),
+            "failReason": payload.get("failReason", ""),
+            "totalItems": total_items,
+            "passedItems": passed_items,
+            "failedItems": failed_items,
+            "failedItemNames": ",".join(failed_item_names),
+            "itemResults": item_results,  # 完整检测项结果（用于详情展示）
             "timestamp": payload.get("timestamp", int(time.time() * 1000)),
             "dateTime": dt_str,
-            "regionCount": len(payload.get("regions", [])),
-            "barcodeCount": len(payload.get("barcodes", [])),
-            "hasBarcode": len(payload.get("barcodes", [])) > 0,
         }
 
         self.s["results_deque"].append(record)

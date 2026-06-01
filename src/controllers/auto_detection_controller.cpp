@@ -249,19 +249,23 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
                 m_failedImages.append(task.imagePath);
             }
 
-            // ★ 关键修改：生成检测报告，包含每个ROI的独立结果
+            // ★ 生成检测报告，包含每个ROI的检测项结果
             DetectionResultReport report;
             report.imageId = task.imageId;
+            report.imageName = task.imageName;
             report.passed = imageResult.passed;
             report.failReason = imageResult.failReason;
 
-            // 汇总所有ROI的检测数据（用于上报，但内部评估已独立完成）
+            // 汇总所有ROI的检测项结果
             for (const auto& roiResult : imageResult.roiResults) {
-                report.totalRegionCount += roiResult.regionCount;
-                report.regions.insert(report.regions.end(),
-                    roiResult.regionFeatures.begin(), roiResult.regionFeatures.end());
-                report.barcodeResults.insert(report.barcodeResults.end(),
-                    roiResult.barcodeResults.begin(), roiResult.barcodeResults.end());
+                for (const auto& itemResult : roiResult.itemResults) {
+                    DetectionItemReport itemReport;
+                    itemReport.itemName = itemResult.itemName;
+                    itemReport.detectionType = itemResult.detectionType;
+                    itemReport.passed = itemResult.passed;
+                    itemReport.failReason = itemResult.failReason;
+                    report.itemResults.append(itemReport);
+                }
             }
 
             m_reports.append(report);

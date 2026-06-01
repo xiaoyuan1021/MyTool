@@ -42,16 +42,17 @@ def init_db():
                 id                INTEGER PRIMARY KEY AUTOINCREMENT,
                 report_id         TEXT,
                 device_id         TEXT,
+                image_name        TEXT,
                 roi_name          TEXT,
                 passed            INTEGER,
                 fail_reason       TEXT,
-                total_region_count INTEGER DEFAULT 0,
-                region_count      INTEGER DEFAULT 0,
-                barcode_count     INTEGER DEFAULT 0,
-                has_barcode       INTEGER DEFAULT 0,
+                total_items       INTEGER DEFAULT 0,
+                passed_items      INTEGER DEFAULT 0,
+                failed_items      INTEGER DEFAULT 0,
+                failed_item_names TEXT,
+                item_results_json TEXT,
                 timestamp         INTEGER,
                 date_time         TEXT,
-                raw_json          TEXT,
                 created_at        TEXT DEFAULT (datetime('now','localtime'))
             );
             CREATE TABLE IF NOT EXISTS heartbeats (
@@ -106,23 +107,24 @@ def db_insert_result(record: dict):
         conn = get_db()
         try:
             conn.execute("""
-                INSERT INTO results(report_id,device_id,roi_name,passed,fail_reason,
-                                    total_region_count,region_count,barcode_count,has_barcode,
-                                    timestamp,date_time,raw_json)
-                VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
+                INSERT INTO results(report_id,device_id,image_name,roi_name,passed,fail_reason,
+                                    total_items,passed_items,failed_items,failed_item_names,
+                                    item_results_json,timestamp,date_time)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
             """, (
                 record.get("reportId", ""),
                 record.get("deviceId", ""),
+                record.get("imageName", ""),
                 record.get("roiName", ""),
                 1 if record.get("passed") else 0,
                 record.get("failReason", ""),
-                record.get("totalRegionCount", 0),
-                record.get("regionCount", 0),
-                record.get("barcodeCount", 0),
-                1 if record.get("hasBarcode") else 0,
+                record.get("totalItems", 0),
+                record.get("passedItems", 0),
+                record.get("failedItems", 0),
+                record.get("failedItemNames", ""),
+                json.dumps(record.get("itemResults", []), ensure_ascii=False),
                 record.get("timestamp", int(time.time() * 1000)),
                 record.get("dateTime", datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
-                json.dumps(record, ensure_ascii=False),
             ))
             conn.commit()
         finally:

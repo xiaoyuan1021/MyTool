@@ -347,18 +347,26 @@ void BatchDetectionWidget::processNextImage()
             item.passed = imageResult.passed;
             item.statusText = imageResult.passed ? "PASS" : QString("FAIL: %1").arg(imageResult.failReason);
 
-            // ★ 关键修改：为每个ROI生成独立的检测报告
+            // ★ 为每个ROI生成独立的检测报告
             for (const auto& roiResult : imageResult.roiResults) {
                 DetectionResultReport report;
                 report.imageId = imageId;
+                report.imageName = imageName;
                 report.roiId = roiResult.roiId;
                 report.roiName = roiResult.roiName;
                 report.passed = roiResult.passed;
                 report.failReason = roiResult.failReason;
-                report.totalRegionCount = roiResult.regionCount;
-                report.regions = roiResult.regionFeatures;
-                report.barcodeResults.insert(report.barcodeResults.end(),
-                    roiResult.barcodeResults.begin(), roiResult.barcodeResults.end());
+
+                // 填充检测项结果
+                for (const auto& itemResult : roiResult.itemResults) {
+                    DetectionItemReport itemReport;
+                    itemReport.itemName = itemResult.itemName;
+                    itemReport.detectionType = itemResult.detectionType;
+                    itemReport.passed = itemResult.passed;
+                    itemReport.failReason = itemResult.failReason;
+                    report.itemResults.append(itemReport);
+                }
+
                 item.roiReports.append(report);
             }
 
