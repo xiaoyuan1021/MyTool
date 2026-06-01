@@ -167,18 +167,6 @@ DetectionItemResult DetectionEvaluator::evaluateObjectDetection(
     return result;
 }
 
-    if (expectedCount > 0 && detectedCount != expectedCount) {
-        result.passed = false;
-        result.failReason = QString("检测到%1个目标, 期望%2个")
-            .arg(detectedCount).arg(expectedCount);
-        Logger::instance()->warning(QString("[评估] 目标检测判定: NG! %1").arg(result.failReason));
-    } else {
-        Logger::instance()->debug("[评估] 目标检测判定: OK");
-    }
-
-    return result;
-}
-
 DetectionItemResult DetectionEvaluator::evaluateOcr(
     const DetectionItem& detItem,
     const PipelineContext& ctx)
