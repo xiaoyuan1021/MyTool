@@ -170,13 +170,27 @@ def db_load_recent_results(limit: int = 500) -> list:
     conn = get_db()
     try:
         rows = conn.execute(
-            "SELECT raw_json FROM results ORDER BY id DESC LIMIT ?", (limit,)
+            "SELECT * FROM results ORDER BY id DESC LIMIT ?", (limit,)
         ).fetchall()
         loaded = []
         for r in reversed(rows):
             try:
-                loaded.append(json.loads(r["raw_json"]))
-            except (json.JSONDecodeError, TypeError):
+                item = {
+                    "reportId": r["report_id"],
+                    "deviceId": r["device_id"],
+                    "imageName": r["image_name"] or "",
+                    "roiName": r["roi_name"] or "",
+                    "passed": bool(r["passed"]),
+                    "failReason": r["fail_reason"] or "",
+                    "totalItems": r["total_items"] or 0,
+                    "passedItems": r["passed_items"] or 0,
+                    "failedItems": r["failed_items"] or 0,
+                    "failedItemNames": r["failed_item_names"] or "",
+                    "timestamp": r["timestamp"],
+                    "dateTime": r["date_time"] or "",
+                }
+                loaded.append(item)
+            except (TypeError, KeyError):
                 pass
         return loaded
     finally:
@@ -274,14 +288,28 @@ def db_query_history(device_id=None, roi_name=None, passed=None, days=None, page
         total = count_row["cnt"] if count_row else 0
         offset = (page - 1) * page_size
         rows = conn.execute(
-            f"SELECT raw_json FROM results {where} ORDER BY id DESC LIMIT ? OFFSET ?",
+            f"SELECT * FROM results {where} ORDER BY id DESC LIMIT ? OFFSET ?",
             params + [page_size, offset],
         ).fetchall()
         items = []
         for r in rows:
             try:
-                items.append(json.loads(r["raw_json"]))
-            except (json.JSONDecodeError, TypeError):
+                item = {
+                    "reportId": r["report_id"],
+                    "deviceId": r["device_id"],
+                    "imageName": r["image_name"] or "",
+                    "roiName": r["roi_name"] or "",
+                    "passed": bool(r["passed"]),
+                    "failReason": r["fail_reason"] or "",
+                    "totalItems": r["total_items"] or 0,
+                    "passedItems": r["passed_items"] or 0,
+                    "failedItems": r["failed_items"] or 0,
+                    "failedItemNames": r["failed_item_names"] or "",
+                    "timestamp": r["timestamp"],
+                    "dateTime": r["date_time"] or "",
+                }
+                items.append(item)
+            except (TypeError, KeyError):
                 pass
         return {"total": total, "page": page, "page_size": page_size, "items": items}
     finally:

@@ -255,17 +255,31 @@
                 '<span class="badge-pass"><i class="fas fa-check"></i> PASS</span>' :
                 '<span class="badge-fail"><i class="fas fa-times"></i> FAIL</span>';
 
-            const barcodeIcon = data.hasBarcode ? '<i class="fas fa-qrcode" style="color:var(--accent-cyan)"></i>' : '--';
+            // ★ 检测项摘要
+            const totalItems = data.totalItems || 0;
+            const passedItems = data.passedItems || 0;
+            const failedItems = data.failedItems || 0;
+            const failedNames = data.failedItemNames || '';
+            let itemSummary = '';
+            if (totalItems > 0) {
+                if (failedItems > 0) {
+                    itemSummary = `<span style="color:var(--accent-red)">${failedItems}项失败</span> (${failedNames})`;
+                } else {
+                    itemSummary = `<span style="color:var(--accent-green)">${totalItems}项全部通过</span>`;
+                }
+            } else {
+                itemSummary = '--';
+            }
 
             const tr = document.createElement('tr');
             tr.className = 'row-new';
             tr.innerHTML = `
                 <td style="font-size:12px;color:var(--text-secondary);font-variant-numeric:tabular-nums">${shortTime || '--'}</td>
                 <td class="device-name" style="font-size:12px">${data.deviceId || '--'}</td>
+                <td style="font-size:12px">${data.imageName || '--'}</td>
                 <td>${data.roiName || '全图'}</td>
                 <td>${badge}</td>
-                <td>${data.totalRegionCount ?? '--'}</td>
-                <td>${barcodeIcon}</td>
+                <td style="font-size:12px">${itemSummary}</td>
             `;
             tbody.insertBefore(tr, tbody.firstChild);
 
@@ -517,16 +531,29 @@
                         const badge = item.passed ?
                             '<span class="badge-pass"><i class="fas fa-check"></i> PASS</span>' :
                             '<span class="badge-fail"><i class="fas fa-times"></i> FAIL</span>';
-                        const barcodeIcon = item.hasBarcode ? '<i class="fas fa-qrcode" style="color:var(--accent-cyan)"></i>' : '--';
+
+                        const totalItems = item.totalItems || 0;
+                        const failedItems = item.failedItems || 0;
+                        const failedNames = item.failedItemNames || '';
+                        let itemSummary = '';
+                        if (totalItems > 0) {
+                            if (failedItems > 0) {
+                                itemSummary = `<span style="color:var(--accent-red)">${failedItems}项失败</span> (${failedNames})`;
+                            } else {
+                                itemSummary = `<span style="color:var(--accent-green)">${totalItems}项全部通过</span>`;
+                            }
+                        } else {
+                            itemSummary = '--';
+                        }
 
                         return `
                             <tr>
                                 <td style="font-size:12px;color:var(--text-secondary)">${time}</td>
                                 <td class="device-name" style="font-size:12px">${item.deviceId || '--'}</td>
+                                <td style="font-size:12px">${item.imageName || '--'}</td>
                                 <td>${item.roiName || '全图'}</td>
                                 <td>${badge}</td>
-                                <td>${item.totalRegionCount ?? '--'}</td>
-                                <td>${barcodeIcon}</td>
+                                <td style="font-size:12px">${itemSummary}</td>
                             </tr>`;
                     }).join('');
 
@@ -574,14 +601,16 @@
                     }
 
                     // Build CSV
-                    const headers = ['时间', '设备', 'ROI', '结果', '区域数', '条码'];
+                    const headers = ['时间', '设备', '图片', 'ROI', '结果', '检测项通过', '检测项失败', '失败项'];
                     const rows = data.items.map(item => [
                         item.dateTime || '',
                         item.deviceId || '',
+                        item.imageName || '',
                         item.roiName || '',
                         item.passed ? '合格' : '不合格',
-                        item.totalRegionCount ?? '',
-                        item.hasBarcode ? '有' : '无'
+                        item.passedItems ?? 0,
+                        item.failedItems ?? 0,
+                        item.failedItemNames || ''
                     ]);
 
                     let csv = '\uFEFF'; // BOM for Chinese

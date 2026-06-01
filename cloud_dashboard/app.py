@@ -277,13 +277,16 @@ def api_simulate():
         roi_name = random.choice(roi_names)
         payload = {
             "reportId": uuid.uuid4().hex[:16], "deviceId": device_id,
+            "imageName": random.choice(["test.jpg", "code.jpg", "sample.png"]),
             "roiName": roi_name, "timestamp": now_ts(),
             "dateTime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "result": {"passed": passed, "failReason": "" if passed else random.choice(fail_reasons),
-                       "totalRegionCount": random.randint(0, 10)},
-            "regions": [],
-            "barcodes": [{"type": "QRCode", "data": f"DEMO-{uuid.uuid4().hex[:8].upper()}"}]
-            if random.random() < 0.3 else [],
+            "passed": passed, "failReason": "" if passed else random.choice(fail_reasons),
+            "itemResults": [
+                {"itemName": "Blob分析", "detectionType": "Blob", "passed": passed,
+                 "failReason": "" if passed else "Blob数量不足"}
+            ],
+            "totalItems": 1, "passedItems": 1 if passed else 0,
+            "failedItems": 0 if passed else 1, "failedItemNames": "" if passed else "Blob分析",
         }
         handler._handle_heartbeat({"deviceId": device_id, "status": "online",
                                    "ts": now_ts(), "uptime": random.randint(60, 36000)})
@@ -376,13 +379,13 @@ def api_debug_update_roi():
                 for i in range(total):
                     p = i < passed
                     conn.execute(
-                        "INSERT INTO results(report_id,device_id,roi_name,passed,fail_reason,"
-                        "total_region_count,region_count,barcode_count,has_barcode,"
-                        "timestamp,date_time,raw_json) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
-                        (f"debug-roi-{new_name}-{i}", "__debug__", new_name, 1 if p else 0, "",
-                         0, 0, 0, 0, int(time.time() * 1000),
-                         datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                         json.dumps({"debug": True, "passed": p}, ensure_ascii=False)),
+                        "INSERT INTO results(report_id,device_id,image_name,roi_name,passed,fail_reason,"
+                        "total_items,passed_items,failed_items,failed_item_names,"
+                        "item_results_json,timestamp,date_time) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                        (f"debug-roi-{new_name}-{i}", "__debug__", "debug.jpg", new_name, 1 if p else 0, "",
+                         1, 1 if p else 0, 0 if p else 1, "" if p else "检测项",
+                         "[]", int(time.time() * 1000),
+                         datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
                     )
             else:
                 for idx, row in enumerate(old_records):
@@ -418,13 +421,13 @@ def api_debug_add_roi():
             for i in range(total):
                 p = i < passed
                 conn.execute(
-                    "INSERT INTO results(report_id,device_id,roi_name,passed,fail_reason,"
-                    "total_region_count,region_count,barcode_count,has_barcode,"
-                    "timestamp,date_time,raw_json) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
-                    (f"debug-roi-{name}-{_uuid.uuid4().hex[:8]}", "__debug__", name, 1 if p else 0, "",
-                     0, 0, 0, 0, int(time.time() * 1000),
-                     datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                     json.dumps({"debug": True, "passed": p}, ensure_ascii=False)),
+                    "INSERT INTO results(report_id,device_id,image_name,roi_name,passed,fail_reason,"
+                    "total_items,passed_items,failed_items,failed_item_names,"
+                    "item_results_json,timestamp,date_time) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (f"debug-roi-{name}-{_uuid.uuid4().hex[:8]}", "__debug__", "debug.jpg", name, 1 if p else 0, "",
+                     1, 1 if p else 0, 0 if p else 1, "" if p else "检测项",
+                     "[]", int(time.time() * 1000),
+                     datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
                 )
             conn.commit()
         finally:
