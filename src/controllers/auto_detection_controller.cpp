@@ -5,6 +5,7 @@
 #include "algorithm/image_utils.h"
 #include "widgets/object_detection_tab_widget.h"
 #include "widgets/tab_manager.h"
+#include "data/roi_detection_result.h"
 #include <QFileInfo>
 #include <QCoreApplication>
 #include <QtConcurrent/QtConcurrent>
@@ -209,16 +210,21 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
 
     // 使用 QtConcurrent 在后台线程执行，避免阻塞 UI
     // 注意：lambda中无法使用emit logMessage（无this指针），使用Logger::instance()代替
-    QFuture<PipelineContext> future = QtConcurrent::run(
-        [pipelinePtr, tabMgrPtr, imagePath, roiConfigs]() -> PipelineContext {
+    QFuture<ImageDetectionResult> future = QtConcurrent::run(
+        [pipelinePtr, tabMgrPtr, imagePath, imageName, imageId, roiConfigs]() -> ImageDetectionResult {
+            // 创建图片级别的检测结果
+            ImageDetectionResult imageResult;
+            imageResult.imageId = imageId;
+            imageResult.imageName = imageName;
+            imageResult.imagePath = imagePath;
+
             try {
             // 【P0修复】检查PipelineManager是否已被释放
             if (!pipelinePtr) {
                 Logger::instance()->error(QString("[检测] PipelineManager已被释放，跳过处理: %1").arg(imagePath));
-                PipelineContext emptyCtx;
-                emptyCtx.pass = false;
-                emptyCtx.reason = QString("PipelineManager已被释放: %1").arg(imagePath);
-                return emptyCtx;
+                imageResult.passed = false;
+                imageResult.failReason = QString("PipelineManager已被释放: %1").arg(imagePath);
+                return imageResult;
             }
 
             Logger::instance()->debug(QString("[检测] 开始处理图片: %1").arg(imagePath));
@@ -227,24 +233,15 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
             cv::Mat image = PathUtils::readImageFromFile(imagePath, cv::IMREAD_COLOR);
             if (image.empty()) {
                 Logger::instance()->error(QString("[检测] 无法加载图片: %1").arg(imagePath));
-                PipelineContext emptyCtx;
-                emptyCtx.pass = false;
-                emptyCtx.reason = QString("无法加载图片: %1").arg(imagePath);
-                return emptyCtx;
+                imageResult.passed = false;
+                imageResult.failReason = QString("无法加载图片: %1").arg(imagePath);
+                return imageResult;
             }
             Logger::instance()->debug(QString("[检测] 图片加载成功: %1x%2").arg(image.cols).arg(image.rows));
 
-            // 保存PipelineManager当前全局配置（执行完毕后恢复）
-            PipelineConfig savedGlobalConfig = pipelinePtr->getConfigSnapshot();
-
-            bool allPassed = true;
-            QString failReason;
-            int totalRegionCount = 0;
-            std::vector<RegionFeature> allRegionFeatures;
-            QVector<BarcodeResult> allBarcodeResults;
-
             Logger::instance()->debug(QString("[检测] ROI配置数量: %1").arg(roiConfigs.size()));
 
+            // 遍历每个ROI，独立评估检测结果
             for (const RoiConfig& roiConfig : roiConfigs) {
                 Logger::instance()->debug(QString("[检测] 处理ROI: name=%1, active=%2, rect=(%3,%4,%5,%6), 检测项数=%7")
                     .arg(roiConfig.roiName)
@@ -257,6 +254,9 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
                     Logger::instance()->debug(QString("[检测] ROI '%1' 未激活，跳过").arg(roiConfig.roiName));
                     continue;
                 }
+
+                // 为每个ROI创建独立的检测结果
+                RoiDetectionResult roiResult(roiConfig.roiId, roiConfig.roiName, imageId);
 
                 cv::Mat roiImage;
                 QRectF rect = roiConfig.roiRect;
@@ -274,8 +274,7 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
 
                 Logger::instance()->debug(QString("[检测] ROI图像尺寸: %1x%2").arg(roiImage.cols).arg(roiImage.rows));
 
-                // 【Bug1修复】应用该ROI专属的Pipeline配置，通过execute参数传递
-
+                // 应用该ROI专属的Pipeline配置，通过execute参数传递
                 Logger::instance()->debug(QString("[检测] 应用PipelineConfig: brightness=%1, contrast=%2, gamma=%3, sharpen=%4, channel=%5")
                     .arg(roiConfig.pipelineConfig.enhance.brightness)
                     .arg(roiConfig.pipelineConfig.enhance.contrast)
@@ -292,10 +291,16 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
                     .arg(ctx.matchedLineCount)
                     .arg(ctx.totalLineCount));
 
-                // 根据DetectionItem的配置判断 pass/fail
-                bool roiPassed = true;
-                QString roiFailReason;
+                // ★ 关键修改：将Pipeline结果存储到ROI独立的检测结果中，不再累加到全局变量
+                roiResult.regionCount = ctx.regionCount;
+                roiResult.regionFeatures = ctx.regionFeatures;
+                roiResult.barcodeResults = ctx.barcodeResults;
+                roiResult.ocrText = ctx.ocrText;
+                roiResult.ocrRegions = ctx.ocrRegions;
+                roiResult.matchedLineCount = ctx.matchedLineCount;
+                roiResult.totalLineCount = ctx.totalLineCount;
 
+                // 根据DetectionItem的配置判断 pass/fail
                 for (const DetectionItem& detItem : roiConfig.detectionItems) {
                     if (!detItem.enabled) {
                         Logger::instance()->debug(QString("[检测] 检测项 '%1' 未启用，跳过").arg(detItem.itemName));
@@ -304,6 +309,9 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
 
                     Logger::instance()->debug(QString("[检测] 评估检测项: name=%1, type=%2")
                         .arg(detItem.itemName).arg(detectionTypeToString(detItem.type)));
+
+                    // 创建检测项评估结果
+                    DetectionItemResult itemResult(detItem.itemId, detItem.itemName, detectionTypeToString(detItem.type));
 
                     if (detItem.type == DetectionType::Blob) {
                         BlobAnalysisConfig blobConfig;
@@ -317,10 +325,10 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
                             .arg(currentCount).arg(minCount).arg(maxCount));
 
                         if (currentCount < minCount || currentCount > maxCount) {
-                            roiPassed = false;
-                            roiFailReason += QString("Blob数量%1, 要求[%2,%3]")
+                            itemResult.passed = false;
+                            itemResult.failReason = QString("Blob数量%1, 要求[%2,%3]")
                                 .arg(currentCount).arg(minCount).arg(maxCount);
-                            Logger::instance()->warning(QString("[检测] Blob判定: NG! %1").arg(roiFailReason));
+                            Logger::instance()->warning(QString("[检测] Blob判定: NG! %1").arg(itemResult.failReason));
                         } else {
                             Logger::instance()->debug("[检测] Blob判定: OK");
                         }
@@ -333,11 +341,10 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
                             .arg(ctx.barcodeResults.size()).arg(barcodeConfig.minConfidence));
 
                         if (ctx.barcodeResults.isEmpty()) {
-                            roiPassed = false;
-                            roiFailReason += "未检测到条码";
+                            itemResult.passed = false;
+                            itemResult.failReason = "未检测到条码";
                             Logger::instance()->warning("[检测] 条码判定: NG! 未检测到条码");
                         } else {
-                            // 只要检测到条码就算OK，不校验质量
                             Logger::instance()->debug(QString("[检测] 条码结果: 共%1个")
                                 .arg(ctx.barcodeResults.size()));
                             for (const BarcodeResult& br : ctx.barcodeResults) {
@@ -355,8 +362,8 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
                             .arg(ctx.matchedLineCount).arg(ctx.totalLineCount));
 
                         if (ctx.matchedLineCount == 0 && ctx.totalLineCount == 0) {
-                            roiPassed = false;
-                            roiFailReason += "未检测到直线";
+                            itemResult.passed = false;
+                            itemResult.failReason = "未检测到直线";
                             Logger::instance()->warning("[检测] 直线判定: NG! 未检测到直线");
                         } else {
                             Logger::instance()->debug("[检测] 直线判定: OK");
@@ -388,10 +395,10 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
 
                         // 如果设置了期望数量，检查是否匹配
                         if (expectedCount > 0 && detectedCount != expectedCount) {
-                            roiPassed = false;
-                            roiFailReason += QString("检测到%1个目标, 期望%2个")
+                            itemResult.passed = false;
+                            itemResult.failReason = QString("检测到%1个目标, 期望%2个")
                                 .arg(detectedCount).arg(expectedCount);
-                            Logger::instance()->warning(QString("[检测] 目标检测判定: NG! %1").arg(roiFailReason));
+                            Logger::instance()->warning(QString("[检测] 目标检测判定: NG! %1").arg(itemResult.failReason));
                         } else {
                             Logger::instance()->debug("[检测] 目标检测判定: OK");
                         }
@@ -409,8 +416,8 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
                         if (expectedText.isEmpty()) {
                             // 未设置期望文本，只要识别到文字就算OK
                             if (recognizedText.isEmpty()) {
-                                roiPassed = false;
-                                roiFailReason += "未识别到文字";
+                                itemResult.passed = false;
+                                itemResult.failReason = "未识别到文字";
                                 Logger::instance()->warning("[检测] OCR判定: NG! 未识别到文字");
                             } else {
                                 Logger::instance()->debug("[检测] OCR判定: OK（未设置期望文本）");
@@ -427,77 +434,62 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
                             }
 
                             if (!matched) {
-                                roiPassed = false;
-                                roiFailReason += QString("OCR文本'%1'不匹配'%2'")
+                                itemResult.passed = false;
+                                itemResult.failReason = QString("OCR文本'%1'不匹配'%2'")
                                     .arg(recognizedText.isEmpty() ? "(空)" : recognizedText)
                                     .arg(expectedText);
-                                Logger::instance()->warning(QString("[检测] OCR判定: NG! %1").arg(roiFailReason));
+                                Logger::instance()->warning(QString("[检测] OCR判定: NG! %1").arg(itemResult.failReason));
                             } else {
                                 Logger::instance()->debug("[检测] OCR判定: OK");
                             }
                         }
                     }
+
+                    // ★ 关键修改：将检测项结果添加到ROI独立的检测结果中
+                    roiResult.addItemResult(itemResult);
                 }
 
                 Logger::instance()->debug(QString("[检测] ROI '%1' 最终结果: %2")
-                    .arg(roiConfig.roiName).arg(roiPassed ? "PASS" : "FAIL"));
+                    .arg(roiConfig.roiName).arg(roiResult.passed ? "PASS" : "FAIL"));
+                Logger::instance()->debug(QString("[检测] ROI '%1' 摘要: %2")
+                    .arg(roiConfig.roiName).arg(roiResult.toSummaryString()));
 
-                // 累加各ROI的检测数据
-                totalRegionCount += ctx.regionCount;
-                allRegionFeatures.insert(allRegionFeatures.end(),
-                    ctx.regionFeatures.begin(), ctx.regionFeatures.end());
-                allBarcodeResults.append(ctx.barcodeResults);
-
-                if (!roiPassed) {
-                    allPassed = false;
-                    if (!failReason.isEmpty()) failReason += "; ";
-                    failReason += QString("[%1] %2")
-                        .arg(roiConfig.roiName)
-                        .arg(roiFailReason.isEmpty() ? "NG" : roiFailReason);
-                }
+                // ★ 关键修改：将ROI检测结果添加到图片级别的检测结果中，不再累加到全局变量
+                imageResult.addRoiResult(roiResult);
             }
 
-            // 不再需要手动恢复配置，execute内部已处理
-
             Logger::instance()->debug(QString("[检测] 整体结果: %1, reason=%2")
-                .arg(allPassed ? "PASS" : "FAIL").arg(failReason.isEmpty() ? "无" : failReason));
+                .arg(imageResult.passed ? "PASS" : "FAIL")
+                .arg(imageResult.failReason.isEmpty() ? "无" : imageResult.failReason));
+            Logger::instance()->debug(QString("[检测] 图片摘要: %1").arg(imageResult.toSummaryString()));
 
-            // 汇总所有ROI的检测数据到 resultCtx
-            PipelineContext resultCtx;
-            resultCtx.pass = allPassed;
-            resultCtx.reason = failReason;
-            resultCtx.regionCount = totalRegionCount;
-            resultCtx.regionFeatures = allRegionFeatures;
-            resultCtx.barcodeResults = allBarcodeResults;
-            return resultCtx;
+            return imageResult;
             } catch (const cv::Exception& ex) {
                 Logger::instance()->error(QString("[检测] OpenCV错误: %1").arg(ex.what()));
-                PipelineContext errCtx;
-                errCtx.pass = false;
-                errCtx.reason = QString("OpenCV错误: %1").arg(ex.what());
-                return errCtx;
+                imageResult.passed = false;
+                imageResult.failReason = QString("OpenCV错误: %1").arg(ex.what());
+                return imageResult;
             } catch (const std::exception& ex) {
                 Logger::instance()->error(QString("[检测] 异常: %1").arg(ex.what()));
-                PipelineContext errCtx;
-                errCtx.pass = false;
-                errCtx.reason = QString("异常: %1").arg(ex.what());
-                return errCtx;
+                imageResult.passed = false;
+                imageResult.failReason = QString("异常: %1").arg(ex.what());
+                return imageResult;
             }
         }
     );
 
     // 使用 watcher 等待结果（在主线程中处理）
-    QFutureWatcher<PipelineContext>* watcher = new QFutureWatcher<PipelineContext>(this);
-    connect(watcher, &QFutureWatcher<PipelineContext>::finished, this,
+    QFutureWatcher<ImageDetectionResult>* watcher = new QFutureWatcher<ImageDetectionResult>(this);
+    connect(watcher, &QFutureWatcher<ImageDetectionResult>::finished, this,
         [this, watcher, task, currentIndex, totalCount]() {
-            PipelineContext ctx = watcher->result();
+            ImageDetectionResult imageResult = watcher->result();
             watcher->deleteLater();
 
             // 更新统计
             m_stats.processedCount++;
             m_stats.elapsedMs = m_elapsedTimer.elapsed();
 
-            bool passed = ctx.pass;
+            bool passed = imageResult.passed;
             if (passed) {
                 m_stats.passCount++;
             } else {
@@ -505,10 +497,21 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
                 m_failedImages.append(task.imagePath);
             }
 
-            // 生成检测报告
-            DetectionResultReport report = DetectionResultReport::fromPipelineContext(
-                ctx, task.imageName, QString(), task.imageName);
+            // ★ 关键修改：生成检测报告，包含每个ROI的独立结果
+            DetectionResultReport report;
             report.imageId = task.imageId;
+            report.passed = imageResult.passed;
+            report.failReason = imageResult.failReason;
+
+            // 汇总所有ROI的检测数据（用于上报，但内部评估已独立完成）
+            for (const auto& roiResult : imageResult.roiResults) {
+                report.totalRegionCount += roiResult.regionCount;
+                report.regions.insert(report.regions.end(),
+                    roiResult.regionFeatures.begin(), roiResult.regionFeatures.end());
+                report.barcodeResults.insert(report.barcodeResults.end(),
+                    roiResult.barcodeResults.begin(), roiResult.barcodeResults.end());
+            }
+
             m_reports.append(report);
 
             // 发送信号
@@ -516,14 +519,21 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
             emit progressUpdated(currentIndex + 1, totalCount);
             emit statsUpdated(m_stats);
 
-            // 记录日志
+            // ★ 关键修改：记录日志，显示每个ROI的独立结果
             QString status = passed ? "PASS" : "FAIL";
+            QString roiSummary;
+            for (const auto& roiResult : imageResult.roiResults) {
+                if (!roiResult.passed) {
+                    if (!roiSummary.isEmpty()) roiSummary += "; ";
+                    roiSummary += QString("%1:%2").arg(roiResult.roiName, roiResult.failReason);
+                }
+            }
             emit logMessage(QString("[%1/%2] %3 -> %4 (%5)")
                 .arg(currentIndex + 1)
                 .arg(totalCount)
                 .arg(task.imageName)
                 .arg(status)
-                .arg(ctx.reason.isEmpty() ? "OK" : ctx.reason));
+                .arg(roiSummary.isEmpty() ? "OK" : roiSummary));
 
             // 处理下一个任务
             m_currentIndex++;

@@ -6,6 +6,7 @@
 #include "core/profile_manager.h"
 #include "data/inspection_profile.h"
 #include "data/detection_result_report.h"
+#include "data/roi_detection_result.h"
 #include "config/detection_config_types.h"
 #include "algorithm/image_utils.h"
 #include "logger.h"
@@ -279,84 +280,101 @@ void BatchDetectionWidget::processNextImage()
     QPointer<PipelineManager> pipelinePtr = m_pipelineManager;
     int idx = m_currentIndex;
 
-    QFuture<PipelineContext> future = QtConcurrent::run(
-        [pipelinePtr, imagePath, roiConfigs]() -> PipelineContext {
+    QFuture<ImageDetectionResult> future = QtConcurrent::run(
+        [pipelinePtr, imagePath, imageId, imageName, roiConfigs]() -> ImageDetectionResult {
+            // 创建图片级别的检测结果
+            ImageDetectionResult imageResult;
+            imageResult.imageId = imageId;
+            imageResult.imageName = imageName;
+            imageResult.imagePath = imagePath;
+
             try {
                 if (!pipelinePtr) {
-                    PipelineContext emptyCtx;
-                    emptyCtx.pass = false;
-                    emptyCtx.reason = "PipelineManager已被释放";
-                    return emptyCtx;
+                    imageResult.passed = false;
+                    imageResult.failReason = "PipelineManager已被释放";
+                    return imageResult;
                 }
 
                 cv::Mat image = PathUtils::readImageFromFile(imagePath, cv::IMREAD_COLOR);
                 if (image.empty()) {
-                    PipelineContext emptyCtx;
-                    emptyCtx.pass = false;
-                    emptyCtx.reason = QString("无法加载图片: %1").arg(imagePath);
-                    return emptyCtx;
+                    imageResult.passed = false;
+                    imageResult.failReason = QString("无法加载图片: %1").arg(imagePath);
+                    return imageResult;
                 }
 
-                PipelineConfig savedGlobalConfig = pipelinePtr->getConfigSnapshot();
-
-                bool allPassed = true;
-                QString failReason;
-
+                // 遍历每个ROI，独立评估检测结果
                 for (const RoiConfig& roiConfig : roiConfigs) {
                     if (!roiConfig.isActive) continue;
 
-                    PipelineConfig config = savedGlobalConfig;
-                    config.enhance.brightness = roiConfig.pipelineConfig.enhance.brightness;
-                    config.enhance.contrast = roiConfig.pipelineConfig.enhance.contrast;
-                    config.enhance.gamma = roiConfig.pipelineConfig.enhance.gamma;
-                    config.enhance.sharpen = roiConfig.pipelineConfig.enhance.sharpen;
-                    config.colorFilter.channel = roiConfig.pipelineConfig.colorFilter.channel;
+                    // 为每个ROI创建独立的检测结果
+                    RoiDetectionResult roiResult(roiConfig.roiId, roiConfig.roiName, imageId);
 
                     cv::Rect roiRect = ImageUtils::mapRoiToCvRect(
                         roiConfig.roiRect, image.cols, image.rows);
                     if (roiRect.empty()) continue;
 
                     cv::Mat roiImage = image(roiRect).clone();
-                    PipelineContext ctx = pipelinePtr->execute(roiImage, config);
+                    PipelineContext ctx = pipelinePtr->execute(roiImage, roiConfig.pipelineConfig);
 
+                    // ★ 关键修改：将Pipeline结果存储到ROI独立的检测结果中
+                    roiResult.regionCount = ctx.regionCount;
+                    roiResult.regionFeatures = ctx.regionFeatures;
+                    roiResult.barcodeResults = ctx.barcodeResults;
+                    roiResult.ocrText = ctx.ocrText;
+                    roiResult.ocrRegions = ctx.ocrRegions;
+                    roiResult.matchedLineCount = ctx.matchedLineCount;
+                    roiResult.totalLineCount = ctx.totalLineCount;
+
+                    // 如果Pipeline执行失败，记录到检测项结果中
                     if (!ctx.pass) {
-                        allPassed = false;
-                        failReason += QString("[%1] %2; ").arg(roiConfig.roiName, ctx.reason);
+                        DetectionItemResult itemResult("pipeline", "Pipeline执行", "Pipeline");
+                        itemResult.passed = false;
+                        itemResult.failReason = ctx.reason;
+                        roiResult.addItemResult(itemResult);
                     }
+
+                    // ★ 关键修改：将ROI检测结果添加到图片级别的检测结果中
+                    imageResult.addRoiResult(roiResult);
                 }
 
-                PipelineContext result;
-                result.pass = allPassed;
-                result.reason = failReason;
-                return result;
+                return imageResult;
 
             } catch (const std::exception& e) {
-                PipelineContext emptyCtx;
-                emptyCtx.pass = false;
-                emptyCtx.reason = QString("异常: %1").arg(e.what());
-                return emptyCtx;
+                imageResult.passed = false;
+                imageResult.failReason = QString("异常: %1").arg(e.what());
+                return imageResult;
             }
         }
     );
 
     // 使用 QFutureWatcher 监听结果（在主线程回调）
-    auto* watcher = new QFutureWatcher<PipelineContext>(this);
-    connect(watcher, &QFutureWatcher<PipelineContext>::finished, this,
+    auto* watcher = new QFutureWatcher<ImageDetectionResult>(this);
+    connect(watcher, &QFutureWatcher<ImageDetectionResult>::finished, this,
         [this, watcher, idx, imageId, imageName]() {
-            PipelineContext ctx = watcher->result();
+            ImageDetectionResult imageResult = watcher->result();
             watcher->deleteLater();
 
             if (idx >= m_results.size()) return;
 
             BatchDetectionItem& item = m_results[idx];
             item.processed = true;
-            item.passed = ctx.pass;
-            item.statusText = ctx.pass ? "PASS" : QString("FAIL: %1").arg(ctx.reason);
+            item.passed = imageResult.passed;
+            item.statusText = imageResult.passed ? "PASS" : QString("FAIL: %1").arg(imageResult.failReason);
 
-            // 生成报告
-            DetectionResultReport report = DetectionResultReport::fromPipelineContext(
-                ctx, imageId, QString(), QString());
-            item.roiReports.append(report);
+            // ★ 关键修改：为每个ROI生成独立的检测报告
+            for (const auto& roiResult : imageResult.roiResults) {
+                DetectionResultReport report;
+                report.imageId = imageId;
+                report.roiId = roiResult.roiId;
+                report.roiName = roiResult.roiName;
+                report.passed = roiResult.passed;
+                report.failReason = roiResult.failReason;
+                report.totalRegionCount = roiResult.regionCount;
+                report.regions = roiResult.regionFeatures;
+                report.barcodeResults.insert(report.barcodeResults.end(),
+                    roiResult.barcodeResults.begin(), roiResult.barcodeResults.end());
+                item.roiReports.append(report);
+            }
 
             // 更新表格
             int row = m_ui->tableWidget_results->rowCount();
@@ -366,14 +384,21 @@ void BatchDetectionWidget::processNextImage()
             m_ui->tableWidget_results->setItem(row, 1,
                 new QTableWidgetItem(imageName));
             m_ui->tableWidget_results->setItem(row, 2,
-                new QTableWidgetItem(ctx.pass ? "✅ PASS" : "❌ FAIL"));
+                new QTableWidgetItem(imageResult.passed ? "✅ PASS" : "❌ FAIL"));
+
+            // ★ 关键修改：显示每个ROI的独立结果
+            QString detail;
+            for (const auto& roiResult : imageResult.roiResults) {
+                if (!detail.isEmpty()) detail += "\n";
+                detail += roiResult.toSummaryString();
+            }
             m_ui->tableWidget_results->setItem(row, 3,
-                new QTableWidgetItem(ctx.pass ? "正常" : ctx.reason));
+                new QTableWidgetItem(detail.isEmpty() ? (imageResult.passed ? "正常" : imageResult.failReason) : detail));
             m_ui->tableWidget_results->setItem(row, 4,
                 new QTableWidgetItem(QString::number(m_elapsedTimer.elapsed())));
 
             // 颜色标记
-            QColor bgColor = ctx.pass ? QColor(220, 255, 220) : QColor(255, 220, 220);
+            QColor bgColor = imageResult.passed ? QColor(220, 255, 220) : QColor(255, 220, 220);
             for (int c = 0; c < 5; ++c) {
                 m_ui->tableWidget_results->item(row, c)->setBackground(bgColor);
             }
@@ -394,10 +419,19 @@ void BatchDetectionWidget::processNextImage()
                     .arg(failCount)
                     .arg(passCount * 100.0 / (idx + 1), 0, 'f', 1));
 
-            emit imageResultReady(idx, imageName, ctx.pass);
+            emit imageResultReady(idx, imageName, imageResult.passed);
+
+            // ★ 关键修改：记录日志，显示每个ROI的独立结果
+            QString roiSummary;
+            for (const auto& roiResult : imageResult.roiResults) {
+                if (!roiResult.passed) {
+                    if (!roiSummary.isEmpty()) roiSummary += "; ";
+                    roiSummary += QString("%1:%2").arg(roiResult.roiName, roiResult.failReason);
+                }
+            }
             emit logMessage(QString("[%1/%2] %3: %4")
                 .arg(idx + 1).arg(m_results.size()).arg(imageName)
-                .arg(ctx.pass ? "PASS" : "FAIL"));
+                .arg(roiSummary.isEmpty() ? "PASS" : roiSummary));
 
             // 处理下一张
             m_currentIndex = idx + 1;
