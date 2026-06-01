@@ -32,6 +32,14 @@ void PipelineResultHandler::onPipelineResult(const PipelineResult& result)
         cv::Mat displayImage = DisplayRenderer::render(
             ctx, m_pipelineManager->getDisplayMode());
 
+        // ★ 将结果存入per-ROI缓存
+        if (m_roiManager) {
+            QString activeRoiId = m_roiManager->getActiveRoiId();
+            if (!activeRoiId.isEmpty()) {
+                m_pipelineManager->cacheResult(activeRoiId, ctx);
+            }
+        }
+
         // 通过 IResultUpdatable 接口分发结果
         distributeResults(ctx);
 

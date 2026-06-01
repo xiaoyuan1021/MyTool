@@ -261,3 +261,44 @@ void PipelineManager::initPipeline()
         }
     }
 }
+
+// ========== per-ROI缓存 ==========
+
+void PipelineManager::cacheResult(const QString& roiId, const PipelineContext& ctx)
+{
+    if (roiId.isEmpty()) return;
+    QMutexLocker locker(&m_roiCacheMutex);
+    m_roiCache[roiId] = ctx;
+}
+
+PipelineContext PipelineManager::getCachedResult(const QString& roiId) const
+{
+    QMutexLocker locker(&m_roiCacheMutex);
+    return m_roiCache.value(roiId, PipelineContext());
+}
+
+bool PipelineManager::hasCachedResult(const QString& roiId) const
+{
+    QMutexLocker locker(&m_roiCacheMutex);
+    return m_roiCache.contains(roiId) && !m_roiCache[roiId].srcBgr.empty();
+}
+
+cv::Mat PipelineManager::getCachedDisplay(const QString& roiId, DisplayConfig::Mode mode) const
+{
+    QMutexLocker locker(&m_roiCacheMutex);
+    auto it = m_roiCache.find(roiId);
+    if (it == m_roiCache.end() || it->srcBgr.empty()) return cv::Mat();
+    return DisplayRenderer::render(*it, mode);
+}
+
+void PipelineManager::clearCachedResult(const QString& roiId)
+{
+    QMutexLocker locker(&m_roiCacheMutex);
+    m_roiCache.remove(roiId);
+}
+
+void PipelineManager::clearAllCachedResults()
+{
+    QMutexLocker locker(&m_roiCacheMutex);
+    m_roiCache.clear();
+}

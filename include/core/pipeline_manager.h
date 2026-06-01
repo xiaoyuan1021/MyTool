@@ -101,6 +101,26 @@ public:
     /// 清除上次Pipeline结果（图片切换时调用，防止旧结果污染新图片显示）
     void clearLastResult();
 
+    // ========== per-ROI缓存 ===========
+
+    /// 将Pipeline结果存入指定ROI的缓存
+    void cacheResult(const QString& roiId, const PipelineContext& ctx);
+
+    /// 获取指定ROI的缓存结果（无缓存返回空ctx）
+    PipelineContext getCachedResult(const QString& roiId) const;
+
+    /// 检查指定ROI是否有缓存
+    bool hasCachedResult(const QString& roiId) const;
+
+    /// 获取指定ROI的缓存渲染图像
+    cv::Mat getCachedDisplay(const QString& roiId, DisplayConfig::Mode mode) const;
+
+    /// 清除指定ROI的缓存
+    void clearCachedResult(const QString& roiId);
+
+    /// 清除所有ROI缓存
+    void clearAllCachedResults();
+
     // ========== 调度器接口 ==========
 
     /// 获取调度器（用于异步执行）
@@ -149,6 +169,10 @@ private:
 
     // 最后执行结果
     PipelineContext m_lastContext;
+
+    // per-ROI缓存：roiId -> PipelineContext
+    QHash<QString, PipelineContext> m_roiCache;
+    mutable QMutex m_roiCacheMutex;
 
     // 基准性能数据
     double m_lastExecMs = 0;

@@ -411,8 +411,10 @@ void RoiUiController::handleRoiSelection(const QString& roiId)
 {
     if (roiId.isEmpty()) return;
 
+    bool roiChanged = (roiId != m_currentSelectedRoiId);
+
     // 如果切换了ROI，先保存旧ROI的配置，再加载新ROI的配置
-    if (roiId != m_currentSelectedRoiId) {
+    if (roiChanged) {
         saveCurrentRoiPipelineConfig();
         m_currentSelectedRoiId = roiId;
         loadRoiPipelineConfig(m_currentSelectedRoiId);
@@ -428,8 +430,9 @@ void RoiUiController::handleRoiSelection(const QString& roiId)
         // ★ 纯显示切换，不触发pipeline（用缓存结果渲染）
         emit roiDisplayChanged(m_currentSelectedRoiId);
 
-        // ★ 切换ROI时自动选中该ROI的第一个检测项，更新右侧Tab
-        if (!roi->detectionItems.isEmpty()) {
+        // ★ 只在ROI真正切换时才自动选中第一个检测项并更新Tab
+        // 点击检测项时由onRoiTreeItemClicked负责emit detectionItemSelected
+        if (roiChanged && !roi->detectionItems.isEmpty()) {
             const DetectionItem& firstItem = roi->detectionItems.first();
             emit detectionItemSelected(m_currentSelectedRoiId, firstItem.itemId);
         }
@@ -632,14 +635,24 @@ void RoiUiController::syncRoiConfigsToWidget()
 
 void RoiUiController::setupDisplayConnections(TabManager* tabManager)
 {
-    // 纯显示切换：切换到ROI区域图像，无需Pipeline重新处理
-    // 使用 setImage 自适应缩放铺满画布
+    // 纯显示切换：切换到ROI区域图像，优先使用per-ROI缓存结果
     connect(this, &RoiUiController::roiDisplayChanged,
             this, [this](const QString& roiId) {
-        Q_UNUSED(roiId);
-        cv::Mat currentImage = m_roiManager.getCurrentImage();
-        if (!currentImage.empty()) {
-            QImage qimg = ImageUtils::matToQImage(currentImage);
+        cv::Mat displayImage;
+
+        // ★ 优先从per-ROI缓存获取Pipeline处理后的结果
+        if (m_pipelineManager && m_pipelineManager->hasCachedResult(roiId)) {
+            displayImage = m_pipelineManager->getCachedDisplay(
+                roiId, m_pipelineManager->getDisplayMode());
+        }
+
+        // 缓存为空时显示原始图像
+        if (displayImage.empty()) {
+            displayImage = m_roiManager.getCurrentImage();
+        }
+
+        if (!displayImage.empty()) {
+            QImage qimg = ImageUtils::matToQImage(displayImage);
             m_view->setImage(qimg);
             if (m_statusBar) m_statusBar->showMessage("已切换显示", 2000);
         }
