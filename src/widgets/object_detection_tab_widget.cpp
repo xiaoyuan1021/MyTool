@@ -147,7 +147,7 @@ void ObjectDetectionTabWidget::onApplyClicked()
             m_ui->spinBox_inputHeight->setValue(modelH);
 
             QString msg = (result == "both")
-                ? "状态：模型加载成功 (OpenCV DNN + ONNX Runtime 视频加速)"
+                ? "状态：模型加载成功 (OpenCV DNN)"
                 : "状态：模型加载成功 (OpenCV DNN)";
             emit modelLoadFinished(true, msg);
             qDebug() << "[ObjectDetection]" << msg;

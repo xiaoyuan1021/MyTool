@@ -83,7 +83,6 @@ private:
     void setupConnections();
     void updateUiState(bool running);
     void processNextImage();
-    void processSingleImage(const QString& imageId);
     void finishDetection();
     void updateProfileCombo();
 

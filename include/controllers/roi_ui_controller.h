@@ -114,6 +114,9 @@ signals:
     
     // 检测项删除信号
     void detectionItemDeleted(const QString& roiId, const QString& detectionId);
+
+    /// ★ 选中的ROI被删除时发出（用于清空Tab结果）
+    void selectedRoiDeleted();
     
     // ROI重命名信号
     void roiRenamed(const QString& roiId, const QString& newName);

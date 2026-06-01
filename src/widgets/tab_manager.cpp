@@ -1,5 +1,6 @@
 #include "widgets/tab_manager.h"
 #include "widgets/tab_registry.h"
+#include "widgets/i_tab_interfaces.h"
 #include "pipeline_manager.h"
 #include "roi_manager.h"
 #include "image_view.h"
@@ -48,4 +49,13 @@ QWidget* TabManager::getTab(const QString& name) const
 {
     auto it = m_tabs.find(name);
     return (it != m_tabs.end()) ? it.value() : nullptr;
+}
+
+void TabManager::clearAllResults()
+{
+    for (auto it = m_tabs.constBegin(); it != m_tabs.constEnd(); ++it) {
+        if (auto* updatable = dynamic_cast<IResultUpdatable*>(it.value())) {
+            updatable->clearResults();
+        }
+    }
 }

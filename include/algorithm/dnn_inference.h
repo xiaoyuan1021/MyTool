@@ -29,9 +29,10 @@ public:
      * 加载模型
      * @param modelPath 模型文件路径（支持 ONNX/Caffe/TF/Darknet 等）
      * @param configPath 配置文件路径（可选）
+     * @param useGpu 是否使用GPU加速（默认false，直接使用CPU推理避免加载慢）
      * @return 是否加载成功
      */
-    bool loadModel(const QString& modelPath, const QString& configPath = "", bool useGpu = true);
+    bool loadModel(const QString& modelPath, const QString& configPath = "", bool useGpu = false);
 
     /**
      * 执行目标检测（YOLO系列）

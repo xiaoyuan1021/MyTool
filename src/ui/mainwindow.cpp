@@ -394,6 +394,11 @@ void MainWindow::setupControllerConnections()
             }
         });
 
+    // ★ 选中的ROI被删除时清空Tab结果
+    connect(m_roiUiController, &RoiUiController::selectedRoiDeleted, this, [this]() {
+        m_tabManager->clearAllResults();
+    });
+
     // 工具栏按钮
     connect(ui->btn_addDetection, &QPushButton::clicked, this, [this]() {
         QString roiId = m_roiUiController->getCurrentSelectedRoiId();
@@ -532,7 +537,14 @@ void MainWindow::processAndDisplay()
 
 void MainWindow::showImage(const cv::Mat &img)
 {
-    m_view->setImage(ImageUtils::matToQImage(img));
+    if (img.empty()) {
+        // ★ 画布清空：没有图片时清空所有显示状态和Tab结果
+        m_view->clear();
+        m_pipelineManager->clearLastResult();
+        m_tabManager->clearAllResults();
+    } else {
+        m_view->setImage(ImageUtils::matToQImage(img));
+    }
 }
 
 // ========== 文件操作 ==========

@@ -117,6 +117,7 @@ void RoiUiController::removeRoiAndRefresh(const QString& roiId)
         m_view->clearRoi();
         if (m_statusBar) m_statusBar->showMessage("ROI已重置，处理使用完整图像", 2000);
         m_currentSelectedRoiId.clear();
+        emit selectedRoiDeleted();
     }
 
     refreshRoiTreeView();
@@ -419,13 +420,20 @@ void RoiUiController::handleRoiSelection(const QString& roiId)
         m_currentSelectedRoiId = roiId;
     }
 
-    // 激活ROI在图像视图中并触发Pipeline刷新Tab页面
+    // 激活ROI在图像视图中
     RoiConfig* roi = m_roiManager.getRoiConfig(m_currentSelectedRoiId);
     if (roi) {
         m_view->clearRoi();
         m_roiManager.setActiveRoi(roi->roiId);
+        // ★ 纯显示切换，不触发pipeline（用缓存结果渲染）
         emit roiDisplayChanged(m_currentSelectedRoiId);
-        emit roiChanged();
+
+        // ★ 切换ROI时自动选中该ROI的第一个检测项，更新右侧Tab
+        if (!roi->detectionItems.isEmpty()) {
+            const DetectionItem& firstItem = roi->detectionItems.first();
+            emit detectionItemSelected(m_currentSelectedRoiId, firstItem.itemId);
+        }
+
         Logger::instance()->info(QString("已选中ROI: %1 (通过ID激活)").arg(roi->roiName));
     }
 }
