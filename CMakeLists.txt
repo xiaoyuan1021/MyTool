@@ -65,6 +65,7 @@ set(HEADERS
     include/core/barcode_step.h
     # algorithm
     include/algorithm/dnn_inference.h
+    include/algorithm/detection_evaluator.h
     include/algorithm/image_processor.h
     include/algorithm/image_utils.h
     include/algorithm/match_strategy.h
@@ -157,6 +158,7 @@ set(SOURCES
     src/core/ocr_step.cpp
     # algorithm
     src/algorithm/dnn_inference.cpp
+    src/algorithm/detection_evaluator.cpp
     src/algorithm/image_processor.cpp
     src/algorithm/image_utils.cpp
     src/algorithm/match_strategy.cpp
