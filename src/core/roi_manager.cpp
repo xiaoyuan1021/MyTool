@@ -95,6 +95,11 @@ bool RoiManager::switchToImage(const QString &imageId)
         return false;
     }
 
+    // ★ 关键修复：在切换m_currentImageId之前发射信号，让调用方保存旧图片的ROI配置
+    if (m_currentImageId != imageId) {
+        emit imageSwitching(m_currentImageId, imageId);
+    }
+
     m_currentImageId = imageId;
     emit currentImageChanged(imageId);
 

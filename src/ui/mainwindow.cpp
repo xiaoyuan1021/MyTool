@@ -409,7 +409,11 @@ void MainWindow::setupControllerConnections()
     });
 
     // roiManager → roiUiController 同步连接
-    // 图片切换时：清除上次Pipeline结果，防止旧结果污染新图片的Tab显示
+    // ★ 关键修复：图片切换前保存旧图片的ROI配置（在m_currentImageId改变之前）
+    connect(&m_roiManager, &RoiManager::imageSwitching, this, [this](const QString&, const QString&) {
+        m_roiUiController->saveCurrentRoiPipelineConfig();
+    });
+    // 图片切换后：清除上次Pipeline结果，防止旧结果污染新图片的Tab显示
     connect(&m_roiManager, &RoiManager::currentImageChanged, this, [this](const QString&) {
         m_pipelineManager->clearLastResult();
         m_roiUiController->syncRoiConfigsToWidget();

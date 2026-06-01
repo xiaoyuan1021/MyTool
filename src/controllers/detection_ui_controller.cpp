@@ -178,6 +178,10 @@ void DetectionUiController::onDetectionItemSelected(const QString& roiId, const 
         // 重建Pipeline
         pipelineManager->rebuildPipeline();
 
+        // ★ 关键修复：将更新后的stepEnabled回写到ROI的pipelineConfig
+        // 否则图片切换时loadRoiPipelineConfig会用旧配置覆盖
+        roi->pipelineConfig = pipelineManager->getConfigSnapshot();
+
         if (detection.type == DetectionType::Blob) {
             BlobAnalysisConfig blobConfig;
             blobConfig.fromJson(detection.config);
