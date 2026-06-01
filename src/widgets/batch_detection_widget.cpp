@@ -9,6 +9,7 @@
 #include "data/roi_detection_result.h"
 #include "config/detection_config_types.h"
 #include "algorithm/image_utils.h"
+#include "algorithm/detection_evaluator.h"
 #include "logger.h"
 #include <QFileDialog>
 #include <QMessageBox>
@@ -306,9 +307,6 @@ void BatchDetectionWidget::processNextImage()
                 for (const RoiConfig& roiConfig : roiConfigs) {
                     if (!roiConfig.isActive) continue;
 
-                    // 为每个ROI创建独立的检测结果
-                    RoiDetectionResult roiResult(roiConfig.roiId, roiConfig.roiName, imageId);
-
                     cv::Rect roiRect = ImageUtils::mapRoiToCvRect(
                         roiConfig.roiRect, image.cols, image.rows);
                     if (roiRect.empty()) continue;
@@ -316,22 +314,10 @@ void BatchDetectionWidget::processNextImage()
                     cv::Mat roiImage = image(roiRect).clone();
                     PipelineContext ctx = pipelinePtr->execute(roiImage, roiConfig.pipelineConfig);
 
-                    // ★ 关键修改：将Pipeline结果存储到ROI独立的检测结果中
-                    roiResult.regionCount = ctx.regionCount;
-                    roiResult.regionFeatures = ctx.regionFeatures;
-                    roiResult.barcodeResults = ctx.barcodeResults;
-                    roiResult.ocrText = ctx.ocrText;
-                    roiResult.ocrRegions = ctx.ocrRegions;
-                    roiResult.matchedLineCount = ctx.matchedLineCount;
-                    roiResult.totalLineCount = ctx.totalLineCount;
-
-                    // 如果Pipeline执行失败，记录到检测项结果中
-                    if (!ctx.pass) {
-                        DetectionItemResult itemResult("pipeline", "Pipeline执行", "Pipeline");
-                        itemResult.passed = false;
-                        itemResult.failReason = ctx.reason;
-                        roiResult.addItemResult(itemResult);
-                    }
+                    // ★ 使用DetectionEvaluator评估该ROI的所有检测项（与auto_detection_controller一致）
+                    RoiDetectionResult roiResult = DetectionEvaluator::evaluateRoi(
+                        roiConfig, ctx, roiImage, nullptr);
+                    roiResult.imageId = imageId;
 
                     // ★ 关键修改：将ROI检测结果添加到图片级别的检测结果中
                     imageResult.addRoiResult(roiResult);

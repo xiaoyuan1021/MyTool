@@ -64,6 +64,17 @@ RoiDetectionResult DetectionEvaluator::evaluateRoi(
     roiResult.matchedLineCount = ctx.matchedLineCount;
     roiResult.totalLineCount = ctx.totalLineCount;
 
+    // ★ Pipeline执行失败时，直接标记ROI为FAIL，不再评估检测项
+    if (!ctx.pass) {
+        DetectionItemResult pipelineItem("pipeline", "Pipeline执行", "Pipeline");
+        pipelineItem.passed = false;
+        pipelineItem.failReason = ctx.reason.isEmpty() ? "Pipeline执行失败" : ctx.reason;
+        roiResult.addItemResult(pipelineItem);
+        Logger::instance()->warning(QString("[评估] ROI '%1' Pipeline执行失败: %2")
+            .arg(roiConfig.roiName, pipelineItem.failReason));
+        return roiResult;
+    }
+
     // 评估每个检测项
     for (const DetectionItem& detItem : roiConfig.detectionItems) {
         DetectionItemResult itemResult = evaluateItem(detItem, ctx, roiImage, tabMgr);
