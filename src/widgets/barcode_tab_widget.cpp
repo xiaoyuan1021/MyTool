@@ -1,6 +1,7 @@
 #include "widgets/barcode_tab_widget.h"
 #include "ui_barcode_tab.h"
 #include "config/config_manager.h"
+#include "controllers/roi_ui_controller.h"
 #include <QDebug>
 #include <QSignalBlocker>
 
@@ -187,10 +188,24 @@ void BarcodeTabWidget::handleApply()
 }
 
 void BarcodeTabWidget::connectSignals(const SignalContext& ctx,
-                                      std::function<void()> onExecutePipeline,
-                                      std::function<void()> onConfigSaved)
+                                       std::function<void()> onExecutePipeline,
+                                       std::function<void()> onConfigSaved)
 {
-    Q_UNUSED(ctx); Q_UNUSED(onConfigSaved);
+    Q_UNUSED(onConfigSaved);
+
+    // ★ 条码配置变化时同步到DetectionItem.config
+    auto syncToDetectionItem = [this, ctx]() {
+        if (ctx.roiCtrl) {
+            ctx.roiCtrl->updateBarcodeDetectionConfig(getBarcodeConfig());
+        }
+    };
+
+    connect(m_ui->chk_enableBarcode, &QCheckBox::toggled, this, syncToDetectionItem);
+    connect(m_ui->comboBox_codeType, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, [this, syncToDetectionItem](int) { syncToDetectionItem(); });
+    connect(m_ui->spinBox_maxNum, QOverload<int>::of(&QSpinBox::valueChanged),
+            this, [this, syncToDetectionItem](int) { syncToDetectionItem(); });
+
     // 条码识别需要用户点击"应用"按钮才执行，不使用自动预览
     connect(this, &BarcodeTabWidget::requestApplyBarcodeSettings,
             this, onExecutePipeline);

@@ -3,6 +3,7 @@
 #include "logger.h"
 #include "ui/slider_spinbox_binder.h"
 #include "image_view.h"
+#include "controllers/roi_ui_controller.h"
 #include <QMessageBox>
 
 LineDetectTabWidget::LineDetectTabWidget(PipelineManager* pipelineManager,
@@ -236,6 +237,24 @@ void LineDetectTabWidget::setLineState(const LineDetectState &state)
     m_ui->SpinBox_HoughPMaxLineGap->setValue(state.maxGap);
 }
 
+void LineDetectTabWidget::setLineConfig(const LineDetectConfig& config)
+{
+    // 设置基础直线检测参数
+    LineDetectState state;
+    state.algorithm = config.algorithm;
+    state.threshold = config.threshold;
+    state.minLength = config.minLength;
+    state.maxGap = config.maxGap;
+    setLineState(state);
+
+    // 同步到PipelineConfig
+    if (m_pipelineManager) {
+        PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
+        cfg.lineDetect = config;
+        m_pipelineManager->setConfig(cfg);
+    }
+}
+
 // ========== 参考线匹配槽函数 ==========
 
 void LineDetectTabWidget::onReferenceLineEnabledChanged(bool enabled)
@@ -371,6 +390,23 @@ void LineDetectTabWidget::connectSignals(const SignalContext& ctx,
 {
     Q_UNUSED(onConfigSaved);
     m_onExecutePipeline = onExecutePipeline;
+
+    // ★ 直线检测配置变化时同步到DetectionItem.config
+    auto syncToDetectionItem = [this, ctx]() {
+        if (ctx.roiCtrl) {
+            ctx.roiCtrl->updateLineDetectionConfig(getLineState());
+        }
+    };
+
+    connect(m_ui->comboBox_lineAlgorithm, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, [this, syncToDetectionItem](int) { syncToDetectionItem(); });
+    connect(m_ui->Slider_HoughPThreshold, &QSlider::valueChanged,
+            this, [this, syncToDetectionItem](int) { syncToDetectionItem(); });
+    connect(m_ui->Slider_HoughPMinLineLength, &QSlider::valueChanged,
+            this, [this, syncToDetectionItem](int) { syncToDetectionItem(); });
+    connect(m_ui->Slider_HoughPMaxLineGap, &QSlider::valueChanged,
+            this, [this, syncToDetectionItem](int) { syncToDetectionItem(); });
+
     connect(this, &LineDetectTabWidget::requestDrawReferenceLine,
             ctx.view, &ImageView::startReferenceLineDrawing);
     connect(this, &LineDetectTabWidget::requestClearReferenceLine,

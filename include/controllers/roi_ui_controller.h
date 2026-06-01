@@ -83,6 +83,12 @@ public:
     /// 更新当前选中ROI的 目标检测 检测项判定参数（由 ObjectDetectionTab 触发）
     void updateObjectDetectionConfig(int expectedCount);
 
+    /// 更新当前选中ROI的 条码检测 检测项配置（由 BarcodeTab 触发）
+    void updateBarcodeDetectionConfig(const BarcodeConfig& barcodeConfig);
+
+    /// 更新当前选中ROI的 直线检测 检测项配置（由 LineTab 触发）
+    void updateLineDetectionConfig(const LineDetectConfig& lineConfig);
+
     // 创建覆盖整图的ROI（无需用户绘制），返回ROI ID
     QString addFullImageRoi();
 

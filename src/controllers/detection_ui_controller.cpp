@@ -4,6 +4,8 @@
 #include "logger.h"
 #include "widgets/tab_manager.h"
 #include "widgets/judge_tab_widget.h"
+#include "widgets/barcode_tab_widget.h"
+#include "widgets/line_tab_widget.h"
 
 #include <QMessageBox>
 #include <QComboBox>
@@ -194,7 +196,31 @@ void DetectionUiController::onDetectionItemSelected(const QString& roiId, const 
             }
         }
 
-        // 将检测项的独立配置同步到Pipeline全局配置
+        // ★ 将检测项的独立配置同步到Pipeline全局配置，并更新Tab UI
+        if (detection.type == DetectionType::Barcode) {
+            BarcodeConfig barcodeCfg;
+            barcodeCfg.fromJson(detection.config);
+            pipelineManager->updateConfig([&](PipelineConfig& pipelineConfig) {
+                pipelineConfig.barcode = barcodeCfg;
+                pipelineConfig.enhance = barcodeCfg.enhance;
+            });
+            if (auto* barcodeTab = tabManager->getTabAs<BarcodeTabWidget>("条码识别")) {
+                barcodeTab->setBarcodeConfig(barcodeCfg);
+            }
+        }
+
+        if (detection.type == DetectionType::Line) {
+            LineDetectConfig lineCfg;
+            lineCfg.fromJson(detection.config);
+            pipelineManager->updateConfig([&](PipelineConfig& pipelineConfig) {
+                pipelineConfig.lineDetect = lineCfg;
+                pipelineConfig.enhance = lineCfg.enhance;
+            });
+            if (auto* lineTab = tabManager->getTabAs<LineDetectTabWidget>("直线检测")) {
+                lineTab->setLineConfig(lineCfg);
+            }
+        }
+
         if (detection.type == DetectionType::Ocr) {
             OcrDetectionConfig ocrCfg;
             ocrCfg.fromJson(detection.config);

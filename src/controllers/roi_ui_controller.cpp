@@ -734,3 +734,29 @@ void RoiUiController::updateObjectDetectionConfig(int expectedCount)
         }
     }
 }
+
+void RoiUiController::updateBarcodeDetectionConfig(const BarcodeConfig& barcodeConfig)
+{
+    RoiConfig* roi = m_roiManager.getRoiConfig(m_currentSelectedRoiId);
+    if (!roi) return;
+    for (auto& detItem : roi->detectionItems) {
+        if (detItem.type == DetectionType::Barcode && detItem.enabled) {
+            detItem.config = barcodeConfig.toJson();
+            Logger::instance()->info(QString("[RoiUiController] 条码检测配置已更新"));
+            break;
+        }
+    }
+}
+
+void RoiUiController::updateLineDetectionConfig(const LineDetectConfig& lineConfig)
+{
+    RoiConfig* roi = m_roiManager.getRoiConfig(m_currentSelectedRoiId);
+    if (!roi) return;
+    for (auto& detItem : roi->detectionItems) {
+        if (detItem.type == DetectionType::Line && detItem.enabled) {
+            detItem.config = lineConfig.toJson();
+            Logger::instance()->info(QString("[RoiUiController] 直线检测配置已更新"));
+            break;
+        }
+    }
+}
