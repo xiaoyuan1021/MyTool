@@ -11,12 +11,8 @@ DetectionItemResult DetectionEvaluator::evaluateItem(
     void* tabMgr)
 {
     if (!detItem.enabled) {
-        Logger::instance()->debug(QString("[评估] 检测项 '%1' 未启用，跳过").arg(detItem.itemName));
         return DetectionItemResult(detItem.itemId, detItem.itemName, detectionTypeToString(detItem.type));
     }
-
-    Logger::instance()->debug(QString("[评估] 评估检测项: name=%1, type=%2")
-        .arg(detItem.itemName).arg(detectionTypeToString(detItem.type)));
 
     DetectionItemResult result;
     switch (detItem.type) {
@@ -81,8 +77,10 @@ RoiDetectionResult DetectionEvaluator::evaluateRoi(
         roiResult.addItemResult(itemResult);
     }
 
-    Logger::instance()->debug(QString("[评估] ROI '%1' 结果: %2")
-        .arg(roiConfig.roiName).arg(roiResult.toSummaryString()));
+    // 只在失败时打印日志
+    if (!roiResult.passed) {
+        Logger::instance()->warning(QString("[评估] %1").arg(roiResult.toSummaryString()));
+    }
 
     return roiResult;
 }
@@ -101,16 +99,10 @@ DetectionItemResult DetectionEvaluator::evaluateBlob(
     int minCount = blobConfig.minBlobCount;
     int maxCount = blobConfig.maxBlobCount;
 
-    Logger::instance()->debug(QString("[评估] Blob判定: currentCount=%1, min=%2, max=%3")
-        .arg(currentCount).arg(minCount).arg(maxCount));
-
     if (currentCount < minCount || currentCount > maxCount) {
         result.passed = false;
         result.failReason = QString("Blob数量%1, 要求[%2,%3]")
             .arg(currentCount).arg(minCount).arg(maxCount);
-        Logger::instance()->warning(QString("[评估] Blob判定: NG! %1").arg(result.failReason));
-    } else {
-        Logger::instance()->debug("[评估] Blob判定: OK");
     }
 
     return result;
@@ -124,20 +116,9 @@ DetectionItemResult DetectionEvaluator::evaluateBarcode(
     BarcodeRecognitionConfig barcodeConfig;
     barcodeConfig.fromJson(detItem.config);
 
-    Logger::instance()->debug(QString("[评估] 条码判定: barcodeResults数=%1, minConfidence=%2")
-        .arg(ctx.barcodeResults.size()).arg(barcodeConfig.minConfidence));
-
     if (ctx.barcodeResults.isEmpty()) {
         result.passed = false;
         result.failReason = "未检测到条码";
-        Logger::instance()->warning("[评估] 条码判定: NG! 未检测到条码");
-    } else {
-        Logger::instance()->debug(QString("[评估] 条码结果: 共%1个").arg(ctx.barcodeResults.size()));
-        for (const BarcodeResult& br : ctx.barcodeResults) {
-            Logger::instance()->debug(QString("  -> type=%1, data=%2, quality=%3")
-                .arg(br.type).arg(br.data).arg(br.quality));
-        }
-        Logger::instance()->debug("[评估] 条码判定: OK");
     }
 
     return result;
@@ -151,15 +132,9 @@ DetectionItemResult DetectionEvaluator::evaluateLine(
     LineDetectionConfig lineConfig;
     lineConfig.fromJson(detItem.config);
 
-    Logger::instance()->debug(QString("[评估] 直线判定: matchedLineCount=%1, totalLineCount=%2")
-        .arg(ctx.matchedLineCount).arg(ctx.totalLineCount));
-
     if (ctx.matchedLineCount == 0 && ctx.totalLineCount == 0) {
         result.passed = false;
         result.failReason = "未检测到直线";
-        Logger::instance()->warning("[评估] 直线判定: NG! 未检测到直线");
-    } else {
-        Logger::instance()->debug("[评估] 直线判定: OK");
     }
 
     return result;
@@ -177,22 +152,20 @@ DetectionItemResult DetectionEvaluator::evaluateObjectDetection(
     int detectedCount = 0;
     auto* mgr = static_cast<TabManager*>(tabMgr);
     auto* objTab = mgr ? mgr->getTabAs<ObjectDetectionTabWidget>("目标检测") : nullptr;
-    if (objTab) {
-        if (objTab->isModelLoaded()) {
-            std::vector<DetectionResult> detResults = objTab->runDetection(roiImage);
-            detectedCount = static_cast<int>(detResults.size());
-            Logger::instance()->debug(QString("[评估] 目标检测执行完成: 检测到%1个目标").arg(detectedCount));
-        } else {
-            Logger::instance()->warning("[评估] 目标检测模型未加载，跳过数量检查");
-        }
-    } else {
-        Logger::instance()->warning("[评估] 目标检测Tab未找到");
+    if (objTab && objTab->isModelLoaded()) {
+        std::vector<DetectionResult> detResults = objTab->runDetection(roiImage);
+        detectedCount = static_cast<int>(detResults.size());
     }
 
     int expectedCount = objConfig.expectedCount;
+    if (expectedCount > 0 && detectedCount != expectedCount) {
+        result.passed = false;
+        result.failReason = QString("检测到%1个目标, 期望%2个")
+            .arg(detectedCount).arg(expectedCount);
+    }
 
-    Logger::instance()->debug(QString("[评估] 目标检测判定: detectedCount=%1, expectedCount=%2")
-        .arg(detectedCount).arg(expectedCount));
+    return result;
+}
 
     if (expectedCount > 0 && detectedCount != expectedCount) {
         result.passed = false;
@@ -217,33 +190,21 @@ DetectionItemResult DetectionEvaluator::evaluateOcr(
     QString recognizedText = ctx.ocrText.trimmed();
     QString expectedText = ocrConfig.expectedText.trimmed();
 
-    Logger::instance()->debug(QString("[评估] OCR判定: recognizedText='%1', expectedText='%2'")
-        .arg(recognizedText).arg(expectedText));
-
     if (expectedText.isEmpty()) {
         if (recognizedText.isEmpty()) {
             result.passed = false;
             result.failReason = "未识别到文字";
-            Logger::instance()->warning("[评估] OCR判定: NG! 未识别到文字");
-        } else {
-            Logger::instance()->debug("[评估] OCR判定: OK（未设置期望文本）");
         }
     } else {
-        bool matched = false;
-        if (ocrConfig.matchExact) {
-            matched = (recognizedText == expectedText);
-        } else {
-            matched = recognizedText.contains(expectedText);
-        }
+        bool matched = ocrConfig.matchExact
+            ? (recognizedText == expectedText)
+            : recognizedText.contains(expectedText);
 
         if (!matched) {
             result.passed = false;
             result.failReason = QString("OCR文本'%1'不匹配'%2'")
                 .arg(recognizedText.isEmpty() ? "(空)" : recognizedText)
                 .arg(expectedText);
-            Logger::instance()->warning(QString("[评估] OCR判定: NG! %1").arg(result.failReason));
-        } else {
-            Logger::instance()->debug("[评估] OCR判定: OK");
         }
     }
 

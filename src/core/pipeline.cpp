@@ -81,19 +81,13 @@ void Pipeline::run(PipelineContext& ctx)
         return;
     }
 
-    qDebug() << "[Pipeline] 开始执行，共" << steps_.size() << "个步骤";
-
     for (size_t i = 0; i < steps_.size(); ++i) {
         auto& step = steps_[i];
         if (step) {
-            // 根据当前配置的 stepEnabled 跳过未启用的步骤
             if (ctx.config && !ctx.config->stepEnabled[static_cast<int>(step->stepType())]) {
-                qDebug() << "[Pipeline] 步骤" << i << "已禁用，跳过";
                 continue;
             }
             step->run(ctx);
-        } else {
-            qDebug() << "[Pipeline] 警告：步骤" << (i + 1) << "为空，跳过";
         }
     }
 }
