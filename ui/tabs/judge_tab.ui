@@ -198,13 +198,6 @@
      <item>
       <layout class="QHBoxLayout" name="horizontalLayout_6">
        <item>
-        <widget class="QPushButton" name="btn_paintRegion">
-         <property name="text">
-          <string>绘制区域</string>
-         </property>
-        </widget>
-       </item>
-       <item>
         <widget class="QPushButton" name="btn_runTest">
          <property name="text">
           <string>测试运行</string>

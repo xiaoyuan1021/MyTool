@@ -49,7 +49,7 @@ void StepOcrRecognition::initTesseract(const QString& language)
 
     m_api = std::make_unique<tesseract::TessBaseAPI>();
 
-    QString tessdataPath = QDir::currentPath() + "/tessdata";
+    QString tessdataPath = QDir::currentPath() + "/resources/tessdata";
     if (m_api->Init(tessdataPath.toUtf8().constData(),
                     language.toUtf8().constData(),
                     tesseract::OEM_DEFAULT)) {

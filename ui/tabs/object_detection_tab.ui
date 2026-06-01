@@ -216,78 +216,15 @@
          <string>0.40</string>
         </property>
        </widget>
-      </item>
-      <item row="2" column="0">
-       <widget class="QLabel" name="label_inputSize">
-        <property name="text">
-         <string>输入尺寸</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="1">
-       <layout class="QHBoxLayout" name="horizontalLayout_inputSize">
-        <item>
-         <widget class="QSpinBox" name="spinBox_inputWidth">
-          <property name="minimum">
-           <number>32</number>
-          </property>
-          <property name="maximum">
-           <number>4096</number>
-          </property>
-          <property name="singleStep">
-           <number>32</number>
-          </property>
-          <property name="value">
-           <number>640</number>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLabel" name="label_x">
-          <property name="text">
-           <string>×</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QSpinBox" name="spinBox_inputHeight">
-          <property name="minimum">
-           <number>32</number>
-          </property>
-          <property name="maximum">
-           <number>4096</number>
-          </property>
-          <property name="singleStep">
-           <number>32</number>
-          </property>
-          <property name="value">
-           <number>640</number>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-       <item row="2" column="2">
-        <spacer name="horizontalSpacer_inputSize">
-         <property name="orientation">
-          <enum>Qt::Orientation::Horizontal</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>40</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
        </item>
-       <item row="3" column="0">
+       <item row="2" column="0">
         <widget class="QLabel" name="label_expectedCount">
          <property name="text">
           <string>期望数量</string>
          </property>
         </widget>
        </item>
-       <item row="3" column="1">
+       <item row="2" column="1">
         <widget class="QSpinBox" name="spinBox_expectedCount">
          <property name="toolTip">
           <string>0表示不检查数量</string>

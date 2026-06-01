@@ -5,6 +5,7 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QCoreApplication>
+#include <QDir>
 #include <QDebug>
 
 FileManager::FileManager(QObject *parent)
@@ -18,10 +19,21 @@ FileManager::~FileManager()
 
 QString FileManager::selectImageFile(const QString& defaultPath)
 {
+    // ★ 默认打开images文件夹
+    QString startPath = defaultPath;
+    if (startPath.isEmpty()) {
+        QString imagesDir = QCoreApplication::applicationDirPath() + "/images";
+        if (QDir(imagesDir).exists()) {
+            startPath = imagesDir;
+        } else {
+            startPath = QDir::currentPath();
+        }
+    }
+
     QString path = QFileDialog::getOpenFileName(
         nullptr,  // parent widget
         "请选择图片",
-        defaultPath,
+        startPath,
         "Image Files (*.jpg *.png *.tif *.bmp);;All Files (*)"
     );
     return path;

@@ -133,21 +133,9 @@ void ObjectDetectionTabWidget::onApplyClicked()
                 cfg.enableObjectDetection = true;
                 cfg.objectDetection.expectedCount = m_ui->spinBox_expectedCount->value();
             });
-            // 尝试从 ORT 或 DNN 获取模型输入尺寸
-            int modelW = 0, modelH = 0;
-            if (m_ortInference.isLoaded()) {
-                modelW = m_ortInference.getModelImgWidth();
-                modelH = m_ortInference.getModelImgHeight();
-            }
-            if (modelW <= 0 || modelH <= 0) {
-                modelW = m_ui->spinBox_inputWidth->value();
-                modelH = m_ui->spinBox_inputHeight->value();
-            }
-            m_ui->spinBox_inputWidth->setValue(modelW);
-            m_ui->spinBox_inputHeight->setValue(modelH);
 
             QString msg = (result == "both")
-                ? "状态：模型加载成功 (OpenCV DNN)"
+                ? "状态：模型加载成功 (OpenCV DNN + ORT)"
                 : "状态：模型加载成功 (OpenCV DNN)";
             emit modelLoadFinished(true, msg);
             qDebug() << "[ObjectDetection]" << msg;
@@ -168,8 +156,7 @@ std::vector<DetectionResult> ObjectDetectionTabWidget::runDetection(const cv::Ma
         return m_dnnInference.detect(image,
             getConfidenceThreshold(),
             getNmsThreshold(),
-            getInputWidth(),
-            getInputHeight());
+            640, 640);
     }
 
     return {};
@@ -184,8 +171,7 @@ std::vector<DetectionResult> ObjectDetectionTabWidget::runDetectionOrt(const cv:
         return m_ortInference.detect(image,
             getConfidenceThreshold(),
             getNmsThreshold(),
-            getInputWidth(),
-            getInputHeight());
+            640, 640);
     }
 
     // 回退到 OpenCV DNN
@@ -193,8 +179,7 @@ std::vector<DetectionResult> ObjectDetectionTabWidget::runDetectionOrt(const cv:
         return m_dnnInference.detect(image,
             getConfidenceThreshold(),
             getNmsThreshold(),
-            getInputWidth(),
-            getInputHeight());
+            640, 640);
     }
 
     return {};
@@ -220,16 +205,6 @@ float ObjectDetectionTabWidget::getNmsThreshold() const
     return m_ui->slider_nmsThreshold->value() / 100.0f;
 }
 
-int ObjectDetectionTabWidget::getInputWidth() const
-{
-    return m_ui->spinBox_inputWidth->value();
-}
-
-int ObjectDetectionTabWidget::getInputHeight() const
-{
-    return m_ui->spinBox_inputHeight->value();
-}
-
 ObjectDetectionConfig ObjectDetectionTabWidget::getDetectionConfig() const
 {
     ObjectDetectionConfig config;
@@ -237,8 +212,6 @@ ObjectDetectionConfig ObjectDetectionTabWidget::getDetectionConfig() const
     config.configPath = m_ui->lineEdit_configPath->text();
     config.confidenceThreshold = getConfidenceThreshold();
     config.nmsThreshold = getNmsThreshold();
-    config.inputWidth = getInputWidth();
-    config.inputHeight = getInputHeight();
     config.expectedCount = m_ui->spinBox_expectedCount->value();
     return config;
 }
@@ -249,16 +222,12 @@ void ObjectDetectionTabWidget::setDetectionConfig(const ObjectDetectionConfig& c
     QSignalBlocker blocker2(m_ui->lineEdit_configPath);
     QSignalBlocker blocker3(m_ui->slider_confidenceThreshold);
     QSignalBlocker blocker4(m_ui->slider_nmsThreshold);
-    QSignalBlocker blocker5(m_ui->spinBox_inputWidth);
-    QSignalBlocker blocker6(m_ui->spinBox_inputHeight);
-    QSignalBlocker blocker7(m_ui->spinBox_expectedCount);
+    QSignalBlocker blocker5(m_ui->spinBox_expectedCount);
 
     m_ui->lineEdit_modelPath->setText(config.modelPath);
     m_ui->lineEdit_configPath->setText(config.configPath);
     m_ui->slider_confidenceThreshold->setValue(static_cast<int>(config.confidenceThreshold * 100));
     m_ui->slider_nmsThreshold->setValue(static_cast<int>(config.nmsThreshold * 100));
-    m_ui->spinBox_inputWidth->setValue(config.inputWidth);
-    m_ui->spinBox_inputHeight->setValue(config.inputHeight);
     m_ui->spinBox_expectedCount->setValue(config.expectedCount);
 }
 
@@ -316,7 +285,5 @@ void ObjectDetectionTabWidget::connectSignals(const SignalContext& ctx,
     connect(m_ui->lineEdit_configPath, &QLineEdit::editingFinished, this, syncToDetectionItem);
     connect(m_ui->slider_confidenceThreshold, &QSlider::valueChanged, this, [this, syncToDetectionItem](int) { syncToDetectionItem(); });
     connect(m_ui->slider_nmsThreshold, &QSlider::valueChanged, this, [this, syncToDetectionItem](int) { syncToDetectionItem(); });
-    connect(m_ui->spinBox_inputWidth, QOverload<int>::of(&QSpinBox::valueChanged), this, [this, syncToDetectionItem](int) { syncToDetectionItem(); });
-    connect(m_ui->spinBox_inputHeight, QOverload<int>::of(&QSpinBox::valueChanged), this, [this, syncToDetectionItem](int) { syncToDetectionItem(); });
     connect(m_ui->spinBox_expectedCount, QOverload<int>::of(&QSpinBox::valueChanged), this, [this, syncToDetectionItem](int) { syncToDetectionItem(); });
 }

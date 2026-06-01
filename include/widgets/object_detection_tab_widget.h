@@ -47,8 +47,6 @@ public:
      */
     float getConfidenceThreshold() const;
     float getNmsThreshold() const;
-    int getInputWidth() const;
-    int getInputHeight() const;
 
     /**
      * ★ 获取当前配置（用于同步到DetectionItem.config）
