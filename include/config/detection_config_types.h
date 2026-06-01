@@ -129,24 +129,20 @@ struct VideoDetectionConfig {
 };
 
 /**
- * @brief OCR文字识别配置参数
+ * @brief OCR文字识别检测项配置
+ *
+ * 组合 OcrConfig 复用核心OCR参数，避免与 PipelineConfig.ocr 重复定义。
+ * 额外包含图像增强参数和判定参数，这些是 DetectionItem 专用的。
  */
 struct OcrDetectionConfig {
-    // 图像增强参数
-    EnhanceConfig enhance;
-    
-    // OCR参数
-    QString language = "chi_sim+eng";    // 识别语言
-    int pageMode = 0;                     // 页面分割模式（0=自动，1=单行，2=多行）
-    int dpi = 0;                          // 图像分辨率（0=自动估计）
-    double confidenceThreshold = 0.3;     // 最小置信度阈值 (0~1)
-    QString whitelist = "";               // 字符白名单（空=不过滤）
-    
-    // 判定参数（可选）
-    bool enableTextFilter = false;        // 是否启用文本过滤
-    QString expectedText = "";            // 期望的文本（用于判定）
-    bool matchExact = false;              // 是否精确匹配
-    
+    OcrConfig ocr;              ///< OCR核心参数（复用，不重复定义）
+    EnhanceConfig enhance;      ///< 图像增强参数
+
+    // 判定参数（DetectionItem专用）
+    bool enableTextFilter = false;
+    QString expectedText = "";
+    bool matchExact = false;
+
     // JSON 序列化（定义在 detection_config_types.cpp）
     QJsonObject toJson() const;
     void fromJson(const QJsonObject& obj);

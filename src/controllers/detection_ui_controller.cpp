@@ -195,11 +195,7 @@ void DetectionUiController::onDetectionItemSelected(const QString& roiId, const 
             OcrDetectionConfig ocrCfg;
             ocrCfg.fromJson(detection.config);
             pipelineManager->updateConfig([&](PipelineConfig& pipelineConfig) {
-                pipelineConfig.ocr.language = ocrCfg.language;
-                pipelineConfig.ocr.pageMode = ocrCfg.pageMode;
-                pipelineConfig.ocr.dpi = ocrCfg.dpi;
-                pipelineConfig.ocr.confidenceThreshold = ocrCfg.confidenceThreshold;
-                pipelineConfig.ocr.whitelist = ocrCfg.whitelist;
+                pipelineConfig.ocr = ocrCfg.ocr;
                 pipelineConfig.enhance = ocrCfg.enhance;
             });
         }

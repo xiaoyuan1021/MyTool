@@ -143,15 +143,17 @@ void VideoDetectionConfig::fromJson(const QJsonObject& obj) {
 
 QJsonObject OcrDetectionConfig::toJson() const {
     QJsonObject obj;
+    // 增强参数扁平展开（兼容旧格式）
     obj["brightness"] = enhance.brightness;
     obj["contrast"] = enhance.contrast;
     obj["gamma"] = enhance.gamma;
     obj["sharpen"] = enhance.sharpen;
-    obj["language"] = language;
-    obj["pageMode"] = pageMode;
-    obj["dpi"] = dpi;
-    obj["confidenceThreshold"] = confidenceThreshold;
-    obj["whitelist"] = whitelist;
+    // OCR核心参数通过 OcrConfig 序列化
+    QJsonObject ocrObj = ocr.toJson();
+    for (auto it = ocrObj.begin(); it != ocrObj.end(); ++it) {
+        obj[it.key()] = it.value();
+    }
+    // 判定参数
     obj["enableTextFilter"] = enableTextFilter;
     obj["expectedText"] = expectedText;
     obj["matchExact"] = matchExact;
@@ -163,11 +165,15 @@ void OcrDetectionConfig::fromJson(const QJsonObject& obj) {
     enhance.contrast = obj["contrast"].toInt(100);
     enhance.gamma = obj["gamma"].toInt(100);
     enhance.sharpen = obj["sharpen"].toInt(100);
-    language = obj["language"].toString("chi_sim+eng");
-    pageMode = obj["pageMode"].toInt(0);
-    dpi = obj["dpi"].toInt(0);
-    confidenceThreshold = obj["confidenceThreshold"].toDouble(0.3);
-    whitelist = obj["whitelist"].toString("");
+    // OCR核心参数通过 OcrConfig 反序列化
+    QJsonObject ocrObj;
+    ocrObj["language"] = obj["language"];
+    ocrObj["pageMode"] = obj["pageMode"];
+    ocrObj["dpi"] = obj["dpi"];
+    ocrObj["confidenceThreshold"] = obj["confidenceThreshold"];
+    ocrObj["whitelist"] = obj["whitelist"];
+    ocr.fromJson(ocrObj);
+    // 判定参数
     enableTextFilter = obj["enableTextFilter"].toBool(false);
     expectedText = obj["expectedText"].toString();
     matchExact = obj["matchExact"].toBool(false);
