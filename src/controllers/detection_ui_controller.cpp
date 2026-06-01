@@ -6,6 +6,7 @@
 #include "widgets/judge_tab_widget.h"
 #include "widgets/barcode_tab_widget.h"
 #include "widgets/line_tab_widget.h"
+#include "widgets/object_detection_tab_widget.h"
 
 #include <QMessageBox>
 #include <QComboBox>
@@ -228,6 +229,15 @@ void DetectionUiController::onDetectionItemSelected(const QString& roiId, const 
                 pipelineConfig.ocr = ocrCfg.ocr;
                 pipelineConfig.enhance = ocrCfg.enhance;
             });
+        }
+
+        // ★ 目标检测：从DetectionItem.config恢复配置到Tab UI
+        if (detection.type == DetectionType::ObjectDetection) {
+            ObjectDetectionConfig objCfg;
+            objCfg.fromJson(detection.config);
+            if (auto* objTab = tabManager->getTabAs<ObjectDetectionTabWidget>("目标检测")) {
+                objTab->setDetectionConfig(objCfg);
+            }
         }
 
         break;

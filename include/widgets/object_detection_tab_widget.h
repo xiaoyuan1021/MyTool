@@ -51,6 +51,16 @@ public:
     int getInputHeight() const;
 
     /**
+     * ★ 获取当前配置（用于同步到DetectionItem.config）
+     */
+    ObjectDetectionConfig getDetectionConfig() const;
+
+    /**
+     * ★ 设置检测配置（从DetectionItem.config恢复到UI）
+     */
+    void setDetectionConfig(const ObjectDetectionConfig& config);
+
+    /**
      * 更新检测结果显示
      */
     void updateDetectionResults(const std::vector<DetectionResult>& results);

@@ -230,6 +230,38 @@ int ObjectDetectionTabWidget::getInputHeight() const
     return m_ui->spinBox_inputHeight->value();
 }
 
+ObjectDetectionConfig ObjectDetectionTabWidget::getDetectionConfig() const
+{
+    ObjectDetectionConfig config;
+    config.modelPath = m_ui->lineEdit_modelPath->text();
+    config.configPath = m_ui->lineEdit_configPath->text();
+    config.confidenceThreshold = getConfidenceThreshold();
+    config.nmsThreshold = getNmsThreshold();
+    config.inputWidth = getInputWidth();
+    config.inputHeight = getInputHeight();
+    config.expectedCount = m_ui->spinBox_expectedCount->value();
+    return config;
+}
+
+void ObjectDetectionTabWidget::setDetectionConfig(const ObjectDetectionConfig& config)
+{
+    QSignalBlocker blocker1(m_ui->lineEdit_modelPath);
+    QSignalBlocker blocker2(m_ui->lineEdit_configPath);
+    QSignalBlocker blocker3(m_ui->slider_confidenceThreshold);
+    QSignalBlocker blocker4(m_ui->slider_nmsThreshold);
+    QSignalBlocker blocker5(m_ui->spinBox_inputWidth);
+    QSignalBlocker blocker6(m_ui->spinBox_inputHeight);
+    QSignalBlocker blocker7(m_ui->spinBox_expectedCount);
+
+    m_ui->lineEdit_modelPath->setText(config.modelPath);
+    m_ui->lineEdit_configPath->setText(config.configPath);
+    m_ui->slider_confidenceThreshold->setValue(static_cast<int>(config.confidenceThreshold * 100));
+    m_ui->slider_nmsThreshold->setValue(static_cast<int>(config.nmsThreshold * 100));
+    m_ui->spinBox_inputWidth->setValue(config.inputWidth);
+    m_ui->spinBox_inputHeight->setValue(config.inputHeight);
+    m_ui->spinBox_expectedCount->setValue(config.expectedCount);
+}
+
 void ObjectDetectionTabWidget::updateDetectionResults(const std::vector<DetectionResult>& results)
 {
     // 清空表格
@@ -273,10 +305,18 @@ void ObjectDetectionTabWidget::connectSignals(const SignalContext& ctx,
     connect(this, &ObjectDetectionTabWidget::detectionConfigChanged,
             this, [onExecutePipeline]() { onExecutePipeline(); });
 
-    // 期望数量变化时同步到DetectionItem.config
-    connect(m_ui->spinBox_expectedCount, QOverload<int>::of(&QSpinBox::valueChanged), this, [this, ctx](int value) {
+    // ★ 所有配置变化时同步到DetectionItem.config
+    auto syncToDetectionItem = [this, ctx]() {
         if (ctx.roiCtrl) {
-            ctx.roiCtrl->updateObjectDetectionConfig(value);
+            ctx.roiCtrl->updateObjectDetectionConfig(getDetectionConfig());
         }
-    });
+    };
+
+    connect(m_ui->lineEdit_modelPath, &QLineEdit::editingFinished, this, syncToDetectionItem);
+    connect(m_ui->lineEdit_configPath, &QLineEdit::editingFinished, this, syncToDetectionItem);
+    connect(m_ui->slider_confidenceThreshold, &QSlider::valueChanged, this, [this, syncToDetectionItem](int) { syncToDetectionItem(); });
+    connect(m_ui->slider_nmsThreshold, &QSlider::valueChanged, this, [this, syncToDetectionItem](int) { syncToDetectionItem(); });
+    connect(m_ui->spinBox_inputWidth, QOverload<int>::of(&QSpinBox::valueChanged), this, [this, syncToDetectionItem](int) { syncToDetectionItem(); });
+    connect(m_ui->spinBox_inputHeight, QOverload<int>::of(&QSpinBox::valueChanged), this, [this, syncToDetectionItem](int) { syncToDetectionItem(); });
+    connect(m_ui->spinBox_expectedCount, QOverload<int>::of(&QSpinBox::valueChanged), this, [this, syncToDetectionItem](int) { syncToDetectionItem(); });
 }
