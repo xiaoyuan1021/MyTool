@@ -153,10 +153,12 @@ std::vector<DetectionResult> ObjectDetectionTabWidget::runDetection(const cv::Ma
 
     // 使用 OpenCV DNN（目标检测标签页静图检测）
     if (m_dnnInference.isLoaded()) {
+        cv::Size inputSize = m_dnnInference.getModelInputSize();
         return m_dnnInference.detect(image,
             getConfidenceThreshold(),
             getNmsThreshold(),
-            640, 640);
+            inputSize.width,
+            inputSize.height);
     }
 
     return {};
@@ -176,10 +178,12 @@ std::vector<DetectionResult> ObjectDetectionTabWidget::runDetectionOrt(const cv:
 
     // 回退到 OpenCV DNN
     if (m_dnnInference.isLoaded()) {
+        cv::Size inputSize = m_dnnInference.getModelInputSize();
         return m_dnnInference.detect(image,
             getConfidenceThreshold(),
             getNmsThreshold(),
-            640, 640);
+            inputSize.width,
+            inputSize.height);
     }
 
     return {};

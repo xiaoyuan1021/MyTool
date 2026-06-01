@@ -70,6 +70,7 @@ bool DnnInference::loadModel(const QString& modelPath, const QString& configPath
         }
 
         loaded_ = true;
+        m_inputSizeCached = false;  // 新模型加载后重置输入尺寸缓存
         spdlog::info("DnnInference: model loaded successfully (backend: {})", usingGpu_ ? "CUDA" : "CPU");
 
         // 自动加载同名的 .names 类别文件
@@ -286,6 +287,35 @@ cv::Mat DnnInference::forward(const cv::Mat& input)
 bool DnnInference::isLoaded() const
 {
     return loaded_;
+}
+
+cv::Size DnnInference::getModelInputSize() const
+{
+    if (!loaded_) return cv::Size(640, 640);
+    if (m_inputSizeCached) return m_cachedInputSize;
+
+    // 用空白图测试模型接受的输入尺寸
+    DnnInference* self = const_cast<DnnInference*>(this);
+    static const int testSizes[] = {640, 1280, 320, 416, 512};
+    for (int sz : testSizes) {
+        try {
+            cv::Mat testBlob = cv::dnn::blobFromImage(
+                cv::Mat(sz, sz, CV_8UC3, cv::Scalar(114, 114, 114)),
+                1.0 / 255.0, cv::Size(sz, sz), cv::Scalar(0, 0, 0), true, false);
+            self->net_.setInput(testBlob);
+            self->net_.forward();
+            self->m_cachedInputSize = cv::Size(sz, sz);
+            self->m_inputSizeCached = true;
+            spdlog::info("DnnInference: detected model input size: {}x{}", sz, sz);
+            return cv::Size(sz, sz);
+        } catch (...) {
+            continue;
+        }
+    }
+
+    self->m_cachedInputSize = cv::Size(640, 640);
+    self->m_inputSizeCached = true;
+    return cv::Size(640, 640);
 }
 
 bool DnnInference::loadClassNames(const QString& filePath)

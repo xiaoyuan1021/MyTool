@@ -62,6 +62,11 @@ public:
     bool isLoaded() const;
 
     /**
+     * 获取模型期望的输入尺寸
+     */
+    cv::Size getModelInputSize() const;
+
+    /**
      * 获取当前推理后端是否为GPU
      */
     bool isUsingGpu() const { return usingGpu_; }
@@ -88,5 +93,7 @@ private:
     cv::dnn::Net net_;
     bool loaded_ = false;
     bool usingGpu_ = false;
+    cv::Size m_cachedInputSize;  ///< 缓存的模型输入尺寸
+    bool m_inputSizeCached = false;
     std::vector<std::string> classNames_;
 };
