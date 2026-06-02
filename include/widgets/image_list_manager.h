@@ -54,6 +54,11 @@ signals:
      */
     void processRequested();
 
+    /**
+     * @brief 图片被删除后触发
+     */
+    void imageRemoved();
+
 private slots:
     void onAddClicked();
     void onRemoveClicked();

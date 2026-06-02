@@ -97,6 +97,8 @@ void ImageListManager::onRemoveClicked()
         } else {
             emit imageDisplayRequested(cv::Mat());
         }
+
+        emit imageRemoved();
     }
 }
 

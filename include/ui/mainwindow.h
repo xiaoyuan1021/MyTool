@@ -107,6 +107,9 @@ private:
     /// 安全停止视频（析构时调用，防止定时器回调访问已销毁的成员）
     void stopAllAsyncOperations();
 
+    /// 隐藏所有检测相关Tab（删除图片/ROI后调用）
+    void hideAllDetectionTabs();
+
     Ui::MainWindow *ui;
     ImageView *m_view = nullptr;
 

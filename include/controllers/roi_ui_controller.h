@@ -59,7 +59,6 @@ public:
     // ROI操作方法（供MainWindow委托调用）
     QString addRoiWithName(const QString& roiName);
     bool renameRoi(const QString& roiId, const QString& newName);
-    void deleteDetectionItem(const QString& roiId, const QString& detectionId);
 
     // ROI树形视图管理
     void refreshRoiTreeView();
@@ -117,13 +116,13 @@ signals:
     
     // ROI切换信号（通知MainWindow刷新EnhanceTabWidget的UI）
     void roiPipelineConfigChanged(const PipelineConfig& config);
-    
-    // 检测项删除信号
-    void detectionItemDeleted(const QString& roiId, const QString& detectionId);
 
     /// ★ 选中的ROI被删除时发出（用于清空Tab结果）
     void selectedRoiDeleted();
     
+    /// 请求更新Tab可见性（ROI删除后调用）
+    void tabVisibilityUpdateNeeded();
+
     // ROI重命名信号
     void roiRenamed(const QString& roiId, const QString& newName);
     

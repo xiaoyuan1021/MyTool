@@ -423,6 +423,11 @@ void MainWindow::setupControllerConnections()
         m_pipelineManager->clearLastResult();
         m_roiUiController->syncRoiConfigsToWidget();
     });
+
+    // 删除图片/ROI后：隐藏所有检测相关Tab
+    connect(m_imageListManager, &ImageListManager::imageRemoved, this, &MainWindow::hideAllDetectionTabs);
+    connect(m_roiUiController, &RoiUiController::tabVisibilityUpdateNeeded, this, &MainWindow::hideAllDetectionTabs);
+    connect(m_detectionUiController, &DetectionUiController::tabVisibilityUpdateNeeded, this, &MainWindow::hideAllDetectionTabs);
 }
 
 void MainWindow::setupTabRegistration()
@@ -707,6 +712,18 @@ void MainWindow::on_btn_importFolder_clicked()
         m_toast->showMessage(QString("已导入 %1 张图片").arg(imported.size()));
         Logger::instance()->info(QString("[MainWindow] 从文件夹导入 %1 张图片: %2").arg(imported.size()).arg(dir));
     }
+}
+
+void MainWindow::hideAllDetectionTabs()
+{
+    if (!ui->tabWidget) return;
+
+    // 隐藏所有Tab（包括"图像"Tab）
+    for (int i = 0; i < ui->tabWidget->count(); ++i) {
+        ui->tabWidget->setTabVisible(i, false);
+    }
+
+    Logger::instance()->info("[MainWindow] 已隐藏所有Tab");
 }
 
 

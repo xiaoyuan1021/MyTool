@@ -123,6 +123,7 @@ void RoiUiController::removeRoiAndRefresh(const QString& roiId)
     refreshRoiTreeView();
 
     emit roiChanged();
+    emit tabVisibilityUpdateNeeded();
     Logger::instance()->info(QString("已删除ROI: %1").arg(roiName));
 }
 
@@ -540,39 +541,6 @@ bool RoiUiController::renameRoi(const QString& roiId, const QString& newName)
     
     Logger::instance()->info(QString("已重命名ROI: %1 -> %2").arg(roi->roiName).arg(newName));
     return true;
-}
-
-void RoiUiController::deleteDetectionItem(const QString& roiId, const QString& detectionId)
-{
-    RoiConfig* roi = m_roiManager.getRoiConfig(roiId);
-    if (!roi) {
-        QMessageBox::warning(nullptr, "警告", "未找到选中的ROI");
-        return;
-    }
-
-    // 查找检测项名称用于确认提示
-    QString detectionName;
-    for (const auto& detection : roi->detectionItems) {
-        if (detection.itemId == detectionId) {
-            detectionName = detection.itemName;
-            break;
-        }
-    }
-
-    // 确认删除
-    QMessageBox::StandardButton reply = QMessageBox::question(
-        nullptr, "确认删除",
-        QString("确定要删除检测项 \"%1\" 吗？").arg(detectionName.isEmpty() ? detectionId : detectionName),
-        QMessageBox::Yes | QMessageBox::No
-    );
-
-    if (reply == QMessageBox::Yes) {
-        roi->removeDetectionItem(detectionId);
-        refreshRoiTreeView();
-        emit roiChanged();
-        emit detectionItemDeleted(roiId, detectionId);
-        Logger::instance()->info(QString("已删除检测项: %1").arg(detectionName.isEmpty() ? detectionId : detectionName));
-    }
 }
 
 void RoiUiController::saveCurrentRoiPipelineConfig()

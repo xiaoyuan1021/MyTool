@@ -121,6 +121,7 @@ void DetectionUiController::onDeleteDetectionClicked(const QString& roiId, const
 
     roi->removeDetectionItem(detectionId);
     emit detectionChanged();
+    emit tabVisibilityUpdateNeeded();
 
     // 触发Pipeline重新执行，刷新画布显示
     if (m_triggerPipeline) {

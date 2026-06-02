@@ -71,6 +71,9 @@ signals:
     // 请求创建Tab信号（懒加载）
     void ensureTabNeeded(const QString& tabName);
 
+    // 请求更新Tab可见性（检测项删除后调用）
+    void tabVisibilityUpdateNeeded();
+
 private:
     RoiManager& m_roiManager;
     QTabWidget* m_tabWidget;
