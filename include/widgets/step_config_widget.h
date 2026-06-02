@@ -40,7 +40,6 @@ public:
                         std::function<void()> onConfigSaved = nullptr) override;
 
 signals:
-    void stepConfigChanged();
     void tabsNeeded(const QStringList& tabNames);
 
 private slots:
@@ -66,11 +65,12 @@ private:
     void updatePipelinePreview();
     QStringList collectEnabledTabNames();
     void applyTabVisibility();
-    int  entryIndexForFrame(QObject* obj) const;
+    static int entryIndexForFrame(QObject* obj);
     int  dropTargetIndex(const QPoint& pos) const;
     void moveStepToSelected(QFrame* frame);
     void moveStepToAvailable(QFrame* frame);
     void updateSelectedNumbers();
+    static void updateCardStyle(QFrame* frame, bool enabled);
     static QFrame* createStepCard(int entryIdx, bool anyEnabled, const StepEntry& step);
 
     static const StepEntry kSteps[];

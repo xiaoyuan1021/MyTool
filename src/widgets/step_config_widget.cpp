@@ -9,6 +9,7 @@
 #include <QHBoxLayout>
 #include <QGridLayout>
 #include <QSet>
+#include <QMap>
 #include <QApplication>
 #include <QDrag>
 #include <QMimeData>
@@ -71,7 +72,7 @@ void StepConfigWidget::connectSignals(const SignalContext& ctx,
 
 // ========== 辅助函数 ==========
 
-int StepConfigWidget::entryIndexForFrame(QObject* obj) const
+int StepConfigWidget::entryIndexForFrame(QObject* obj)
 {
     return obj->property("entryIndex").toInt();
 }
@@ -123,6 +124,9 @@ void StepConfigWidget::moveStepToSelected(QFrame* frame)
         numLabel->show();
     }
 
+    // 更新卡片样式为启用状态
+    updateCardStyle(frame, true);
+
     // 注册拖拽事件
     frame->installEventFilter(this);
 
@@ -154,12 +158,8 @@ void StepConfigWidget::moveStepToAvailable(QFrame* frame)
         numLabel->hide();
     }
 
-    // 更新样式为未选中
-    frame->setCursor(Qt::ArrowCursor);
-    frame->setStyleSheet(QString(
-        "QFrame#stepCard { border: 1px solid #CBD5E1; border-radius: 8px; }"
-        "QFrame#stepCard:hover { border-color: %1; }"
-    ).arg(stepColor));
+    // 更新卡片样式为禁用状态
+    updateCardStyle(frame, false);
 
     // 安全清理并重建待选区网格
     m_availableFrames.append(frame);
@@ -520,6 +520,7 @@ QFrame* StepConfigWidget::createStepCard(int entryIdx, bool anyEnabled, const St
 
     // 图标
     auto* iconLabel = new QLabel(QString::fromUtf8(step.icon), frame);
+    iconLabel->setObjectName("iconLabel");
     iconLabel->setAlignment(Qt::AlignCenter);
     iconLabel->setFixedSize(24, 16);
     iconLabel->setStyleSheet(QString(
@@ -530,6 +531,7 @@ QFrame* StepConfigWidget::createStepCard(int entryIdx, bool anyEnabled, const St
 
     // 名称
     auto* nameLabel = new QLabel(QString::fromUtf8(step.displayName), frame);
+    nameLabel->setObjectName("nameLabel");
     nameLabel->setStyleSheet(QString(
         "QLabel { font-weight: bold; font-size: 11px; color: %1; background: transparent; }"
     ).arg(anyEnabled ? "#1E293B" : "#475569"));
@@ -556,6 +558,67 @@ QFrame* StepConfigWidget::createStepCard(int entryIdx, bool anyEnabled, const St
     return frame;
 }
 
+// ========== 更新卡片样式 ==========
+
+void StepConfigWidget::updateCardStyle(QFrame* frame, bool enabled)
+{
+    int entryIdx = entryIndexForFrame(frame);
+    QString stepColor = QString::fromUtf8(kSteps[entryIdx].color);
+    QString borderColor = enabled ? stepColor : "#CBD5E1";
+    QString borderWidth = enabled ? "2px" : "1px";
+
+    // 更新背景色
+    QPalette pal = frame->palette();
+    pal.setColor(QPalette::Window, enabled ? QColor("#FFFFFF") : QColor("#F1F5F9"));
+    frame->setPalette(pal);
+
+    // 更新边框
+    frame->setStyleSheet(QString(
+        "QFrame#stepCard { border: %1 solid %2; border-radius: 8px; }"
+        "QFrame#stepCard:hover { border-color: %3; }"
+    ).arg(borderWidth, borderColor, stepColor));
+
+    // 更新编号圆圈颜色
+    if (auto* numLabel = frame->findChild<QLabel*>("numberLabel")) {
+        numLabel->setStyleSheet(QString(
+            "QLabel { background-color: %1; color: white; border-radius: 11px; "
+            "font-weight: bold; font-size: 10px; }"
+        ).arg(enabled ? stepColor : "#94A3B8"));
+    }
+
+    // 更新图标颜色
+    if (auto* iconLabel = frame->findChild<QLabel*>("iconLabel")) {
+        iconLabel->setStyleSheet(QString(
+            "QLabel { background-color: %1; color: white; border-radius: 3px; "
+            "font-size: 8px; font-weight: bold; }"
+        ).arg(enabled ? stepColor : "#94A3B8"));
+    }
+
+    // 更新名称颜色
+    if (auto* nameLabel = frame->findChild<QLabel*>("nameLabel")) {
+        nameLabel->setStyleSheet(QString(
+            "QLabel { font-weight: bold; font-size: 11px; color: %1; background: transparent; }"
+        ).arg(enabled ? "#1E293B" : "#475569"));
+    }
+
+    // 更新复选框颜色
+    if (auto* cb = frame->findChild<QCheckBox*>()) {
+        cb->setToolTip(enabled ? "已启用" : "点击启用");
+        cb->setStyleSheet(QString(
+            "QCheckBox { spacing: 4px; background: transparent; }"
+            "QCheckBox::indicator { "
+            "  width: 16px; height: 16px; border: 2px solid %1; "
+            "  border-radius: 9px; background-color: #FFFFFF; image: none; }"
+            "QCheckBox::indicator:hover { border-color: %2; }"
+            "QCheckBox::indicator:checked { "
+            "  background-color: %2; border-color: %2; image: none; }"
+        ).arg(borderColor, stepColor));
+    }
+
+    // 更新光标
+    frame->setCursor(enabled ? Qt::OpenHandCursor : Qt::ArrowCursor);
+}
+
 // ========== 重建步骤项 ==========
 
 void StepConfigWidget::rebuildStepItems()
@@ -563,6 +626,12 @@ void StepConfigWidget::rebuildStepItems()
     if (!m_pipelineManager) return;
 
     const auto& config = m_pipelineManager->config();
+
+    // 保存用户拖拽顺序（在清理之前）
+    QList<int> userDragOrder;
+    for (auto* f : m_selectedFrames) {
+        userDragOrder.append(entryIndexForFrame(f));
+    }
 
     // 清理旧帧
     m_dragSource = nullptr;
@@ -599,9 +668,20 @@ void StepConfigWidget::rebuildStepItems()
         }
     }
 
-    // 按 stepOrder 排序可排序步骤
+    // 构建用户拖拽顺序的查找表
+    QMap<int, int> userOrderMap;
+    for (int i = 0; i < userDragOrder.size(); ++i) {
+        userOrderMap[userDragOrder[i]] = i;
+    }
+
+    // 排序：优先使用用户拖拽顺序，回退到 stepOrder
     std::sort(normalEntries.begin(), normalEntries.end(),
               [&](int a, int b) {
+        bool aInUser = userOrderMap.contains(a);
+        bool bInUser = userOrderMap.contains(b);
+        if (aInUser && bInUser) return userOrderMap[a] < userOrderMap[b];
+        if (aInUser) return true;
+        if (bInUser) return false;
         auto firstPos = [&](int entryIdx) -> int {
             for (int bi : kSteps[entryIdx].backendIndices) {
                 if (bi < 0) continue;
@@ -797,7 +877,6 @@ void StepConfigWidget::onApplyClicked()
     m_pipelineManager->rebuildPipeline();
     emit tabsNeeded(collectEnabledTabNames());
     applyTabVisibility();
-    emit stepConfigChanged();
     if (m_onExecutePipeline) m_onExecutePipeline();
     updatePipelinePreview();
 }
