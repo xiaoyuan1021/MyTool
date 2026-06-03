@@ -561,6 +561,7 @@ void MainWindow::on_btn_pipelineConfig_clicked()
 
     for (int i = 0; i < ui->tabWidget->count(); ++i) {
         if (ui->tabWidget->tabText(i) == "步骤") {
+            ui->tabWidget->setTabVisible(i, true);  // 先显示Tab
             ui->tabWidget->setCurrentIndex(i);
             break;
         }
