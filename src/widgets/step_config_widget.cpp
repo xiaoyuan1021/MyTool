@@ -129,6 +129,29 @@ void StepConfigWidget::syncSelectedLayout()
     updateSelectedNumbers();
 }
 
+// ========== 更新可选步骤区域高度 ==========
+
+void StepConfigWidget::updateAvailableAreaHeight()
+{
+    if (!m_availableScroll) return;
+
+    int count = m_availableFrames.size();
+    if (count == 0) {
+        m_availableScroll->setMinimumHeight(0);
+        m_availableScroll->setMaximumHeight(0);
+        return;
+    }
+
+    // 每行2列，计算行数
+    int rows = (count + 1) / 2;
+    // 每个卡片高度40px，间距6px，加上一些padding
+    int rowHeight = 40 + 6;
+    int totalHeight = rows * rowHeight + 6;
+
+    m_availableScroll->setMinimumHeight(totalHeight);
+    m_availableScroll->setMaximumHeight(totalHeight);
+}
+
 // ========== 安全清理 layout（取出所有 widget 并销毁子 layout）==========
 
 static void clearLayout(QVBoxLayout* outerLayout)
@@ -154,7 +177,6 @@ void StepConfigWidget::moveStepToSelected(QFrame* frame)
     for (int i = 0; i < m_availableFrames.size(); ++i) {
         newGrid->addWidget(m_availableFrames[i], i / 2, i % 2);
     }
-    for (int c = 0; c < 2; ++c) newGrid->setColumnStretch(c, 1);
     m_availableOuterLayout->addLayout(newGrid);
 
     // 确认区：显示拖拽手柄和编号
@@ -168,6 +190,11 @@ void StepConfigWidget::moveStepToSelected(QFrame* frame)
     // 更新卡片样式为启用状态
     updateCardStyle(frame, true);
 
+    // 已选步骤卡片：固定高度，宽度铺满
+    frame->setMinimumWidth(0);
+    frame->setMaximumWidth(QWIDGETSIZE_MAX);
+    frame->setFixedHeight(40);
+
     // 注册拖拽事件
     frame->installEventFilter(this);
 
@@ -176,6 +203,7 @@ void StepConfigWidget::moveStepToSelected(QFrame* frame)
 
     // 同步 layout
     syncSelectedLayout();
+    updateAvailableAreaHeight();
 
     updatePipelinePreview();
 }
@@ -201,6 +229,9 @@ void StepConfigWidget::moveStepToAvailable(QFrame* frame)
     // 更新卡片样式为禁用状态
     updateCardStyle(frame, false);
 
+    // 恢复可选步骤卡片的固定大小
+    frame->setFixedSize(200, 40);
+
     // 安全清理并重建待选区网格
     m_availableFrames.append(frame);
     clearLayout(m_availableOuterLayout);
@@ -211,11 +242,11 @@ void StepConfigWidget::moveStepToAvailable(QFrame* frame)
     for (int i = 0; i < m_availableFrames.size(); ++i) {
         newGrid->addWidget(m_availableFrames[i], i / 2, i % 2);
     }
-    for (int c = 0; c < 2; ++c) newGrid->setColumnStretch(c, 1);
     m_availableOuterLayout->addLayout(newGrid);
 
     // 同步确认区 layout
     syncSelectedLayout();
+    updateAvailableAreaHeight();
 
     updatePipelinePreview();
 }
@@ -466,9 +497,9 @@ void StepConfigWidget::setupUI()
     auto* availScroll = new QScrollArea(this);
     availScroll->setWidgetResizable(true);
     availScroll->setFrameShape(QFrame::NoFrame);
-    availScroll->setFixedHeight(180);
     availScroll->setStyleSheet(QString(
         "QScrollArea { background: transparent; border: none; }") + scrollBarStyle);
+    m_availableScroll = availScroll;
 
     m_availableContainer = new QWidget();
     m_availableContainer->setAutoFillBackground(true);
@@ -548,7 +579,11 @@ QFrame* StepConfigWidget::createStepCard(int entryIdx, bool anyEnabled, const St
 {
     auto* frame = new QFrame();
     frame->setObjectName("stepCard");
-    frame->setMinimumHeight(36);
+
+    // 可选步骤固定大小，已选步骤后面会调整
+    if (!anyEnabled) {
+        frame->setFixedSize(200, 40);
+    }
 
     QString stepColor = QString::fromUtf8(step.color);
     QString borderColor = anyEnabled ? stepColor : "#CBD5E1";
@@ -784,6 +819,10 @@ void StepConfigWidget::rebuildStepItems()
 
         if (enabled) {
             frame->setCursor(Qt::OpenHandCursor);
+            // 已选步骤卡片：固定高度，宽度铺满
+            frame->setMinimumWidth(0);
+            frame->setMaximumWidth(QWIDGETSIZE_MAX);
+            frame->setFixedHeight(40);
             m_selectedFrames.append(frame);
         } else {
             if (auto* h = frame->findChild<QLabel*>("dragHandle")) h->hide();
@@ -799,7 +838,6 @@ void StepConfigWidget::rebuildStepItems()
     for (int i = 0; i < m_availableFrames.size(); ++i) {
         availGrid->addWidget(m_availableFrames[i], i / 2, i % 2);
     }
-    for (int c = 0; c < 2; ++c) availGrid->setColumnStretch(c, 1);
     m_availableOuterLayout->addLayout(availGrid);
 
     // 构建确认区（单列）
@@ -834,6 +872,7 @@ void StepConfigWidget::rebuildStepItems()
     }
 
     updateSelectedNumbers();
+    updateAvailableAreaHeight();
     updatePipelinePreview();
 }
 

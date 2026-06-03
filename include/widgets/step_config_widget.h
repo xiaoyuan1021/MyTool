@@ -71,6 +71,7 @@ private:
     void moveStepToAvailable(QFrame* frame);
     void updateSelectedNumbers();
     void syncSelectedLayout();
+    void updateAvailableAreaHeight();
     static void updateCardStyle(QFrame* frame, bool enabled);
     static QFrame* createStepCard(int entryIdx, bool anyEnabled, const StepEntry& step);
 
@@ -83,6 +84,7 @@ private:
     QLabel*                  m_previewStepsLabel = nullptr;
 
     // 待选区
+    QScrollArea*              m_availableScroll = nullptr;
     QWidget*                 m_availableContainer = nullptr;
     QVBoxLayout*             m_availableOuterLayout = nullptr;
     QList<QFrame*>           m_availableFrames;
