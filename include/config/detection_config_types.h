@@ -60,7 +60,7 @@ struct BlobAnalysisConfig : public IJsonSerializable {
     
     // 判定参数
     int minBlobCount = 0;        // 最小Blob数量
-    int maxBlobCount = 100;      // 最大Blob数量
+    int maxBlobCount = 0;      // 最大Blob数量
     double minAreaThreshold = 0; // 最小面积阈值
     double maxAreaThreshold = 1000000; // 最大面积阈值
     

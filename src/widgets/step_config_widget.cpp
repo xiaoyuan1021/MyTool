@@ -88,6 +88,47 @@ void StepConfigWidget::updateSelectedNumbers()
     m_emptyHintLabel->setVisible(m_selectedFrames.isEmpty());
 }
 
+// ========== 同步确认区 layout 与 m_selectedFrames ==========
+
+void StepConfigWidget::syncSelectedLayout()
+{
+    // 移除所有 frame（保留 m_emptyHintLabel 和 stretch）
+    QList<QFrame*> framesToRemove;
+    for (int i = 0; i < m_selectedOuterLayout->count(); ++i) {
+        auto* item = m_selectedOuterLayout->itemAt(i);
+        if (item && item->widget()) {
+            auto* frame = qobject_cast<QFrame*>(item->widget());
+            if (frame && frame != m_emptyHintLabel) {
+                framesToRemove.append(frame);
+            }
+        }
+    }
+    for (auto* frame : framesToRemove) {
+        m_selectedOuterLayout->removeWidget(frame);
+    }
+
+    // 移除 stretch
+    while (m_selectedOuterLayout->count() > 0) {
+        auto* lastItem = m_selectedOuterLayout->itemAt(m_selectedOuterLayout->count() - 1);
+        if (lastItem && lastItem->spacerItem()) {
+            m_selectedOuterLayout->takeAt(m_selectedOuterLayout->count() - 1);
+        } else {
+            break;
+        }
+    }
+
+    // 重新添加 frame（在 m_emptyHintLabel 之后）
+    for (auto* frame : m_selectedFrames) {
+        m_selectedOuterLayout->addWidget(frame);
+    }
+
+    // 重新添加 stretch
+    m_selectedOuterLayout->addStretch();
+
+    // 更新序号
+    updateSelectedNumbers();
+}
+
 // ========== 安全清理 layout（取出所有 widget 并销毁子 layout）==========
 
 static void clearLayout(QVBoxLayout* outerLayout)
@@ -130,12 +171,12 @@ void StepConfigWidget::moveStepToSelected(QFrame* frame)
     // 注册拖拽事件
     frame->installEventFilter(this);
 
-    // 添加到确认区（在 stretch 之前）
+    // 添加到确认区列表末尾
     m_selectedFrames.append(frame);
-    int layoutInsertPos = m_selectedOuterLayout->count() - 1;
-    m_selectedOuterLayout->insertWidget(layoutInsertPos, frame);
 
-    updateSelectedNumbers();
+    // 同步 layout
+    syncSelectedLayout();
+
     updatePipelinePreview();
 }
 
@@ -145,7 +186,6 @@ void StepConfigWidget::moveStepToAvailable(QFrame* frame)
     QString stepColor = QString::fromUtf8(kSteps[entryIdx].color);
 
     m_selectedFrames.removeOne(frame);
-    m_selectedOuterLayout->removeWidget(frame);
 
     // 取消拖拽事件
     frame->removeEventFilter(this);
@@ -174,7 +214,9 @@ void StepConfigWidget::moveStepToAvailable(QFrame* frame)
     for (int c = 0; c < 2; ++c) newGrid->setColumnStretch(c, 1);
     m_availableOuterLayout->addLayout(newGrid);
 
-    updateSelectedNumbers();
+    // 同步确认区 layout
+    syncSelectedLayout();
+
     updatePipelinePreview();
 }
 
@@ -208,9 +250,16 @@ bool StepConfigWidget::eventFilter(QObject* obj, QEvent* event)
             auto* mime = new QMimeData();
             mime->setData(kMimeType, QByteArray::number(entryIdx));
             drag->setMimeData(mime);
-            drag->exec(Qt::MoveAction);
+
+            // 执行拖拽并检查结果
+            Qt::DropAction result = drag->exec(Qt::MoveAction);
             frame->setCursor(Qt::OpenHandCursor);
-            m_dragSource = nullptr;
+
+            // 只有在没有执行 MoveAction 时才清空 m_dragSource
+            // 如果执行了 MoveAction，Drop 事件处理器会处理状态
+            if (result != Qt::MoveAction) {
+                m_dragSource = nullptr;
+            }
             break;
         }
         case QEvent::MouseButtonRelease: {
@@ -259,19 +308,24 @@ bool StepConfigWidget::eventFilter(QObject* obj, QEvent* event)
             }
             if (!sourceFrame) break;
 
+            // 从原位置移除
             m_selectedFrames.removeAt(sourcePos);
-            m_selectedOuterLayout->removeWidget(sourceFrame);
 
+            // 调整目标位置（如果源位置在目标之前，目标索引需要减1）
             if (sourcePos < targetPos) --targetPos;
             targetPos = qBound(0, targetPos, m_selectedFrames.size());
 
+            // 插入到新位置
             m_selectedFrames.insert(targetPos, sourceFrame);
-            m_selectedOuterLayout->insertWidget(targetPos, sourceFrame);
 
-            updateSelectedNumbers();
+            // 同步 layout
+            syncSelectedLayout();
 
             dp->acceptProposedAction();
             updatePipelinePreview();
+
+            // 清空拖拽状态
+            m_dragSource = nullptr;
             break;
         }
         default:
@@ -285,9 +339,25 @@ bool StepConfigWidget::eventFilter(QObject* obj, QEvent* event)
 
 int StepConfigWidget::dropTargetIndex(const QPoint& pos) const
 {
+    if (m_selectedFrames.isEmpty()) return 0;
+
     for (int i = 0; i < m_selectedFrames.size(); ++i) {
         QRect r = m_selectedFrames[i]->geometry();
-        if (pos.y() < r.center().y()) return i;
+        // 使用 frame 的上半部分和下半部分来判断
+        // 如果 pos 在 frame 的上 1/3 区域，插入到该 frame 之前
+        // 如果 pos 在 frame 的下 1/3 区域，插入到该 frame 之后
+        // 中间 1/3 区域根据垂直位置判断
+        int topThird = r.top() + r.height() / 3;
+        int bottomThird = r.bottom() - r.height() / 3;
+
+        if (pos.y() < topThird) {
+            return i;
+        } else if (pos.y() < bottomThird) {
+            // 在中间区域，使用中心点判断
+            if (pos.y() < r.center().y()) {
+                return i;
+            }
+        }
     }
     return m_selectedFrames.size();
 }

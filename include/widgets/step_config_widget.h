@@ -70,6 +70,7 @@ private:
     void moveStepToSelected(QFrame* frame);
     void moveStepToAvailable(QFrame* frame);
     void updateSelectedNumbers();
+    void syncSelectedLayout();
     static void updateCardStyle(QFrame* frame, bool enabled);
     static QFrame* createStepCard(int entryIdx, bool anyEnabled, const StepEntry& step);
 
