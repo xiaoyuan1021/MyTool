@@ -75,6 +75,7 @@ private slots:
     void onApplyClicked();
     void onBrowseModel();
     void onBrowseConfig();
+    void autoLoadDefaultModel();
 
 private:
     void setupConnections();

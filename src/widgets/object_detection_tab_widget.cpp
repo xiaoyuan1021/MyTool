@@ -6,6 +6,10 @@
 #include <QMessageBox>
 #include <QDebug>
 #include <QtConcurrent/QtConcurrent>
+#include <QCoreApplication>
+#include <QDir>
+#include <QTimer>
+#include <QFile>
 
 ObjectDetectionTabWidget::ObjectDetectionTabWidget(PipelineManager* pipelineManager, QWidget* parent)
     : QWidget(parent)
@@ -14,6 +18,7 @@ ObjectDetectionTabWidget::ObjectDetectionTabWidget(PipelineManager* pipelineMana
 {
     m_ui->setupUi(this);
     setupConnections();
+    autoLoadDefaultModel();
 }
 
 ObjectDetectionTabWidget::~ObjectDetectionTabWidget()
@@ -69,6 +74,22 @@ void ObjectDetectionTabWidget::onBrowseConfig()
     
     if (!filePath.isEmpty()) {
         m_ui->lineEdit_configPath->setText(filePath);
+    }
+}
+
+void ObjectDetectionTabWidget::autoLoadDefaultModel()
+{
+    // 默认模型路径：项目根目录/resources/models/model_pin/ort/pin.onnx
+    QString defaultModelPath = QString(PROJECT_ROOT_DIR) + "/resources/models/model_pin/ort/pin.onnx";
+    
+    if (QFile::exists(defaultModelPath)) {
+        m_ui->lineEdit_modelPath->setText(defaultModelPath);
+        qDebug() << "[ObjectDetection] auto-loading default model:" << defaultModelPath;
+        
+        // 延迟加载模型，等待UI完全初始化
+        QTimer::singleShot(100, this, &ObjectDetectionTabWidget::onApplyClicked);
+    } else {
+        qDebug() << "[ObjectDetection] default model not found:" << defaultModelPath;
     }
 }
 

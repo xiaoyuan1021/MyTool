@@ -22,11 +22,18 @@ QString FileManager::selectImageFile(const QString& defaultPath)
     // ★ 默认打开images文件夹
     QString startPath = defaultPath;
     if (startPath.isEmpty()) {
-        QString imagesDir = QCoreApplication::applicationDirPath() + "/images";
+        // 优先使用项目根目录下的images文件夹
+        QString imagesDir = QString(PROJECT_ROOT_DIR) + "/images";
         if (QDir(imagesDir).exists()) {
             startPath = imagesDir;
         } else {
-            startPath = QDir::currentPath();
+            // 回退到applicationDirPath
+            imagesDir = QCoreApplication::applicationDirPath() + "/images";
+            if (QDir(imagesDir).exists()) {
+                startPath = imagesDir;
+            } else {
+                startPath = QDir::currentPath();
+            }
         }
     }
 
