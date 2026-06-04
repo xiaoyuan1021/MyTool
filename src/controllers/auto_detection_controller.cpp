@@ -122,7 +122,9 @@ QList<ImageDetectionTask> AutoDetectionController::buildTaskList()
         task.imageName = m_roiManager->getImageName(imageId);
         task.roiConfigs = m_roiManager->getRoiConfigsForImage(imageId);
 
-        if (task.imagePath.isEmpty() || task.roiConfigs.isEmpty()) {
+        // 跳过没有ROI配置的图片（允许imagePath为空，从内存读取）
+        if (task.roiConfigs.isEmpty()) {
+            Logger::instance()->debug(QString("[buildTaskList] 跳过图片 %1: 没有ROI配置").arg(imageId));
             continue;
         }
 
@@ -169,10 +171,17 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
     int currentIndex = m_currentIndex;
     int totalCount = m_stats.totalCount;
 
+    // 如果imagePath为空，从RoiManager内存中预先获取图像（lambda中无法访问this）
+    cv::Mat image;
+    if (imagePath.isEmpty() && m_roiManager) {
+        image = m_roiManager->getImage(imageId);
+        Logger::instance()->debug(QString("[检测] 从内存预加载图像: %1 (空=%2)").arg(imageId, image.empty() ? "是" : "否"));
+    }
+
     // 使用 QtConcurrent 在后台线程执行，避免阻塞 UI
     // 注意：lambda中无法使用emit logMessage（无this指针），使用Logger::instance()代替
     QFuture<ImageDetectionResult> future = QtConcurrent::run(
-        [pipelinePtr, tabMgrPtr, imagePath, imageName, imageId, roiConfigs]() -> ImageDetectionResult {
+        [pipelinePtr, tabMgrPtr, imagePath, imageName, imageId, roiConfigs, image]() -> ImageDetectionResult {
             // 创建图片级别的检测结果
             ImageDetectionResult imageResult;
             imageResult.imageId = imageId;
@@ -188,13 +197,18 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
                 return imageResult;
             }
 
-            Logger::instance()->debug(QString("[检测] 开始处理图片: %1").arg(imagePath));
+            Logger::instance()->debug(QString("[检测] 开始处理图片: %1 (路径: %2)").arg(imageId, imagePath));
 
-            cv::Mat image = PathUtils::readImageFromFile(imagePath, cv::IMREAD_COLOR);
-            if (image.empty()) {
-                Logger::instance()->error(QString("[检测] 无法加载图片: %1").arg(imagePath));
+            cv::Mat finalImage = image;  // 使用预加载的图像
+            if (finalImage.empty() && !imagePath.isEmpty()) {
+                // 从文件读取图像
+                finalImage = PathUtils::readImageFromFile(imagePath, cv::IMREAD_COLOR);
+            }
+
+            if (finalImage.empty()) {
+                Logger::instance()->error(QString("[检测] 无法加载图片: %1 (路径: %2)").arg(imageId, imagePath.isEmpty() ? "内存中无图像" : imagePath));
                 imageResult.passed = false;
-                imageResult.failReason = QString("无法加载图片: %1").arg(imagePath);
+                imageResult.failReason = QString("无法加载图片: %1").arg(imagePath.isEmpty() ? "内存中无图像" : imagePath);
                 return imageResult;
             }
 
@@ -202,8 +216,8 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
             for (const RoiConfig& roiConfig : roiConfigs) {
                 if (!roiConfig.isActive) continue;
 
-                cv::Rect r = ImageUtils::mapRoiToCvRect(roiConfig.roiRect, image.cols, image.rows);
-                cv::Mat roiImage = r.empty() ? image.clone() : image(r).clone();
+                cv::Rect r = ImageUtils::mapRoiToCvRect(roiConfig.roiRect, finalImage.cols, finalImage.rows);
+                cv::Mat roiImage = r.empty() ? finalImage.clone() : finalImage(r).clone();
 
                 PipelineContext ctx = pipelinePtr->execute(roiImage, roiConfig.pipelineConfig);
 

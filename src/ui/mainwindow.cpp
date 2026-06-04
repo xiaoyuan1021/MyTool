@@ -33,6 +33,7 @@
 
 #include <QTabBar>
 #include <QFile>
+#include <QThread>
 #include <QDir>
 #include <QTimer>
 #include <QFileDialog>
@@ -646,7 +647,71 @@ void MainWindow::setupMqtt()
     // Feature 2: 云端指令 → 调用本地功能
     connect(m_mqttManager, &MqttManager::captureRequested,
             this, [this]() {
-        m_toast->showMessage("收到云端指令: capture");
+        m_toast->showMessage("收到云端指令: 采集检测");
+        
+        cv::Mat frame;
+        
+        // 1. 优先从已打开的VideoManager获取新帧
+        VideoTabWidget* videoTab = m_tabManager->getTabAs<VideoTabWidget>("视频");
+        if (videoTab) {
+            VideoManager* vm = videoTab->getVideoManager();
+            if (vm && vm->isOpened()) {
+                frame = vm->getNextFrame();
+            }
+        }
+        
+        // 2. 如果VideoManager未打开或获取失败，自动打开相机捕获一帧
+        if (frame.empty()) {
+            m_toast->showMessage("正在自动打开相机捕获...");
+            
+            try {
+                cv::VideoCapture tempCapture;
+                // 尝试DirectShow后端（Windows兼容性更好）
+                tempCapture.open(1, cv::CAP_DSHOW);  // 使用USB摄像头(索引1)
+                
+                if (!tempCapture.isOpened()) {
+                    tempCapture.open(1);  // 回退到默认后端
+                }
+                
+                if (tempCapture.isOpened()) {
+                    // 等待相机稳定（约300ms）
+                    QThread::msleep(300);
+                    
+                    cv::Mat rawFrame;
+                    if (tempCapture.read(rawFrame)) {
+                        // 相机源左右翻转，提升体验
+                        cv::flip(rawFrame, frame, 1);
+                    }
+                    tempCapture.release();
+                }
+            } catch (const cv::Exception& ex) {
+                Logger::instance()->error(QString("自动打开相机失败: %1").arg(ex.what()));
+            }
+        }
+        
+        // 3. 检查是否成功获取帧
+        if (frame.empty()) {
+            m_toast->showMessage("错误：无法获取图像，请手动打开相机");
+            return;
+        }
+        
+        // 4. 将帧存入RoiManager并触发检测
+        m_roiManager.setFullImage(frame);
+        
+        // 为capture采集的图像自动添加全图ROI配置（如果还没有ROI配置）
+        QString currentImageId = m_roiManager.getCurrentImageId();
+        if (!currentImageId.isEmpty() && m_roiManager.getRoiConfigsForImage(currentImageId).isEmpty()) {
+            RoiConfig defaultRoi;
+            defaultRoi.roiId = "capture_default_roi";
+            defaultRoi.roiName = "全图检测区域";
+            defaultRoi.roiRect = QRectF(0, 0, 1, 1);  // 全图（归一化坐标）
+            defaultRoi.pipelineConfig = m_pipelineManager->getConfigSnapshot();
+            defaultRoi.isActive = true;
+            m_roiManager.addRoiConfig(defaultRoi);
+            Logger::instance()->info("[capture] 已为采集的图像添加默认全图ROI配置");
+        }
+        
+        m_toast->showMessage("已采集新帧，正在处理...");
         requestRefresh();
     });
     connect(m_mqttManager, &MqttManager::startDetectionRequested,

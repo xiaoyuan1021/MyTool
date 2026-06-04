@@ -166,25 +166,30 @@ void FilterTabWidget::onFilterModeChanged(int index)
         switch (index) {
         case 0:  // None
             cf.mode = ImageFilterMode::None;
+            cfg.stepEnabled[static_cast<int>(StepType::Filter)] = false;  // 禁用过滤步骤
             m_ui->stackedWidget_filter->setCurrentIndex(0);
             break;
         case 1:  // Gray
             cf.mode = ImageFilterMode::Gray;
+            cfg.stepEnabled[static_cast<int>(StepType::Filter)] = true;   // 启用过滤步骤
             m_ui->stackedWidget_filter->setCurrentIndex(1);
             syncGrayParameters();
             break;
         case 2:  // RGB
             cf.mode = ImageFilterMode::RGB;
+            cfg.stepEnabled[static_cast<int>(StepType::Filter)] = true;   // 启用过滤步骤
             m_ui->stackedWidget_filter->setCurrentIndex(2);
             syncRGBParameters();
             break;
         case 3:  // HSV
             cf.mode = ImageFilterMode::HSV;
+            cfg.stepEnabled[static_cast<int>(StepType::Filter)] = true;   // 启用过滤步骤
             m_ui->stackedWidget_filter->setCurrentIndex(3);
             syncHSVParameters();
             break;
         default:
             cf.mode = ImageFilterMode::None;
+            cfg.stepEnabled[static_cast<int>(StepType::Filter)] = false;  // 禁用过滤步骤
             m_ui->stackedWidget_filter->setCurrentIndex(0);
             break;
         }
