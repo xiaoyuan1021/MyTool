@@ -38,7 +38,9 @@ private:
     void distributeResults(const PipelineContext& result);
     
     /// 目标检测特殊处理（不走 Pipeline，临时运行推理）
-    void handleObjectDetection(cv::Mat& displayImage);
+    /// @param displayImage  渲染后的显示图像（检测结果绘制在此图上）
+    /// @param pipelineSource  Pipeline 实际处理的源图像（用于检测推理）
+    void handleObjectDetection(cv::Mat& displayImage, const cv::Mat& pipelineSource);
     void drawDetectionResults(cv::Mat& image, const std::vector<DetectionResult>& results);
 
     bool m_isVideoMode = false;  // 当前是否为视频处理模式

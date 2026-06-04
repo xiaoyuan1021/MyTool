@@ -171,7 +171,7 @@ DetectionItemResult DetectionEvaluator::evaluateOcr(
     const DetectionItem& detItem,
     const PipelineContext& ctx)
 {
-    DetectionItemResult result;
+    DetectionItemResult result; 
     OcrDetectionConfig ocrConfig;
     ocrConfig.fromJson(detItem.config);
 

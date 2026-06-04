@@ -44,11 +44,12 @@ void PipelineResultHandler::onPipelineResult(const PipelineResult& result)
         distributeResults(ctx);
 
         // 目标检测特殊处理（不走 Pipeline），单独计时
+        // ★ 传入 ctx.srcBgr 作为检测源图像，避免异步竞态导致检测跑在错误的图片上
         double pipelineMs = result.elapsedMs();
         double detectionMs = 0;
         {
             BenchmarkTimer t("ObjectDetection", &detectionMs);
-            handleObjectDetection(displayImage);
+            handleObjectDetection(displayImage, ctx.srcBgr);
         }
 
         if (m_imageView) {
@@ -94,14 +95,16 @@ void PipelineResultHandler::setVideoMode(bool active)
     m_isVideoMode = active;
 }
 
-void PipelineResultHandler::handleObjectDetection(cv::Mat& displayImage)
+void PipelineResultHandler::handleObjectDetection(cv::Mat& displayImage, const cv::Mat& pipelineSource)
 {
     if (!m_tabManager || !m_roiManager || !m_pipelineManager) return;
 
     if (!m_pipelineManager->getConfigSnapshot().enableObjectDetection) return;
 
     if (auto* objTab = m_tabManager->getTabAs<ObjectDetectionTabWidget>("目标检测"); objTab && objTab->isModelLoaded()) {
-        cv::Mat detectImage = m_roiManager->getCurrentImage();
+        // ★ 使用 Pipeline 实际处理的源图像进行检测，而不是 m_roiManager->getCurrentImage()
+        // 避免异步 Pipeline 执行期间用户切换图片，导致检测跑在错误的图片上
+        cv::Mat detectImage = pipelineSource;
         if (!detectImage.empty()) {
             std::vector<DetectionResult> detResults;
             if (m_isVideoMode) {
