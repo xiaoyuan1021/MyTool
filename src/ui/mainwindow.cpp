@@ -328,19 +328,21 @@ void MainWindow::setupControllers()
 
 void MainWindow::setupControllerConnections()
 {
-    // ROI变化：设置为执行模式并刷新
+    // [CLEANUP] 统一 Pipeline 执行入口注释
+
+    // 1. ROI变化 → 执行pipeline（用户添加/删除/切换ROI后）
     connect(m_roiUiController, &RoiUiController::roiChanged, this, [this]() { 
         m_pipelineMode = PipelineMode::Execute;
         requestRefresh(); 
     });
     
-    // 配置应用：设置为执行模式并刷新
+    // 2. 配置应用 → 执行pipeline（用户点击"应用"按钮后）
     connect(m_configController, &ConfigController::configApplied, this, [this]() { 
         m_pipelineMode = PipelineMode::Execute;
         requestRefresh(); 
     });
     
-    // 方案加载：设置为执行模式并刷新
+    // 3. 方案加载 → 执行pipeline（用户加载检测方案后）
     connect(m_profileController, &ProfileController::requestRefresh, this, [this]() {
         m_pipelineMode = PipelineMode::Execute;
         requestRefresh();
@@ -349,12 +351,14 @@ void MainWindow::setupControllerConnections()
     // Tab 信号连接（通过 ISignalConnectable 接口多态连接）
     connect(m_tabManager, &TabManager::tabCreated, this,
         [this](const QString& tabName, QWidget* widget) {
+            // [CLEANUP] 合并所有 tabCreated 处理逻辑到一个连接
+
+            // 1. ISignalConnectable 接口：建立信号连接
             auto* connectable = dynamic_cast<ISignalConnectable*>(widget);
             if (connectable) {
                 connectable->connectSignals(
                     {m_pipelineManager, &m_roiManager, m_view, m_roiUiController},
                     [this]() {
-                        // 用户主动请求执行：切换到执行模式
                         m_pipelineMode = PipelineMode::Execute;
                         requestRefresh();
                     }
@@ -364,12 +368,53 @@ void MainWindow::setupControllerConnections()
                     QString("[MainWindow] Tab '%1' 未实现 ISignalConnectable 接口，跳过信号连接").arg(tabName));
             }
 
-            // 视频 Tab：播放状态切换时通知 PipelineResultHandler 切换推理后端
+            // 2. IConfigurableTab 接口：注册到 ConfigController
+            if (auto* configurableTab = dynamic_cast<IConfigurableTab*>(widget)) {
+                m_configController->registerTab(configurableTab);
+            }
+
+            // 3. ITabInitializable 接口：执行初始化
+            if (auto* initializableTab = dynamic_cast<ITabInitializable*>(widget)) {
+                TabInitContext ctx;
+                ctx.profileManager = m_profileManager;
+                ctx.pipelineManager = m_pipelineManager;
+                initializableTab->initializeTab(ctx);
+            }
+
+            // 4. VideoTab 特殊处理：播放状态切换时通知推理后端
             if (auto* videoTab = qobject_cast<VideoTabWidget*>(widget)) {
                 connect(videoTab->getVideoManager(), &VideoManager::playbackStateChanged,
                         this, [this](VideoManager::PlaybackState state) {
                             m_pipelineResultHandler->setVideoMode(state == VideoManager::PlaybackState::Playing);
                         });
+            }
+
+            // 5. StepConfigWidget 特殊处理：tabsNeeded 信号
+            if (auto* stepWidget = qobject_cast<StepConfigWidget*>(widget)) {
+                connect(stepWidget, &StepConfigWidget::tabsNeeded, this, [this](const QStringList& tabNames) {
+                    bool anyNew = false;
+                    for (const auto& name : tabNames) {
+                        if (!m_tabManager->isCreated(name)) {
+                            m_tabManager->ensureTab(name);
+                            anyNew = true;
+                        }
+                    }
+                    if (anyNew) {
+                        m_detectionUiController->setTabNames(m_tabManager->createdTabNames());
+                    }
+                    // 按指定顺序重排 TabBar
+                    auto* tabBar = ui->tabWidget->tabBar();
+                    for (int desired = 0; desired < tabNames.size(); ++desired) {
+                        for (int cur = desired; cur < tabBar->count(); ++cur) {
+                            if (tabBar->tabText(cur) == tabNames[desired]) {
+                                if (cur != desired) {
+                                    tabBar->moveTab(cur, desired);
+                                }
+                                break;
+                            }
+                        }
+                    }
+                });
             }
         });
 
@@ -449,51 +494,8 @@ void MainWindow::setupControllerConnections()
 
 void MainWindow::setupTabRegistration()
 {
-    // Tab 懒加载时，统一注册到 ConfigController + 初始化依赖注入
-    connect(m_tabManager, &TabManager::tabCreated, this, [this](const QString& name, QWidget* widget) {
-        Q_UNUSED(name);
-        // 自动注册可配置 Tab
-        if (auto* configurableTab = dynamic_cast<IConfigurableTab*>(widget)) {
-            m_configController->registerTab(configurableTab);
-        }
-        // 自动执行 Tab 初始化（消除硬编码的名称判断）
-        if (auto* initializableTab = dynamic_cast<ITabInitializable*>(widget)) {
-            TabInitContext ctx;
-            ctx.profileManager = m_profileManager;
-            ctx.pipelineManager = m_pipelineManager;
-            initializableTab->initializeTab(ctx);
-        }
-
-        // "步骤"Tab的 tabsNeeded 信号 → 按指定顺序创建/重排对应Tab
-        if (auto* stepWidget = qobject_cast<StepConfigWidget*>(widget)) {
-            connect(stepWidget, &StepConfigWidget::tabsNeeded, this, [this](const QStringList& tabNames) {
-                // 1) 确保所有需要的 Tab 存在
-                bool anyNew = false;
-                for (const auto& name : tabNames) {
-                    if (!m_tabManager->isCreated(name)) {
-                        m_tabManager->ensureTab(name);
-                        anyNew = true;
-                    }
-                }
-                if (anyNew) {
-                    m_detectionUiController->setTabNames(m_tabManager->createdTabNames());
-                }
-
-                // 2) 按指定顺序重排 TabBar
-                auto* tabBar = ui->tabWidget->tabBar();
-                for (int desired = 0; desired < tabNames.size(); ++desired) {
-                    for (int cur = desired; cur < tabBar->count(); ++cur) {
-                        if (tabBar->tabText(cur) == tabNames[desired]) {
-                            if (cur != desired) {
-                                tabBar->moveTab(cur, desired);
-                            }
-                            break;
-                        }
-                    }
-                }
-            });
-        }
-    });
+    // [CLEANUP] 所有 tabCreated 处理逻辑已合并到 setupControllerConnections()
+    // 此方法保留为空，以防后续需要添加新的Tab注册逻辑
 }
 
 void MainWindow::setupResultHandler()
