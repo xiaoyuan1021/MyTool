@@ -100,11 +100,6 @@ void VideoSourceConfig::fromJson(const QJsonObject& obj) {
     blurKernelSize = obj["blurKernelSize"].toInt(3);
 }
 
-// 注意：LineDetectionConfig 和 BarcodeRecognitionConfig 的序列化
-// 已移至 pipeline_config.cpp（LineDetectConfig::toJson/fromJson 和 BarcodeConfig::toJson/fromJson）
-
-// 注意：ObjectDetectionConfig 的序列化已移至 pipeline_config.h（内联实现）
-
 // ========== VideoDetectionConfig ==========
 
 QJsonObject VideoDetectionConfig::toJson() const {

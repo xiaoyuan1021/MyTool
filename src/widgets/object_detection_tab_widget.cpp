@@ -1,4 +1,4 @@
-#include "widgets/object_detection_tab_widget.h"
+﻿#include "widgets/object_detection_tab_widget.h"
 #include "ui_object_detection_tab.h"
 #include "logger.h"
 #include "controllers/roi_ui_controller.h"
@@ -49,7 +49,7 @@ void ObjectDetectionTabWidget::setupConnections()
         [this](bool success, const QString& message) {
             m_ui->label_status->setText(message);
             if (success) {
-                qDebug() << "[ObjectDetection] model loaded, emitting detectionConfigChanged";
+                Logger::instance()->info("[ObjectDetection] model loaded, emitting detectionConfigChanged");
                 emit detectionConfigChanged();
             }
         });
@@ -95,7 +95,7 @@ void ObjectDetectionTabWidget::autoLoadDefaultModel()
 
 void ObjectDetectionTabWidget::onApplyClicked()
 {
-    qDebug() << "[ObjectDetection] apply button clicked";
+    Logger::instance()->info("[ObjectDetection] apply button clicked");
 
     QString modelPath = m_ui->lineEdit_modelPath->text().trimmed();
     if (modelPath.isEmpty()) {
@@ -105,7 +105,7 @@ void ObjectDetectionTabWidget::onApplyClicked()
 
     // 如果模型已加载且路径相同，无需重新加载
     if (m_dnnInference.isLoaded() && m_currentModelPath == modelPath) {
-        qDebug() << "[ObjectDetection] model already loaded, skip reloading";
+        Logger::instance()->info("[ObjectDetection] model already loaded, skip reloading");
         m_ui->label_status->setText("状态：模型已就绪");
         m_pipelineManager->updateConfig([this](PipelineConfig& cfg) {
             cfg.enableObjectDetection = true;
@@ -162,7 +162,7 @@ void ObjectDetectionTabWidget::onApplyClicked()
             qDebug() << "[ObjectDetection]" << msg;
         } else {
             emit modelLoadFinished(false, "状态：所有推理后端均失败");
-            qDebug() << "[ObjectDetection] all backends failed";
+            Logger::instance()->info("[ObjectDetection] all backends failed");
         }
     });
     watcher->setFuture(future);
@@ -299,7 +299,7 @@ void ObjectDetectionTabWidget::connectSignals(const SignalContext& ctx,
     connect(this, &ObjectDetectionTabWidget::detectionConfigChanged,
             this, [onExecutePipeline]() { onExecutePipeline(); });
 
-    // ★ 所有配置变化时同步到DetectionItem.config
+    // [NOTE] 所有配置变化时同步到DetectionItem.config
     auto syncToDetectionItem = [this, ctx]() {
         if (ctx.roiCtrl) {
             ctx.roiCtrl->updateObjectDetectionConfig(getDetectionConfig());

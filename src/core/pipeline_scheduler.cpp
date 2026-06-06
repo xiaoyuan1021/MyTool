@@ -1,4 +1,4 @@
-#include "pipeline_scheduler.h"
+﻿#include "pipeline_scheduler.h"
 #include "pipeline_manager.h"
 #include "logger.h"
 #include <QElapsedTimer>
@@ -146,7 +146,7 @@ void PipelineScheduler::processNext()
 {
     // 如果正在执行，等待完成
     if (m_processing.loadAcquire()) {
-        qDebug() << "[PipelineScheduler] 正在执行，等待完成";
+        Logger::instance()->info("[PipelineScheduler] 正在执行，等待完成");
         return;
     }
 

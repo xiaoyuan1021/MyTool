@@ -1,4 +1,4 @@
-#include "pipeline_result_handler.h"
+﻿#include "pipeline_result_handler.h"
 #include "algorithm/image_utils.h"
 #include "algorithm/display_renderer.h"
 #include "widgets/i_tab_interfaces.h"
@@ -32,7 +32,7 @@ void PipelineResultHandler::onPipelineResult(const PipelineResult& result)
         cv::Mat displayImage = DisplayRenderer::render(
             ctx, m_pipelineManager->getDisplayMode());
 
-        // ★ 将结果存入per-ROI缓存
+        // [NOTE] 将结果存入per-ROI缓存
         if (m_roiManager) {
             QString activeRoiId = m_roiManager->getActiveRoiId();
             if (!activeRoiId.isEmpty()) {
@@ -44,7 +44,7 @@ void PipelineResultHandler::onPipelineResult(const PipelineResult& result)
         distributeResults(ctx);
 
         // 目标检测特殊处理（不走 Pipeline），单独计时
-        // ★ 传入 ctx.srcBgr 作为检测源图像，避免异步竞态导致检测跑在错误的图片上
+        // [NOTE] 传入 ctx.srcBgr 作为检测源图像，避免异步竞态导致检测跑在错误的图片上
         double pipelineMs = result.elapsedMs();
         double detectionMs = 0;
         {
@@ -62,15 +62,13 @@ void PipelineResultHandler::onPipelineResult(const PipelineResult& result)
         QString msg = QString("处理完成 (%1 ms)").arg(totalMs, 0, 'f', 1);
         emit statusMessage(msg, 2000);
     } catch (const cv::Exception& ex) {
-        qDebug() << "[PipelineResult] OpenCV错误:" << ex.what();
-        Logger::instance()->error(QString("Pipeline结果处理错误: %1").arg(ex.what()));
+Logger::instance()->error(QString("Pipeline结果处理错误: %1").arg(ex.what()));
         emit statusMessage("处理失败", 3000);
     } catch (const std::exception& ex) {
-        qDebug() << "[PipelineResult] 标准异常:" << ex.what();
-        Logger::instance()->error(QString("Pipeline结果处理异常: %1").arg(ex.what()));
+Logger::instance()->error(QString("Pipeline结果处理异常: %1").arg(ex.what()));
         emit statusMessage("处理失败", 3000);
     } catch (...) {
-        qDebug() << "[PipelineResult] 未知异常";
+        Logger::instance()->info("[PipelineResult] 未知异常");
         Logger::instance()->error("Pipeline结果处理未知异常");
         emit statusMessage("处理失败", 3000);
     }
@@ -102,7 +100,7 @@ void PipelineResultHandler::handleObjectDetection(cv::Mat& displayImage, const c
     if (!m_pipelineManager->getConfigSnapshot().enableObjectDetection) return;
 
     if (auto* objTab = m_tabManager->getTabAs<ObjectDetectionTabWidget>("目标检测"); objTab && objTab->isModelLoaded()) {
-        // ★ 使用 Pipeline 实际处理的源图像进行检测，而不是 m_roiManager->getCurrentImage()
+        // [NOTE] 使用 Pipeline 实际处理的源图像进行检测，而不是 m_roiManager->getCurrentImage()
         // 避免异步 Pipeline 执行期间用户切换图片，导致检测跑在错误的图片上
         cv::Mat detectImage = pipelineSource;
         if (!detectImage.empty()) {
@@ -146,10 +144,9 @@ void PipelineResultHandler::drawDetectionResults(cv::Mat& image, const std::vect
                 cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 0, 0), 2);
         }
     } catch (const cv::Exception& ex) {
-        qDebug() << "[DrawResults] OpenCV错误:" << ex.what();
-        Logger::instance()->error(QString("绘制检测结果错误: %1").arg(ex.what()));
+Logger::instance()->error(QString("绘制检测结果错误: %1").arg(ex.what()));
     } catch (...) {
-        qDebug() << "[DrawResults] 未知异常";
+        Logger::instance()->info("[DrawResults] 未知异常");
         Logger::instance()->error("绘制检测结果未知异常");
     }
 }

@@ -1,4 +1,4 @@
-#include "pipeline_steps.h"
+﻿#include "pipeline_steps.h"
 #include "opencv_algorithm.h"
 #include "logger.h"
 #include <opencv2/line_descriptor.hpp>
@@ -34,17 +34,15 @@ void StepColorChannel::run(PipelineContext &ctx)
         }
         ctx.visualBase = ctx.channelImg;
     } catch (const cv::Exception& ex) {
-        qDebug() << "[ColorChannel] OpenCV错误:" << ex.what();
-        Logger::instance()->error(QString("ColorChannel OpenCV错误: %1").arg(ex.what()));
+Logger::instance()->error(QString("ColorChannel OpenCV错误: %1").arg(ex.what()));
         ctx.channelImg = ctx.srcBgr;
         ctx.visualBase = ctx.channelImg;
     } catch (const std::exception& e) {
-        qDebug() << "[ColorChannel] 异常:" << e.what();
-        Logger::instance()->error(QString("ColorChannel 异常: %1").arg(e.what()));
+Logger::instance()->error(QString("ColorChannel 异常: %1").arg(e.what()));
         ctx.channelImg = ctx.srcBgr;
         ctx.visualBase = ctx.channelImg;
     } catch (...) {
-        qDebug() << "[ColorChannel] 未知异常";
+        Logger::instance()->info("[ColorChannel] 未知异常");
         Logger::instance()->error("ColorChannel 未知异常");
         ctx.channelImg = ctx.srcBgr;
         ctx.visualBase = ctx.channelImg;
@@ -69,12 +67,11 @@ void StepEnhance::run(PipelineContext& ctx)
                 );
             ctx.visualBase = ctx.enhanced;
         } catch (const cv::Exception& ex) {
-            qDebug() << "[Enhance] OpenCV错误:" << ex.what();
-    Logger::instance()->error(QString("Enhance OpenCV错误: %1").arg(ex.what()));
+Logger::instance()->error(QString("Enhance OpenCV错误: %1").arg(ex.what()));
             ctx.enhanced = ctx.channelImg;
             ctx.visualBase = ctx.enhanced;
         } catch (...) {
-            qDebug() << "[Enhance] 未知异常";
+            Logger::instance()->info("[Enhance] 未知异常");
     Logger::instance()->error(QString("Enhance 未知异常"));
             ctx.enhanced = ctx.channelImg;
             ctx.visualBase = ctx.enhanced;
@@ -149,17 +146,15 @@ void StepFilter::run(PipelineContext& ctx)
             break;
         }
     } catch (const cv::Exception& ex) {
-        qDebug() << "[StepFilter] OpenCV错误:" << ex.what();
-        Logger::instance()->error(QString("StepFilter OpenCV错误: %1").arg(ex.what()));
+Logger::instance()->error(QString("StepFilter OpenCV错误: %1").arg(ex.what()));
         ctx.filterMask.release();
         ctx.reason = "过滤失败";
     } catch (const std::exception& e) {
-        qDebug() << "[StepFilter] 异常:" << e.what();
-        Logger::instance()->error(QString("StepFilter 异常: %1").arg(e.what()));
+Logger::instance()->error(QString("StepFilter 异常: %1").arg(e.what()));
         ctx.filterMask.release();
         ctx.reason = QString("过滤失败: %1").arg(e.what());
     } catch (...) {
-        qDebug() << "[StepFilter] 未知异常";
+        Logger::instance()->info("[StepFilter] 未知异常");
         Logger::instance()->error("StepFilter 未知异常");
         ctx.filterMask.release();
         ctx.reason = "过滤失败: 未知异常";
@@ -208,11 +203,10 @@ void StepAlgorithmQueue::run(PipelineContext& ctx)
                                  .arg(m_algorithmQueue->size());
             }
         } catch (const cv::Exception& ex) {
-            qDebug() << "[AlgorithmQueue] OpenCV错误:" << ex.what();
-    Logger::instance()->error(QString("AlgorithmQueue OpenCV错误: %1").arg(ex.what()));
+Logger::instance()->error(QString("AlgorithmQueue OpenCV错误: %1").arg(ex.what()));
             ctx.reason = "算法队列执行失败";
         } catch (...) {
-            qDebug() << "[AlgorithmQueue] 未知异常";
+            Logger::instance()->info("[AlgorithmQueue] 未知异常");
     Logger::instance()->error(QString("AlgorithmQueue 未知异常"));
             ctx.reason = "算法队列执行失败";
         }
@@ -248,7 +242,7 @@ void StepShapeFilter::run(PipelineContext& ctx)
             cv::Mat labels, stats, centroids;
             int numBefore = cv::connectedComponentsWithStats(binary, labels, stats, centroids, 8) - 1;
 
-            qDebug() << "========== 形状筛选 ==========";
+            Logger::instance()->info("========== 形状筛选 ==========");
             qDebug() << "筛选模式:" << getFilterModeName(filter.mode);
             qDebug() << "筛选前区域数量:" << numBefore;
 
@@ -258,7 +252,7 @@ void StepShapeFilter::run(PipelineContext& ctx)
             int numAfter = cv::connectedComponentsWithStats(filteredRegion, filteredLabels, filteredStats, filteredCentroids, 8) - 1;
 
             qDebug() << "筛选后区域数量:" << numAfter;
-            qDebug() << "==============================";
+            Logger::instance()->info("==============================");
 
             ctx.regionCount = numAfter;
 
@@ -272,8 +266,7 @@ void StepShapeFilter::run(PipelineContext& ctx)
         }
         catch (const cv::Exception& ex)
         {
-            qDebug() << "[ShapeFilter] OpenCV错误:" << ex.what();
-    Logger::instance()->error(QString("ShapeFilter OpenCV错误: %1").arg(ex.what()));
+Logger::instance()->error(QString("ShapeFilter OpenCV错误: %1").arg(ex.what()));
             ctx.reason = "形状筛选失败";
         }
     }
@@ -295,7 +288,7 @@ cv::Mat StepShapeFilter::applyFilterAnd(const cv::Mat& regions, const ShapeFilte
         {
             if (!cond.isValid()) continue;
 
-            qDebug() << QString("  应用条件: %1").arg(cond.toString());
+            Logger::instance()->info(QString("  应用条件: %1").arg(cond.toString()));
 
             result = OpenCVAlgorithm::selectShapeByFeature(
                 result,
@@ -306,7 +299,7 @@ cv::Mat StepShapeFilter::applyFilterAnd(const cv::Mat& regions, const ShapeFilte
 
             cv::Mat labels, stats, centroids;
             int count = cv::connectedComponentsWithStats(result, labels, stats, centroids, 8) - 1;
-            qDebug() << QString("    剩余区域: %1").arg(count);
+            Logger::instance()->info(QString("    剩余区域: %1").arg(count));
         }
 
         return result;
@@ -321,7 +314,7 @@ cv::Mat StepShapeFilter::applyFilterOr(const cv::Mat& regions, const ShapeFilter
         {
             if (!cond.isValid()) continue;
 
-            qDebug() << QString("  应用条件: %1").arg(cond.toString());
+            Logger::instance()->info(QString("  应用条件: %1").arg(cond.toString()));
 
             cv::Mat singleResult = OpenCVAlgorithm::selectShapeByFeature(
                 regions,
@@ -332,7 +325,7 @@ cv::Mat StepShapeFilter::applyFilterOr(const cv::Mat& regions, const ShapeFilter
 
             cv::Mat labels, stats, centroids;
             int count = cv::connectedComponentsWithStats(singleResult, labels, stats, centroids, 8) - 1;
-            qDebug() << QString("    该条件匹配区域: %1").arg(count);
+            Logger::instance()->info(QString("    该条件匹配区域: %1").arg(count));
 
             if (!hasResult) {
                 result = singleResult;
@@ -361,10 +354,9 @@ static void detectLinesHoughP(const cv::Mat& edges, const PipelineConfig* cfg, s
 
         qDebug() << "[HoughP] 检测到" << lines.size() << "条直线";
     } catch (const cv::Exception& ex) {
-        qDebug() << "[HoughP] OpenCV错误:" << ex.what();
-    Logger::instance()->error(QString("HoughP OpenCV错误: %1").arg(ex.what()));
+Logger::instance()->error(QString("HoughP OpenCV错误: %1").arg(ex.what()));
     } catch (...) {
-        qDebug() << "[HoughP] 未知异常";
+        Logger::instance()->info("[HoughP] 未知异常");
     Logger::instance()->error(QString("HoughP 未知异常"));
     }
 }
@@ -386,10 +378,9 @@ static void detectLinesLSD(const cv::Mat& src, std::vector<cv::Vec4f>& lines)
             }
         }
     } catch (const cv::Exception& ex) {
-        qDebug() << "[LSD] OpenCV错误:" << ex.what();
-    Logger::instance()->error(QString("LSD OpenCV错误: %1").arg(ex.what()));
+Logger::instance()->error(QString("LSD OpenCV错误: %1").arg(ex.what()));
     } catch (...) {
-        qDebug() << "[LSD] 未知异常";
+        Logger::instance()->info("[LSD] 未知异常");
     Logger::instance()->error(QString("LSD 未知异常"));
     }
 }
@@ -412,10 +403,9 @@ static void detectLinesEDlines(const cv::Mat& src, std::vector<cv::Vec4f>& lines
             }
         }
     } catch (const cv::Exception& ex) {
-        qDebug() << "[EDlines] OpenCV错误:" << ex.what();
-    Logger::instance()->error(QString("EDlines OpenCV错误: %1").arg(ex.what()));
+Logger::instance()->error(QString("EDlines OpenCV错误: %1").arg(ex.what()));
     } catch (...) {
-        qDebug() << "[EDlines] 未知异常";
+        Logger::instance()->info("[EDlines] 未知异常");
     Logger::instance()->error(QString("EDlines 未知异常"));
     }
 }
@@ -473,11 +463,10 @@ void StepLineDetector::runLineDetect(PipelineContext& ctx)
 
         ctx.totalLineCount = static_cast<int>(lines.size());
     } catch (const cv::Exception& ex) {
-        qDebug() << "[LineDetector] OpenCV错误:" << ex.what();
-        Logger::instance()->error(QString("LineDetector OpenCV错误: %1").arg(ex.what()));
+Logger::instance()->error(QString("LineDetector OpenCV错误: %1").arg(ex.what()));
         ctx.reason = "直线检测失败";
     } catch (...) {
-        qDebug() << "[LineDetector] 未知异常";
+        Logger::instance()->info("[LineDetector] 未知异常");
         Logger::instance()->error("LineDetector 未知异常");
         ctx.reason = "直线检测失败";
     }
@@ -670,11 +659,10 @@ void StepLineDetector::runReferenceLineMatch(PipelineContext& ctx)
 
         qDebug() << "[LineDetector:ReferenceLineMatch]" << ctx.reason;
     } catch (const cv::Exception& ex) {
-        qDebug() << "[LineDetector:ReferenceLineMatch] OpenCV错误:" << ex.what();
-        Logger::instance()->error(QString("LineDetector:ReferenceLineMatch OpenCV错误: %1").arg(ex.what()));
+Logger::instance()->error(QString("LineDetector:ReferenceLineMatch OpenCV错误: %1").arg(ex.what()));
         ctx.reason = "参考线匹配失败";
     } catch (...) {
-        qDebug() << "[LineDetector:ReferenceLineMatch] 未知异常";
+        Logger::instance()->info("[LineDetector:ReferenceLineMatch] 未知异常");
         Logger::instance()->error("LineDetector:ReferenceLineMatch 未知异常");
         ctx.reason = "参考线匹配失败";
     }

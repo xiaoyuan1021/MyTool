@@ -8,6 +8,10 @@
 #include "config/json_serializable.h"
 #include "config/pipeline_config.h"
 
+// 向后兼容别名（detection_item.h 中使用旧名称）
+using LineDetectionConfig = LineDetectConfig;
+using BarcodeRecognitionConfig = BarcodeConfig;
+
 /**
  * @brief 检测项（DetectionItem）专用配置类型定义
  * 
@@ -95,11 +99,6 @@ struct VideoSourceConfig {
     QJsonObject toJson() const;
     void fromJson(const QJsonObject& obj);
 };
-
-// 注意：LineDetectionConfig 和 BarcodeRecognitionConfig 已合并到 pipeline_config.h
-// 分别为 LineDetectConfig 和 BarcodeConfig 的别名
-
-// 注意：ObjectDetectionConfig 已合并到 pipeline_config.h
 
 /**
  * @brief 视频检测配置参数（视频源 + 目标检测）

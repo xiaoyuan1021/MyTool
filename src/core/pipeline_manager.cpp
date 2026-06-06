@@ -1,4 +1,4 @@
-#include "pipeline_manager.h"
+﻿#include "pipeline_manager.h"
 #include "image_processor.h"
 #include "barcode_step.h"
 #include "ocr_step.h"
@@ -30,7 +30,7 @@ PipelineManager::~PipelineManager() = default;
 void PipelineManager::resetConfigToDefaults()
 {
     m_config.resetToDefaults();
-    qDebug() << "[PipelineManager] resetConfigToDefaults";
+    Logger::instance()->info("[PipelineManager] resetConfigToDefaults");
 }
 
 // ========== 算法队列管理 ==========
@@ -101,14 +101,13 @@ PipelineContext PipelineManager::execute(const cv::Mat& inputImage, const Pipeli
             m_pipeline.run(ctx);
         }
     } catch (const std::exception& ex) {
-        qDebug() << "[PipelineManager] Pipeline执行异常:" << ex.what();
-        Logger::instance()->error(QString("Pipeline执行异常: %1").arg(ex.what()));
+Logger::instance()->error(QString("Pipeline执行异常: %1").arg(ex.what()));
         m_algorithmQueue = savedAlgorithmQueue;
         m_config.shapeFilter = savedShapeFilter;
         m_pipelineRunning.storeRelease(0);
         return PipelineContext();
     } catch (...) {
-        qDebug() << "[PipelineManager] Pipeline执行未知异常";
+        Logger::instance()->info("[PipelineManager] Pipeline执行未知异常");
         Logger::instance()->error("Pipeline执行未知异常");
         m_algorithmQueue = savedAlgorithmQueue;
         m_config.shapeFilter = savedShapeFilter;

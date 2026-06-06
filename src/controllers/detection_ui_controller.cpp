@@ -1,4 +1,4 @@
-#include "controllers/detection_ui_controller.h"
+﻿#include "controllers/detection_ui_controller.h"
 #include "controllers/roi_ui_controller.h"
 #include "config/detection_config_types.h"
 #include "logger.h"
@@ -182,7 +182,7 @@ void DetectionUiController::onDetectionItemSelected(const QString& roiId, const 
         // 重建Pipeline
         pipelineManager->rebuildPipeline();
 
-        // ★ 关键修复：将更新后的stepEnabled回写到ROI的pipelineConfig
+        // [FIX]：将更新后的stepEnabled回写到ROI的pipelineConfig
         // 否则图片切换时loadRoiPipelineConfig会用旧配置覆盖
         roi->pipelineConfig = pipelineManager->getConfigSnapshot();
 
@@ -198,7 +198,7 @@ void DetectionUiController::onDetectionItemSelected(const QString& roiId, const 
             }
         }
 
-        // ★ 将检测项的独立配置同步到Pipeline全局配置，并更新Tab UI
+        // [NOTE] 将检测项的独立配置同步到Pipeline全局配置，并更新Tab UI
         if (detection.type == DetectionType::Barcode) {
             BarcodeConfig barcodeCfg;
             barcodeCfg.fromJson(detection.config);
@@ -232,7 +232,7 @@ void DetectionUiController::onDetectionItemSelected(const QString& roiId, const 
             });
         }
 
-        // ★ 目标检测：从DetectionItem.config恢复配置到Tab UI
+        // [NOTE] 目标检测：从DetectionItem.config恢复配置到Tab UI
         if (detection.type == DetectionType::ObjectDetection) {
             ObjectDetectionConfig objCfg;
             objCfg.fromJson(detection.config);

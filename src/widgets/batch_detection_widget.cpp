@@ -1,4 +1,4 @@
-#include "batch_detection_widget.h"
+﻿#include "batch_detection_widget.h"
 #include "ui_batch_detection_tab.h"
 #include "roi_manager.h"
 #include "core/pipeline_manager.h"
@@ -314,12 +314,12 @@ void BatchDetectionWidget::processNextImage()
                     cv::Mat roiImage = image(roiRect).clone();
                     PipelineContext ctx = pipelinePtr->execute(roiImage, roiConfig.pipelineConfig);
 
-                    // ★ 使用DetectionEvaluator评估该ROI的所有检测项（与auto_detection_controller一致）
+                    // [NOTE] 使用DetectionEvaluator评估该ROI的所有检测项（与auto_detection_controller一致）
                     RoiDetectionResult roiResult = DetectionEvaluator::evaluateRoi(
                         roiConfig, ctx, roiImage, nullptr);
                     roiResult.imageId = imageId;
 
-                    // ★ 关键修改：将ROI检测结果添加到图片级别的检测结果中
+                    // [NOTE] 关键修改：将ROI检测结果添加到图片级别的检测结果中
                     imageResult.addRoiResult(roiResult);
                 }
 
@@ -347,7 +347,7 @@ void BatchDetectionWidget::processNextImage()
             item.passed = imageResult.passed;
             item.statusText = imageResult.passed ? "PASS" : QString("FAIL: %1").arg(imageResult.failReason);
 
-            // ★ 为每个ROI生成独立的检测报告
+            // [NOTE] 为每个ROI生成独立的检测报告
             for (const auto& roiResult : imageResult.roiResults) {
                 DetectionResultReport report;
                 report.imageId = imageId;
@@ -380,7 +380,7 @@ void BatchDetectionWidget::processNextImage()
             m_ui->tableWidget_results->setItem(row, 2,
                 new QTableWidgetItem(imageResult.passed ? "✅ PASS" : "❌ FAIL"));
 
-            // ★ 关键修改：显示每个ROI的独立结果
+            // [NOTE] 关键修改：显示每个ROI的独立结果
             QString detail;
             for (const auto& roiResult : imageResult.roiResults) {
                 if (!detail.isEmpty()) detail += "\n";
@@ -415,7 +415,7 @@ void BatchDetectionWidget::processNextImage()
 
             emit imageResultReady(idx, imageName, imageResult.passed);
 
-            // ★ 关键修改：记录日志，显示每个ROI的独立结果
+            // [NOTE] 关键修改：记录日志，显示每个ROI的独立结果
             QString roiSummary;
             for (const auto& roiResult : imageResult.roiResults) {
                 if (!roiResult.passed) {

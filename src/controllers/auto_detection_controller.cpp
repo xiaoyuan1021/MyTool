@@ -1,4 +1,4 @@
-#include "controllers/auto_detection_controller.h"
+﻿#include "controllers/auto_detection_controller.h"
 #include "logger.h"
 #include "utils/path_utils.h"
 #include "config/detection_config_types.h"
@@ -221,7 +221,7 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
 
                 PipelineContext ctx = pipelinePtr->execute(roiImage, roiConfig.pipelineConfig);
 
-                // ★ 使用DetectionEvaluator评估该ROI的所有检测项
+                // [NOTE] 使用DetectionEvaluator评估该ROI的所有检测项
                 RoiDetectionResult roiResult = DetectionEvaluator::evaluateRoi(
                     roiConfig, ctx, roiImage, tabMgrPtr);
                 roiResult.imageId = imageId;
@@ -263,7 +263,7 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
                 m_failedImages.append(task.imagePath);
             }
 
-            // ★ 生成检测报告，包含每个ROI的检测项结果
+            // [NOTE] 生成检测报告，包含每个ROI的检测项结果
             DetectionResultReport report;
             report.imageId = task.imageId;
             report.imageName = task.imageName;
@@ -289,7 +289,7 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
             emit progressUpdated(currentIndex + 1, totalCount);
             emit statsUpdated(m_stats);
 
-            // ★ 关键修改：记录日志，显示每个ROI的独立结果
+            // [NOTE] 关键修改：记录日志，显示每个ROI的独立结果
             QString status = passed ? "PASS" : "FAIL";
             QString roiSummary;
             for (const auto& roiResult : imageResult.roiResults) {

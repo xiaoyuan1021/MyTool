@@ -1,4 +1,4 @@
-#include "roi_manager.h"
+﻿#include "roi_manager.h"
 #include "logger.h"
 #include "image_view.h"
 #include "algorithm/image_utils.h"
@@ -64,7 +64,7 @@ QString RoiManager::addImage(const cv::Mat &img, const QString &name)
 QString RoiManager::addImage(const cv::Mat &img, const QString &name, const QString &filePath)
 {
     if (img.empty()) {
-        qDebug() << "[RoiManager] 图像为空，无法添加";
+        Logger::instance()->info("[RoiManager] 图像为空，无法添加");
         return QString();
     }
 
@@ -91,11 +91,11 @@ QString RoiManager::addImage(const cv::Mat &img, const QString &name, const QStr
 bool RoiManager::switchToImage(const QString &imageId)
 {
     if (!m_imageRoisMap.contains(imageId)) {
-        qDebug() << "[RoiManager] 图片不存在:" << imageId;
+        Logger::instance()->info(QString("[RoiManager] 图片不存在: %1").arg(imageId));
         return false;
     }
 
-    // ★ 关键修复：在切换m_currentImageId之前发射信号，让调用方保存旧图片的ROI配置
+    // [FIX]：在切换m_currentImageId之前发射信号，让调用方保存旧图片的ROI配置
     if (m_currentImageId != imageId) {
         emit imageSwitching(m_currentImageId, imageId);
     }
@@ -268,20 +268,20 @@ bool RoiManager::setRoi(const QRectF &roiRectF)
 {
     auto it = m_imageRoisMap.find(m_currentImageId);
     if (it == m_imageRoisMap.end()) {
-        qDebug() << "[RoiManager] 没有当前图片";
+        Logger::instance()->info("[RoiManager] 没有当前图片");
         return false;
     }
 
     ImageRois& imageRois = it.value();
     if (imageRois.image.empty()) {
-        qDebug() << "[RoiManager] 完整图像为空";
+        Logger::instance()->info("[RoiManager] 完整图像为空");
         return false;
     }
 
     // 转换并验证ROI区域
     cv::Rect r = ImageUtils::mapRoiToCvRect(roiRectF, imageRois.image.cols, imageRois.image.rows);
     if (r.empty()) {
-        qDebug() << "[RoiManager] ROI区域无效";
+        Logger::instance()->info("[RoiManager] ROI区域无效");
         return false;
     }
     int x = r.x, y = r.y, w = r.width, h = r.height;
@@ -365,7 +365,7 @@ void RoiManager::addRoiConfig(const RoiConfig& config)
 {
     auto it = m_imageRoisMap.find(m_currentImageId);
     if (it == m_imageRoisMap.end()) {
-        qDebug() << "[RoiManager] 没有当前图片，无法添加ROI配置";
+        Logger::instance()->info("[RoiManager] 没有当前图片，无法添加ROI配置");
         return;
     }
 

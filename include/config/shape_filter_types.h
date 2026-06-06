@@ -137,6 +137,9 @@ enum class ShapeFilterLogicMode
     Or    // 满足任意条件（逻辑或）
 };
 
+// 向后兼容的别名
+using FilterMode = ShapeFilterLogicMode;
+
 /**
  * 获取筛选模式名称
  */
@@ -275,6 +278,3 @@ struct ShapeFilterConfig
         }
     }
 };
-
-// 向后兼容的别名
-using FilterMode = ShapeFilterLogicMode;

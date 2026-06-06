@@ -1,4 +1,4 @@
-#include "system_monitor.h"
+﻿#include "system_monitor.h"
 #include "logger.h"
 #include <QDebug>
 #include <algorithm>
@@ -62,7 +62,7 @@ void SystemMonitor::setLabels(QLabel* cpuLabel, QLabel* memoryLabel)
 void SystemMonitor::setUpdateInterval(int intervalMs)
 {
     if (intervalMs < 100) {
-        qDebug() << "[SystemMonitor] 更新间隔过小，调整为 100ms";
+        Logger::instance()->info("[SystemMonitor] 更新间隔过小，调整为 100ms");
         intervalMs = 100;
     }
 
@@ -194,7 +194,7 @@ void SystemMonitor::initPlatformResources()
     if (status == ERROR_SUCCESS) {
         PdhCollectQueryData(m_pdhQuery);
         m_pdhInitialized = true;
-        qDebug() << "[SystemMonitor] PDH CPU counter initialized successfully";
+        Logger::instance()->info("[SystemMonitor] PDH CPU counter initialized successfully");
     } else {
         qDebug() << "[SystemMonitor] PdhAddEnglishCounter failed:" << status;
     }
@@ -238,7 +238,7 @@ double SystemMonitor::getMemoryUsage(double& usedMB, double& totalMB)
     memInfo.dwLength = sizeof(MEMORYSTATUSEX);
 
     if (!GlobalMemoryStatusEx(&memInfo)) {
-        qDebug() << "[SystemMonitor] GlobalMemoryStatusEx 失败";
+        Logger::instance()->info("[SystemMonitor] GlobalMemoryStatusEx 失败");
         usedMB = 0.0;
         totalMB = 0.0;
         return 0.0;
@@ -267,7 +267,7 @@ void SystemMonitor::initPlatformResources()
     m_lastTotalTime = 0;
     m_lastIdleTime = 0;
 
-    qDebug() << "[SystemMonitor] Linux /proc 初始化成功";
+    Logger::instance()->info("[SystemMonitor] Linux /proc 初始化成功");
 }
 
 void SystemMonitor::cleanupPlatformResources()
@@ -287,7 +287,7 @@ double SystemMonitor::getCpuUsage()
 
     std::ifstream file("/proc/stat");
     if (!file.is_open()) {
-        qDebug() << "[SystemMonitor] 无法打开 /proc/stat";
+        Logger::instance()->info("[SystemMonitor] 无法打开 /proc/stat");
         return 0.0;
     }
 
@@ -344,7 +344,7 @@ double SystemMonitor::getMemoryUsage(double& usedMB, double& totalMB)
 
     std::ifstream file("/proc/meminfo");
     if (!file.is_open()) {
-        qDebug() << "[SystemMonitor] 无法打开 /proc/meminfo";
+        Logger::instance()->info("[SystemMonitor] 无法打开 /proc/meminfo");
         usedMB = 0.0;
         totalMB = 0.0;
         return 0.0;
@@ -392,7 +392,7 @@ double SystemMonitor::getMemoryUsage(double& usedMB, double& totalMB)
 
 void SystemMonitor::initPlatformResources()
 {
-    qDebug() << "[SystemMonitor] MacOS 平台暂未实现";
+    Logger::instance()->info("[SystemMonitor] MacOS 平台暂未实现");
 }
 
 void SystemMonitor::cleanupPlatformResources()

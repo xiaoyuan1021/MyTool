@@ -1,4 +1,4 @@
-#include "widgets/barcode_tab_widget.h"
+﻿#include "widgets/barcode_tab_widget.h"
 #include "ui_barcode_tab.h"
 #include "config/config_manager.h"
 #include "controllers/roi_ui_controller.h"
@@ -193,7 +193,7 @@ void BarcodeTabWidget::connectSignals(const SignalContext& ctx,
 {
     Q_UNUSED(onConfigSaved);
 
-    // ★ 条码配置变化时同步到DetectionItem.config
+    // [NOTE] 条码配置变化时同步到DetectionItem.config
     auto syncToDetectionItem = [this, ctx]() {
         if (ctx.roiCtrl) {
             ctx.roiCtrl->updateBarcodeDetectionConfig(getBarcodeConfig());

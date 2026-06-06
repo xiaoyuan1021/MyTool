@@ -1,7 +1,8 @@
-#include "display_mode_manager.h"
+﻿#include "display_mode_manager.h"
 #include "core/pipeline_manager.h"
 #include "ui/image_view.h"
 #include "widgets/tab_registry.h"
+#include "logger.h"
 
 #include <QTabWidget>
 
@@ -61,7 +62,7 @@ void DisplayModeManager::applyModeForCurrentTab()
 bool DisplayModeManager::displayCurrentResult()
 {
     if (!m_pipelineManager->hasLastResult()) {
-        qDebug() << "[DisplayMode] displayCurrentResult: 无缓存结果，需触发Pipeline";
+        Logger::instance()->info("[DisplayMode] displayCurrentResult: 无缓存结果，需触发Pipeline");
         return false;  // 需要触发完整Pipeline处理
     }
     DisplayConfig::Mode mode = getModeForTab(m_tabWidget->currentIndex());

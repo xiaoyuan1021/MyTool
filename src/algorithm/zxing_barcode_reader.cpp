@@ -1,4 +1,5 @@
-#include "zxing_barcode_reader.h"
+﻿#include "zxing_barcode_reader.h"
+#include "logger.h"
 #include <QDebug>
 #include <ReadBarcode.h>
 #include <ImageView.h>
@@ -43,7 +44,7 @@ QVector<ZXingBarcodeResult> ZXingBarcodeReader::readBarcodes(const cv::Mat& imag
 {
     if (image.empty())
     {
-        qDebug() << "[ZXing] 输入图像为空";
+        Logger::instance()->info("[ZXing] 输入图像为空");
         return {};
     }
 
@@ -72,7 +73,7 @@ QVector<ZXingBarcodeResult> ZXingBarcodeReader::decodeImage(const cv::Mat& gray)
 
     if (gray.empty() || gray.type() != CV_8UC1)
     {
-        qDebug() << "[ZXing] 图像格式错误，需要8位灰度图";
+        Logger::instance()->info("[ZXing] 图像格式错误，需要8位灰度图");
         return results;
     }
 
@@ -154,8 +155,7 @@ QVector<ZXingBarcodeResult> ZXingBarcodeReader::decodeImage(const cv::Mat& gray)
 
             auto position = barcode.position();
 
-            qDebug() << "[ZXing] corners:"
-                     << "TL=" << position.topLeft().x << "," << position.topLeft().y
+            qDebug() << "[ZXing] corners:" << "TL=" << position.topLeft().x << "," << position.topLeft().y
                      << "TR=" << position.topRight().x << "," << position.topRight().y
                      << "BR=" << position.bottomRight().x << "," << position.bottomRight().y
                      << "BL=" << position.bottomLeft().x << "," << position.bottomLeft().y
@@ -212,15 +212,14 @@ QVector<ZXingBarcodeResult> ZXingBarcodeReader::decodeImage(const cv::Mat& gray)
 
             results.append(result);
 
-            qDebug() << "[ZXing] 识别到条码:"
-                     << result.type
+            qDebug() << "[ZXing] 识别到条码:" << result.type
                      << "数据:"
                      << result.data;
         }
 
         if (results.isEmpty())
         {
-            qDebug() << "[ZXing] 未识别到条码";
+            Logger::instance()->info("[ZXing] 未识别到条码");
         }
     }
     catch (const std::exception& ex)
@@ -229,7 +228,7 @@ QVector<ZXingBarcodeResult> ZXingBarcodeReader::decodeImage(const cv::Mat& gray)
     }
     catch (...)
     {
-        qDebug() << "[ZXing] 未知异常";
+        Logger::instance()->info("[ZXing] 未知异常");
     }
 
     return results;

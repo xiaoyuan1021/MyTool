@@ -1,4 +1,4 @@
-#include "image_utils.h"
+﻿#include "image_utils.h"
 #include "logger.h"
 #include <QDebug>
 
@@ -40,17 +40,16 @@ QImage ImageUtils::matToQImage(const cv::Mat &mat)
             result = image;
         }
         else {
-            qDebug() << "Unsupported Mat type in matToQImage(): " << mat.type();
+            Logger::instance()->info(QString("Unsupported Mat type in matToQImage(): %1").arg(mat.type()));
             return QImage();
         }
 
         return result;
     } catch (const cv::Exception& ex) {
-        qDebug() << "[matToQImage] OpenCV错误:" << ex.what();
-        Logger::instance()->error(QString("Mat转QImage错误: %1").arg(ex.what()));
+Logger::instance()->error(QString("Mat转QImage错误: %1").arg(ex.what()));
         return QImage();
     } catch (...) {
-        qDebug() << "[matToQImage] 未知异常";
+        Logger::instance()->info("[matToQImage] 未知异常");
         Logger::instance()->error("Mat转QImage未知异常");
         return QImage();
     }
@@ -101,18 +100,17 @@ cv::Mat ImageUtils::qImageToMat(const QImage &image, bool clone)
 
         default:
         {
-            qDebug() << "Unsupported QImage format in qImageToMat(): " << image.format();
+            Logger::instance()->info(QString("Unsupported QImage format in qImageToMat(): %1").arg(static_cast<int>(image.format())));
             return cv::Mat();
         }
         }
 
         return clone ? mat.clone() : mat;
     } catch (const cv::Exception& ex) {
-        qDebug() << "[qImageToMat] OpenCV错误:" << ex.what();
-        Logger::instance()->error(QString("QImage转Mat错误: %1").arg(ex.what()));
+Logger::instance()->error(QString("QImage转Mat错误: %1").arg(ex.what()));
         return cv::Mat();
     } catch (...) {
-        qDebug() << "[qImageToMat] 未知异常";
+        Logger::instance()->info("[qImageToMat] 未知异常");
         Logger::instance()->error("QImage转Mat未知异常");
         return cv::Mat();
     }

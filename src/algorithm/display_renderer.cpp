@@ -1,4 +1,4 @@
-#include "display_renderer.h"
+﻿#include "display_renderer.h"
 #include "pipeline.h"
 #include "algorithm/opencv_algorithm.h"
 #include "logger.h"
@@ -124,15 +124,13 @@ cv::Mat render(const PipelineContext& ctx, DisplayConfig::Mode mode)
             return ensureBgr(ctx.visualBase);
         }
     } catch (const cv::Exception& ex) {
-        qDebug() << "[DisplayRenderer] OpenCV错误:" << ex.what();
-        Logger::instance()->error(QString("DisplayRenderer渲染错误: %1").arg(ex.what()));
+Logger::instance()->error(QString("DisplayRenderer渲染错误: %1").arg(ex.what()));
         return ctx.srcBgr.empty() ? cv::Mat() : ctx.srcBgr;
     } catch (const std::exception& e) {
-        qDebug() << "[DisplayRenderer] 异常:" << e.what();
-        Logger::instance()->error(QString("DisplayRenderer渲染异常: %1").arg(e.what()));
+Logger::instance()->error(QString("DisplayRenderer渲染异常: %1").arg(e.what()));
         return ctx.srcBgr.empty() ? cv::Mat() : ctx.srcBgr;
     } catch (...) {
-        qDebug() << "[DisplayRenderer] 未知异常";
+        Logger::instance()->info("[DisplayRenderer] 未知异常");
         Logger::instance()->error("DisplayRenderer渲染未知异常");
         return ctx.srcBgr.empty() ? cv::Mat() : ctx.srcBgr;
     }
@@ -147,7 +145,7 @@ cv::Mat overlayMaskOnImage(const cv::Mat& bgr, const cv::Mat& mask, float alpha)
 
     try {
         if (bgr.size() != mask.size()) {
-            qDebug() << "[overlayMaskOnImage] 尺寸不匹配";
+            Logger::instance()->info("[overlayMaskOnImage] 尺寸不匹配");
             return bgr;
         }
 
@@ -172,11 +170,10 @@ cv::Mat overlayMaskOnImage(const cv::Mat& bgr, const cv::Mat& mask, float alpha)
 
         return result;
     } catch (const cv::Exception& ex) {
-        qDebug() << "[overlayMaskOnImage] OpenCV错误:" << ex.what();
-        Logger::instance()->error(QString("overlayMaskOnImage错误: %1").arg(ex.what()));
+Logger::instance()->error(QString("overlayMaskOnImage错误: %1").arg(ex.what()));
         return bgr;
     } catch (...) {
-        qDebug() << "[overlayMaskOnImage] 未知异常";
+        Logger::instance()->info("[overlayMaskOnImage] 未知异常");
         Logger::instance()->error("overlayMaskOnImage未知异常");
         return bgr;
     }
@@ -216,11 +213,10 @@ cv::Mat drawBarcodeOverlay(const cv::Mat& bgr, const QVector<BarcodeResult>& bar
 
         return result;
     } catch (const cv::Exception& ex) {
-        qDebug() << "[drawBarcodeOverlay] OpenCV错误:" << ex.what();
-        Logger::instance()->error(QString("drawBarcodeOverlay错误: %1").arg(ex.what()));
+Logger::instance()->error(QString("drawBarcodeOverlay错误: %1").arg(ex.what()));
         return bgr;
     } catch (...) {
-        qDebug() << "[drawBarcodeOverlay] 未知异常";
+        Logger::instance()->info("[drawBarcodeOverlay] 未知异常");
         Logger::instance()->error("drawBarcodeOverlay未知异常");
         return bgr;
     }
@@ -292,11 +288,10 @@ cv::Mat drawOcrOverlay(const cv::Mat& bgr, const QVector<OcrRegion>& regions)
         cv::cvtColor(result, result, cv::COLOR_RGB2BGR);
         return result;
     } catch (const cv::Exception& ex) {
-        qDebug() << "[drawOcrOverlay] OpenCV错误:" << ex.what();
-        Logger::instance()->error(QString("drawOcrOverlay错误: %1").arg(ex.what()));
+Logger::instance()->error(QString("drawOcrOverlay错误: %1").arg(ex.what()));
         return bgr;
     } catch (...) {
-        qDebug() << "[drawOcrOverlay] 未知异常";
+        Logger::instance()->info("[drawOcrOverlay] 未知异常");
         Logger::instance()->error("drawOcrOverlay未知异常");
         return bgr;
     }

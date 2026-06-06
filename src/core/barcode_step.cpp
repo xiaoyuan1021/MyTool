@@ -1,4 +1,4 @@
-#include "barcode_step.h"
+﻿#include "barcode_step.h"
 #include <QDebug>
 #include <opencv2/imgproc.hpp>
 

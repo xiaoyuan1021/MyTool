@@ -1,4 +1,4 @@
-#include "roi_detection_config_dialog.h"
+﻿#include "roi_detection_config_dialog.h"
 #include <QMessageBox>
 #include <QDebug>
 #include <QIcon>

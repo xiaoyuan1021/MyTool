@@ -1,4 +1,4 @@
-#include "algorithm/detection_evaluator.h"
+﻿#include "algorithm/detection_evaluator.h"
 #include "config/detection_config_types.h"
 #include "widgets/object_detection_tab_widget.h"
 #include "widgets/tab_manager.h"
@@ -60,7 +60,7 @@ RoiDetectionResult DetectionEvaluator::evaluateRoi(
     roiResult.matchedLineCount = ctx.matchedLineCount;
     roiResult.totalLineCount = ctx.totalLineCount;
 
-    // ★ Pipeline执行失败时，直接标记ROI为FAIL，不再评估检测项
+    // [NOTE] Pipeline执行失败时，直接标记ROI为FAIL，不再评估检测项
     if (!ctx.pass) {
         DetectionItemResult pipelineItem("pipeline", "Pipeline执行", "Pipeline");
         pipelineItem.passed = false;
@@ -113,7 +113,7 @@ DetectionItemResult DetectionEvaluator::evaluateBarcode(
     const PipelineContext& ctx)
 {
     DetectionItemResult result;
-    BarcodeRecognitionConfig barcodeConfig;
+        BarcodeConfig barcodeConfig;
     barcodeConfig.fromJson(detItem.config);
 
     if (ctx.barcodeResults.isEmpty()) {
@@ -129,7 +129,7 @@ DetectionItemResult DetectionEvaluator::evaluateLine(
     const PipelineContext& ctx)
 {
     DetectionItemResult result;
-    LineDetectionConfig lineConfig;
+        LineDetectConfig lineConfig;
     lineConfig.fromJson(detItem.config);
 
     if (ctx.matchedLineCount == 0 && ctx.totalLineCount == 0) {

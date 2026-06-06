@@ -1,4 +1,4 @@
-#include "line_tab_widget.h"
+﻿#include "line_tab_widget.h"
 #include "ui_line_tab.h"
 #include "logger.h"
 #include "ui/slider_spinbox_binder.h"
@@ -391,7 +391,7 @@ void LineDetectTabWidget::connectSignals(const SignalContext& ctx,
     Q_UNUSED(onConfigSaved);
     m_onExecutePipeline = onExecutePipeline;
 
-    // ★ 直线检测配置变化时同步到DetectionItem.config
+    // [NOTE] 直线检测配置变化时同步到DetectionItem.config
     auto syncToDetectionItem = [this, ctx]() {
         if (ctx.roiCtrl) {
             ctx.roiCtrl->updateLineDetectionConfig(getLineState());

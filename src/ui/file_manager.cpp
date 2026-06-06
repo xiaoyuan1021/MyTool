@@ -1,4 +1,4 @@
-#include "file_manager.h"
+﻿#include "file_manager.h"
 #include "pipeline_manager.h"
 #include "logger.h"
 #include "utils/path_utils.h"
@@ -19,7 +19,7 @@ FileManager::~FileManager()
 
 QString FileManager::selectImageFile(const QString& defaultPath)
 {
-    // ★ 默认打开images文件夹
+    // [NOTE] 默认打开images文件夹
     QString startPath = defaultPath;
     if (startPath.isEmpty()) {
         // 优先使用项目根目录下的images文件夹
@@ -62,12 +62,10 @@ void FileManager::readImageFile(const QString& filePath)
         emit imageLoaded(img, filePath);
     } catch (const cv::Exception& ex) {
         QString msg = QString("读取图像OpenCV错误: %1").arg(ex.what());
-        qDebug() << msg;
         Logger::instance()->error(msg);
         emit errorOccurred(msg);
     } catch (const std::exception& ex) {
         QString msg = QString("读取图像异常: %1").arg(ex.what());
-        qDebug() << msg;
         Logger::instance()->error(msg);
         emit errorOccurred(msg);
     }
@@ -96,13 +94,11 @@ bool FileManager::saveImageFile(const QString& filePath, const cv::Mat& image)
         }
     } catch (const cv::Exception& ex) {
         QString msg = QString("保存图像OpenCV错误: %1").arg(ex.what());
-        qDebug() << msg;
         Logger::instance()->error(msg);
         emit errorOccurred(msg);
         return false;
     } catch (const std::exception& ex) {
         QString msg = QString("保存图像异常: %1").arg(ex.what());
-        qDebug() << msg;
         Logger::instance()->error(msg);
         emit errorOccurred(msg);
         return false;

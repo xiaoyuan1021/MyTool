@@ -1,4 +1,5 @@
-#include "pipeline.h"
+﻿#include "pipeline.h"
+#include "logger.h"
 
 // ========== Pipeline类实现 ==========
 
@@ -11,7 +12,7 @@ void Pipeline::add(std::unique_ptr<IPipelineStep> step)
     if (step) {
         steps_.push_back(std::move(step));
     } else {
-        qDebug() << "[Pipeline] 警告：尝试添加空步骤";
+        Logger::instance()->info("[Pipeline] 警告：尝试添加空步骤");
     }
 }
 
@@ -30,7 +31,7 @@ bool Pipeline::remove(int index)
 void Pipeline::clear()
 {
     steps_.clear();
-    qDebug() << "[Pipeline] 已清空所有步骤";
+    Logger::instance()->info("[Pipeline] 已清空所有步骤");
 }
 
 size_t Pipeline::size() const
@@ -77,7 +78,7 @@ IPipelineStep* Pipeline::getStep(int index)
 void Pipeline::run(PipelineContext& ctx)
 {
     if (steps_.empty()) {
-        qDebug() << "[Pipeline] 警告：没有步骤可执行";
+        Logger::instance()->info("[Pipeline] 警告：没有步骤可执行");
         return;
     }
 

@@ -63,6 +63,7 @@ set(HEADERS
     include/core/roi_manager.h
     include/core/video_manager.h
     include/core/barcode_step.h
+    include/core/i_pipeline_access.h
     # algorithm
     include/algorithm/dnn_inference.h
     include/algorithm/detection_evaluator.h
@@ -87,6 +88,15 @@ set(HEADERS
     include/config/roi_config.h
     include/config/shape_filter_types.h
     include/config/tab_config.h
+    # config (独立配置头文件)
+    include/config/enhance_config.h
+    include/config/color_filter_config.h
+    include/config/image_filter_config.h
+    include/config/ocr_config.h
+    include/config/object_detection_config.h
+    include/config/line_detect_config.h
+    include/config/blob_judge_config.h
+    include/config/barcode_config.h
     # data
     include/data/barcode_result.h
     include/data/detection_result_report.h
@@ -135,6 +145,7 @@ set(HEADERS
     include/controllers/profile_controller.h
     include/controllers/pipeline_result_handler.h
     include/controllers/roi_ui_controller.h
+    include/controllers/roi_detection_config_controller.h
     # utils
     include/utils/path_utils.h
     include/utils/benchmark.h
@@ -213,6 +224,7 @@ set(SOURCES
     src/controllers/pipeline_result_handler.cpp
     src/controllers/profile_controller.cpp
     src/controllers/roi_ui_controller.cpp
+    src/controllers/roi_detection_config_controller.cpp
 )
 
 set(FORMS
