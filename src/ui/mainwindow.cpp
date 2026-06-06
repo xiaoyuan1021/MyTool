@@ -579,6 +579,8 @@ void MainWindow::on_btn_pipelineConfig_clicked()
         PipelineConfig imageConfig = m_roiManager.loadImagePipelineConfig(currentImageId);
         m_pipelineManager->setConfig(imageConfig);
         m_pipelineManager->rebuildPipeline();
+        // 通知所有Tab更新UI（包括StepConfigWidget）
+        m_roiUiController->notifyConfigChanged(imageConfig);
     }
 
     // 跳转到「步骤」Tab（Pipeline配置页面）

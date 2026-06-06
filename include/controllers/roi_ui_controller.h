@@ -89,6 +89,9 @@ public:
     // 设置检测项配置控制器
     void setDetectionConfigController(RoiDetectionConfigController* controller) { m_detectionConfigController = controller; }
 
+    // [FIX] 通知所有Tab配置变化（用于图片切换时更新UI）
+    void notifyConfigChanged(const PipelineConfig& config);
+
     // ========== 检测项配置更新（委托给 RoiDetectionConfigController）==========
     
     /// 更新当前选中ROI的 Blob 检测项判定阈值（由 JudgeTab 触发）

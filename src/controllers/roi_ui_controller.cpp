@@ -694,3 +694,11 @@ void RoiUiController::updateLineDetectionConfig(const LineDetectConfig& lineConf
         m_detectionConfigController->updateLineDetectionConfig(lineConfig);
     }
 }
+
+// ========== 通知所有Tab配置变化 ==========
+
+void RoiUiController::notifyConfigChanged(const PipelineConfig& config)
+{
+    // 发出信号，通知所有实现了 IConfigurableTab 接口的Tab更新UI
+    emit roiPipelineConfigChanged(config);
+}
