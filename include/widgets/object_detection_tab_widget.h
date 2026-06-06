@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <QWidget>
 #include <QTimer>
@@ -49,12 +49,12 @@ public:
     float getNmsThreshold() const;
 
     /**
-     * ★ 获取当前配置（用于同步到DetectionItem.config）
+     * [NOTE] 获取当前配置（用于同步到DetectionItem.config）
      */
     ObjectDetectionConfig getDetectionConfig() const;
 
     /**
-     * ★ 设置检测配置（从DetectionItem.config恢复到UI）
+     * [NOTE] 设置检测配置（从DetectionItem.config恢复到UI）
      */
     void setDetectionConfig(const ObjectDetectionConfig& config);
 

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <QWidget>
 #include <functional>
@@ -28,7 +28,7 @@ public:
                         std::function<void()> onExecutePipeline,
                         std::function<void()> onConfigSaved = nullptr) override;
 
-    /// ★ 设置直线检测配置（从DetectionItem.config恢复到UI）
+    /// [NOTE] 设置直线检测配置（从DetectionItem.config恢复到UI）
     void setLineConfig(const LineDetectConfig& config);
 
 private:

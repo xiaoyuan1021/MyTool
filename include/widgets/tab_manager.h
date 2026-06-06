@@ -1,4 +1,4 @@
-#ifndef TAB_MANAGER_H
+﻿#ifndef TAB_MANAGER_H
 #define TAB_MANAGER_H
 
 #include <QObject>
@@ -62,7 +62,7 @@ public:
     /// 获取所有已注册的 Tab 名称 → Widget 映射（用于 ConfigController 等需要遍历的场景）
     const QHash<QString, QWidget*>& allTabs() const { return m_tabs; }
 
-    /// ★ 清空所有Tab的检测结果（删除图片/ROI时调用）
+    /// [NOTE] 清空所有Tab的检测结果（删除图片/ROI时调用）
     void clearAllResults();
 
 signals:

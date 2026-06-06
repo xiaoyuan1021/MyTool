@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <functional>
 #include "config/pipeline_config.h"
@@ -88,6 +88,6 @@ class IResultUpdatable
 public:
     virtual ~IResultUpdatable() = default;
     virtual void updateFromPipeline(const PipelineContext& ctx) = 0;
-    /// ★ 清空Tab中的检测结果（删除图片/ROI时调用）
+    /// [NOTE] 清空Tab中的检测结果（删除图片/ROI时调用）
     virtual void clearResults() {}
 };
