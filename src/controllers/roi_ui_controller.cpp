@@ -4,6 +4,7 @@
 #include "logger.h"
 #include "image_utils.h"
 #include "widgets/enhance_tab_widget.h"
+#include "widgets/i_tab_interfaces.h"
 #include "config/detection_config_types.h"
 
 #include "widgets/tab_manager.h"
@@ -639,16 +640,15 @@ void RoiUiController::setupDisplayConnections(TabManager* tabManager)
         }
     });
 
-    // ROI切换时更新EnhanceTabWidget的UI显示
+    // ROI切换时更新所有可配置Tab的UI显示
     connect(this, &RoiUiController::roiPipelineConfigChanged,
             this, [tabManager](const PipelineConfig& config) {
-        if (auto* enhanceTab = tabManager->getTabAs<EnhanceTabWidget>("增强")) {
-            enhanceTab->setEnhanceConfig(
-                config.enhance.brightness,
-                config.enhance.contrast,
-                config.enhance.gamma,
-                config.enhance.sharpen
-            );
+        // 更新所有实现了 IConfigurableTab 接口的 Tab
+        for (auto it = tabManager->allTabs().constBegin();
+             it != tabManager->allTabs().constEnd(); ++it) {
+            if (auto* tab = dynamic_cast<IConfigurableTab*>(it.value())) {
+                tab->loadFromConfig(config);
+            }
         }
     });
 }
