@@ -573,7 +573,13 @@ void MainWindow::showImage(const cv::Mat &img)
 
 void MainWindow::on_btn_pipelineConfig_clicked()
 {
-    // [FIX] 加载当前图片的Pipeline配置（包括步骤组合）
+    // [FIX] 如果没有ROI，自动创建一个"整图"ROI
+    QString roiId = m_roiUiController->getCurrentSelectedRoiId();
+    if (roiId.isEmpty()) {
+        roiId = m_roiUiController->addFullImageRoi();
+    }
+
+    // 加载当前图片的Pipeline配置（包括步骤组合）
     QString currentImageId = m_roiManager.getCurrentImageId();
     if (!currentImageId.isEmpty()) {
         PipelineConfig imageConfig = m_roiManager.loadImagePipelineConfig(currentImageId);
