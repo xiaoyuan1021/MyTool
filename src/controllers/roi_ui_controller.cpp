@@ -145,7 +145,7 @@ void RoiUiController::onAddRoiClicked()
     enterRoiDrawMode();
 }
 
-QString RoiUiController::addFullImageRoi()
+QString RoiUiController::addFullImageRoi(bool silent)
 {
     cv::Mat fullImage = m_roiManager.getFullImage();
     if (fullImage.empty()) {
@@ -172,8 +172,10 @@ QString RoiUiController::addFullImageRoi()
     emit roiDisplayChanged(m_currentSelectedRoiId);
     m_view->resetZoom();
 
-    // 触发Pipeline执行，刷新所有Tab页面显示新ROI的处理结果
-    emit roiChanged();
+    // [FIX] silent 模式下不触发 Pipeline 执行
+    if (!silent) {
+        emit roiChanged();
+    }
 
     if (m_statusBar) {
         m_statusBar->showMessage(QString("已创建整图ROI: %1 (w=%2 h=%3)")

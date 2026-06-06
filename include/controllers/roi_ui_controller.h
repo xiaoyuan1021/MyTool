@@ -75,7 +75,8 @@ public:
     void loadRoiPipelineConfig(const QString& roiId);
 
     // 创建覆盖整图的ROI（无需用户绘制），返回ROI ID
-    QString addFullImageRoi();
+    // silent=true 时不触发 pipeline 执行（用于 Pipeline配置按钮）
+    QString addFullImageRoi(bool silent = false);
 
     // 设置显示模式连接
     void setupDisplayConnections(TabManager* tabManager);

@@ -575,10 +575,10 @@ void MainWindow::showImage(const cv::Mat &img)
 
 void MainWindow::on_btn_pipelineConfig_clicked()
 {
-    // [FIX] 如果没有ROI，自动创建一个"整图"ROI
+    // [FIX] 如果没有ROI，自动创建一个"整图"ROI（silent模式，不触发pipeline）
     QString roiId = m_roiUiController->getCurrentSelectedRoiId();
     if (roiId.isEmpty()) {
-        roiId = m_roiUiController->addFullImageRoi();
+        roiId = m_roiUiController->addFullImageRoi(true);  // silent=true
     }
 
     // 加载当前图片的Pipeline配置（包括步骤组合）
