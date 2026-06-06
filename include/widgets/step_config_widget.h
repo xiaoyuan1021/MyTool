@@ -27,7 +27,7 @@ class PipelineManager;
  * 用户拖拽调整顺序 → 点击【应用】→ 按用户顺序执行。
  * UI 层与后端 StepType 枚举解耦，维护时只需增删 kSteps 数组。
  */
-class StepConfigWidget : public QWidget, public ISignalConnectable
+class StepConfigWidget : public QWidget, public ISignalConnectable, public IConfigurableTab
 {
     Q_OBJECT
 
@@ -38,6 +38,10 @@ public:
     void connectSignals(const SignalContext& ctx,
                         std::function<void()> onExecutePipeline,
                         std::function<void()> onConfigSaved = nullptr) override;
+
+    // IConfigurableTab 接口实现
+    void saveToConfig(PipelineConfig& config) const override;
+    void loadFromConfig(const PipelineConfig& config) override;
 
 signals:
     void tabsNeeded(const QStringList& tabNames);

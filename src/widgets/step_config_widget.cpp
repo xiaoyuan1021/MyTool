@@ -1050,3 +1050,21 @@ void StepConfigWidget::applyTabVisibility()
         }
     }
 }
+
+// ========== IConfigurableTab 接口实现 ==========
+
+void StepConfigWidget::saveToConfig(PipelineConfig& config) const
+{
+    // 步骤配置已经在 onApplyClicked() 中直接写入 PipelineManager
+    // 这里不需要额外操作
+    Q_UNUSED(config);
+}
+
+void StepConfigWidget::loadFromConfig(const PipelineConfig& config)
+{
+    Q_UNUSED(config);
+    // 当配置变化时，重新构建步骤项以反映新的 stepEnabled 状态
+    rebuildStepItems();
+    updatePipelinePreview();
+    applyTabVisibility();
+}
