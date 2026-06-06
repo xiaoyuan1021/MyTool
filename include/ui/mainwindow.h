@@ -29,6 +29,7 @@ class ProfileController;
 class TabManager;
 class ImageListManager;
 class RoiUiController;
+class RoiDetectionConfigController;
 class DetectionUiController;
 class ConfigController;
 class AutoDetectionController;
@@ -132,6 +133,7 @@ private:
     RoiUiController* m_roiUiController = nullptr;
     DetectionUiController* m_detectionUiController = nullptr;
     ConfigController* m_configController = nullptr;
+    RoiDetectionConfigController* m_roiDetectionConfigController = nullptr;
 
     // 图片列表管理器
     ImageListManager* m_imageListManager = nullptr;

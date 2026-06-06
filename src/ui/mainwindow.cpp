@@ -1,4 +1,4 @@
-#include "mainwindow.h"
+﻿#include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "logger.h"
 #include "config/constants.h"
@@ -15,6 +15,7 @@
 #include "roi_config.h"
 #include "log_page.h"
 #include "controllers/roi_ui_controller.h"
+#include "controllers/roi_detection_config_controller.h"
 #include "controllers/detection_ui_controller.h"
 #include "controllers/config_controller.h"
 #include "controllers/auto_detection_controller.h"
@@ -291,7 +292,9 @@ void MainWindow::setupManagers()
 void MainWindow::setupControllers()
 {
     // 创建控制器
+    m_roiDetectionConfigController = new RoiDetectionConfigController(m_roiManager, this);
     m_roiUiController = new RoiUiController(m_roiManager, m_pipelineManager, m_view, ui->statusbar, this);
+    m_roiUiController->setDetectionConfigController(m_roiDetectionConfigController);
     m_detectionUiController = new DetectionUiController(m_roiManager, ui->tabWidget, this);
     m_configController = new ConfigController(m_pipelineManager, m_roiManager, this);
     m_autoDetectionController = new AutoDetectionController(m_pipelineManager, &m_roiManager, this);
@@ -395,7 +398,7 @@ void MainWindow::setupControllerConnections()
             }
         });
 
-    // ★ 选中的ROI被删除时清空Tab结果
+    // [NOTE] 选中的ROI被删除时清空Tab结果
     connect(m_roiUiController, &RoiUiController::selectedRoiDeleted, this, [this]() {
         m_tabManager->clearAllResults();
     });
@@ -415,7 +418,7 @@ void MainWindow::setupControllerConnections()
     });
 
     // roiManager → roiUiController 同步连接
-    // ★ 关键修复：图片切换前保存旧图片的ROI配置（在m_currentImageId改变之前）
+    // [FIX]：图片切换前保存旧图片的ROI配置（在m_currentImageId改变之前）
     connect(&m_roiManager, &RoiManager::imageSwitching, this, [this](const QString&, const QString&) {
         m_roiUiController->saveCurrentRoiPipelineConfig();
     });
@@ -544,7 +547,7 @@ void MainWindow::processAndDisplay()
 void MainWindow::showImage(const cv::Mat &img)
 {
     if (img.empty()) {
-        // ★ 画布清空：没有图片时清空所有显示状态和Tab结果
+        // [NOTE] 画布清空：没有图片时清空所有显示状态和Tab结果
         m_view->clear();
         m_pipelineManager->clearLastResult();
         m_tabManager->clearAllResults();

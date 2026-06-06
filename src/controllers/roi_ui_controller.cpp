@@ -1,4 +1,5 @@
-#include "controllers/roi_ui_controller.h"
+﻿#include "controllers/roi_ui_controller.h"
+#include "controllers/roi_detection_config_controller.h"
 #include "roi_config.h"
 #include "logger.h"
 #include "image_utils.h"
@@ -428,10 +429,10 @@ void RoiUiController::handleRoiSelection(const QString& roiId)
     if (roi) {
         m_view->clearRoi();
         m_roiManager.setActiveRoi(roi->roiId);
-        // ★ 纯显示切换，不触发pipeline（用缓存结果渲染）
+        // [NOTE] 纯显示切换，不触发pipeline（用缓存结果渲染）
         emit roiDisplayChanged(m_currentSelectedRoiId);
 
-        // ★ 只在ROI真正切换时才自动选中第一个检测项并更新Tab
+        // [NOTE] 只在ROI真正切换时才自动选中第一个检测项并更新Tab
         // 点击检测项时由onRoiTreeItemClicked负责emit detectionItemSelected
         if (roiChanged && !roi->detectionItems.isEmpty()) {
             const DetectionItem& firstItem = roi->detectionItems.first();
@@ -608,7 +609,7 @@ void RoiUiController::setupDisplayConnections(TabManager* tabManager)
             this, [this](const QString& roiId) {
         cv::Mat displayImage;
 
-        // ★ 优先从per-ROI缓存获取Pipeline处理后的结果
+        // [NOTE] 优先从per-ROI缓存获取Pipeline处理后的结果
         if (m_pipelineManager && m_pipelineManager->hasCachedResult(roiId)) {
             displayImage = m_pipelineManager->getCachedDisplay(
                 roiId, m_pipelineManager->getDisplayMode());
@@ -652,76 +653,44 @@ void RoiUiController::setupDisplayConnections(TabManager* tabManager)
     });
 }
 
+// ========== 检测项配置更新（委托给 RoiDetectionConfigController）==========
+
 void RoiUiController::updateBlobDetectionConfig(int minCount, int maxCount)
 {
-    QString roiId = getCurrentSelectedRoiId();
-    RoiConfig* roi = m_roiManager.getRoiConfig(roiId);
-    if (!roi) return;
-    for (auto& detItem : roi->detectionItems) {
-        if (detItem.type == DetectionType::Blob && detItem.enabled) {
-            BlobAnalysisConfig blobConfig;
-            blobConfig.fromJson(detItem.config);
-            blobConfig.minBlobCount = minCount;
-            blobConfig.maxBlobCount = maxCount;
-            detItem.config = blobConfig.toJson();
-            Logger::instance()->info(QString("[RoiUiController] 判定阈值已更新: min=%1, max=%2").arg(minCount).arg(maxCount));
-            break;
-        }
+    if (m_detectionConfigController) {
+        m_detectionConfigController->setCurrentRoiId(m_currentSelectedRoiId);
+        m_detectionConfigController->updateBlobDetectionConfig(minCount, maxCount);
     }
 }
 
 void RoiUiController::updateOcrDetectionConfig(const QString& expectedText, bool matchExact)
 {
-    RoiConfig* roi = m_roiManager.getRoiConfig(m_currentSelectedRoiId);
-    if (!roi) return;
-    for (auto& detItem : roi->detectionItems) {
-        if (detItem.type == DetectionType::Ocr && detItem.enabled) {
-            OcrDetectionConfig ocrConfig;
-            ocrConfig.fromJson(detItem.config);
-            ocrConfig.expectedText = expectedText;
-            ocrConfig.matchExact = matchExact;
-            detItem.config = ocrConfig.toJson();
-            Logger::instance()->info(QString("[RoiUiController] OCR判定参数已更新: expectedText='%1', matchExact=%2").arg(expectedText).arg(matchExact));
-            break;
-        }
+    if (m_detectionConfigController) {
+        m_detectionConfigController->setCurrentRoiId(m_currentSelectedRoiId);
+        m_detectionConfigController->updateOcrDetectionConfig(expectedText, matchExact);
     }
 }
 
 void RoiUiController::updateObjectDetectionConfig(const ObjectDetectionConfig& objConfig)
 {
-    RoiConfig* roi = m_roiManager.getRoiConfig(m_currentSelectedRoiId);
-    if (!roi) return;
-    for (auto& detItem : roi->detectionItems) {
-        if (detItem.type == DetectionType::ObjectDetection && detItem.enabled) {
-            detItem.config = objConfig.toJson();
-            Logger::instance()->info(QString("[RoiUiController] 目标检测配置已更新: model=%1").arg(objConfig.modelPath));
-            break;
-        }
+    if (m_detectionConfigController) {
+        m_detectionConfigController->setCurrentRoiId(m_currentSelectedRoiId);
+        m_detectionConfigController->updateObjectDetectionConfig(objConfig);
     }
 }
 
 void RoiUiController::updateBarcodeDetectionConfig(const BarcodeConfig& barcodeConfig)
 {
-    RoiConfig* roi = m_roiManager.getRoiConfig(m_currentSelectedRoiId);
-    if (!roi) return;
-    for (auto& detItem : roi->detectionItems) {
-        if (detItem.type == DetectionType::Barcode && detItem.enabled) {
-            detItem.config = barcodeConfig.toJson();
-            Logger::instance()->info(QString("[RoiUiController] 条码检测配置已更新"));
-            break;
-        }
+    if (m_detectionConfigController) {
+        m_detectionConfigController->setCurrentRoiId(m_currentSelectedRoiId);
+        m_detectionConfigController->updateBarcodeDetectionConfig(barcodeConfig);
     }
 }
 
 void RoiUiController::updateLineDetectionConfig(const LineDetectConfig& lineConfig)
 {
-    RoiConfig* roi = m_roiManager.getRoiConfig(m_currentSelectedRoiId);
-    if (!roi) return;
-    for (auto& detItem : roi->detectionItems) {
-        if (detItem.type == DetectionType::Line && detItem.enabled) {
-            detItem.config = lineConfig.toJson();
-            Logger::instance()->info(QString("[RoiUiController] 直线检测配置已更新"));
-            break;
-        }
+    if (m_detectionConfigController) {
+        m_detectionConfigController->setCurrentRoiId(m_currentSelectedRoiId);
+        m_detectionConfigController->updateLineDetectionConfig(lineConfig);
     }
 }

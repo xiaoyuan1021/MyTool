@@ -1,4 +1,4 @@
-#ifndef ROI_UI_CONTROLLER_H
+﻿#ifndef ROI_UI_CONTROLLER_H
 #define ROI_UI_CONTROLLER_H
 
 #include <QObject>
@@ -17,6 +17,7 @@
 
 // 前向声明
 class TabManager;
+class RoiDetectionConfigController;
 
 QT_BEGIN_NAMESPACE
 class QStatusBar;
@@ -72,6 +73,23 @@ public:
     
     // 加载指定ROI的PipelineConfig到PipelineManager
     void loadRoiPipelineConfig(const QString& roiId);
+
+    // 创建覆盖整图的ROI（无需用户绘制），返回ROI ID
+    QString addFullImageRoi();
+
+    // 设置显示模式连接
+    void setupDisplayConnections(TabManager* tabManager);
+
+    // 同步ROI配置到Widget（图片切换时调用）
+    void syncRoiConfigsToWidget();
+
+    // 获取RoiManager引用
+    RoiManager& getRoiManager() { return m_roiManager; }
+
+    // 设置检测项配置控制器
+    void setDetectionConfigController(RoiDetectionConfigController* controller) { m_detectionConfigController = controller; }
+
+    // ========== 检测项配置更新（委托给 RoiDetectionConfigController）==========
     
     /// 更新当前选中ROI的 Blob 检测项判定阈值（由 JudgeTab 触发）
     void updateBlobDetectionConfig(int minCount, int maxCount);
@@ -87,18 +105,6 @@ public:
 
     /// 更新当前选中ROI的 直线检测 检测项配置（由 LineTab 触发）
     void updateLineDetectionConfig(const LineDetectConfig& lineConfig);
-
-    // 创建覆盖整图的ROI（无需用户绘制），返回ROI ID
-    QString addFullImageRoi();
-
-    // 设置显示模式连接
-    void setupDisplayConnections(TabManager* tabManager);
-
-    // 同步ROI配置到Widget（图片切换时调用）
-    void syncRoiConfigsToWidget();
-
-    // 获取RoiManager引用
-    RoiManager& getRoiManager() { return m_roiManager; }
 
 signals:
     // ROI配置修改信号（需要重新执行Pipeline处理）
@@ -117,7 +123,7 @@ signals:
     // ROI切换信号（通知MainWindow刷新EnhanceTabWidget的UI）
     void roiPipelineConfigChanged(const PipelineConfig& config);
 
-    /// ★ 选中的ROI被删除时发出（用于清空Tab结果）
+    /// [NOTE] 选中的ROI被删除时发出（用于清空Tab结果）
     void selectedRoiDeleted();
     
     /// 请求更新Tab可见性（ROI删除后调用）
@@ -152,6 +158,7 @@ private:
     QStatusBar* m_statusBar;
     QTreeWidget* m_treeView;
     QString m_currentSelectedRoiId;
+    RoiDetectionConfigController* m_detectionConfigController = nullptr;
 };
 
 #endif // ROI_UI_CONTROLLER_H
