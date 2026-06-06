@@ -647,3 +647,24 @@ void RoiManager::applyProfile(const InspectionProfile& profile, const QSize& cur
 
     emit roiConfigChanged();
 }
+
+// ==================== per-image 配置管理 ====================
+
+void RoiManager::saveImagePipelineConfig(const QString& imageId, const PipelineConfig& config)
+{
+    if (imageId.isEmpty() || !m_imageRoisMap.contains(imageId)) return;
+    m_imageRoisMap[imageId].pipelineConfig = config;
+}
+
+PipelineConfig RoiManager::loadImagePipelineConfig(const QString& imageId) const
+{
+    if (imageId.isEmpty() || !m_imageRoisMap.contains(imageId)) {
+        return PipelineConfig();
+    }
+    return m_imageRoisMap[imageId].pipelineConfig;
+}
+
+PipelineConfig RoiManager::getCurrentImagePipelineConfig() const
+{
+    return loadImagePipelineConfig(m_currentImageId);
+}

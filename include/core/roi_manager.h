@@ -147,12 +147,20 @@ private:
         QList<RoiConfig> roiConfigs;  // 该图片的ROI配置列表（统一数据源）
         QString activeRoiId;        // 当前激活的ROI ID（替代旧的单ROI模式）
         int roiCounter;             // ROI计数器
+        PipelineConfig pipelineConfig; // 该图片的Pipeline配置（步骤组合等）
     };
 
     QMap<QString, ImageRois> m_imageRoisMap;  // 图片ID -> ROIs
     QString m_currentImageId;                  // 当前图片ID
     int m_imageCounter;                        // 图片计数器
 
+public:
+    // per-image 配置管理
+    void saveImagePipelineConfig(const QString& imageId, const PipelineConfig& config);
+    PipelineConfig loadImagePipelineConfig(const QString& imageId) const;
+    PipelineConfig getCurrentImagePipelineConfig() const;
+
+private:
     QString generateDefaultRoiName();
     QString generateDefaultImageName();
 };
