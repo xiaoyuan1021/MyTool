@@ -128,10 +128,12 @@ void MainWindow::setupBasicInfrastructure()
     // 日志初始化
     QString logDir = PROJECT_ROOT_DIR "/logs";
     QDir(logDir).mkpath(".");
+
+    // [FIX] 先初始化 LogPage（创建 m_colorLogger + UI sink），再挂载 fileSink
+    // 否则 setTextEdit 之前 m_colorLogger 为 null，所有 Logger::info() 调用被静默丢弃
+    ui->page_log->initialize();
     Logger::instance()->setLogFile(logDir + "/test.log");
     Logger::instance()->enableFileLog(true);
-
-    ui->page_log->initialize();
     connect(ui->page_log, &LogPage::requestGoHome, this, [this]() {
         ui->stackedWidget_main->setCurrentIndex(0);
     });

@@ -38,11 +38,14 @@ void LogPage::refreshLogs()
 {
     // 清空日志显示
     m_ui->textEdit_log->clear();
-    
+
     // 获取最近的日志并根据当前级别过滤显示
     QStringList recentLogs = Logger::instance()->getRecentLogs(1000);
     if (!recentLogs.isEmpty()) {
+        // [FIX] 临时禁用文件日志，防止 outputLogsWithColor 通过 fileSink 重复写入日志文件
+        Logger::instance()->enableFileLog(false);
         Logger::instance()->outputLogsWithColor(recentLogs);
+        Logger::instance()->enableFileLog(true);
     }
 }
 
