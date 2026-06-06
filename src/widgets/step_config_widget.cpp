@@ -53,11 +53,12 @@ StepConfigWidget::StepConfigWidget(PipelineManager* pipelineManager,
 }
 
 void StepConfigWidget::connectSignals(const SignalContext& ctx,
-                                      std::function<void()> onExecutePipeline,
-                                      std::function<void()> onConfigSaved)
+                                       std::function<void()> onExecutePipeline,
+                                       std::function<void()> onConfigSaved)
 {
     Q_UNUSED(onConfigSaved);
     m_pipelineManager = ctx.pipelineManager;
+    m_roiManager = ctx.roiManager;
     m_onExecutePipeline = std::move(onExecutePipeline);
 
     if (ctx.roiCtrl) {
@@ -988,6 +989,14 @@ void StepConfigWidget::onApplyClicked()
     applyTabVisibility();
     if (m_onExecutePipeline) m_onExecutePipeline();
     updatePipelinePreview();
+
+    // [FIX] 保存配置到当前图片（per-image 隔离）
+    if (m_roiManager) {
+        QString imageId = m_roiManager->getCurrentImageId();
+        if (!imageId.isEmpty()) {
+            m_roiManager->saveImagePipelineConfig(imageId, m_pipelineManager->getConfigSnapshot());
+        }
+    }
 }
 
 // ========== Tab 管理 ==========

@@ -15,6 +15,7 @@
 
 class QLabel;
 class PipelineManager;
+class RoiManager;
 
 /**
  * @brief 自定义Pipeline步骤配置Tab（支持拖拽排序）
@@ -83,6 +84,7 @@ private:
     static const int       kStepCount;
 
     PipelineManager*         m_pipelineManager = nullptr;
+    RoiManager*              m_roiManager = nullptr;
     std::function<void()>    m_onExecutePipeline;
     QPushButton*             m_applyBtn = nullptr;
     QLabel*                  m_previewStepsLabel = nullptr;

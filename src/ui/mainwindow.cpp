@@ -573,6 +573,14 @@ void MainWindow::showImage(const cv::Mat &img)
 
 void MainWindow::on_btn_pipelineConfig_clicked()
 {
+    // [FIX] 加载当前图片的Pipeline配置（包括步骤组合）
+    QString currentImageId = m_roiManager.getCurrentImageId();
+    if (!currentImageId.isEmpty()) {
+        PipelineConfig imageConfig = m_roiManager.loadImagePipelineConfig(currentImageId);
+        m_pipelineManager->setConfig(imageConfig);
+        m_pipelineManager->rebuildPipeline();
+    }
+
     // 跳转到「步骤」Tab（Pipeline配置页面）
     ensureTabExists("步骤");
 
