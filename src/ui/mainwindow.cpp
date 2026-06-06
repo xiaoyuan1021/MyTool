@@ -162,6 +162,14 @@ void MainWindow::setupConnections()
         m_pipelineManager->clearLastResult();
         m_pipelineManager->resetPipeline();
         
+        // [FIX] 加载新图片的Pipeline配置（在resetPipeline之后）
+        QString imageId = m_roiManager.getCurrentImageId();
+        if (!imageId.isEmpty()) {
+            PipelineConfig imageConfig = m_roiManager.loadImagePipelineConfig(imageId);
+            m_pipelineManager->setConfig(imageConfig);
+            m_pipelineManager->rebuildPipeline();
+        }
+        
         // 清空画布，显示新原图
         showImage(img);
         
@@ -427,18 +435,10 @@ void MainWindow::setupControllerConnections()
         // 同时保存当前ROI的配置（如果有的话）
         m_roiUiController->saveCurrentRoiPipelineConfig();
     });
-    // 图片切换后：加载新图片的Pipeline配置
-    connect(&m_roiManager, &RoiManager::currentImageChanged, this, [this](const QString& imageId) {
+    // 图片切换后：更新Tab显示
+    connect(&m_roiManager, &RoiManager::currentImageChanged, this, [this](const QString&) {
         m_pipelineManager->clearLastResult();
-        
-        // 加载新图片的Pipeline配置（包括步骤组合）
-        if (!imageId.isEmpty()) {
-            PipelineConfig imageConfig = m_roiManager.loadImagePipelineConfig(imageId);
-            m_pipelineManager->setConfig(imageConfig);
-            m_pipelineManager->rebuildPipeline();
-            // 通知所有Tab更新UI
-            m_roiUiController->syncRoiConfigsToWidget();
-        }
+        m_roiUiController->syncRoiConfigsToWidget();
     });
 
     // 删除图片/ROI后：隐藏所有检测相关Tab

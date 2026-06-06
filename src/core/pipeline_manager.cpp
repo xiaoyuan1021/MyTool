@@ -204,6 +204,10 @@ void PipelineManager::resetPipeline()
     m_algorithmQueue.clear();
     m_config.algorithmQueue.clear();
     m_config.shapeFilter.clear();
+    // [FIX] 重置步骤配置到默认值
+    m_config.stepEnabled = {false, false, false, false, false, false, false, false, false};
+    m_config.stepOrder = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+    m_config.enableObjectDetection = false;
     m_displayMode = DisplayConfig::Mode::MaskGreenWhite;
     m_overlayAlpha = AppConstants::DEFAULT_OVERLAY_ALPHA;
     initPipeline();
