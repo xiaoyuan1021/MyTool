@@ -3,6 +3,7 @@
 #include <opencv2/core.hpp>
 #include "config/pipeline_config.h"
 #include <QAtomicInt>
+#include <QString>
 #include <chrono>
 
 /**
@@ -16,12 +17,13 @@
 class PipelineRequest
 {
 public:
-    PipelineRequest(const cv::Mat& image, const PipelineConfig& config, int priority = 0)
+    PipelineRequest(const cv::Mat& image, const PipelineConfig& config, int priority = 0, const QString& caller = {})
         : m_image(image.clone())
         , m_config(config)
         , m_priority(priority)
         , m_timestamp(std::chrono::steady_clock::now().time_since_epoch().count())
         , m_id(s_nextId.fetchAndAddOrdered(1))
+        , m_caller(caller)
     {
     }
 
@@ -36,6 +38,7 @@ public:
         , m_priority(other.m_priority)
         , m_timestamp(other.m_timestamp)
         , m_id(other.m_id)
+        , m_caller(other.m_caller)
     {
     }
     
@@ -47,6 +50,7 @@ public:
             m_priority = other.m_priority;
             m_timestamp = other.m_timestamp;
             m_id = other.m_id;
+            m_caller = other.m_caller;
         }
         return *this;
     }
@@ -57,20 +61,34 @@ public:
     int priority() const { return m_priority; }
     qint64 timestamp() const { return m_timestamp; }
     qint64 id() const { return m_id; }
+    const QString& caller() const { return m_caller; }
 
-    // 创建快照（深拷贝图像）
+    // 创建快照（深拷贝图像，保留 ID 和 caller）
     PipelineRequest snapshot() const
     {
-        PipelineRequest req(m_image, m_config, m_priority);
+        PipelineRequest req(m_image, m_config, m_priority, m_caller);
+        req.m_id = m_id;  // 保留原始 ID
         return req;
     }
 
 private:
+    // 带 ID 的构造（仅用于 snapshot）
+    PipelineRequest(const cv::Mat& image, const PipelineConfig& config, int priority, const QString& caller, qint64 id)
+        : m_image(image.clone())
+        , m_config(config)
+        , m_priority(priority)
+        , m_timestamp(std::chrono::steady_clock::now().time_since_epoch().count())
+        , m_id(id)
+        , m_caller(caller)
+    {
+    }
+
     cv::Mat m_image;
     PipelineConfig m_config;
     int m_priority;
     qint64 m_timestamp;
     qint64 m_id;
+    QString m_caller;
 
     // 全局ID生成器
     static QAtomicInt s_nextId;

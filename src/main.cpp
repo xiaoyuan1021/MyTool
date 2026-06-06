@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "logger.h"
 
 #include <QApplication>
 #include <QResource>
@@ -92,6 +93,8 @@ int main(int argc, char *argv[])
     splash.setWindowFlags(splash.windowFlags() | Qt::Tool);
     splash.show();
     a.processEvents();
+
+    spdlog::info("========== EdgeVision 启动 ==========");
 
     MainWindow w;
     w.setWindowTitle("EdgeVision——让智能视觉检测触手可及");

@@ -121,8 +121,6 @@ void ImageListManager::onImageAdded(const QString& imageId)
     QListWidgetItem* item = new QListWidgetItem(imageName);
     item->setData(Qt::UserRole, imageId);
     m_listWidget->addItem(item);
-
-    spdlog::info(QString("图片已添加到列表: %1").arg(imageName));
 }
 
 void ImageListManager::onImageRemoved(const QString& imageId)

@@ -39,9 +39,10 @@ public:
      * @param image 输入图像
      * @param config Pipeline配置
      * @param priority 优先级（数值越大优先级越高）
+     * @param caller 调用者标识（用于日志追踪）
      * @return 请求ID，可用于取消
      */
-    qint64 submit(const cv::Mat& image, const PipelineConfig& config, int priority = 0);
+    qint64 submit(const cv::Mat& image, const PipelineConfig& config, int priority = 0, const QString& caller = {});
 
     /**
      * 提交pipeline执行请求（使用PipelineRequest对象）

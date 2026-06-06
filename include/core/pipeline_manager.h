@@ -129,7 +129,7 @@ public:
     const PipelineScheduler* scheduler() const { return m_scheduler.get(); }
 
     /// 异步执行Pipeline（通过调度器）
-    qint64 executeAsync(const cv::Mat& image, const PipelineConfig& config, int priority = 0);
+    qint64 executeAsync(const cv::Mat& image, const PipelineConfig& config, int priority = 0, const QString& caller = {});
 
     // ========== 颜色过滤控制 ==========
 

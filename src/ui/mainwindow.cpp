@@ -520,9 +520,6 @@ void MainWindow::setupResultHandler()
     // 队列状态变化时更新UI
     connect(m_pipelineManager->scheduler(), &PipelineScheduler::queueChanged,
             this, [this](int pendingCount) {
-        if (pendingCount > 0) {
-            spdlog::debug("[MainWindow] 队列中有 {} 个待处理请求", pendingCount);
-        }
     });
 
     connect(m_pipelineResultHandler, &PipelineResultHandler::statusMessage,
@@ -542,18 +539,11 @@ void MainWindow::processAndDisplay()
     cv::Mat currentImage = m_roiManager.getCurrentImage();
     if (currentImage.empty()) return;
 
-    spdlog::debug("[MainWindow] processAndDisplay: img={}x{} brightness={} contrast={} gamma={} sharpen={}",
-        currentImage.cols, currentImage.rows,
-        m_pipelineManager->config().enhance.brightness,
-        m_pipelineManager->config().enhance.contrast,
-        m_pipelineManager->config().enhance.gamma,
-        m_pipelineManager->config().enhance.sharpen);
-
     ui->statusbar->showMessage("正在处理...");
 
     // 使用调度器异步执行
     PipelineConfig configSnapshot = m_pipelineManager->getConfigSnapshot();
-    m_pipelineManager->scheduler()->submit(currentImage, configSnapshot);
+    m_pipelineManager->scheduler()->submit(currentImage, configSnapshot, 0, "MainWindow::processAndDisplay");
 }
 
 void MainWindow::showImage(const cv::Mat &img)

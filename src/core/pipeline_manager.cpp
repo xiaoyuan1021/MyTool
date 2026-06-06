@@ -149,9 +149,9 @@ spdlog::error(QString("Pipeline执行异常: %1").arg(ex.what()));
 
 // ========== 调度器接口 ==========
 
-qint64 PipelineManager::executeAsync(const cv::Mat& image, const PipelineConfig& config, int priority)
+qint64 PipelineManager::executeAsync(const cv::Mat& image, const PipelineConfig& config, int priority, const QString& caller)
 {
-    return m_scheduler->submit(image, config, priority);
+    return m_scheduler->submit(image, config, priority, caller);
 }
 
 // ========== 非trivial方法 ==========

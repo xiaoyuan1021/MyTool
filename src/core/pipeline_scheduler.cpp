@@ -32,9 +32,9 @@ PipelineScheduler::~PipelineScheduler()
 
 // ========== 请求接口 ==========
 
-qint64 PipelineScheduler::submit(const cv::Mat& image, const PipelineConfig& config, int priority)
+qint64 PipelineScheduler::submit(const cv::Mat& image, const PipelineConfig& config, int priority, const QString& caller)
 {
-    PipelineRequest request(image, config, priority);
+    PipelineRequest request(image, config, priority, caller);
     return submit(std::move(request));
 }
 
@@ -68,7 +68,6 @@ qint64 PipelineScheduler::submit(PipelineRequest request)
 
     // 添加到队列
     m_queue.enqueue(std::move(request));
-    spdlog::debug("[PipelineScheduler] 请求入队: {} 队列长度: {}", requestId, m_queue.size());
 
     locker.unlock();
     emitQueueChanged();
@@ -180,7 +179,10 @@ void PipelineScheduler::executeRequest(const PipelineRequest& request)
     m_processing.storeRelease(1);
     emit processingChanged(true);
 
-    spdlog::debug("[PipelineScheduler] 开始执行请求: {}", request.id());
+    // 记录调用者
+    if (!request.caller().isEmpty()) {
+        spdlog::debug("[PipelineScheduler] 执行请求: {} (来自: {})", request.id(), request.caller().toStdString());
+    }
 
     // 捕获需要的指针和数据（按值），避免在后台线程中捕获 this
     PipelineManager* pipeline = m_pipeline;
@@ -234,8 +236,11 @@ void PipelineScheduler::onTaskFinished()
     m_processing.storeRelease(0);
     emit processingChanged(false);
 
-    spdlog::debug("[PipelineScheduler] 请求执行完成: {} 耗时: {}ms 成功: {}",
-        result.requestId(), result.elapsedMs(), result.isSuccess());
+    // 只在失败或耗时 >0ms 时打印
+    if (!result.isSuccess() || result.elapsedMs() > 0) {
+        spdlog::debug("[PipelineScheduler] 请求执行完成: {} 耗时: {}ms 成功: {}",
+            result.requestId(), result.elapsedMs(), result.isSuccess());
+    }
 
     emit finished(result);
 

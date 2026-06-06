@@ -86,7 +86,7 @@ cv::Mat ImageProcessor::executeAlgorithmQueue(const cv::Mat &src, const QVector<
             executedSteps++;
         }
 
-        spdlog::info("[executeAlgorithmQueue] 完成，共执行 {} 个步骤", executedSteps);
+        spdlog::debug("[executeAlgorithmQueue] 完成，共执行 {} 个步骤", executedSteps);
 
         if(currentMat.empty()) {
             spdlog::info("[executeAlgorithmQueue] 警告：结果为空，返回输入灰度图");

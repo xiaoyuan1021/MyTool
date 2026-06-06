@@ -30,6 +30,9 @@ void LogPage::initialize()
     QString logDir = QCoreApplication::applicationDirPath() + "/logs";
     setupLogging(m_ui->textEdit_log, logDir);
 
+    // Startup log (must be first after logging init)
+    spdlog::info("========== EdgeVision 启动 ==========");
+
     // Load log level config
     loadLogLevelConfig();
 }

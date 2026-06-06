@@ -17,7 +17,9 @@ public:
         auto elapsed = std::chrono::duration<double, std::milli>(
             std::chrono::steady_clock::now() - m_start).count();
         if (m_outMs) *m_outMs = elapsed;
-        spdlog::info("[BENCH] {}: {:.2f} ms", m_name, elapsed);
+        if (elapsed >= 1.0) {  // 只在耗时 ≥1ms 时打印
+            spdlog::info("[BENCH] {}: {:.2f} ms", m_name, elapsed);
+        }
     }
 
     double elapsedMs() const {
