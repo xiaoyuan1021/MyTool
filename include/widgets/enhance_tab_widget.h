@@ -1,8 +1,7 @@
 # pragma once
 
 #include <QWidget>
-#include "pipeline_manager.h"
-#include "pipeline.h"
+#include "core/i_pipeline_access.h"
 #include "widgets/i_tab_interfaces.h"
 #include <QObject>
 #include <QStack>
@@ -19,7 +18,7 @@ class EnhanceTabWidget : public QWidget, public ISignalConnectable, public IConf
     Q_OBJECT
 
 public:
-    explicit EnhanceTabWidget(PipelineManager* pipelineManager, QWidget* parent = nullptr);
+    explicit EnhanceTabWidget(IPipelineAccess* pipelineAccess, QWidget* parent = nullptr);
     ~EnhanceTabWidget();
 
     // 配置管理
@@ -59,7 +58,7 @@ private:
     
     QStack<EnhancementState> m_enhancementHistory;
     Ui::EnhanceTabWidget* m_ui;
-    PipelineManager* m_pipelineManager;
+    IPipelineAccess* m_pipeline;
     ImageView* m_view = nullptr;
     RoiManager* m_roiManager = nullptr;
 };

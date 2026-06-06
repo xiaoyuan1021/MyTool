@@ -5,10 +5,10 @@
 #include <QMessageBox>
 #include <QSignalBlocker>
 
-JudgeTabWidget::JudgeTabWidget(PipelineManager* pipelineManager, QWidget *parent)
+JudgeTabWidget::JudgeTabWidget(IPipelineAccess* pipelineAccess, QWidget *parent)
     : QWidget(parent)
     , m_ui(new Ui::Form_Judge)
-    , m_pipelineManager(pipelineManager)
+    , m_pipeline(pipelineAccess)
 {
     m_ui->setupUi(this);
     m_ui->lineEdit_nowRegions->setReadOnly(true);
@@ -30,7 +30,7 @@ void JudgeTabWidget::updateFromPipeline(const PipelineContext& ctx)
 
 void JudgeTabWidget::setCurrentRegionCount(int count)
 {
-    count = m_pipelineManager->getLastContext().regionCount;
+    count = m_pipeline->getLastContext().regionCount;
     m_ui->lineEdit_nowRegions->setText(QString::number(count));
 }
 
@@ -51,7 +51,7 @@ void JudgeTabWidget::onRunTestClicked()
         return;
     }
 
-    int currentCount = m_pipelineManager->getLastContext().regionCount;
+    int currentCount = m_pipeline->getLastContext().regionCount;
     bool pass = (currentCount >= minRegions && currentCount <= maxRegions);
 
     if (pass) 

@@ -8,10 +8,10 @@
 #include "algorithm/image_utils.h"
 #include <opencv2/imgproc.hpp>
 
-EnhanceTabWidget::EnhanceTabWidget(PipelineManager* pipelineManager, QWidget* parent)
+EnhanceTabWidget::EnhanceTabWidget(IPipelineAccess* pipelineAccess, QWidget* parent)
     : QWidget(parent)
     , m_ui(new Ui::EnhanceTabWidget)
-    , m_pipelineManager(pipelineManager)
+    , m_pipeline(pipelineAccess)
 {
     m_ui->setupUi(this);
 
@@ -58,12 +58,12 @@ void EnhanceTabWidget::onSliderChanged()
 
 void EnhanceTabWidget::on_btn_resetBC_clicked()
 {
-    if (!m_pipelineManager) return;
+    if (!m_pipeline) return;
     m_ui->Slider_brightness->setValue(0);
     m_ui->Slider_contrast->setValue(100);
     m_ui->Slider_gamma->setValue(100);
     m_ui->Slider_sharpen->setValue(100);
-    m_pipelineManager->resetConfigToDefaults();
+    m_pipeline->resetConfigToDefaults();
 
     EnhancementState snapshot = captureState();
     m_enhancementHistory.clear();
@@ -134,12 +134,12 @@ void EnhanceTabWidget::applyState(const EnhancementState &state)
 
     // 同步参数到 Pipeline（线程安全：使用快照+setConfig模式）
     {
-        PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
+        PipelineConfig cfg = m_pipeline->getConfigSnapshot();
         cfg.enhance.brightness = state.brightness;
         cfg.enhance.contrast = state.contrast;
         cfg.enhance.gamma = state.gamma;
         cfg.enhance.sharpen = state.sharpen;
-        m_pipelineManager->setConfig(cfg);
+        m_pipeline->setConfig(cfg);
     }
 
     emit processRequested();
@@ -164,12 +164,12 @@ void EnhanceTabWidget::updateUndoUi()
 void EnhanceTabWidget::syncConfigToPipeline()
 {
     EnhancementState current = captureState();
-    PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
+    PipelineConfig cfg = m_pipeline->getConfigSnapshot();
     cfg.enhance.brightness = current.brightness;
     cfg.enhance.contrast = current.contrast;
     cfg.enhance.gamma = current.gamma;
     cfg.enhance.sharpen = current.sharpen;
-    m_pipelineManager->setConfig(cfg);
+    m_pipeline->setConfig(cfg);
 }
 
 void EnhanceTabWidget::previewEnhance()
@@ -259,12 +259,12 @@ void EnhanceTabWidget::applyStateQuiet(const EnhancementState &state)
     m_ui->spinBox_sharpen->setValue(state.sharpen);
 
     // 仅同步参数到Pipeline，不触发处理
-    PipelineConfig cfg = m_pipelineManager->getConfigSnapshot();
+    PipelineConfig cfg = m_pipeline->getConfigSnapshot();
     cfg.enhance.brightness = state.brightness;
     cfg.enhance.contrast = state.contrast;
     cfg.enhance.gamma = state.gamma;
     cfg.enhance.sharpen = state.sharpen;
-    m_pipelineManager->setConfig(cfg);
+    m_pipeline->setConfig(cfg);
 }
 
 void EnhanceTabWidget::connectSignals(const SignalContext& ctx,

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <QWidget>
-#include "pipeline_manager.h"
+#include "core/i_pipeline_access.h"
 #include "widgets/i_tab_interfaces.h"
 
 namespace Ui {
@@ -12,7 +12,7 @@ class FilterTabWidget : public QWidget, public ISignalConnectable, public IConfi
     Q_OBJECT
 
 public:
-    explicit FilterTabWidget(PipelineManager* pipelineManager, QWidget* parent = nullptr);
+    explicit FilterTabWidget(IPipelineAccess* pipelineAccess, QWidget* parent = nullptr);
     ~FilterTabWidget();
 
     void getFilterConfig(int& mode, int& grayLow, int& grayHigh) const;
@@ -43,5 +43,5 @@ private:
 
 private:
     Ui::FilterTabWidget* m_ui;
-    PipelineManager* m_pipelineManager;
+    IPipelineAccess* m_pipeline;
 };

@@ -1,11 +1,12 @@
 #include "image_tab_widget.h"
 #include "ui_image_tab.h"
 #include "roi_manager.h"
+#include "pipeline_manager.h"
 
-ImageTabWidget::ImageTabWidget(PipelineManager* pipelineManager, QWidget* parent)
+ImageTabWidget::ImageTabWidget(IPipelineAccess* pipelineAccess, QWidget* parent)
     : QWidget(parent)
     , m_ui(new Ui::ImageTabWidget)
-    , m_pipelineManager(pipelineManager)
+    , m_pipeline(pipelineAccess)
 {
     m_ui->setupUi(this);
     // Qt 会自动连接 on_btn_applyChannel_clicked 和 on_comboBox_channels_currentIndexChanged
@@ -35,13 +36,13 @@ PipelineConfig::Channel ImageTabWidget::channelFromIndex(int index) const
 
 void ImageTabWidget::on_btn_applyChannel_clicked()
 {
-    if (!m_ui || !m_pipelineManager) return;
+    if (!m_ui || !m_pipeline) return;
 
     int comboIndex = m_ui->comboBox_channels->currentIndex();
     PipelineConfig::Channel channel = channelFromIndex(comboIndex);
 
     // 设置通道模式到Pipeline
-    m_pipelineManager->updateConfig([&](PipelineConfig& cfg) {
+    m_pipeline->updateConfig([&](PipelineConfig& cfg) {
         cfg.colorFilter.channel = channel;
     });
 

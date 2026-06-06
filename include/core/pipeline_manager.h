@@ -4,6 +4,7 @@
 #include "pipeline_steps.h"
 #include "pipeline_scheduler.h"
 #include "config/constants.h"
+#include "core/i_pipeline_access.h"
 
 #include <QObject>
 #include <QString>
@@ -21,7 +22,7 @@ class ImageProcessor;
  * - m_config 仅在UI线程读写，无需加锁
  * - m_lastContext 由 m_contextMutex 保护，供UI线程读取上次结果
  */
-class PipelineManager : public QObject
+class PipelineManager : public QObject, public IPipelineAccess
 {
     Q_OBJECT
 
@@ -29,49 +30,49 @@ public:
     explicit PipelineManager(QObject* parent = nullptr);
     ~PipelineManager();
 
-    // ========== 配置管理（仅UI线程调用）==========
+    // ========== IPipelineAccess 接口实现 ==========
 
-    void resetConfigToDefaults();
+    void resetConfigToDefaults() override;
 
     /// 获取配置的可变引用（UI线程直接读写，替代大量 trivial setter）
     [[deprecated("使用 updateConfig() 替代")]]
     PipelineConfig& mutableConfig() { return m_config; }
 
     /// 获取配置的常量引用
-    const PipelineConfig& config() const { return m_config; }
+    const PipelineConfig& config() const override { return m_config; }
 
     // 获取当前配置的拷贝（用于并发快照）
-    PipelineConfig getConfigSnapshot() const { return m_config; }
+    PipelineConfig getConfigSnapshot() const override { return m_config; }
 
     // 设置配置（仅UI线程调用）
-    void setConfig(const PipelineConfig& config) {
+    void setConfig(const PipelineConfig& config) override {
         m_config = config;
         m_algorithmQueue = config.algorithmQueue;
     }
 
     /// 批量修改配置（推荐方式）
-    void updateConfig(std::function<void(PipelineConfig&)> updater) {
+    void updateConfig(std::function<void(PipelineConfig&)> updater) override {
         updater(m_config);
     }
 
     // ========== 步骤控制 ==========
 
     /// 启用/禁用指定步骤（调用后需 rebuildPipeline 生效）
-    void setStepEnabled(int stepIndex, bool enabled);
+    void setStepEnabled(int stepIndex, bool enabled) override;
 
     /// 查询指定步骤是否启用
-    bool isStepEnabled(int stepIndex) const;
+    bool isStepEnabled(int stepIndex) const override;
 
     /// 根据当前 m_config.stepEnabled/stepOrder 重建 pipeline
-    void rebuildPipeline();
+    void rebuildPipeline() override;
 
     // ========== 算法队列管理 ==========
 
-    void addAlgorithmStep(const AlgorithmStep& step);
-    void removeAlgorithmStep(int index);
-    void swapAlgorithmStep(int index1,int index2);
+    void addAlgorithmStep(const AlgorithmStep& step) override;
+    void removeAlgorithmStep(int index) override;
+    void swapAlgorithmStep(int index1,int index2) override;
     void clearAlgorithmQueue();
-    const QVector<AlgorithmStep>& getAlgorithmQueue() const { return m_algorithmQueue; }
+    const QVector<AlgorithmStep>& getAlgorithmQueue() const override { return m_algorithmQueue; }
 
     // ========== Pipeline执行 ==========
 
@@ -81,16 +82,16 @@ public:
     PipelineContext execute(const cv::Mat& inputImage, const PipelineConfig& config);
 
     // 获取最后一次执行的上下文（线程安全，返回拷贝）
-    PipelineContext getLastContext() const {
+    PipelineContext getLastContext() const override {
         QMutexLocker locker(&m_contextMutex);
         return m_lastContext;
     }
 
     double lastExecMs() const { return m_lastExecMs; }
 
-    void updateAlgorithmStep(int index, const AlgorithmStep& step);
+    void updateAlgorithmStep(int index, const AlgorithmStep& step) override;
 
-    void setDisplayMode(DisplayConfig::Mode mode);
+    void setDisplayMode(DisplayConfig::Mode mode) override;
     DisplayConfig::Mode getDisplayMode() const { return m_displayMode; }
 
     // 快速重新渲染上次Pipeline结果

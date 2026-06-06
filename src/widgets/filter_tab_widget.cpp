@@ -6,10 +6,10 @@
 #include "ui/slider_spinbox_binder.h"
 #include <QDebug>
 
-FilterTabWidget::FilterTabWidget(PipelineManager* pipelineManager, QWidget* parent)
+FilterTabWidget::FilterTabWidget(IPipelineAccess* pipelineAccess, QWidget* parent)
     : QWidget(parent)
     , m_ui(new Ui::FilterTabWidget)
-    , m_pipelineManager(pipelineManager)
+    , m_pipeline(pipelineAccess)
 {
     m_ui->setupUi(this);
 
@@ -161,7 +161,7 @@ void FilterTabWidget::onConditionChanged(int index)
 
 void FilterTabWidget::onFilterModeChanged(int index)
 {
-    m_pipelineManager->updateConfig([&](PipelineConfig& cfg) {
+    m_pipeline->updateConfig([&](PipelineConfig& cfg) {
         auto& cf = cfg.colorFilter;
         switch (index) {
         case 0:  // None
@@ -209,7 +209,7 @@ void FilterTabWidget::syncGrayParameters()
 {
     int grayLow = m_ui->Slider_grayLow->value();
     int grayHigh = m_ui->Slider_grayHigh->value();
-    m_pipelineManager->updateConfig([&](PipelineConfig& cfg) {
+    m_pipeline->updateConfig([&](PipelineConfig& cfg) {
         cfg.colorFilter.grayLow = grayLow;
         cfg.colorFilter.grayHigh = grayHigh;
     });
@@ -224,7 +224,7 @@ void FilterTabWidget::syncRGBParameters()
     int bLow = m_ui->Slider_rgb_B_Low->value();
     int bHigh = m_ui->Slider_rgb_B_High->value();
 
-    m_pipelineManager->updateConfig([&](PipelineConfig& cfg) {
+    m_pipeline->updateConfig([&](PipelineConfig& cfg) {
         cfg.colorFilter.rLow = rLow; cfg.colorFilter.rHigh = rHigh;
         cfg.colorFilter.gLow = gLow; cfg.colorFilter.gHigh = gHigh;
         cfg.colorFilter.bLow = bLow; cfg.colorFilter.bHigh = bHigh;
@@ -240,7 +240,7 @@ void FilterTabWidget::syncHSVParameters()
     int vLow = m_ui->Slider_hsv_V_Low->value();
     int vHigh = m_ui->Slider_hsv_V_High->value();
 
-    m_pipelineManager->updateConfig([&](PipelineConfig& cfg) {
+    m_pipeline->updateConfig([&](PipelineConfig& cfg) {
         cfg.colorFilter.hLow = hLow; cfg.colorFilter.hHigh = hHigh;
         cfg.colorFilter.sLow = sLow; cfg.colorFilter.sHigh = sHigh;
         cfg.colorFilter.vLow = vLow; cfg.colorFilter.vHigh = vHigh;

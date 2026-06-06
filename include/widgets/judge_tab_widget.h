@@ -1,7 +1,7 @@
 #pragma once
 
 #include <QWidget>
-#include "pipeline_manager.h"
+#include "core/i_pipeline_access.h"
 #include "widgets/i_tab_interfaces.h"
 
 namespace Ui {
@@ -13,7 +13,7 @@ class JudgeTabWidget : public QWidget, public ISignalConnectable, public IConfig
     Q_OBJECT
 
 public:
-    explicit JudgeTabWidget(PipelineManager* pipelineManager, QWidget *parent = nullptr);
+    explicit JudgeTabWidget(IPipelineAccess* pipelineAccess, QWidget *parent = nullptr);
     ~JudgeTabWidget();
     void setCurrentRegionCount(int count);
 
@@ -41,6 +41,5 @@ private slots:
 
 private:
     Ui::Form_Judge *m_ui;
-    PipelineManager* m_pipelineManager;
+    IPipelineAccess* m_pipeline;
 };
-
