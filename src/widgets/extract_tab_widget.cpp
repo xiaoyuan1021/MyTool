@@ -7,7 +7,7 @@
 #include <QListWidgetItem>
 #include <QStatusBar>
 
-ExtractTabWidget::ExtractTabWidget(PipelineManager* pipeline,
+ExtractTabWidget::ExtractTabWidget(IPipelineAccess* pipeline,
                                    ImageView* view,
                                    RoiManager* roiManager,
                                    QStatusBar* statusBar,

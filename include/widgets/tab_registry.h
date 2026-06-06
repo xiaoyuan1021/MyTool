@@ -8,6 +8,7 @@
 
 class QWidget;
 class PipelineManager;
+class IPipelineAccess;
 class ImageView;
 class RoiManager;
 class QStatusBar;

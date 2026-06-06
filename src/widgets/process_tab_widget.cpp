@@ -5,9 +5,9 @@
 #include <QMessageBox>
 
 ProcessTabWidget::ProcessTabWidget
-(PipelineManager* pipelineManager, QWidget* parent)
+(IPipelineAccess* pipelineAccess, QWidget* parent)
     : QWidget(parent),
-      m_pipelineManager(pipelineManager),
+      m_pipeline(pipelineAccess),
       m_ui(new Ui::Form_Process)
 {
     m_ui->setupUi(this);
@@ -92,7 +92,7 @@ void ProcessTabWidget::addAlgorithm()
         break;
     }
 
-    m_pipelineManager->addAlgorithmStep(step);
+    m_pipeline->addAlgorithmStep(step);
     QListWidgetItem *item = new QListWidgetItem(step.name);
     m_ui->algorithmListWidget->addItem(item);
     m_ui->algorithmListWidget->setCurrentRow(m_ui->algorithmListWidget->count() - 1);
@@ -107,7 +107,7 @@ void ProcessTabWidget::removeAlgorithm()
     int row = m_ui->algorithmListWidget->currentRow();
     if (row < 0) return;
 
-    m_pipelineManager->removeAlgorithmStep(row);
+    m_pipeline->removeAlgorithmStep(row);
     delete m_ui->algorithmListWidget->takeItem(row);
 
     Logger::instance()->info("移除算法");
@@ -121,7 +121,7 @@ void ProcessTabWidget::moveAlgorithmUp()
 
     if (currentRow <= 0) return;
 
-    m_pipelineManager->swapAlgorithmStep(currentRow, currentRow - 1);
+    m_pipeline->swapAlgorithmStep(currentRow, currentRow - 1);
 
     QListWidgetItem *item = m_ui->algorithmListWidget->takeItem(currentRow);
     m_ui->algorithmListWidget->insertItem(currentRow - 1, item);
@@ -138,7 +138,7 @@ void ProcessTabWidget::moveAlgorithmDown()
 
     if (currentRow < 0 || currentRow >= m_ui->algorithmListWidget->count() - 1) return;
 
-    m_pipelineManager->swapAlgorithmStep(currentRow, currentRow + 1);
+    m_pipeline->swapAlgorithmStep(currentRow, currentRow + 1);
 
     QListWidgetItem *item = m_ui->algorithmListWidget->takeItem(currentRow);
     m_ui->algorithmListWidget->insertItem(currentRow + 1, item);
@@ -194,7 +194,7 @@ void ProcessTabWidget::saveCurrentEdit()
 {
     if (m_editingAlgorithmIndex < 0 || m_loadingParameters) return;
 
-    const QVector<AlgorithmStep>& queue = m_pipelineManager->getAlgorithmQueue();
+    const QVector<AlgorithmStep>& queue = m_pipeline->getAlgorithmQueue();
     if (m_editingAlgorithmIndex >= queue.size()) {
         m_editingAlgorithmIndex = -1;
         return;
@@ -218,13 +218,13 @@ void ProcessTabWidget::saveCurrentEdit()
         break;
     }
 
-    m_pipelineManager->updateAlgorithmStep(m_editingAlgorithmIndex, step);
+    m_pipeline->updateAlgorithmStep(m_editingAlgorithmIndex, step);
     emit algorithmChanged();
 }
 
 void ProcessTabWidget::loadAlgorithmParameters(int index)
 {
-    const QVector<AlgorithmStep>& queue = m_pipelineManager->getAlgorithmQueue();
+    const QVector<AlgorithmStep>& queue = m_pipeline->getAlgorithmQueue();
     if (index < 0 || index >= queue.size()) return;
 
     m_loadingParameters = true;

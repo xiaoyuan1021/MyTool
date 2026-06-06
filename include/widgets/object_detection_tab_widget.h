@@ -3,7 +3,7 @@
 #include <QWidget>
 #include <QTimer>
 #include <QThread>
-#include "pipeline_manager.h"
+#include "core/i_pipeline_access.h"
 #include "algorithm/dnn_inference.h"
 #include "algorithm/ort_inference.h"
 #include "widgets/i_tab_interfaces.h"
@@ -15,7 +15,7 @@ class ObjectDetectionTabWidget : public QWidget, public ISignalConnectable {
     Q_OBJECT
 
 public:
-    explicit ObjectDetectionTabWidget(PipelineManager* pipelineManager, QWidget* parent = nullptr);
+    explicit ObjectDetectionTabWidget(IPipelineAccess* pipelineAccess, QWidget* parent = nullptr);
     ~ObjectDetectionTabWidget();
 
     /**
@@ -82,7 +82,7 @@ private:
     void updateConfig();
 
     Ui::ObjectDetectionTabForm* m_ui;
-    PipelineManager* m_pipelineManager;
+    IPipelineAccess* m_pipeline;
     DnnInference m_dnnInference;   // OpenCV DNN（目标检测标签页使用）
     OrtInference m_ortInference;   // ONNX Runtime（视频推理使用）
     QString m_currentModelPath;    // 当前已加载的模型路径，用于避免重复加载

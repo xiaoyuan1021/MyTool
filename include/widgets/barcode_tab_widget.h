@@ -2,7 +2,7 @@
 
 #include <QWidget>
 #include <functional>
-#include "pipeline_manager.h"
+#include "core/i_pipeline_access.h"
 #include "widgets/i_tab_interfaces.h"
 
 namespace Ui
@@ -15,7 +15,7 @@ class BarcodeTabWidget : public QWidget, public ISignalConnectable, public IConf
     Q_OBJECT
 
 public:
-    explicit BarcodeTabWidget(PipelineManager* pipelineManager,
+    explicit BarcodeTabWidget(IPipelineAccess* pipelineAccess,
                               QWidget* parent = nullptr);
     ~BarcodeTabWidget();
     
@@ -46,7 +46,7 @@ public:
                         std::function<void()> onConfigSaved = nullptr) override;
 
 private:
-    PipelineManager* m_pipelineManager;
+    IPipelineAccess* m_pipeline;
     Ui::BarcodeTabForm* m_ui;
     
     // 更新Pipeline配置

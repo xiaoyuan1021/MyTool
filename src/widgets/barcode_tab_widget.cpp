@@ -5,10 +5,10 @@
 #include <QDebug>
 #include <QSignalBlocker>
 
-BarcodeTabWidget::BarcodeTabWidget(PipelineManager* pipelineManager,
+BarcodeTabWidget::BarcodeTabWidget(IPipelineAccess* pipelineAccess,
                                    QWidget* parent)
     : QWidget(parent)
-    , m_pipelineManager(pipelineManager)
+    , m_pipeline(pipelineAccess)
     , m_ui(new Ui::BarcodeTabForm)
 {
     m_ui->setupUi(this);
@@ -89,11 +89,11 @@ BarcodeConfig BarcodeTabWidget::getBarcodeConfig() const
 
 void BarcodeTabWidget::updatePipelineConfig()
 {
-    if (!m_pipelineManager) return;
+    if (!m_pipeline) return;
     
-    PipelineConfig config = m_pipelineManager->getConfigSnapshot();
+    PipelineConfig config = m_pipeline->getConfigSnapshot();
     config.barcode = getBarcodeConfig();
-    m_pipelineManager->setConfig(config);
+    m_pipeline->setConfig(config);
 
     emit barcodeConfigChanged();
     

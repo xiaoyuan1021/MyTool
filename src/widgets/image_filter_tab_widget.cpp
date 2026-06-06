@@ -7,9 +7,9 @@
 #include <QPushButton>
 #include <QStackedWidget>
 
-ImageFilterTabWidget::ImageFilterTabWidget(PipelineManager* pipelineManager, QWidget* parent)
+ImageFilterTabWidget::ImageFilterTabWidget(IPipelineAccess* pipelineAccess, QWidget* parent)
     : QWidget(parent)
-    , m_pipelineManager(pipelineManager)
+    , m_pipeline(pipelineAccess)
 {
     setupUI();
 }
@@ -319,9 +319,9 @@ void ImageFilterTabWidget::updateParamVisibility()
 
 void ImageFilterTabWidget::syncConfigToPipeline()
 {
-    if (!m_pipelineManager) return;
+    if (!m_pipeline) return;
 
-    m_pipelineManager->updateConfig([&](PipelineConfig& cfg) {
+    m_pipeline->updateConfig([&](PipelineConfig& cfg) {
         cfg.imageFilter.filterType = static_cast<FilterDenoiseType>(m_filterTypeCombo->currentIndex());
 
         // 高斯参数
@@ -353,7 +353,7 @@ void ImageFilterTabWidget::onMorphOpChanged(int index)
 
 void ImageFilterTabWidget::onResetClicked()
 {
-    if (!m_pipelineManager) return;
+    if (!m_pipeline) return;
 
     m_filterTypeCombo->setCurrentIndex(0);
     m_kernelSizeSlider->setValue(1);
@@ -420,7 +420,7 @@ void ImageFilterTabWidget::connectSignals(const SignalContext& ctx,
 
 void ImageFilterTabWidget::applyConfig()
 {
-    if (!m_pipelineManager) return;
-    loadFromConfig(m_pipelineManager->config());
+    if (!m_pipeline) return;
+    loadFromConfig(m_pipeline->config());
     updateParamVisibility();
 }

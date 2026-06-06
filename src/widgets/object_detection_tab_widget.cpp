@@ -11,10 +11,10 @@
 #include <QTimer>
 #include <QFile>
 
-ObjectDetectionTabWidget::ObjectDetectionTabWidget(PipelineManager* pipelineManager, QWidget* parent)
+ObjectDetectionTabWidget::ObjectDetectionTabWidget(IPipelineAccess* pipelineAccess, QWidget* parent)
     : QWidget(parent)
     , m_ui(new Ui::ObjectDetectionTabForm)
-    , m_pipelineManager(pipelineManager)
+    , m_pipeline(pipelineAccess)
 {
     m_ui->setupUi(this);
     setupConnections();
@@ -107,7 +107,7 @@ void ObjectDetectionTabWidget::onApplyClicked()
     if (m_dnnInference.isLoaded() && m_currentModelPath == modelPath) {
         Logger::instance()->info("[ObjectDetection] model already loaded, skip reloading");
         m_ui->label_status->setText("状态：模型已就绪");
-        m_pipelineManager->updateConfig([this](PipelineConfig& cfg) {
+        m_pipeline->updateConfig([this](PipelineConfig& cfg) {
             cfg.enableObjectDetection = true;
             cfg.objectDetection.expectedCount = m_ui->spinBox_expectedCount->value();
         });
@@ -150,7 +150,7 @@ void ObjectDetectionTabWidget::onApplyClicked()
 
         if (result == "both" || result == "dnn") {
             m_currentModelPath = modelPath;
-            m_pipelineManager->updateConfig([this](PipelineConfig& cfg) {
+            m_pipeline->updateConfig([this](PipelineConfig& cfg) {
                 cfg.enableObjectDetection = true;
                 cfg.objectDetection.expectedCount = m_ui->spinBox_expectedCount->value();
             });

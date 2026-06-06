@@ -3,7 +3,7 @@
 #include <QWidget>
 #include <functional>
 #include <opencv2/core.hpp>
-#include "pipeline_manager.h"
+#include "core/i_pipeline_access.h"
 #include "widgets/i_tab_interfaces.h"
 
 namespace Ui
@@ -16,7 +16,7 @@ class LineDetectTabWidget : public QWidget, public ISignalConnectable, public IR
     Q_OBJECT
 
 public:
-    explicit LineDetectTabWidget(PipelineManager* pipelineManager,
+    explicit LineDetectTabWidget(IPipelineAccess* pipelineAccess,
                                  QWidget* parent = nullptr);
     ~LineDetectTabWidget();
     void initialize();
@@ -32,7 +32,7 @@ public:
     void setLineConfig(const LineDetectConfig& config);
 
 private:
-    PipelineManager* m_pipelineManager;
+    IPipelineAccess* m_pipeline;
     std::function<void()> m_onExecutePipeline;
     Ui::LineTabForm* m_ui;
 

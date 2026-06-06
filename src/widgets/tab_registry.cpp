@@ -1,4 +1,5 @@
 #include "widgets/tab_registry.h"
+#include "pipeline_manager.h"
 
 #include "widgets/image_tab_widget.h"
 #include "widgets/enhance_tab_widget.h"

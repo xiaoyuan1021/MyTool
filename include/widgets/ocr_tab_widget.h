@@ -8,8 +8,7 @@
 #include <QPushButton>
 #include <QLineEdit>
 #include <QCheckBox>
-#include "pipeline_manager.h"
-#include "pipeline.h"
+#include "core/i_pipeline_access.h"
 #include "widgets/i_tab_interfaces.h"
 
 class OcrTabWidget : public QWidget, public ISignalConnectable, public IConfigurableTab, public IResultUpdatable
@@ -17,7 +16,7 @@ class OcrTabWidget : public QWidget, public ISignalConnectable, public IConfigur
     Q_OBJECT
 
 public:
-    explicit OcrTabWidget(PipelineManager* pipelineManager, QWidget* parent = nullptr);
+    explicit OcrTabWidget(IPipelineAccess* pipelineAccess, QWidget* parent = nullptr);
     ~OcrTabWidget();
 
     // IConfigurableTab 接口实现
@@ -45,7 +44,7 @@ private:
     void clearResults();
     void updateRegionsTable(const QVector<OcrRegion>& regions);
 
-    PipelineManager* m_pipelineManager;
+    IPipelineAccess* m_pipeline;
 
     bool m_manualOcrTrigger = false;
 

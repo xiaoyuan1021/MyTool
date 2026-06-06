@@ -12,9 +12,9 @@
 #include <QApplication>
 #include <QMessageBox>
 
-OcrTabWidget::OcrTabWidget(PipelineManager* pipelineManager, QWidget* parent)
+OcrTabWidget::OcrTabWidget(IPipelineAccess* pipelineAccess, QWidget* parent)
     : QWidget(parent)
-    , m_pipelineManager(pipelineManager)
+    , m_pipeline(pipelineAccess)
 {
     setupUI();
 }
@@ -155,9 +155,9 @@ void OcrTabWidget::onResetClicked()
 
 void OcrTabWidget::syncConfigToPipeline()
 {
-    if (!m_pipelineManager) return;
+    if (!m_pipeline) return;
 
-    m_pipelineManager->updateConfig([&](PipelineConfig& cfg) {
+    m_pipeline->updateConfig([&](PipelineConfig& cfg) {
         cfg.ocr.pageMode = m_pageModeCombo->currentData().toInt();
     });
 }

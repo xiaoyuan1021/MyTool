@@ -1,7 +1,7 @@
 #pragma once
 
 #include <QObject>
-#include "pipeline_manager.h"
+#include "core/i_pipeline_access.h"
 #include <QListWidgetItem>
 #include "widgets/i_tab_interfaces.h"
 
@@ -14,7 +14,7 @@ class ProcessTabWidget : public QWidget, public ISignalConnectable
     Q_OBJECT
 
 public:
-    explicit ProcessTabWidget(PipelineManager* pipelineManager, QWidget *parent = nullptr);
+    explicit ProcessTabWidget(IPipelineAccess* pipelineAccess, QWidget *parent = nullptr);
     ~ProcessTabWidget();
     void initialize();
     void refreshAlgorithmListUI(const QVector<AlgorithmStep>& algorithmQueue);
@@ -41,7 +41,7 @@ private:
 
 private:
     Ui::Form_Process *m_ui;
-    PipelineManager* m_pipelineManager;
+    IPipelineAccess* m_pipeline;
     int m_editingAlgorithmIndex = -1;
     bool m_loadingParameters = false;
 };

@@ -5,8 +5,7 @@
 #include <QSlider>
 #include <QLabel>
 #include <QStack>
-#include "pipeline_manager.h"
-#include "pipeline.h"
+#include "core/i_pipeline_access.h"
 #include "widgets/i_tab_interfaces.h"
 
 class ImageFilterTabWidget : public QWidget, public ISignalConnectable, public IConfigurableTab
@@ -14,7 +13,7 @@ class ImageFilterTabWidget : public QWidget, public ISignalConnectable, public I
     Q_OBJECT
 
 public:
-    explicit ImageFilterTabWidget(PipelineManager* pipelineManager, QWidget* parent = nullptr);
+    explicit ImageFilterTabWidget(IPipelineAccess* pipelineAccess, QWidget* parent = nullptr);
     ~ImageFilterTabWidget();
 
     // IConfigurableTab 接口实现
@@ -40,7 +39,7 @@ private:
     void syncConfigToPipeline();
     void applyConfig();
 
-    PipelineManager* m_pipelineManager;
+    IPipelineAccess* m_pipeline;
 
     // UI 控件
     QComboBox* m_filterTypeCombo;

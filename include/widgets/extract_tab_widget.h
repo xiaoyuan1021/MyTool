@@ -1,7 +1,7 @@
 #pragma once
 
 #include <QWidget>
-#include "pipeline_manager.h"
+#include "core/i_pipeline_access.h"
 #include "image_view.h"
 #include <QListWidgetItem>
 #include "widgets/i_tab_interfaces.h"
@@ -18,7 +18,7 @@ class ExtractTabWidget : public QWidget, public ISignalConnectable, public IConf
 {
     Q_OBJECT
 public:
-    explicit ExtractTabWidget(PipelineManager* pipeline,
+    explicit ExtractTabWidget(IPipelineAccess* pipeline,
                               ImageView* view,
                               RoiManager* roiManager,
                               QStatusBar* statusBar = nullptr,
@@ -63,7 +63,7 @@ private:
 
 private:
     Ui::ExtractTabForm* m_ui;
-    PipelineManager* m_pipeline;
+    IPipelineAccess* m_pipeline;
     ImageView* m_view;
     RoiManager* m_roiManager;
     QStatusBar* m_statusBar;
