@@ -435,10 +435,14 @@ void MainWindow::setupControllerConnections()
         // 同时保存当前ROI的配置（如果有的话）
         m_roiUiController->saveCurrentRoiPipelineConfig();
     });
-    // 图片切换后：更新Tab显示
+    // 图片切换后：更新Tab显示并触发pipeline执行
     connect(&m_roiManager, &RoiManager::currentImageChanged, this, [this](const QString&) {
         m_pipelineManager->clearLastResult();
         m_roiUiController->syncRoiConfigsToWidget();
+        // [FIX] 触发pipeline执行，确保切换图片后显示正确的处理结果
+        QTimer::singleShot(100, this, [this]() {
+            requestRefresh();
+        });
     });
 
     // 删除图片/ROI后：隐藏所有检测相关Tab
