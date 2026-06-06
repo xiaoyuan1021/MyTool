@@ -1,4 +1,4 @@
-#include "template_tab_widget.h"
+﻿#include "template_tab_widget.h"
 #include "ui_template_tab.h"
 #include "image_view.h"
 #include "logger.h"
@@ -107,13 +107,13 @@ void TemplateTabWidget::clearTemplate()
 void TemplateTabWidget::drawTemplate()
 {
     if (m_roiManager->getCurrentImage().empty()) {
-        Logger::instance()->warning("请先打开图像");
+        spdlog::warn("请先打开图像");
         QMessageBox::warning(m_parent, "提示", "请先打开图像！");
         return;
     }
     m_view->startPolygonDrawing("template");
     //m_ui->statusbar->showMessage("请在图像上绘制模板区域（多边形）");
-    Logger::instance()->info("开始绘制模板区域");
+    spdlog::info("开始绘制模板区域");
 }
 
 void TemplateTabWidget::clearTemplateDrawing()
@@ -121,7 +121,7 @@ void TemplateTabWidget::clearTemplateDrawing()
     m_view->clearPolygonDrawing();
     clearMatchResults();
     //m_ui->statusbar->showMessage("已清除模板区域");
-    Logger::instance()->info("已清除模板区域");
+    spdlog::info("已清除模板区域");
 }
 
 void TemplateTabWidget::createTemplate()
@@ -166,9 +166,9 @@ void TemplateTabWidget::createTemplateFromPolygon(const QVector<QPointF>& points
     params.polygonPoints = points;
     m_defaultParams.polygonPoints = points;
 
-    Logger::instance()->info("========== 开始创建模板 ==========");
-    Logger::instance()->info(QString("模板名称: %1").arg(name));
-    Logger::instance()->info(QString("匹配类型: %1").arg(getCurrentStrategyName()));
+    spdlog::info("========== 开始创建模板 ==========");
+    spdlog::info(QString("模板名称: %1").arg(name));
+    spdlog::info(QString("匹配类型: %1").arg(getCurrentStrategyName()));
 
     bool success = m_currentStrategy->createTemplate(m_roiManager->getCurrentImage(), points, params);
 
@@ -197,14 +197,14 @@ void TemplateTabWidget::findTemplate()
     double minScore = m_ui->doubleSpinBox_minScore->value();
     int maxMatches = m_ui->spinBox_matchNumber->value();
 
-    Logger::instance()->info("========== 开始模板匹配 ==========");
+    spdlog::info("========== 开始模板匹配 ==========");
     //m_ui->statusbar->showMessage("正在搜索模板...");
 
     QVector<MatchResult> results = m_currentStrategy->findMatches(
         m_roiManager->getCurrentImage(), minScore, maxMatches, 0.7);
 
     if (results.isEmpty()) {
-        Logger::instance()->info("未找到匹配目标");
+        spdlog::info("未找到匹配目标");
         QMessageBox::information(m_parent, "结果", "未找到匹配目标");
         //m_ui->statusbar->showMessage("未找到匹配", 3000);
     } else {
@@ -227,7 +227,7 @@ void TemplateTabWidget::clearMatchResults()
 {
     if (!m_roiManager->getCurrentImage().empty()) {
         emit imageToShow(m_roiManager->getCurrentImage());
-        Logger::instance()->info("已清除匹配结果");
+        spdlog::info("已清除匹配结果");
     }
 }
 
@@ -287,7 +287,7 @@ void TemplateTabWidget::importFolder()
 
     if (dirPath.isEmpty()) return;
 
-    Logger::instance()->info(QString("[模板] 开始导入文件夹: %1").arg(dirPath));
+    spdlog::info(QString("[模板] 开始导入文件夹: %1").arg(dirPath));
 
     QApplication::setOverrideCursor(Qt::WaitCursor);
     QStringList imported = m_roiManager->importImagesFromFolder(dirPath);
@@ -305,7 +305,7 @@ void TemplateTabWidget::importFolder()
                 "请在左侧图片列表中选择图片进行模板创建和匹配。")
             .arg(imported.size()));
 
-    Logger::instance()->info(QString("[模板] 文件夹导入完成: %1 张图片").arg(imported.size()));
+    spdlog::info(QString("[模板] 文件夹导入完成: %1 张图片").arg(imported.size()));
 }
 
 // ========== 批量模板匹配 ==========
@@ -359,7 +359,7 @@ void TemplateTabWidget::showBatchResultImage(const QString& imageId,
         if (!matches.isEmpty()) {
             msg += QString(" | 最高分: %1").arg(matches.first().score, 0, 'f', 4);
         }
-        Logger::instance()->info(msg);
+        spdlog::info(msg);
     }
 }
 
@@ -508,13 +508,14 @@ void TemplateTabWidget::connectSignals(const SignalContext& ctx,
             });
     connect(this, &TemplateTabWidget::templateCreated,
             this, [](const QString& n) {
-                Logger::instance()->info(QString("模板已创建: %1").arg(n));
+                spdlog::info(QString("模板已创建: %1").arg(n));
             });
     connect(this, &TemplateTabWidget::matchCompleted,
             this, [](int count) {
-                Logger::instance()->info(
+                spdlog::info(
                     QString("匹配完成，找到 %1 个目标").arg(count));
             });
     QShortcut* sc = new QShortcut(Qt::Key_Escape, this);
     connect(sc, &QShortcut::activated, this, &TemplateTabWidget::clearMatchResults);
 }
+

@@ -1,4 +1,4 @@
-#include "extract_tab_widget.h"
+﻿#include "extract_tab_widget.h"
 #include "ui_extract_tab.h"
 #include "algorithm/opencv_algorithm.h"
 #include "logger.h"
@@ -114,13 +114,13 @@ void ExtractTabWidget::onConditionChanged(int index)
     });
 
     QString modeName = (mode == FilterMode::And) ? "AND" : "OR";
-    Logger::instance()->info(QString("筛选模式已切换:%1").arg(modeName));
+    spdlog::info(QString("筛选模式已切换:%1").arg(modeName));
 }
 
 void ExtractTabWidget::clearFilter()
 {
     if (m_currentSelectedIndex < 0 || m_currentSelectedIndex >= m_filterConditions.size()) {
-        Logger::instance()->warning("请先选择要删除的条件");
+        spdlog::warn("请先选择要删除的条件");
         return;
     }
 
@@ -143,7 +143,7 @@ void ExtractTabWidget::clearFilter()
         calculateAndShowRange(feature);
     }
 
-    Logger::instance()->info("已删除选中的筛选条件");
+    spdlog::info("已删除选中的筛选条件");
 }
 
 void ExtractTabWidget::addFilter()
@@ -189,7 +189,7 @@ void ExtractTabWidget::addFilter()
     // 计算并显示特征范围
     calculateAndShowRange(feature);
 
-    Logger::instance()->info(QString("已添加筛选条件: %1").arg(getFeatureDisplayName(feature)));
+    spdlog::info(QString("已添加筛选条件: %1").arg(getFeatureDisplayName(feature)));
 }
 
 void ExtractTabWidget::extractRegions()
@@ -211,13 +211,13 @@ void ExtractTabWidget::extractRegions()
 
     m_view->clearPolygon();
     emit extractionChanged();
-    Logger::instance()->info("区域已提取");
+    spdlog::info("区域已提取");
 }
 
 void ExtractTabWidget::drawRegion()
 {
     if (m_roiManager->getCurrentImage().empty()) {
-        Logger::instance()->warning("请先打开图像");
+        spdlog::warn("请先打开图像");
         return;
     }
     m_view->startRectangleDrawing("region");
@@ -230,19 +230,19 @@ void ExtractTabWidget::drawRegion()
 void ExtractTabWidget::clearRegion()
 {
     m_view->clearPolygonDrawing();
-    Logger::instance()->info("已清除绘制区域");
+    spdlog::info("已清除绘制区域");
 }
 
 void ExtractTabWidget::calculateRegionFeatures(const QVector<QPointF>& points)
 {
     if (points.size() < 3) {
-        Logger::instance()->warning("顶点数量不足，至少需要3个点");
+        spdlog::warn("顶点数量不足，至少需要3个点");
         return;
     }
 
     const PipelineContext& ctx = m_pipeline->getLastContext();
     if (ctx.extractedMask.empty() && ctx.filterMask.empty()) {
-        Logger::instance()->warning("请先执行算法处理，然后再绘制区域");
+        spdlog::warn("请先执行算法处理，然后再绘制区域");
         return;
     }
 
@@ -298,14 +298,14 @@ void ExtractTabWidget::calculateRegionFeatures(const QVector<QPointF>& points)
         m_ui->label_featureRange->setText(text);
     }
 
-    Logger::instance()->info("========== ROI 区域特征分析 ==========");
-    Logger::instance()->info(QString("找到 %1 个连通域").arg(features.size()));
-    Logger::instance()->info("-----------------------------------");
+    spdlog::info("========== ROI 区域特征分析 ==========");
+    spdlog::info(QString("找到 %1 个连通域").arg(features.size()));
+    spdlog::info("-----------------------------------");
 
     for (const auto& feature : features) {
-        Logger::instance()->info(feature.toString());
+        spdlog::info(feature.toString());
     }
-    Logger::instance()->info("======================================");
+    spdlog::info("======================================");
 }
 
 void ExtractTabWidget::calculateAndShowRange(ShapeFeature feature)
@@ -428,7 +428,7 @@ void ExtractTabWidget::setExtractConfig(const ShapeFilterConfig& config)
         m_ui->comboBox_condition->setCurrentIndex(config.mode == FilterMode::And ? 0 : 1);
     }
 
-    Logger::instance()->info(QString("已加载提取配置: %1 个条件").arg(config.conditions.size()));
+    spdlog::info(QString("已加载提取配置: %1 个条件").arg(config.conditions.size()));
 }
 
 void ExtractTabWidget::saveCurrentFilterCondition()
@@ -537,3 +537,4 @@ void ExtractTabWidget::updateRangeLabelWithResult(const OpenCVAlgorithm::Feature
 
     m_ui->label_featureRange->setText(currentText + resultText);
 }
+

@@ -33,7 +33,7 @@ DetectionItemResult DetectionEvaluator::evaluateItem(
             break;
         default:
             result = DetectionItemResult(detItem.itemId, detItem.itemName, detectionTypeToString(detItem.type));
-            Logger::instance()->warning(QString("[评估] 未知检测类型: %1").arg(detectionTypeToString(detItem.type)));
+            spdlog::warn(QString("[评估] 未知检测类型: %1").arg(detectionTypeToString(detItem.type)));
             break;
     }
 
@@ -66,7 +66,7 @@ RoiDetectionResult DetectionEvaluator::evaluateRoi(
         pipelineItem.passed = false;
         pipelineItem.failReason = ctx.reason.isEmpty() ? "Pipeline执行失败" : ctx.reason;
         roiResult.addItemResult(pipelineItem);
-        Logger::instance()->warning(QString("[评估] ROI '%1' Pipeline执行失败: %2")
+        spdlog::warn(QString("[评估] ROI '%1' Pipeline执行失败: %2")
             .arg(roiConfig.roiName, pipelineItem.failReason));
         return roiResult;
     }
@@ -79,7 +79,7 @@ RoiDetectionResult DetectionEvaluator::evaluateRoi(
 
     // 只在失败时打印日志
     if (!roiResult.passed) {
-        Logger::instance()->warning(QString("[评估] %1").arg(roiResult.toSummaryString()));
+        spdlog::warn(QString("[评估] %1").arg(roiResult.toSummaryString()));
     }
 
     return roiResult;
@@ -198,3 +198,4 @@ DetectionItemResult DetectionEvaluator::evaluateOcr(
 
     return result;
 }
+

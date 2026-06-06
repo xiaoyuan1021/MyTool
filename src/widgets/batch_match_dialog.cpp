@@ -1,4 +1,4 @@
-#include "widgets/batch_match_dialog.h"
+﻿#include "widgets/batch_match_dialog.h"
 #include "roi_manager.h"
 #include "logger.h"
 #include "utils/path_utils.h"
@@ -298,7 +298,7 @@ void BatchMatchDialog::finishBatch()
 
     m_btnExportCsv->setEnabled(total > 0);
 
-    Logger::instance()->info(QString("[BatchMatch] 批量匹配完成: 共%1张, 通过%2, 未通过%3, 耗时%4s")
+    spdlog::info(QString("[BatchMatch] 批量匹配完成: 共%1张, 通过%2, 未通过%3, 耗时%4s")
         .arg(total).arg(passed).arg(failed).arg(elapsed, 0, 'f', 1));
 }
 
@@ -396,7 +396,7 @@ void BatchMatchDialog::onExportCsvClicked()
     }
 
     file.close();
-    Logger::instance()->info(QString("[BatchMatch] 结果已导出: %1").arg(filePath));
+    spdlog::info(QString("[BatchMatch] 结果已导出: %1").arg(filePath));
     QMessageBox::information(this, "导出完成",
         QString("结果已导出到:\n%1").arg(filePath));
 }
@@ -413,3 +413,4 @@ void BatchMatchDialog::onRowDoubleClicked(int row, int column)
 
     emit viewResultRequested(item.imageId, item.resultImage, item.matches);
 }
+

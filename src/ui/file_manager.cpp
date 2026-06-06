@@ -6,7 +6,6 @@
 #include <QMessageBox>
 #include <QCoreApplication>
 #include <QDir>
-#include <QDebug>
 
 FileManager::FileManager(QObject *parent)
     : QObject(parent)
@@ -62,11 +61,11 @@ void FileManager::readImageFile(const QString& filePath)
         emit imageLoaded(img, filePath);
     } catch (const cv::Exception& ex) {
         QString msg = QString("读取图像OpenCV错误: %1").arg(ex.what());
-        Logger::instance()->error(msg);
+        spdlog::error(msg);
         emit errorOccurred(msg);
     } catch (const std::exception& ex) {
         QString msg = QString("读取图像异常: %1").arg(ex.what());
-        Logger::instance()->error(msg);
+        spdlog::error(msg);
         emit errorOccurred(msg);
     }
 }
@@ -94,12 +93,12 @@ bool FileManager::saveImageFile(const QString& filePath, const cv::Mat& image)
         }
     } catch (const cv::Exception& ex) {
         QString msg = QString("保存图像OpenCV错误: %1").arg(ex.what());
-        Logger::instance()->error(msg);
+        spdlog::error(msg);
         emit errorOccurred(msg);
         return false;
     } catch (const std::exception& ex) {
         QString msg = QString("保存图像异常: %1").arg(ex.what());
-        Logger::instance()->error(msg);
+        spdlog::error(msg);
         emit errorOccurred(msg);
         return false;
     }
@@ -148,3 +147,5 @@ void FileManager::saveImageFileWithDialog(PipelineManager* pipelineManager)
 
     saveImageFile(saveName, toSave);
 }
+
+

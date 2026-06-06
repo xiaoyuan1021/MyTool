@@ -1,4 +1,4 @@
-#include "image_view.h"
+﻿#include "image_view.h"
 #include "logger.h"
 #include "qapplication.h"
 #include <QAction>
@@ -245,7 +245,7 @@ void ImageView::handleReferenceLinePressEvent(QMouseEvent *event)
             // 显示起点标记
             showReferenceLineHint("已设置起点，请继续点击设置终点");
             
-            Logger::instance()->info(QString("参考线起点已设置: (%1, %2)，请点击终点")
+            spdlog::info(QString("参考线起点已设置: (%1, %2)，请点击终点")
                 .arg(imgPos.x(), 0, 'f', 1)
                 .arg(imgPos.y(), 0, 'f', 1));
         } else if (!m_referenceLineWaitingConfirm) {
@@ -266,7 +266,7 @@ void ImageView::handleReferenceLinePressEvent(QMouseEvent *event)
             m_referenceLineWaitingConfirm = true;
             showReferenceLineHint("预览线已显示，右键确认绘制 / 左键重新设置终点");
             
-            Logger::instance()->info(QString("参考线终点已设置: (%1, %2)，右键确认")
+            spdlog::info(QString("参考线终点已设置: (%1, %2)，右键确认")
                 .arg(imgPos.x(), 0, 'f', 1)
                 .arg(imgPos.y(), 0, 'f', 1));
         } else {
@@ -315,7 +315,7 @@ void ImageView::handleReferenceLinePressEvent(QMouseEvent *event)
             
             emit referenceLineDrawn(start, end);
             
-            Logger::instance()->info(QString("参考线绘制确认: 起点(%1,%2) -> 终点(%3,%4)")
+            spdlog::info(QString("参考线绘制确认: 起点(%1,%2) -> 终点(%3,%4)")
                 .arg(start.x, 0, 'f', 1).arg(start.y, 0, 'f', 1)
                 .arg(end.x, 0, 'f', 1).arg(end.y, 0, 'f', 1));
             
@@ -325,7 +325,7 @@ void ImageView::handleReferenceLinePressEvent(QMouseEvent *event)
         } else {
             // 右键取消（未设置终点时）
             clearReferenceLine();
-            Logger::instance()->info("参考线绘制已取消");
+            spdlog::info("参考线绘制已取消");
         }
         
         event->accept();
@@ -699,7 +699,7 @@ void ImageView::startPolygonDrawing(const QString &drawingType)
         delete m_polygonPathItem;
         m_polygonPathItem= nullptr;
     }
-    Logger::instance()->info(QString("开始绘制%1 请点击左键添加顶点，右键完成")
+    spdlog::info(QString("开始绘制%1 请点击左键添加顶点，右键完成")
                                  .arg(drawingType == "template" ? "模板" : "区域"));
 }
 
@@ -755,7 +755,7 @@ void ImageView::startRectangleDrawing(const QString &drawingType)
         m_rectItem = nullptr;
     }
 
-    Logger::instance()->info(QString("开始绘制矩形%1 请拖拽绘制矩形，右键完成")
+    spdlog::info(QString("开始绘制矩形%1 请拖拽绘制矩形，右键完成")
                                  .arg(drawingType == "template" ? "模板" : "区域"));
 }
 
@@ -795,7 +795,7 @@ void ImageView::startReferenceLineDrawing()
     // 显示提示文字
     showReferenceLineHint("请左键点击设置参考线起点");
     
-    Logger::instance()->info("参考线绘制模式已启动，请点击设置起点");
+    spdlog::info("参考线绘制模式已启动，请点击设置起点");
 }
 
 void ImageView::clearReferenceLine()
@@ -887,3 +887,4 @@ void ImageView::showContextMenu(const QPoint& viewportPos)
     connect(fitAction, &QAction::triggered, this, &ImageView::resetZoom);
     menu.exec(mapToGlobal(viewportPos));
 }
+

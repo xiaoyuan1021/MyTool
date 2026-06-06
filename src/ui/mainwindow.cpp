@@ -91,7 +91,7 @@ void MainWindow::stopAllAsyncOperations()
     // 取消所有待处理的Pipeline请求
     m_pipelineManager->scheduler()->cancelAll();
 
-    disconnect(Logger::instance(), nullptr, this, nullptr);
+    // No Logger singleton to disconnect from anymore
 }
 
 // ========== 初始化 ==========
@@ -129,11 +129,8 @@ void MainWindow::setupBasicInfrastructure()
     QString logDir = PROJECT_ROOT_DIR "/logs";
     QDir(logDir).mkpath(".");
 
-    // [FIX] 先初始化 LogPage（创建 m_colorLogger + UI sink），再挂载 fileSink
-    // 否则 setTextEdit 之前 m_colorLogger 为 null，所有 Logger::info() 调用被静默丢弃
+    // Initialize LogPage (creates spdlog sinks: UI + rotating file)
     ui->page_log->initialize();
-    Logger::instance()->setLogFile(logDir + "/test.log");
-    Logger::instance()->enableFileLog(true);
     connect(ui->page_log, &LogPage::requestGoHome, this, [this]() {
         ui->stackedWidget_main->setCurrentIndex(0);
     });
@@ -184,14 +181,14 @@ void MainWindow::setupConnections()
             }
         }
         
-        Logger::instance()->info("图像加载成功!");
+        spdlog::info("图像加载成功!");
         // [FIX] 不再自动执行pipeline，等待用户主动配置后点击"应用"
     });
     connect(m_fileManager, &FileManager::imageSaved, this, [](const QString& path) {
-        Logger::instance()->info(QString("图像保存成功: %1").arg(path));
+        spdlog::info("图像保存成功: {}", path.toStdString());
     });
     connect(m_fileManager, &FileManager::errorOccurred, this, [this](const QString& message) {
-        Logger::instance()->error(message);
+        spdlog::error("{}", message.toStdString());
         QMessageBox::warning(this, "错误", message);
     });
 
@@ -204,8 +201,7 @@ void MainWindow::setupConnections()
     });
     connect(m_view, &ImageView::polygonDrawingPointAdded, this,
         [](const QString& type, const QPointF& point) {
-            Logger::instance()->info(QString("[%1] 添加顶点: (%2, %3)")
-                .arg(type).arg(point.x(), 0, 'f', 1).arg(point.y(), 0, 'f', 1));
+            spdlog::info("[{}] 添加顶点: ({:.1f}, {:.1f})", type.toStdString(), point.x(), point.y());
         });
 }
 
@@ -366,8 +362,7 @@ void MainWindow::setupControllerConnections()
                     }
                 );
             } else {
-                Logger::instance()->warning(
-                    QString("[MainWindow] Tab '%1' 未实现 ISignalConnectable 接口，跳过信号连接").arg(tabName));
+                spdlog::warn("[MainWindow] Tab '{}' 未实现 ISignalConnectable 接口，跳过信号连接", tabName.toStdString());
             }
 
             // 2. IConfigurableTab 接口：注册到 ConfigController
@@ -440,8 +435,7 @@ void MainWindow::setupControllerConnections()
                     if (item.itemId == detectionId) {
                         bool isVideoDetect = (item.type == DetectionType::VideoDetection);
                         m_view->setZoomEnabled(!isVideoDetect);
-                        Logger::instance()->info(
-                            QString("画布缩放: %1").arg(isVideoDetect ? "已禁用(视频检测模式)" : "已启用"));
+                        spdlog::info("画布缩放: {}", isVideoDetect ? "已禁用(视频检测模式)" : "已启用");
                         break;
                     }
                 }
@@ -527,7 +521,7 @@ void MainWindow::setupResultHandler()
     connect(m_pipelineManager->scheduler(), &PipelineScheduler::queueChanged,
             this, [this](int pendingCount) {
         if (pendingCount > 0) {
-            qDebug() << "[MainWindow] 队列中有" << pendingCount << "个待处理请求";
+            spdlog::debug("[MainWindow] 队列中有 {} 个待处理请求", pendingCount);
         }
     });
 
@@ -548,11 +542,12 @@ void MainWindow::processAndDisplay()
     cv::Mat currentImage = m_roiManager.getCurrentImage();
     if (currentImage.empty()) return;
 
-    qDebug() << "[MainWindow] processAndDisplay: img=" << currentImage.cols << "x" << currentImage.rows
-             << "brightness=" << m_pipelineManager->config().enhance.brightness
-             << "contrast=" << m_pipelineManager->config().enhance.contrast
-             << "gamma=" << m_pipelineManager->config().enhance.gamma
-             << "sharpen=" << m_pipelineManager->config().enhance.sharpen;
+    spdlog::debug("[MainWindow] processAndDisplay: img={}x{} brightness={} contrast={} gamma={} sharpen={}",
+        currentImage.cols, currentImage.rows,
+        m_pipelineManager->config().enhance.brightness,
+        m_pipelineManager->config().enhance.contrast,
+        m_pipelineManager->config().enhance.gamma,
+        m_pipelineManager->config().enhance.sharpen);
 
     ui->statusbar->showMessage("正在处理...");
 
@@ -721,7 +716,7 @@ void MainWindow::setupMqtt()
                     tempCapture.release();
                 }
             } catch (const cv::Exception& ex) {
-                Logger::instance()->error(QString("自动打开相机失败: %1").arg(ex.what()));
+                spdlog::error("自动打开相机失败: {}", ex.what());
             }
         }
         
@@ -744,7 +739,7 @@ void MainWindow::setupMqtt()
             defaultRoi.pipelineConfig = m_pipelineManager->getConfigSnapshot();
             defaultRoi.isActive = true;
             m_roiManager.addRoiConfig(defaultRoi);
-            Logger::instance()->info("[capture] 已为采集的图像添加默认全图ROI配置");
+            spdlog::info("[capture] 已为采集的图像添加默认全图ROI配置");
         }
         
         m_toast->showMessage("已采集新帧，正在处理...");
@@ -782,7 +777,6 @@ void MainWindow::ensureTabExists(const QString& tabName)
 void MainWindow::requestRefresh()
 {
     m_needRefresh = true;
-    // 调度器内部已有消抖机制，直接触发
     processAndDisplay();
 }
 
@@ -812,7 +806,7 @@ void MainWindow::on_btn_importFolder_clicked()
         QMessageBox::information(this, "导入结果", "未导入任何图片。\n请确保文件夹中含有支持格式: .jpg, .png, .bmp, .tiff");
     } else {
         m_toast->showMessage(QString("已导入 %1 张图片").arg(imported.size()));
-        Logger::instance()->info(QString("[MainWindow] 从文件夹导入 %1 张图片: %2").arg(imported.size()).arg(dir));
+        spdlog::info("[MainWindow] 从文件夹导入 {} 张图片: {}", imported.size(), dir.toStdString());
     }
 }
 
@@ -825,7 +819,7 @@ void MainWindow::hideAllDetectionTabs()
         ui->tabWidget->setTabVisible(i, false);
     }
 
-    Logger::instance()->info("[MainWindow] 已隐藏所有Tab");
+    spdlog::info("[MainWindow] 已隐藏所有Tab");
 }
 
 

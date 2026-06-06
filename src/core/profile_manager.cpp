@@ -1,4 +1,4 @@
-#include "core/profile_manager.h"
+﻿#include "core/profile_manager.h"
 #include "roi_manager.h"
 #include "core/pipeline_manager.h"
 #include "logger.h"
@@ -54,7 +54,7 @@ void ProfileManager::scanProfiles()
         }
     }
 
-    Logger::instance()->info(
+    spdlog::info(
         QString("[ProfileManager] 扫描到 %1 个检测方案").arg(m_profiles.size()));
 }
 
@@ -64,7 +64,7 @@ bool ProfileManager::saveCurrentAsProfile(const QString& profileName,
                                           const QString& description)
 {
     if (profileName.isEmpty()) {
-        Logger::instance()->error("[ProfileManager] 方案名称为空，无法保存");
+        spdlog::error("[ProfileManager] 方案名称为空，无法保存");
         return false;
     }
 
@@ -85,7 +85,7 @@ bool ProfileManager::saveCurrentAsProfile(const QString& profileName,
     // 保存到目录
     ensureProfilesDir();
     if (!profile.saveToDirectory(profilesDirectory())) {
-        Logger::instance()->error(
+        spdlog::error(
             QString("[ProfileManager] 保存方案失败: %1").arg(profileName));
         return false;
     }
@@ -94,7 +94,7 @@ bool ProfileManager::saveCurrentAsProfile(const QString& profileName,
     m_profiles[profile.profileId] = profile;
     m_activeProfileId = profile.profileId;
 
-    Logger::instance()->info(
+    spdlog::info(
         QString("[ProfileManager] 方案已保存: %1 (ROI数: %2, 模板数: %3)")
             .arg(profileName)
             .arg(profile.roiTemplates.size())
@@ -108,7 +108,7 @@ bool ProfileManager::saveCurrentAsProfile(const QString& profileName,
 bool ProfileManager::loadProfile(const QString& profileId)
 {
     if (!m_profiles.contains(profileId)) {
-        Logger::instance()->error(
+        spdlog::error(
             QString("[ProfileManager] 方案不存在: %1").arg(profileId));
         return false;
     }
@@ -117,7 +117,7 @@ bool ProfileManager::loadProfile(const QString& profileId)
 
     cv::Mat currentImage = m_roiManager->getFullImage();
     if (currentImage.empty()) {
-        Logger::instance()->error("[ProfileManager] 当前无图片，无法应用方案");
+        spdlog::error("[ProfileManager] 当前无图片，无法应用方案");
         return false;
     }
 
@@ -126,7 +126,7 @@ bool ProfileManager::loadProfile(const QString& profileId)
 
     m_activeProfileId = profileId;
 
-    Logger::instance()->info(
+    spdlog::info(
         QString("[ProfileManager] 方案已加载: %1 (ROI数: %2)")
             .arg(profile.profileName)
             .arg(profile.roiTemplates.size()));
@@ -180,7 +180,7 @@ bool ProfileManager::deleteProfile(const QString& profileId)
         m_activeProfileId.clear();
     }
 
-    Logger::instance()->info(
+    spdlog::info(
         QString("[ProfileManager] 方案已删除: %1").arg(name));
 
     emit profileDeleted(profileId);
@@ -212,7 +212,7 @@ bool ProfileManager::saveTemplateToProfile(const QString& profileId,
                                            int matchMethod)
 {
     if (!m_profiles.contains(profileId)) {
-        Logger::instance()->error(
+        spdlog::error(
             QString("[ProfileManager] 方案不存在: %1").arg(profileId));
         return false;
     }
@@ -230,7 +230,7 @@ bool ProfileManager::saveTemplateToProfile(const QString& profileId,
     ensureProfilesDir();
     profile.saveToDirectory(profilesDirectory());
 
-    Logger::instance()->info(
+    spdlog::info(
         QString("[ProfileManager] 模板已保存: 方案=%1, 模板=%2")
             .arg(profile.profileName).arg(templateName));
 
@@ -251,7 +251,7 @@ bool ProfileManager::loadTemplateFromProfile(const QString& profileId,
     const InspectionProfile& profile = m_profiles[profileId];
     const TemplateEntry* entry = profile.findTemplate(templateName);
     if (!entry) {
-        Logger::instance()->warning(
+        spdlog::warn(
             QString("[ProfileManager] 模板不存在: 方案=%1, 模板=%2")
                 .arg(profile.profileName).arg(templateName));
         return false;
@@ -262,7 +262,7 @@ bool ProfileManager::loadTemplateFromProfile(const QString& profileId,
         QString dirPath = profilesDirectory() + "/" + profile.profileName;
         TemplateEntry* nonConstEntry = const_cast<TemplateEntry*>(entry);
         if (!nonConstEntry->load(dirPath)) {
-            Logger::instance()->error(
+            spdlog::error(
                 QString("[ProfileManager] 模板加载失败: %1").arg(templateName));
             return false;
         }

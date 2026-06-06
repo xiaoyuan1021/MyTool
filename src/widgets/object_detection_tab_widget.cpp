@@ -4,7 +4,6 @@
 #include "controllers/roi_ui_controller.h"
 #include <QFileDialog>
 #include <QMessageBox>
-#include <QDebug>
 #include <QtConcurrent/QtConcurrent>
 #include <QCoreApplication>
 #include <QDir>
@@ -49,7 +48,7 @@ void ObjectDetectionTabWidget::setupConnections()
         [this](bool success, const QString& message) {
             m_ui->label_status->setText(message);
             if (success) {
-                Logger::instance()->info("[ObjectDetection] model loaded, emitting detectionConfigChanged");
+                spdlog::info("[ObjectDetection] model loaded, emitting detectionConfigChanged");
                 emit detectionConfigChanged();
             }
         });
@@ -84,18 +83,18 @@ void ObjectDetectionTabWidget::autoLoadDefaultModel()
     
     if (QFile::exists(defaultModelPath)) {
         m_ui->lineEdit_modelPath->setText(defaultModelPath);
-        qDebug() << "[ObjectDetection] auto-loading default model:" << defaultModelPath;
+        spdlog::debug("[ObjectDetection] auto-loading default model: {}", defaultModelPath.toStdString());
         
         // 延迟加载模型，等待UI完全初始化
         QTimer::singleShot(100, this, &ObjectDetectionTabWidget::onApplyClicked);
     } else {
-        qDebug() << "[ObjectDetection] default model not found:" << defaultModelPath;
+        spdlog::debug("[ObjectDetection] default model not found: {}", defaultModelPath.toStdString());
     }
 }
 
 void ObjectDetectionTabWidget::onApplyClicked()
 {
-    Logger::instance()->info("[ObjectDetection] apply button clicked");
+    spdlog::info("[ObjectDetection] apply button clicked");
 
     QString modelPath = m_ui->lineEdit_modelPath->text().trimmed();
     if (modelPath.isEmpty()) {
@@ -105,7 +104,7 @@ void ObjectDetectionTabWidget::onApplyClicked()
 
     // 如果模型已加载且路径相同，无需重新加载
     if (m_dnnInference.isLoaded() && m_currentModelPath == modelPath) {
-        Logger::instance()->info("[ObjectDetection] model already loaded, skip reloading");
+        spdlog::info("[ObjectDetection] model already loaded, skip reloading");
         m_ui->label_status->setText("状态：模型已就绪");
         m_pipeline->updateConfig([this](PipelineConfig& cfg) {
             cfg.enableObjectDetection = true;
@@ -159,10 +158,10 @@ void ObjectDetectionTabWidget::onApplyClicked()
                 ? "状态：模型加载成功 (OpenCV DNN + ORT)"
                 : "状态：模型加载成功 (OpenCV DNN)";
             emit modelLoadFinished(true, msg);
-            qDebug() << "[ObjectDetection]" << msg;
+            spdlog::debug("[ObjectDetection] {}", msg.toStdString());
         } else {
             emit modelLoadFinished(false, "状态：所有推理后端均失败");
-            Logger::instance()->info("[ObjectDetection] all backends failed");
+            spdlog::info("[ObjectDetection] all backends failed");
         }
     });
     watcher->setFuture(future);

@@ -1,4 +1,4 @@
-#include "widgets/image_list_manager.h"
+﻿#include "widgets/image_list_manager.h"
 #include "logger.h"
 #include "image_utils.h"
 #include "utils/path_utils.h"
@@ -122,7 +122,7 @@ void ImageListManager::onImageAdded(const QString& imageId)
     item->setData(Qt::UserRole, imageId);
     m_listWidget->addItem(item);
 
-    Logger::instance()->info(QString("图片已添加到列表: %1").arg(imageName));
+    spdlog::info(QString("图片已添加到列表: %1").arg(imageName));
 }
 
 void ImageListManager::onImageRemoved(const QString& imageId)
@@ -135,7 +135,7 @@ void ImageListManager::onImageRemoved(const QString& imageId)
         }
     }
 
-    Logger::instance()->info("图片已从列表中移除");
+    spdlog::info("图片已从列表中移除");
 }
 
 void ImageListManager::onCurrentImageChanged(const QString& imageId)
@@ -151,5 +151,5 @@ void ImageListManager::onCurrentImageChanged(const QString& imageId)
         emit imageDisplayRequested(currentImage);
     }
 
-    Logger::instance()->info(QString("已切换到图片: %1").arg(imageId));
+    spdlog::info(QString("已切换到图片: %1").arg(imageId));
 }

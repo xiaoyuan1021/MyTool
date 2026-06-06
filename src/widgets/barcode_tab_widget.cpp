@@ -2,7 +2,6 @@
 #include "ui_barcode_tab.h"
 #include "config/config_manager.h"
 #include "controllers/roi_ui_controller.h"
-#include <QDebug>
 #include <QSignalBlocker>
 
 BarcodeTabWidget::BarcodeTabWidget(IPipelineAccess* pipelineAccess,
@@ -232,3 +231,4 @@ void BarcodeTabWidget::initializeTab(const TabInitContext& ctx)
         setBarcodeConfig(pc.barcode);
     }
 }
+

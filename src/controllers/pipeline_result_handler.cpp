@@ -23,7 +23,7 @@ void PipelineResultHandler::onPipelineResult(const PipelineResult& result)
 {
     try {
         if (!result.isSuccess()) {
-            qDebug() << "[PipelineResult] Pipeline执行失败:" << result.errorMessage();
+            spdlog::debug("[PipelineResult] Pipeline执行失败: {}", result.errorMessage().toStdString());
             emit statusMessage("处理失败: " + result.errorMessage(), 3000);
             return;
         }
@@ -62,14 +62,14 @@ void PipelineResultHandler::onPipelineResult(const PipelineResult& result)
         QString msg = QString("处理完成 (%1 ms)").arg(totalMs, 0, 'f', 1);
         emit statusMessage(msg, 2000);
     } catch (const cv::Exception& ex) {
-Logger::instance()->error(QString("Pipeline结果处理错误: %1").arg(ex.what()));
+        spdlog::error("Pipeline结果处理错误: {}", ex.what());
         emit statusMessage("处理失败", 3000);
     } catch (const std::exception& ex) {
-Logger::instance()->error(QString("Pipeline结果处理异常: %1").arg(ex.what()));
+        spdlog::error("Pipeline结果处理异常: {}", ex.what());
         emit statusMessage("处理失败", 3000);
     } catch (...) {
-        Logger::instance()->info("[PipelineResult] 未知异常");
-        Logger::instance()->error("Pipeline结果处理未知异常");
+        spdlog::info("[PipelineResult] 未知异常");
+        spdlog::error("Pipeline结果处理未知异常");
         emit statusMessage("处理失败", 3000);
     }
 }
@@ -144,9 +144,9 @@ void PipelineResultHandler::drawDetectionResults(cv::Mat& image, const std::vect
                 cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 0, 0), 2);
         }
     } catch (const cv::Exception& ex) {
-Logger::instance()->error(QString("绘制检测结果错误: %1").arg(ex.what()));
+        spdlog::error("绘制检测结果错误: {}", ex.what());
     } catch (...) {
-        Logger::instance()->info("[DrawResults] 未知异常");
-        Logger::instance()->error("绘制检测结果未知异常");
+        spdlog::info("[DrawResults] 未知异常");
+        spdlog::error("绘制检测结果未知异常");
     }
 }

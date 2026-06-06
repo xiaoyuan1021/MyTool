@@ -1,18 +1,22 @@
 #include "logger.h"
 
+#include <QTextEdit>
+#include <QDir>
+#include <QFileInfo>
+#include <QProcess>
+#include <QDesktopServices>
+#include <QUrl>
+
+#include "spdlog/sinks/qt_sinks.h"
+#include "spdlog/sinks/rotating_file_sink.h"
+
 // ============================================================
-// 辅助函数：将日志级别字符串转换为spdlog级别枚举
+// Global state (file-scope, not exported)
 // ============================================================
-static spdlog::level::level_enum logLevelFromString(const QString& levelStr)
-{
-    QString lower = levelStr.toLower();
-    if (lower == "debug") return spdlog::level::debug;
-    if (lower == "info") return spdlog::level::info;
-    if (lower == "warning" || lower == "warn") return spdlog::level::warn;
-    if (lower == "error" || lower == "err") return spdlog::level::err;
-    if (lower == "critical") return spdlog::level::critical;
-    return spdlog::level::info;  // 默认为info级别
-}
+static std::shared_ptr<spdlog::logger> s_logger;
+static std::shared_ptr<spdlog::sinks::qt_color_sink_mt> s_uiSink;
+static std::shared_ptr<spdlog::sinks::rotating_file_sink_mt> s_fileSink;
+static QString s_logFilePath;
 
 // ============================================================
 // Qt 全局消息处理：将 qDebug/qInfo/qWarning/qCritical 路由到 spdlog
@@ -20,8 +24,6 @@ static spdlog::level::level_enum logLevelFromString(const QString& levelStr)
 static void qtMessageHandler(QtMsgType type, const QMessageLogContext &ctx, const QString &msg)
 {
     Q_UNUSED(ctx)
-    // 避免递归：Logger::info 内部也可能触发 qDebug
-    // 通过 spdlog 直接输出，不再经过 Logger 的方法
     auto logger = spdlog::default_logger();
     if (!logger) return;
 
@@ -34,92 +36,83 @@ static void qtMessageHandler(QtMsgType type, const QMessageLogContext &ctx, cons
     }
 }
 
-Logger* Logger::instance()
+// ============================================================
+// Public API
+// ============================================================
+
+void setupLogging(QTextEdit* uiTextEdit, const QString& logDir)
 {
-    static Logger logger;
-    return &logger;
+    // 1) Create rotating file sink: 5MB max, 3 rotated files
+    QDir dir(logDir);
+    if (!dir.exists()) {
+        dir.mkpath(".");
+    }
+
+    s_logFilePath = dir.filePath("app.log");
+    s_fileSink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
+        s_logFilePath.toStdString(), 5 * 1024 * 1024, 3);
+
+    // 2) Create qt_color_sink for UI
+    s_uiSink = std::make_shared<spdlog::sinks::qt_color_sink_mt>(uiTextEdit, 1000, false, true);
+
+    // Custom color config
+    QTextCharFormat infoFormat;
+    infoFormat.setForeground(Qt::black);
+    s_uiSink->set_level_color(spdlog::level::info, infoFormat);
+
+    QTextCharFormat debugFormat;
+    debugFormat.setForeground(QColor(128, 128, 128));
+    s_uiSink->set_level_color(spdlog::level::debug, debugFormat);
+
+    QTextCharFormat warnFormat;
+    warnFormat.setForeground(QColor(255, 165, 0));
+    s_uiSink->set_level_color(spdlog::level::warn, warnFormat);
+
+    QTextCharFormat errFormat;
+    errFormat.setForeground(Qt::red);
+    s_uiSink->set_level_color(spdlog::level::err, errFormat);
+
+    QTextCharFormat criticalFormat;
+    criticalFormat.setForeground(Qt::red);
+    s_uiSink->set_level_color(spdlog::level::critical, criticalFormat);
+
+    // 3) Create multi-sink logger and set as default
+    std::vector<spdlog::sink_ptr> sinks = {s_uiSink, s_fileSink};
+    s_logger = std::make_shared<spdlog::logger>("app", sinks.begin(), sinks.end());
+    s_logger->set_pattern("%Y-%m-%d %H:%M:%S [%l] %v");
+    s_logger->set_level(spdlog::level::debug);
+
+    spdlog::set_default_logger(s_logger);
+    spdlog::set_level(spdlog::level::debug);
+
+    // 4) Install Qt message handler to redirect qDebug etc.
+    qInstallMessageHandler(qtMessageHandler);
 }
 
-void Logger::setTextEdit(QTextEdit *textdEdit)
+void setUILogLevel(spdlog::level::level_enum level)
 {
-    QMutexLocker locker(&m_mutex);
-    m_textEdit = textdEdit;
-
-    if (m_textEdit) {
-        // 创建 spdlog qt color sink（UI 彩色输出）
-        m_uiSink = std::make_shared<spdlog::sinks::qt_color_sink_mt>(m_textEdit, 1000, false, true);
-        auto qtSink = m_uiSink;
-
-        // 自定义颜色配置
-        QTextCharFormat infoFormat;
-        infoFormat.setForeground(Qt::black);
-        qtSink->set_level_color(spdlog::level::info, infoFormat);
-
-        QTextCharFormat debugFormat;
-        debugFormat.setForeground(QColor(128, 128, 128));
-        qtSink->set_level_color(spdlog::level::debug, debugFormat);
-
-        QTextCharFormat warnFormat;
-        warnFormat.setForeground(QColor(255, 165, 0));
-        qtSink->set_level_color(spdlog::level::warn, warnFormat);
-
-        QTextCharFormat errorFormat;
-        errorFormat.setForeground(Qt::red);
-        qtSink->set_level_color(spdlog::level::err, errorFormat);
-
-        QTextCharFormat criticalFormat;
-        criticalFormat.setForeground(Qt::red);
-        qtSink->set_level_color(spdlog::level::critical, criticalFormat);
-
-        // 构造 sinks 列表
-        std::vector<spdlog::sink_ptr> sinks = {qtSink};
-
-        // 如果已有 file sink，一并挂上
-        if (m_fileSink) {
-            sinks.push_back(m_fileSink);
-        }
-
-        // 创建支持多 sink 的 logger
-        m_colorLogger = std::make_shared<spdlog::logger>("app_logger", sinks.begin(), sinks.end());
-        m_colorLogger->set_pattern("%Y-%m-%d %H:%M:%S [%l] %v");
-        m_colorLogger->set_level(spdlog::level::debug);
-
-        // 设为全局默认 logger，使 spdlog::info() 等也会进入 UI + 文件
-        spdlog::set_default_logger(m_colorLogger);
+    if (s_uiSink) {
+        s_uiSink->set_level(level);
     }
 }
 
-void Logger::setLogFile(const QString &filePath)
+spdlog::level::level_enum uiLogLevel()
 {
-    QMutexLocker locker(&m_mutex);
-    m_logFilePath = filePath;
-
-    try {
-        // 创建 spdlog file sink，追加模式
-        m_fileSink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(
-            filePath.toStdString(), false);
-
-        if (m_colorLogger) {
-            // 挂到已有 logger
-            m_colorLogger->sinks().push_back(m_fileSink);
-        }
-    } catch (const std::exception &) {
-        // 文件创建失败时不崩溃
+    if (s_uiSink) {
+        return s_uiSink->level();
     }
+    return spdlog::level::debug;
 }
 
-void Logger::enableFileLog(bool enable)
+QString logFilePath()
 {
-    QMutexLocker locker(&m_mutex);
-    if (m_fileSink) {
-        m_fileSink->set_level(enable ? spdlog::level::trace : spdlog::level::off);
-    }
+    return s_logFilePath;
 }
 
-bool Logger::openLogFolder(bool selectFile)
+bool openLogFolder(bool selectFile)
 {
-    if (m_logFilePath.isEmpty()) return false;
-    QFileInfo fileInfo(m_logFilePath);
+    if (s_logFilePath.isEmpty()) return false;
+    QFileInfo fileInfo(s_logFilePath);
 
     if (selectFile && fileInfo.exists())
     {
@@ -141,165 +134,7 @@ bool Logger::openLogFolder(bool selectFile)
     return true;
 }
 
-QString Logger::logFilePath() const
+void clearLogUi()
 {
-    return m_logFilePath;
-}
-
-void Logger::debug(const QString &message)
-{
-    QMutexLocker locker(&m_mutex);
-    if (m_colorLogger) {
-        m_colorLogger->debug(message.toStdString());
-        emit logMessage(message);
-    }
-}
-
-void Logger::info(const QString &message)
-{
-    QMutexLocker locker(&m_mutex);
-    if (m_colorLogger) {
-        m_colorLogger->info(message.toStdString());
-        emit logMessage(message);
-    }
-}
-
-void Logger::warning(const QString &message)
-{
-    if (message.trimmed().isEmpty()) return;
-    QMutexLocker locker(&m_mutex);
-    if (m_colorLogger) {
-        m_colorLogger->warn(message.toStdString());
-        emit logMessage(message);
-    }
-}
-
-void Logger::error(const QString &message)
-{
-    QMutexLocker locker(&m_mutex);
-    if (m_colorLogger) {
-        m_colorLogger->error(message.toStdString());
-        emit logMessage(message);
-    }
-}
-
-void Logger::clear()
-{
-    QMutexLocker locker(&m_mutex);
-    if (m_textEdit)
-    {
-        m_textEdit->clear();
-    }
-}
-
-QStringList Logger::getRecentLogs(int count) const
-{
-    QMutexLocker locker(&m_mutex);
-    QStringList logs;
-
-    if (!m_logFilePath.isEmpty()) {
-        QFile file(m_logFilePath);
-        if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            QTextStream in(&file);
-            QStringList allLines;
-
-            while (!in.atEnd()) {
-                QString line = in.readLine().trimmed();
-                if (!line.isEmpty()) {
-                    allLines.append(line);
-                }
-            }
-            file.close();
-
-            int startIndex = qMax(0, allLines.size() - count);
-            for (int i = startIndex; i < allLines.size(); ++i) {
-                logs.append(allLines[i]);
-            }
-        }
-    }
-
-    return logs;
-}
-
-void Logger::outputLogsWithColor(const QStringList& logs)
-{
-    QMutexLocker locker(&m_mutex);
-    if (!m_colorLogger) {
-        return;
-    }
-
-    // 获取当前UI日志级别
-    spdlog::level::level_enum currentLevel = spdlog::level::debug;
-    if (m_uiSink) {
-        currentLevel = m_uiSink->level();
-    }
-
-    for (const QString& log : logs) {
-        int levelStart = log.indexOf('[');
-        int levelEnd = log.indexOf(']', levelStart);
-
-        if (levelStart != -1 && levelEnd != -1 && levelEnd > levelStart) {
-            QString levelStr = log.mid(levelStart + 1, levelEnd - levelStart - 1).toLower();
-            QString message = log.mid(levelEnd + 2);
-
-            // 检查日志级别是否满足当前UI级别
-            spdlog::level::level_enum logLevel = logLevelFromString(levelStr);
-            if (logLevel < currentLevel) {
-                continue;  // 跳过低于当前级别的日志
-            }
-
-            if (levelStr == "info") {
-                m_colorLogger->info(message.toStdString());
-            } else if (levelStr == "warning") {
-                m_colorLogger->warn(message.toStdString());
-            } else if (levelStr == "error") {
-                m_colorLogger->error(message.toStdString());
-            } else if (levelStr == "critical") {
-                m_colorLogger->critical(message.toStdString());
-            } else {
-                m_colorLogger->info(log.toStdString());
-            }
-        } else {
-            m_colorLogger->info(log.toStdString());
-        }
-    }
-}
-
-Logger::Logger()
-    : m_textEdit(nullptr)
-    , m_logFilePath("")
-{
-    // 安装 Qt 全局消息处理器，将所有 qDebug/qWarning/qCritical 重定向到 spdlog
-    qInstallMessageHandler(qtMessageHandler);
-
-    // 设置 spdlog 全局默认级别为 debug
-    spdlog::set_level(spdlog::level::debug);
-}
-
-Logger::~Logger()
-{
-    // 恢复 Qt 默认消息处理器
-    qInstallMessageHandler(nullptr);
-
-    if (m_colorLogger) {
-        m_colorLogger->flush();
-    }
-    spdlog::shutdown();
-}
-
-void Logger::setUILogLevel(spdlog::level::level_enum level)
-{
-    QMutexLocker locker(&m_mutex);
-    if (m_uiSink) {
-        m_uiSink->set_level(level);
-    }
-}
-
-spdlog::level::level_enum Logger::uiLogLevel() const
-{
-    QMutexLocker locker(&m_mutex);
-    if (m_uiSink) {
-        return m_uiSink->level();
-    }
-    return spdlog::level::debug;
+    // No-op: QTextEdit is managed by spdlog qt_sink; caller should clear directly
 }

@@ -1,6 +1,6 @@
 ﻿#include "roi_detection_config_dialog.h"
+#include "logger.h"
 #include <QMessageBox>
-#include <QDebug>
 #include <QIcon>
 
 RoiDetectionConfigDialog::RoiDetectionConfigDialog(const QList<RoiConfig>& rois,
@@ -177,7 +177,7 @@ void RoiDetectionConfigDialog::onAddRoiClicked()
     m_roiNameEdit->setFocus();
     m_roiNameEdit->selectAll();
     
-    qDebug() << "添加ROI:" << name;
+    spdlog::debug("添加ROI: {}", name.toStdString());
 }
 
 void RoiDetectionConfigDialog::onDeleteRoiClicked()
@@ -221,7 +221,7 @@ void RoiDetectionConfigDialog::onDeleteRoiClicked()
             updateColorButton(m_currentColor);
         }
         
-        qDebug() << "删除ROI:" << name;
+        spdlog::debug("删除ROI: {}", name.toStdString());
     }
 }
 

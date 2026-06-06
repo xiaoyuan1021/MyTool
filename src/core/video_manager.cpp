@@ -1,7 +1,6 @@
 ﻿#include "video_manager.h"
 #include "logger.h"
 #include <QFileInfo>
-#include <QDebug>
 #include <chrono>
 
 VideoManager::VideoManager(QObject* parent)
@@ -32,22 +31,22 @@ VideoManager::~VideoManager()
 
 bool VideoManager::openFile(const QString& filePath)
 {
-    Logger::instance()->info(QString("========== 视频打开调试信息 =========="));
-    Logger::instance()->info(QString("尝试打开视频文件: %1").arg(filePath));
+    spdlog::info(QString("========== 视频打开调试信息 =========="));
+    spdlog::info(QString("尝试打开视频文件: %1").arg(filePath));
     
     // 检查文件是否存在
     QFileInfo fileInfo(filePath);
-    Logger::instance()->info(QString("文件信息检查:"));
-    Logger::instance()->info(QString("  - 文件路径: %1").arg(filePath));
-    Logger::instance()->info(QString("  - 文件存在: %1").arg(fileInfo.exists() ? "是" : "否"));
-    Logger::instance()->info(QString("  - 是普通文件: %1").arg(fileInfo.isFile() ? "是" : "否"));
-    Logger::instance()->info(QString("  - 文件大小: %1 字节").arg(fileInfo.size()));
-    Logger::instance()->info(QString("  - 文件权限: %1").arg(fileInfo.isReadable() ? "可读" : "不可读"));
+    spdlog::info(QString("文件信息检查:"));
+    spdlog::info(QString("  - 文件路径: %1").arg(filePath));
+    spdlog::info(QString("  - 文件存在: %1").arg(fileInfo.exists() ? "是" : "否"));
+    spdlog::info(QString("  - 是普通文件: %1").arg(fileInfo.isFile() ? "是" : "否"));
+    spdlog::info(QString("  - 文件大小: %1 字节").arg(fileInfo.size()));
+    spdlog::info(QString("  - 文件权限: %1").arg(fileInfo.isReadable() ? "可读" : "不可读"));
     
     if (!fileInfo.exists() || !fileInfo.isFile()) {
-        Logger::instance()->error(QString("视频文件不存在或不是普通文件: %1").arg(filePath));
+        spdlog::error(QString("视频文件不存在或不是普通文件: %1").arg(filePath));
         emit errorOccurred(QString("视频文件不存在或不是普通文件: %1").arg(filePath));
-        Logger::instance()->info(QString("========== 视频打开失败 =========="));
+        spdlog::info(QString("========== 视频打开失败 =========="));
         return false;
     }
 
@@ -57,23 +56,23 @@ bool VideoManager::openFile(const QString& filePath)
     try {
 
     // 尝试打开视频文件
-    Logger::instance()->info(QString("调用OpenCV打开视频文件..."));
+    spdlog::info(QString("调用OpenCV打开视频文件..."));
     std::string stdPath = filePath.toLocal8Bit().constData();
-    Logger::instance()->info(QString("转换后的标准路径: %1").arg(QString::fromLocal8Bit(stdPath.c_str())));
+    spdlog::info(QString("转换后的标准路径: %1").arg(QString::fromLocal8Bit(stdPath.c_str())));
     
     m_videoCapture.open(stdPath);
     
-    Logger::instance()->info(QString("OpenCV打开结果: %1").arg(m_videoCapture.isOpened() ? "成功" : "失败"));
+    spdlog::info(QString("OpenCV打开结果: %1").arg(m_videoCapture.isOpened() ? "成功" : "失败"));
     
     if (!m_videoCapture.isOpened()) {
-        Logger::instance()->error(QString("无法打开视频文件: %1").arg(filePath));
-        Logger::instance()->info(QString("可能的原因:"));
-        Logger::instance()->info(QString("  1. 文件格式不支持"));
-        Logger::instance()->info(QString("  2. 缺少视频编解码器"));
-        Logger::instance()->info(QString("  3. 文件损坏"));
-        Logger::instance()->info(QString("  4. 路径包含中文或特殊字符"));
+        spdlog::error(QString("无法打开视频文件: %1").arg(filePath));
+        spdlog::info(QString("可能的原因:"));
+        spdlog::info(QString("  1. 文件格式不支持"));
+        spdlog::info(QString("  2. 缺少视频编解码器"));
+        spdlog::info(QString("  3. 文件损坏"));
+        spdlog::info(QString("  4. 路径包含中文或特殊字符"));
         emit errorOccurred(QString("无法打开视频文件: %1").arg(filePath));
-        Logger::instance()->info(QString("========== 视频打开失败 =========="));
+        spdlog::info(QString("========== 视频打开失败 =========="));
         return false;
     }
 
@@ -85,7 +84,7 @@ bool VideoManager::openFile(const QString& filePath)
     m_currentSource = filePath;
     m_cameraIndex = -1;
 
-    Logger::instance()->info(QString("打开视频文件: %1 (帧率: %2, 总帧数: %3)")
+    spdlog::info(QString("打开视频文件: %1 (帧率: %2, 总帧数: %3)")
                             .arg(filePath).arg(m_frameRate).arg(m_totalFrames));
     
     emit videoOpened(filePath);
@@ -99,12 +98,12 @@ bool VideoManager::openFile(const QString& filePath)
     return true;
     } catch (const cv::Exception& ex) {
         QString msg = QString("打开视频文件OpenCV错误: %1").arg(ex.what());
-        Logger::instance()->error(msg);
+        spdlog::error(msg);
         emit errorOccurred(msg);
         return false;
     } catch (const std::exception& ex) {
         QString msg = QString("打开视频文件异常: %1").arg(ex.what());
-        Logger::instance()->error(msg);
+        spdlog::error(msg);
         emit errorOccurred(msg);
         return false;
     }
@@ -112,8 +111,8 @@ bool VideoManager::openFile(const QString& filePath)
 
 bool VideoManager::openCamera(int cameraIndex)
 {
-    Logger::instance()->info(QString("========== 打开相机操作开始 (设备 %1) ==========").arg(cameraIndex));
-    Logger::instance()->info(QString("[调用栈] openCamera(%1) 被调用").arg(cameraIndex));
+    spdlog::info(QString("========== 打开相机操作开始 (设备 %1) ==========").arg(cameraIndex));
+    spdlog::info(QString("[调用栈] openCamera(%1) 被调用").arg(cameraIndex));
     
     // 先关闭当前视频
     close();
@@ -121,21 +120,21 @@ bool VideoManager::openCamera(int cameraIndex)
     try {
 
     // 打开相机 - 使用DirectShow后端避免MSMF兼容性问题
-    Logger::instance()->info(QString("尝试打开相机设备: %1 (使用DirectShow后端)").arg(cameraIndex));
+    spdlog::info(QString("尝试打开相机设备: %1 (使用DirectShow后端)").arg(cameraIndex));
     auto startTime = std::chrono::steady_clock::now();
     m_videoCapture.open(cameraIndex, cv::CAP_DSHOW);
     auto endTime = std::chrono::steady_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
-    Logger::instance()->info(QString("DirectShow打开结果: %1 (耗时 %2 ms)").arg(m_videoCapture.isOpened() ? "成功" : "失败").arg(duration));
+    spdlog::info(QString("DirectShow打开结果: %1 (耗时 %2 ms)").arg(m_videoCapture.isOpened() ? "成功" : "失败").arg(duration));
     
     if (!m_videoCapture.isOpened()) {
         // 如果DirectShow失败，尝试MSMF后端
-        Logger::instance()->warning(QString("DirectShow打开相机失败，尝试MSMF后端"));
+        spdlog::warn(QString("DirectShow打开相机失败，尝试MSMF后端"));
         m_videoCapture.open(cameraIndex);
     }
     
     if (!m_videoCapture.isOpened()) {
-        Logger::instance()->error(QString("无法打开相机设备: %1").arg(cameraIndex));
+        spdlog::error(QString("无法打开相机设备: %1").arg(cameraIndex));
         emit errorOccurred(QString("无法打开相机设备: %1").arg(cameraIndex));
         return false;
     }
@@ -150,7 +149,7 @@ bool VideoManager::openCamera(int cameraIndex)
     m_currentSource = QString("Camera %1").arg(cameraIndex);
     m_cameraIndex = cameraIndex;
 
-    Logger::instance()->info(QString("打开相机设备: %1").arg(cameraIndex));
+    spdlog::info(QString("打开相机设备: %1").arg(cameraIndex));
     
     emit videoOpened(m_currentSource);
 
@@ -165,12 +164,12 @@ bool VideoManager::openCamera(int cameraIndex)
     return true;
     } catch (const cv::Exception& ex) {
         QString msg = QString("打开相机OpenCV错误: %1").arg(ex.what());
-        Logger::instance()->error(msg);
+        spdlog::error(msg);
         emit errorOccurred(msg);
         return false;
     } catch (const std::exception& ex) {
         QString msg = QString("打开相机异常: %1").arg(ex.what());
-        Logger::instance()->error(msg);
+        spdlog::error(msg);
         emit errorOccurred(msg);
         return false;
     }
@@ -178,7 +177,7 @@ bool VideoManager::openCamera(int cameraIndex)
 
 void VideoManager::close()
 {
-    Logger::instance()->info(QString("[VideoManager] close() 被调用, 当前状态: %1, 是否已打开: %2")
+    spdlog::info(QString("[VideoManager] close() 被调用, 当前状态: %1, 是否已打开: %2")
         .arg(static_cast<int>(m_playbackState))
         .arg(m_videoCapture.isOpened() ? "是" : "否"));
     if (m_videoCapture.isOpened()) {
@@ -193,7 +192,7 @@ void VideoManager::close()
         m_frameRate = 0.0;
         m_currentFrame.release();
 
-        Logger::instance()->info("视频已关闭");
+        spdlog::info("视频已关闭");
         emit videoClosed();
     }
 }
@@ -201,7 +200,7 @@ void VideoManager::close()
 void VideoManager::play()
 {
     if (!m_videoCapture.isOpened()) {
-        Logger::instance()->warning("无法播放: 视频未打开");
+        spdlog::warn("无法播放: 视频未打开");
         return;
     }
 
@@ -215,7 +214,7 @@ void VideoManager::play()
     int interval = m_frameRate > 0 ? static_cast<int>(1000.0 / m_frameRate) : 33;
     m_timer->start(interval);
 
-    Logger::instance()->info("开始播放");
+    spdlog::info("开始播放");
     emit playbackStateChanged(m_playbackState);
 }
 
@@ -228,7 +227,7 @@ void VideoManager::pause()
     m_playbackState = PlaybackState::Paused;
     m_timer->stop();
 
-    Logger::instance()->info("暂停播放");
+    spdlog::info("暂停播放");
     emit playbackStateChanged(m_playbackState);
 }
 
@@ -254,7 +253,7 @@ void VideoManager::stop()
         }
     }
 
-    Logger::instance()->info("停止播放");
+    spdlog::info("停止播放");
     emit playbackStateChanged(m_playbackState);
 }
 
@@ -282,10 +281,10 @@ cv::Mat VideoManager::getNextFrame()
         }
     } catch (const cv::Exception& ex) {
         QString msg = QString("读取下一帧OpenCV错误: %1").arg(ex.what());
-        Logger::instance()->error(msg);
+        spdlog::error(msg);
     } catch (const std::exception& ex) {
         QString msg = QString("读取下一帧异常: %1").arg(ex.what());
-        Logger::instance()->error(msg);
+        spdlog::error(msg);
     }
 
     return cv::Mat();
@@ -303,12 +302,12 @@ QVector<QString> VideoManager::getAvailableCameras()
 {
     QVector<QString> cameras;
     
-    Logger::instance()->info("========== 相机枚举开始 ==========");
+    spdlog::info("========== 相机枚举开始 ==========");
     auto startTime = std::chrono::steady_clock::now();
     
     // 检测可用的相机设备
     for (int i = 0; i < 10; ++i) {
-        Logger::instance()->info(QString("尝试检测相机设备 %1...").arg(i));
+        spdlog::info(QString("尝试检测相机设备 %1...").arg(i));
         auto deviceStart = std::chrono::steady_clock::now();
         
         cv::VideoCapture cap(i);
@@ -318,17 +317,17 @@ QVector<QString> VideoManager::getAvailableCameras()
         
         if (cap.isOpened()) {
             cameras.append(QString("Camera %1").arg(i));
-            Logger::instance()->info(QString("  相机 %1 可用 (耗时 %2 ms)").arg(i).arg(deviceDuration));
+            spdlog::info(QString("  相机 %1 可用 (耗时 %2 ms)").arg(i).arg(deviceDuration));
             cap.release();
         } else {
-            Logger::instance()->info(QString("  相机 %1 不可用 (耗时 %2 ms)").arg(i).arg(deviceDuration));
+            spdlog::info(QString("  相机 %1 不可用 (耗时 %2 ms)").arg(i).arg(deviceDuration));
         }
     }
     
     auto endTime = std::chrono::steady_clock::now();
     auto totalDuration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
-    Logger::instance()->info(QString("相机枚举完成: 发现 %1 个相机 (总耗时 %2 ms)").arg(cameras.size()).arg(totalDuration));
-    Logger::instance()->info("========== 相机枚举结束 ==========");
+    spdlog::info(QString("相机枚举完成: 发现 %1 个相机 (总耗时 %2 ms)").arg(cameras.size()).arg(totalDuration));
+    spdlog::info("========== 相机枚举结束 ==========");
     
     return cameras;
 }
@@ -367,10 +366,10 @@ void VideoManager::onTimeout()
         }
     } catch (const cv::Exception& ex) {
         QString msg = QString("视频帧读取OpenCV错误: %1").arg(ex.what());
-        Logger::instance()->error(msg);
+        spdlog::error(msg);
     } catch (const std::exception& ex) {
         QString msg = QString("视频帧读取异常: %1").arg(ex.what());
-        Logger::instance()->error(msg);
+        spdlog::error(msg);
     }
 }
 
@@ -396,10 +395,10 @@ void VideoManager::seekToFrame(int frameIndex)
         }
     } catch (const cv::Exception& ex) {
         QString msg = QString("跳转帧OpenCV错误: %1").arg(ex.what());
-        Logger::instance()->error(msg);
+        spdlog::error(msg);
     } catch (const std::exception& ex) {
         QString msg = QString("跳转帧异常: %1").arg(ex.what());
-        Logger::instance()->error(msg);
+        spdlog::error(msg);
     }
 }
 
@@ -416,3 +415,4 @@ void VideoManager::releaseCapture()
         m_videoCapture.release();
     }
 }
+

@@ -1,4 +1,4 @@
-#include "cloud_dashboard_manager.h"
+﻿#include "cloud_dashboard_manager.h"
 #include "ui/toast_notification.h"
 #include "logger.h"
 
@@ -75,7 +75,7 @@ void CloudDashboardManager::launch()
 
     if (dashboardDir.isEmpty()) {
         if (m_toast) m_toast->showMessage("未找到 cloud_dashboard 目录");
-        Logger::instance()->error("[CloudDashboard] 找不到 cloud_dashboard/app.py");
+        spdlog::error("[CloudDashboard] 找不到 cloud_dashboard/app.py");
         return;
     }
 
@@ -85,7 +85,7 @@ void CloudDashboardManager::launch()
     m_process->setProcessChannelMode(QProcess::ForwardedChannels);
 
     connect(m_process, &QProcess::started, this, [this]() {
-        Logger::instance()->info("[CloudDashboard] 云平台进程已启动");
+        spdlog::info("[CloudDashboard] 云平台进程已启动");
         if (m_toast) m_toast->showMessage("云平台启动中...");
         // 等一会再打开浏览器，让服务先启动
         QTimer::singleShot(3000, this, [this]() {
@@ -96,13 +96,13 @@ void CloudDashboardManager::launch()
 
     connect(m_process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
             this, [this](int exitCode, QProcess::ExitStatus status) {
-        Logger::instance()->info(QString("[CloudDashboard] 进程退出 code=%1 status=%2")
+        spdlog::info(QString("[CloudDashboard] 进程退出 code=%1 status=%2")
             .arg(exitCode).arg(status));
         if (m_toast) m_toast->showMessage("云平台已停止");
         m_process->deleteLater();
         m_process = nullptr;
     });
 
-    Logger::instance()->info("[CloudDashboard] 启动云平台...");
+    spdlog::info("[CloudDashboard] 启动云平台...");
     m_process->start("python", {"app.py"});
 }

@@ -1,6 +1,5 @@
 ﻿#include "image_utils.h"
 #include "logger.h"
-#include <QDebug>
 
 QImage ImageUtils::matToQImage(const cv::Mat &mat)
 {
@@ -40,17 +39,17 @@ QImage ImageUtils::matToQImage(const cv::Mat &mat)
             result = image;
         }
         else {
-            Logger::instance()->info(QString("Unsupported Mat type in matToQImage(): %1").arg(mat.type()));
+            spdlog::info(QString("Unsupported Mat type in matToQImage(): %1").arg(mat.type()));
             return QImage();
         }
 
         return result;
     } catch (const cv::Exception& ex) {
-Logger::instance()->error(QString("Mat转QImage错误: %1").arg(ex.what()));
+spdlog::error(QString("Mat转QImage错误: %1").arg(ex.what()));
         return QImage();
     } catch (...) {
-        Logger::instance()->info("[matToQImage] 未知异常");
-        Logger::instance()->error("Mat转QImage未知异常");
+        spdlog::info("[matToQImage] 未知异常");
+        spdlog::error("Mat转QImage未知异常");
         return QImage();
     }
 }
@@ -100,18 +99,18 @@ cv::Mat ImageUtils::qImageToMat(const QImage &image, bool clone)
 
         default:
         {
-            Logger::instance()->info(QString("Unsupported QImage format in qImageToMat(): %1").arg(static_cast<int>(image.format())));
+            spdlog::info(QString("Unsupported QImage format in qImageToMat(): %1").arg(static_cast<int>(image.format())));
             return cv::Mat();
         }
         }
 
         return clone ? mat.clone() : mat;
     } catch (const cv::Exception& ex) {
-Logger::instance()->error(QString("QImage转Mat错误: %1").arg(ex.what()));
+spdlog::error(QString("QImage转Mat错误: %1").arg(ex.what()));
         return cv::Mat();
     } catch (...) {
-        Logger::instance()->info("[qImageToMat] 未知异常");
-        Logger::instance()->error("QImage转Mat未知异常");
+        spdlog::info("[qImageToMat] 未知异常");
+        spdlog::error("QImage转Mat未知异常");
         return cv::Mat();
     }
 }
@@ -166,6 +165,8 @@ QRect ImageUtils::mapLabelToImage(const QRect &rect, const cv::Mat &img, QLabel 
 
     return QRect(x,y,w,h);
 }
+
+
 
 
 

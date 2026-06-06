@@ -1,6 +1,5 @@
 ﻿#include "zxing_barcode_reader.h"
 #include "logger.h"
-#include <QDebug>
 #include <ReadBarcode.h>
 #include <ImageView.h>
 #include <ReaderOptions.h>
@@ -44,7 +43,7 @@ QVector<ZXingBarcodeResult> ZXingBarcodeReader::readBarcodes(const cv::Mat& imag
 {
     if (image.empty())
     {
-        Logger::instance()->info("[ZXing] 输入图像为空");
+        spdlog::info("[ZXing] 输入图像为空");
         return {};
     }
 
@@ -73,7 +72,7 @@ QVector<ZXingBarcodeResult> ZXingBarcodeReader::decodeImage(const cv::Mat& gray)
 
     if (gray.empty() || gray.type() != CV_8UC1)
     {
-        Logger::instance()->info("[ZXing] 图像格式错误，需要8位灰度图");
+        spdlog::info("[ZXing] 图像格式错误，需要8位灰度图");
         return results;
     }
 
@@ -155,11 +154,12 @@ QVector<ZXingBarcodeResult> ZXingBarcodeReader::decodeImage(const cv::Mat& gray)
 
             auto position = barcode.position();
 
-            qDebug() << "[ZXing] corners:" << "TL=" << position.topLeft().x << "," << position.topLeft().y
-                     << "TR=" << position.topRight().x << "," << position.topRight().y
-                     << "BR=" << position.bottomRight().x << "," << position.bottomRight().y
-                     << "BL=" << position.bottomLeft().x << "," << position.bottomLeft().y
-                     << "format=" << result.type;
+            spdlog::debug("[ZXing] corners: TL={},{} TR={},{} BR={},{} BL={},{} format={}",
+                position.topLeft().x, position.topLeft().y,
+                position.topRight().x, position.topRight().y,
+                position.bottomRight().x, position.bottomRight().y,
+                position.bottomLeft().x, position.bottomLeft().y,
+                result.type.toStdString());
 
             if (position.topLeft().x != 0 || position.topLeft().y != 0 ||
                 position.bottomRight().x != 0 || position.bottomRight().y != 0)
@@ -199,7 +199,7 @@ QVector<ZXingBarcodeResult> ZXingBarcodeReader::decodeImage(const cv::Mat& gray)
                     h = std::min(static_cast<double>(gray.rows) - y, h + padY * 2);
                 }
 
-                qDebug() << "[ZXing] bbox:" << x << y << w << h << "is1D=" << is1D;
+                spdlog::debug("[ZXing] bbox: {} {} {} {} is1D={}", x, y, w, h, is1D);
 
                 result.location = QRectF(x, y, w, h);
             }
@@ -212,23 +212,21 @@ QVector<ZXingBarcodeResult> ZXingBarcodeReader::decodeImage(const cv::Mat& gray)
 
             results.append(result);
 
-            qDebug() << "[ZXing] 识别到条码:" << result.type
-                     << "数据:"
-                     << result.data;
+            spdlog::info("[ZXing] 识别到条码: {} 数据: {}", result.type.toStdString(), result.data.toStdString());
         }
 
         if (results.isEmpty())
         {
-            Logger::instance()->info("[ZXing] 未识别到条码");
+            spdlog::info("[ZXing] 未识别到条码");
         }
     }
     catch (const std::exception& ex)
     {
-        qDebug() << "[ZXing] 识别异常:" << ex.what();
+        spdlog::debug("[ZXing] 识别异常: {}", ex.what());
     }
     catch (...)
     {
-        Logger::instance()->info("[ZXing] 未知异常");
+        spdlog::info("[ZXing] 未知异常");
     }
 
     return results;

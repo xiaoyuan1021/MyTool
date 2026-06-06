@@ -4,7 +4,6 @@
 #include "algorithm/image_utils.h"
 #include "utils/path_utils.h"
 #include <QStatusBar>
-#include <QDebug>
 #include <QDir>
 #include <QFileInfo>
 #include <algorithm>
@@ -64,7 +63,7 @@ QString RoiManager::addImage(const cv::Mat &img, const QString &name)
 QString RoiManager::addImage(const cv::Mat &img, const QString &name, const QString &filePath)
 {
     if (img.empty()) {
-        Logger::instance()->info("[RoiManager] 图像为空，无法添加");
+        spdlog::info("[RoiManager] 图像为空，无法添加");
         return QString();
     }
 
@@ -81,8 +80,7 @@ QString RoiManager::addImage(const cv::Mat &img, const QString &name, const QStr
 
     m_imageRoisMap.insert(imageId, imageRois);
 
-    Logger::instance()->info(QString("[RoiManager] 图片已添加: id=%1, name=%2, filePath=%3")
-                                 .arg(imageId).arg(imageRois.name).arg(filePath));
+    spdlog::info("[RoiManager] 图片已添加: id={}, name={}, filePath={}", imageId.toStdString(), imageRois.name.toStdString(), filePath.toStdString());
 
     emit imageAdded(imageId);
     return imageId;
@@ -91,7 +89,7 @@ QString RoiManager::addImage(const cv::Mat &img, const QString &name, const QStr
 bool RoiManager::switchToImage(const QString &imageId)
 {
     if (!m_imageRoisMap.contains(imageId)) {
-        Logger::instance()->info(QString("[RoiManager] 图片不存在: %1").arg(imageId));
+        spdlog::info("[RoiManager] 图片不存在: {}", imageId.toStdString());
         return false;
     }
 
@@ -103,14 +101,14 @@ bool RoiManager::switchToImage(const QString &imageId)
     m_currentImageId = imageId;
     emit currentImageChanged(imageId);
 
-    Logger::instance()->info(QString("[RoiManager] 切换到图片: id=%1").arg(imageId));
+    spdlog::info("[RoiManager] 切换到图片: id={}", imageId.toStdString());
     return true;
 }
 
 bool RoiManager::removeImage(const QString &imageId)
 {
     if (!m_imageRoisMap.contains(imageId)) {
-        qDebug() << "[RoiManager] 图片不存在:" << imageId;
+        spdlog::debug("[RoiManager] 图片不存在: {}", imageId.toStdString());
         return false;
     }
 
@@ -125,7 +123,7 @@ bool RoiManager::removeImage(const QString &imageId)
         }
     }
 
-    Logger::instance()->info(QString("[RoiManager] 图片已移除: id=%1").arg(imageId));
+    spdlog::info("[RoiManager] 图片已移除: id={}", imageId.toStdString());
     emit imageRemoved(imageId);
 
     return true;
@@ -179,7 +177,7 @@ QStringList RoiManager::importImagesFromFolder(const QString& dirPath, const QSt
     QDir dir(dirPath);
 
     if (!dir.exists()) {
-        Logger::instance()->error(QString("[RoiManager] 文件夹不存在: %1").arg(dirPath));
+        spdlog::error("[RoiManager] 文件夹不存在: {}", dirPath.toStdString());
         return importedIds;
     }
 
@@ -190,12 +188,11 @@ QStringList RoiManager::importImagesFromFolder(const QString& dirPath, const QSt
     }
 
     if (fileInfos.isEmpty()) {
-        Logger::instance()->warning(QString("[RoiManager] 文件夹中没有支持的图片文件: %1").arg(dirPath));
+        spdlog::warn("[RoiManager] 文件夹中没有支持的图片文件: {}", dirPath.toStdString());
         return importedIds;
     }
 
-    Logger::instance()->info(QString("[RoiManager] 开始从文件夹导入图片: %1 (共%2个文件)")
-        .arg(dirPath).arg(fileInfos.size()));
+    spdlog::info("[RoiManager] 开始从文件夹导入图片: {} (共{}个文件)", dirPath.toStdString(), fileInfos.size());
 
     int total = fileInfos.size();
     for (int i = 0; i < total; ++i) {
@@ -206,7 +203,7 @@ QStringList RoiManager::importImagesFromFolder(const QString& dirPath, const QSt
 
         cv::Mat img = PathUtils::readImageFromFile(filePath, cv::IMREAD_COLOR);
         if (img.empty()) {
-            Logger::instance()->warning(QString("[RoiManager] 跳过无法加载的图片: %1").arg(filePath));
+            spdlog::warn("[RoiManager] 跳过无法加载的图片: {}", filePath.toStdString());
             continue;
         }
 
@@ -214,7 +211,7 @@ QStringList RoiManager::importImagesFromFolder(const QString& dirPath, const QSt
         QString imageId = addImage(img, imageName, filePath);
         if (!imageId.isEmpty()) {
             importedIds.append(imageId);
-            Logger::instance()->info(QString("[RoiManager] 已导入: %1").arg(filePath));
+            spdlog::info("[RoiManager] 已导入: {}", filePath.toStdString());
         }
     }
 
@@ -224,8 +221,7 @@ QStringList RoiManager::importImagesFromFolder(const QString& dirPath, const QSt
     }
 
     emit folderImportFinished(importedIds.size());
-    Logger::instance()->info(QString("[RoiManager] 文件夹导入完成: 成功%1张, 共%2个文件")
-        .arg(importedIds.size()).arg(total));
+    spdlog::info("[RoiManager] 文件夹导入完成: 成功{}张, 共{}个文件", importedIds.size(), total);
 
     return importedIds;
 }
@@ -268,20 +264,20 @@ bool RoiManager::setRoi(const QRectF &roiRectF)
 {
     auto it = m_imageRoisMap.find(m_currentImageId);
     if (it == m_imageRoisMap.end()) {
-        Logger::instance()->info("[RoiManager] 没有当前图片");
+        spdlog::info("[RoiManager] 没有当前图片");
         return false;
     }
 
     ImageRois& imageRois = it.value();
     if (imageRois.image.empty()) {
-        Logger::instance()->info("[RoiManager] 完整图像为空");
+        spdlog::info("[RoiManager] 完整图像为空");
         return false;
     }
 
     // 转换并验证ROI区域
     cv::Rect r = ImageUtils::mapRoiToCvRect(roiRectF, imageRois.image.cols, imageRois.image.rows);
     if (r.empty()) {
-        Logger::instance()->info("[RoiManager] ROI区域无效");
+        spdlog::info("[RoiManager] ROI区域无效");
         return false;
     }
     int x = r.x, y = r.y, w = r.width, h = r.height;
@@ -296,7 +292,7 @@ bool RoiManager::setRoi(const QRectF &roiRectF)
             qAbs(cfg.roiRect.width() - normalizedRect.width()) <= tolerance &&
             qAbs(cfg.roiRect.height() - normalizedRect.height()) <= tolerance) {
             imageRois.activeRoiId = cfg.roiId;
-            Logger::instance()->info(QString("[RoiManager] ROI已激活(矩形匹配): %1 (原始矩形与存储矩形差异在容差范围内)").arg(cfg.roiName));
+            spdlog::info("[RoiManager] ROI已激活(矩形匹配): {} (原始矩形与存储矩形差异在容差范围内)", cfg.roiName.toStdString());
             return true;
         }
     }
@@ -307,8 +303,7 @@ bool RoiManager::setRoi(const QRectF &roiRectF)
     imageRois.roiConfigs.append(newCfg);
     imageRois.activeRoiId = newCfg.roiId;
 
-    Logger::instance()->info(QString("[RoiManager] ROI已创建并激活: %1 (x=%2 y=%3 w=%4 h=%5)")
-                                 .arg(roiName).arg(x).arg(y).arg(w).arg(h));
+    spdlog::info("[RoiManager] ROI已创建并激活: {} (x={} y={} w={} h={})", roiName.toStdString(), x, y, w, h);
 
     emit roiConfigChanged();
     return true;
@@ -322,7 +317,7 @@ void RoiManager::resetRoi()
     }
 
     it.value().activeRoiId.clear();
-    Logger::instance()->info("[RoiManager] ROI已重置");
+    spdlog::info("[RoiManager] ROI已重置");
 }
 
 bool RoiManager::isRoiActive() const
@@ -365,17 +360,12 @@ void RoiManager::addRoiConfig(const RoiConfig& config)
 {
     auto it = m_imageRoisMap.find(m_currentImageId);
     if (it == m_imageRoisMap.end()) {
-        Logger::instance()->info("[RoiManager] 没有当前图片，无法添加ROI配置");
+        spdlog::info("[RoiManager] 没有当前图片，无法添加ROI配置");
         return;
     }
 
     it.value().roiConfigs.append(config);
-    Logger::instance()->info(QString("[RoiManager] ROI配置已添加: %1 (id=%2, rect=%3,%4,%5,%6)")
-        .arg(config.roiName).arg(config.roiId)
-        .arg(config.roiRect.x(), 0, 'f', 1)
-        .arg(config.roiRect.y(), 0, 'f', 1)
-        .arg(config.roiRect.width(), 0, 'f', 1)
-        .arg(config.roiRect.height(), 0, 'f', 1));
+    spdlog::info("[RoiManager] ROI配置已添加: {} (id={}, rect={},{},{},{})", config.roiName.toStdString(), config.roiId.toStdString(), config.roiRect.x(), config.roiRect.y(), config.roiRect.width(), config.roiRect.height());
     emit roiConfigChanged();
 }
 
@@ -389,8 +379,7 @@ bool RoiManager::removeRoiConfig(const QString& roiId)
     ImageRois& imageRois = it.value();
     for (int i = 0; i < imageRois.roiConfigs.size(); ++i) {
         if (imageRois.roiConfigs[i].roiId == roiId) {
-            Logger::instance()->info(QString("[RoiManager] ROI配置已移除: %1")
-                                         .arg(imageRois.roiConfigs[i].roiName));
+            spdlog::info("[RoiManager] ROI配置已移除: {}", imageRois.roiConfigs[i].roiName.toStdString());
             imageRois.roiConfigs.removeAt(i);
 
             // 如果删除的是当前激活的ROI，清除激活状态
@@ -481,12 +470,12 @@ void RoiManager::setActiveRoi(const QString& roiId)
     for (const auto& cfg : imageRois.roiConfigs) {
         if (cfg.roiId == roiId) {
             imageRois.activeRoiId = roiId;
-            Logger::instance()->info(QString("[RoiManager] ROI已激活: id=%1").arg(roiId));
+            spdlog::info("[RoiManager] ROI已激活: id={}", roiId.toStdString());
             return;
         }
     }
 
-    qDebug() << "[RoiManager] ROI不存在:" << roiId;
+    spdlog::debug("[RoiManager] ROI不存在: {}", roiId.toStdString());
 }
 
 QString RoiManager::getActiveRoiId() const
@@ -548,8 +537,7 @@ void RoiManager::importAllConfigsFromJson(const QJsonDocument& doc)
                 }
                 imageRois.activeRoiId = imageObj["activeRoiId"].toString();
 
-                Logger::instance()->info(QString("[RoiManager] 已恢复图片ROI配置: imageId=%1, count=%2")
-                                             .arg(imageId).arg(imageRois.roiConfigs.size()));
+                spdlog::info("[RoiManager] 已恢复图片ROI配置: imageId={}, count={}", imageId.toStdString(), imageRois.roiConfigs.size());
             }
         }
     }
@@ -639,11 +627,7 @@ void RoiManager::applyProfile(const InspectionProfile& profile, const QSize& cur
 
     it.value().roiCounter = profile.roiTemplates.size();
 
-    Logger::instance()->info(
-        QString("[RoiManager] 已应用检测方案 '%1'，ROI数量: %2")
-            .arg(profile.profileName)
-            .arg(profile.roiTemplates.size())
-    );
+    spdlog::info("[RoiManager] 已应用检测方案 '{}'，ROI数量: {}", profile.profileName.toStdString(), profile.roiTemplates.size());
 
     emit roiConfigChanged();
 }

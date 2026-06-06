@@ -33,7 +33,7 @@ DetectionUiController::~DetectionUiController()
 
 void DetectionUiController::onAddDetectionClicked(const QString& roiId)
 {
-    qDebug() << "[DEBUG] onAddDetectionClicked: roiId =" << roiId;
+    spdlog::debug("[DEBUG] onAddDetectionClicked: roiId = {}", roiId.toStdString());
     
     // 检查ROI ID是否有效
     if (roiId.isEmpty()) {
@@ -44,12 +44,12 @@ void DetectionUiController::onAddDetectionClicked(const QString& roiId)
     // 获取ROI配置
     RoiConfig* roi = m_roiManager.getRoiConfig(roiId);
     if (!roi) {
-        qDebug() << "[DEBUG] onAddDetectionClicked: ROI not found for ID =" << roiId;
+        spdlog::debug("[DEBUG] onAddDetectionClicked: ROI not found for ID = {}", roiId.toStdString());
         QMessageBox::warning(nullptr, "警告", "未找到选中的ROI");
         return;
     }
     
-    qDebug() << "[DEBUG] onAddDetectionClicked: Found ROI =" << roi->roiName << ", ID =" << roi->roiId;
+    spdlog::debug("[DEBUG] onAddDetectionClicked: Found ROI = {}, ID = {}", roi->roiName.toStdString(), roi->roiId.toStdString());
     
     // 创建对话框
     QDialog dialog;
@@ -97,14 +97,14 @@ void DetectionUiController::onAddDetectionClicked(const QString& roiId)
             QString typeName = detectionTypeToString(type);
             DetectionItem item(typeName, type);
             
-            qDebug() << "[DEBUG] onAddDetectionClicked: Adding detection item to ROI =" << roi->roiName;
+            spdlog::debug("[DEBUG] onAddDetectionClicked: Adding detection item to ROI = {}", roi->roiName.toStdString());
             
             // 添加到ROI
             roi->addDetectionItem(item);
             
             emit detectionChanged();
             
-            Logger::instance()->info(QString("已为ROI %1 添加检测项: %2").arg(roi->roiName).arg(typeName));
+            spdlog::info("已为ROI {} 添加检测项: {}", roi->roiName.toStdString(), typeName.toStdString());
         }
     }
 }
@@ -128,7 +128,7 @@ void DetectionUiController::onDeleteDetectionClicked(const QString& roiId, const
         m_triggerPipeline();
     }
 
-    Logger::instance()->info(QString("已删除检测项: %1").arg(detectionId));
+    spdlog::info("已删除检测项: {}", detectionId.toStdString());
 }
 
 void DetectionUiController::onDetectionItemSelected(const QString& roiId, const QString& detectionId,
@@ -278,7 +278,7 @@ void DetectionUiController::switchToTabConfig(const TabConfig& config)
     if (currentIdx >= 0) {
         // 通过直接调用处理显示模式更新
         QString tabName = m_tabWidget->tabText(currentIdx);
-        Logger::instance()->info(QString("[DetectionUi] Tab切换完成: %1").arg(tabName));
+        spdlog::info("[DetectionUi] Tab切换完成: {}", tabName.toStdString());
     }
 }
 
@@ -330,4 +330,3 @@ void DetectionUiController::setupConnections(
         }
     });
 }
-

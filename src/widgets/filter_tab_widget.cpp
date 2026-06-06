@@ -1,10 +1,9 @@
-#include "filter_tab_widget.h"
+﻿#include "filter_tab_widget.h"
 #include "ui_filter_tab.h"
 #include "logger.h"
 #include "config/constants.h"
 #include "config/config_manager.h"
 #include "ui/slider_spinbox_binder.h"
-#include <QDebug>
 
 FilterTabWidget::FilterTabWidget(IPipelineAccess* pipelineAccess, QWidget* parent)
     : QWidget(parent)
@@ -296,3 +295,4 @@ void FilterTabWidget::loadFromConfig(const PipelineConfig& config)
         config.colorFilter.grayHigh
     );
 }
+

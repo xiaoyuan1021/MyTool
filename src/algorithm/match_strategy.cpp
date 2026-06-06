@@ -1,4 +1,4 @@
-#include "match_strategy.h"
+﻿#include "match_strategy.h"
 #include "logger.h"
 #include "image_utils.h"
 #include <QCoreApplication>
@@ -17,12 +17,12 @@ bool OpenCVMatchStrategy::createTemplate(const cv::Mat& fullImage,
                                          const TemplateParams& params)
 {
     if (fullImage.empty()) {
-        Logger::instance()->error("[OpenCV] 创建模板失败：图像为空");
+        spdlog::error("[OpenCV] 创建模板失败：图像为空");
         return false;
     }
 
     if (polygon.size() < 3) {
-        Logger::instance()->error("[OpenCV] 创建模板失败：多边形顶点数不足");
+        spdlog::error("[OpenCV] 创建模板失败：多边形顶点数不足");
         return false;
     }
 
@@ -31,7 +31,7 @@ bool OpenCVMatchStrategy::createTemplate(const cv::Mat& fullImage,
         m_templateImage = extractTemplateROI(fullImage, polygon);
 
         if (m_templateImage.empty()) {
-            Logger::instance()->error("[OpenCV] 创建模板失败：ROI为空");
+            spdlog::error("[OpenCV] 创建模板失败：ROI为空");
             return false;
         }
 
@@ -40,7 +40,7 @@ bool OpenCVMatchStrategy::createTemplate(const cv::Mat& fullImage,
         m_polygonPoints = polygon;
 
         m_hasTemplate = true;
-        Logger::instance()->info(
+        spdlog::info(
             QString("✅ [OpenCV] 模板创建成功:  (尺寸: %1x%2, 方法: %3)")
                 .arg(m_templateImage.cols)
                 .arg(m_templateImage.rows)
@@ -49,7 +49,7 @@ bool OpenCVMatchStrategy::createTemplate(const cv::Mat& fullImage,
         return true;
 
     } catch (const cv::Exception& ex) {
-        Logger::instance()->error(
+        spdlog::error(
             QString("[OpenCV] 创建模板失败: %1").arg(ex.what())
             );
         m_hasTemplate = false;
@@ -65,12 +65,12 @@ QVector<MatchResult> OpenCVMatchStrategy::findMatches(const cv::Mat& searchImage
     QVector<MatchResult> results;
 
     if (searchImage.empty()) {
-        Logger::instance()->error("[OpenCV] 匹配失败：搜索图像为空");
+        spdlog::error("[OpenCV] 匹配失败：搜索图像为空");
         return results;
     }
 
     if (!m_hasTemplate) {
-        Logger::instance()->error("[OpenCV] 匹配失败：未创建模板");
+        spdlog::error("[OpenCV] 匹配失败：未创建模板");
         return results;
     }
 
@@ -162,13 +162,13 @@ QVector<MatchResult> OpenCVMatchStrategy::findMatches(const cv::Mat& searchImage
             cv::circle(nmsMask, loc, maskRadius, cv::Scalar(0), -1);
         }
 
-        Logger::instance()->info(
+        spdlog::info(
             QString("✅ [OpenCV] 找到 %1 个匹配 (最低分数: %2)")
                 .arg(foundCount).arg(minScore)
             );
 
     } catch (const cv::Exception& ex) {
-        Logger::instance()->error(
+        spdlog::error(
             QString("[OpenCV] 模板匹配失败: %1").arg(ex.what())
             );
     }
@@ -263,7 +263,7 @@ cv::Mat OpenCVMatchStrategy::extractTemplateROI(const cv::Mat& image,
 bool OpenCVMatchStrategy::saveTemplate(const QString& filePath) const
 {
     if (!m_hasTemplate || m_templateImage.empty()) {
-        Logger::instance()->error("没有可用的模板数据");
+        spdlog::error("没有可用的模板数据");
         return false;
     }
 
@@ -286,17 +286,17 @@ bool OpenCVMatchStrategy::saveTemplate(const QString& filePath) const
         // 通过 Qt QFile 写出（支持中文路径）
         QFile file(filePath);
         if (!file.open(QIODevice::WriteOnly)) {
-            Logger::instance()->error("保存模板文件失败: " + filePath);
+            spdlog::error("保存模板文件失败: " + filePath);
             return false;
         }
         file.write(content.data(), content.size());
         file.close();
 
-        Logger::instance()->info("模板保存成功: " + filePath);
+        spdlog::info("模板保存成功: " + filePath);
         return true;
 
     } catch (const cv::Exception& ex) {
-        Logger::instance()->error("保存模板失败: " + QString(ex.what()));
+        spdlog::error("保存模板失败: " + QString(ex.what()));
         return false;
     }
 }
@@ -307,14 +307,14 @@ bool OpenCVMatchStrategy::loadTemplate(const QString& filePath)
         // 通过 Qt QFile 读取（支持中文路径）
         QFile file(filePath);
         if (!file.open(QIODevice::ReadOnly)) {
-            Logger::instance()->error("加载模板文件失败: " + filePath);
+            spdlog::error("加载模板文件失败: " + filePath);
             return false;
         }
         QByteArray data = file.readAll();
         file.close();
 
         if (data.isEmpty()) {
-            Logger::instance()->error("模板文件为空: " + filePath);
+            spdlog::error("模板文件为空: " + filePath);
             return false;
         }
 
@@ -323,13 +323,13 @@ bool OpenCVMatchStrategy::loadTemplate(const QString& filePath)
             cv::FileStorage::READ | cv::FileStorage::MEMORY);
 
         if (!fs.isOpened()) {
-            Logger::instance()->error("模板文件格式错误: " + filePath);
+            spdlog::error("模板文件格式错误: " + filePath);
             return false;
         }
 
         fs["templateImage"] >> m_templateImage;
         if (m_templateImage.empty()) {
-            Logger::instance()->error("模板文件中没有有效的图像数据");
+            spdlog::error("模板文件中没有有效的图像数据");
             return false;
         }
 
@@ -347,11 +347,12 @@ bool OpenCVMatchStrategy::loadTemplate(const QString& filePath)
         }
 
         m_hasTemplate = true;
-        Logger::instance()->info("模板加载成功: " + filePath);
+        spdlog::info("模板加载成功: " + filePath);
         return true;
 
     } catch (const cv::Exception& ex) {
-        Logger::instance()->error("加载模板失败: " + QString(ex.what()));
+        spdlog::error("加载模板失败: " + QString(ex.what()));
         return false;
     }
 }
+

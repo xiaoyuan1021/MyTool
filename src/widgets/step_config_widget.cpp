@@ -987,7 +987,8 @@ void StepConfigWidget::onApplyClicked()
     m_pipelineManager->rebuildPipeline();
     emit tabsNeeded(collectEnabledTabNames());
     applyTabVisibility();
-    if (m_onExecutePipeline) m_onExecutePipeline();
+    // [FIX] 应用配置只保存步骤设置，不执行 pipeline
+    // if (m_onExecutePipeline) m_onExecutePipeline();
     updatePipelinePreview();
 
     // [FIX] 保存配置到当前图片（per-image 隔离）

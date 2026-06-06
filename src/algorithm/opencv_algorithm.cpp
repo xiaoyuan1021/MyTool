@@ -1,7 +1,6 @@
-#include "opencv_algorithm.h"
+﻿#include "opencv_algorithm.h"
 #include "image_processor.h"
 #include "logger.h"
-#include <QDebug>
 #include <cstring>
 
 OpenCVAlgorithm::OpenCVAlgorithm() {}
@@ -111,7 +110,7 @@ cv::Mat OpenCVAlgorithm::execute(const cv::Mat& region, const AlgorithmStep& ste
     }
 
     default:
-        Logger::instance()->warning(QString("未知的算法类型: %1").arg(static_cast<int>(algoType)));
+        spdlog::warn(QString("未知的算法类型: %1").arg(static_cast<int>(algoType)));
         return region.clone(); // 未知类型，保持不变
     }
 }
@@ -478,12 +477,12 @@ QVector<RegionFeature> OpenCVAlgorithm::analyzeRegionsInPolygon(
     QVector<RegionFeature> results;
     
     if (polygon.size() < 3) {
-        Logger::instance()->warning("顶点数量不足，至少需要3个点");
+        spdlog::warn("顶点数量不足，至少需要3个点");
         return results;
     }
     
     if (processedImage.empty()) {
-        Logger::instance()->error("处理后的图像为空");
+        spdlog::error("处理后的图像为空");
         return results;
     }
     
@@ -515,7 +514,7 @@ QVector<RegionFeature> OpenCVAlgorithm::analyzeRegionsInPolygon(
         int numLabels = cv::connectedComponentsWithStats(masked, labels, stats, centroids, 8);
         
         if (numLabels <= 1) {
-            Logger::instance()->warning("ROI区域内没有找到目标");
+            spdlog::warn("ROI区域内没有找到目标");
             return results;
         }
         
@@ -553,10 +552,10 @@ QVector<RegionFeature> OpenCVAlgorithm::analyzeRegionsInPolygon(
             results.append(feature);
         }
         
-        Logger::instance()->info(QString("找到 %1 个目标").arg(results.size()));
+        spdlog::info(QString("找到 %1 个目标").arg(results.size()));
         
     } catch (const cv::Exception& ex) {
-        Logger::instance()->error(QString("OpenCV计算错误: %1").arg(ex.what()));
+        spdlog::error(QString("OpenCV计算错误: %1").arg(ex.what()));
     }
     
     return results;
@@ -934,3 +933,5 @@ cv::Mat OpenCVAlgorithm::convertToGreenWhite(const cv::Mat& mask)
     
     return result;
 }
+
+

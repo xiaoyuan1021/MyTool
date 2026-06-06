@@ -124,14 +124,14 @@ QList<ImageDetectionTask> AutoDetectionController::buildTaskList()
 
         // 跳过没有ROI配置的图片（允许imagePath为空，从内存读取）
         if (task.roiConfigs.isEmpty()) {
-            Logger::instance()->debug(QString("[buildTaskList] 跳过图片 %1: 没有ROI配置").arg(imageId));
+            spdlog::debug(QString("[buildTaskList] 跳过图片 %1: 没有ROI配置").arg(imageId));
             continue;
         }
 
         tasks.append(task);
     }
 
-    Logger::instance()->info(QString("[buildTaskList] 构建了 %1 个检测任务（共 %2 张图片）")
+    spdlog::info(QString("[buildTaskList] 构建了 %1 个检测任务（共 %2 张图片）")
         .arg(tasks.size()).arg(imageIds.size()));
     return tasks;
 }
@@ -175,7 +175,7 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
     cv::Mat image;
     if (imagePath.isEmpty() && m_roiManager) {
         image = m_roiManager->getImage(imageId);
-        Logger::instance()->debug(QString("[检测] 从内存预加载图像: %1 (空=%2)").arg(imageId, image.empty() ? "是" : "否"));
+        spdlog::debug(QString("[检测] 从内存预加载图像: %1 (空=%2)").arg(imageId, image.empty() ? "是" : "否"));
     }
 
     // 使用 QtConcurrent 在后台线程执行，避免阻塞 UI
@@ -191,13 +191,13 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
             try {
             // 【P0修复】检查PipelineManager是否已被释放
             if (!pipelinePtr) {
-                Logger::instance()->error(QString("[检测] PipelineManager已被释放，跳过处理: %1").arg(imagePath));
+                spdlog::error(QString("[检测] PipelineManager已被释放，跳过处理: %1").arg(imagePath));
                 imageResult.passed = false;
                 imageResult.failReason = QString("PipelineManager已被释放: %1").arg(imagePath);
                 return imageResult;
             }
 
-            Logger::instance()->debug(QString("[检测] 开始处理图片: %1 (路径: %2)").arg(imageId, imagePath));
+            spdlog::debug(QString("[检测] 开始处理图片: %1 (路径: %2)").arg(imageId, imagePath));
 
             cv::Mat finalImage = image;  // 使用预加载的图像
             if (finalImage.empty() && !imagePath.isEmpty()) {
@@ -206,7 +206,7 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
             }
 
             if (finalImage.empty()) {
-                Logger::instance()->error(QString("[检测] 无法加载图片: %1 (路径: %2)").arg(imageId, imagePath.isEmpty() ? "内存中无图像" : imagePath));
+                spdlog::error(QString("[检测] 无法加载图片: %1 (路径: %2)").arg(imageId, imagePath.isEmpty() ? "内存中无图像" : imagePath));
                 imageResult.passed = false;
                 imageResult.failReason = QString("无法加载图片: %1").arg(imagePath.isEmpty() ? "内存中无图像" : imagePath);
                 return imageResult;
@@ -231,12 +231,12 @@ void AutoDetectionController::processImageTask(const ImageDetectionTask& task)
 
             return imageResult;
             } catch (const cv::Exception& ex) {
-                Logger::instance()->error(QString("[检测] OpenCV错误: %1").arg(ex.what()));
+                spdlog::error(QString("[检测] OpenCV错误: %1").arg(ex.what()));
                 imageResult.passed = false;
                 imageResult.failReason = QString("OpenCV错误: %1").arg(ex.what());
                 return imageResult;
             } catch (const std::exception& ex) {
-                Logger::instance()->error(QString("[检测] 异常: %1").arg(ex.what()));
+                spdlog::error(QString("[检测] 异常: %1").arg(ex.what()));
                 imageResult.passed = false;
                 imageResult.failReason = QString("异常: %1").arg(ex.what());
                 return imageResult;
@@ -337,7 +337,7 @@ void AutoDetectionController::setupUiConnections(
 {
     // 日志消息
     connect(this, &AutoDetectionController::logMessage,
-            this, [](const QString& msg) { Logger::instance()->info(msg); });
+            this, [](const QString& msg) { spdlog::info(msg); });
 
     // 检测开始：禁用开始按钮，启用停止按钮
     connect(this, &AutoDetectionController::detectionStarted,
@@ -381,3 +381,4 @@ void AutoDetectionController::setupUiConnections(
         statusLabel->setText(statusText);
     });
 }
+

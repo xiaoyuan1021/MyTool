@@ -10,7 +10,6 @@
 #include "widgets/tab_manager.h"
 
 #include <QApplication>
-#include <QDebug>
 #include <QMenu>
 #include <QInputDialog>
 #include <QMessageBox>
@@ -89,7 +88,7 @@ void RoiUiController::setupTreeView(QTreeWidget* treeView)
         // 触发Pipeline执行，刷新所有Tab页面显示新ROI的处理结果
         emit roiChanged();
 
-        Logger::instance()->info(QString("已添加ROI: %1").arg(roiName));
+        spdlog::info(QString("已添加ROI: %1").arg(roiName));
     });
     
     // 刷新显示
@@ -110,7 +109,7 @@ void RoiUiController::removeRoiAndRefresh(const QString& roiId)
     bool wasSelected = (m_currentSelectedRoiId == roiId);
 
     if (!m_roiManager.removeRoiConfig(roiId)) {
-        Logger::instance()->warning(QString("[RoiUI] 删除失败: roiId=%1").arg(roiId));
+        spdlog::warn(QString("[RoiUI] 删除失败: roiId=%1").arg(roiId));
         return;
     }
 
@@ -126,7 +125,7 @@ void RoiUiController::removeRoiAndRefresh(const QString& roiId)
 
     emit roiChanged();
     emit tabVisibilityUpdateNeeded();
-    Logger::instance()->info(QString("已删除ROI: %1").arg(roiName));
+    spdlog::info(QString("已删除ROI: %1").arg(roiName));
 }
 
 void RoiUiController::onDrawRoiClicked()
@@ -141,7 +140,7 @@ void RoiUiController::onAddRoiClicked()
         QMessageBox::warning(nullptr, "警告", "请先加载一张图像");
         return;
     }
-    Logger::instance()->info("请在图像上绘制新的ROI");
+    spdlog::info("请在图像上绘制新的ROI");
     enterRoiDrawMode();
 }
 
@@ -182,7 +181,7 @@ QString RoiUiController::addFullImageRoi(bool silent)
             .arg(roi.roiName).arg(fullImage.cols).arg(fullImage.rows), 3000);
     }
 
-    Logger::instance()->info(QString("已创建整图ROI: %1").arg(roi.roiName));
+    spdlog::info(QString("已创建整图ROI: %1").arg(roi.roiName));
     return roi.roiId;
 }
 
@@ -242,7 +241,7 @@ void RoiUiController::onSwitchRoiClicked()
         
         // 【P1修复】纯显示切换，不触发Pipeline处理
         emit fullImageDisplayRequested();
-        Logger::instance()->info("已切换到原图模式");
+        spdlog::info("已切换到原图模式");
     } else {
         // 当前是原图模式，切换到ROI模式
         if (m_currentSelectedRoiId.isEmpty()) {
@@ -266,7 +265,7 @@ void RoiUiController::onSwitchRoiClicked()
         
         // 【P1修复】纯显示切换，不触发Pipeline处理
         emit roiDisplayChanged(m_currentSelectedRoiId);
-        Logger::instance()->info(QString("已切换到ROI模式: %1 (通过ID激活)").arg(roi->roiName));
+        spdlog::info(QString("已切换到ROI模式: %1 (通过ID激活)").arg(roi->roiName));
     }
 }
 
@@ -406,7 +405,7 @@ void RoiUiController::restoreSelection()
             if (m_pipelineManager) {
                 m_pipelineManager->resetConfigToDefaults();
                 emit roiPipelineConfigChanged(m_pipelineManager->getConfigSnapshot());
-                Logger::instance()->info("[RoiUI] 无ROI，已复位配置为默认值");
+                spdlog::info("[RoiUI] 无ROI，已复位配置为默认值");
             }
         }
     }
@@ -442,7 +441,7 @@ void RoiUiController::handleRoiSelection(const QString& roiId)
             emit detectionItemSelected(m_currentSelectedRoiId, firstItem.itemId);
         }
 
-        Logger::instance()->info(QString("已选中ROI: %1 (通过ID激活)").arg(roi->roiName));
+        spdlog::info(QString("已选中ROI: %1 (通过ID激活)").arg(roi->roiName));
     }
 }
 
@@ -467,7 +466,7 @@ void RoiUiController::onRoiTreeItemClicked(QTreeWidgetItem* item, int column)
             // 发出检测项选中信号，用于触发Tab切换
             emit detectionItemSelected(m_currentSelectedRoiId, itemId);
         }
-        Logger::instance()->info(QString("选中检测项: %1").arg(item->text(0)));
+        spdlog::info(QString("选中检测项: %1").arg(item->text(0)));
     } else {
         // 点击的是ROI，统一处理选择逻辑
         handleRoiSelection(itemId);
@@ -527,7 +526,7 @@ QString RoiUiController::addRoiWithName(const QString& roiName)
         QMessageBox::warning(nullptr, "警告", "请先加载一张图像");
         return QString();
     }
-    Logger::instance()->info(QString("请在图像上绘制新的ROI: %1").arg(roiName));
+    spdlog::info(QString("请在图像上绘制新的ROI: %1").arg(roiName));
     enterRoiDrawMode();
     return roiName;
 }
@@ -543,7 +542,7 @@ bool RoiUiController::renameRoi(const QString& roiId, const QString& newName)
     refreshRoiTreeView();
     emit roiRenamed(roiId, newName);
     
-    Logger::instance()->info(QString("已重命名ROI: %1 -> %2").arg(roi->roiName).arg(newName));
+    spdlog::info(QString("已重命名ROI: %1 -> %2").arg(roi->roiName).arg(newName));
     return true;
 }
 
@@ -556,14 +555,14 @@ void RoiUiController::saveCurrentRoiPipelineConfig()
     RoiConfig* roi = m_roiManager.getRoiConfig(m_currentSelectedRoiId);
     if (roi) {
         roi->pipelineConfig = m_pipelineManager->getConfigSnapshot();
-        Logger::instance()->debug(QString("[RoiUI] 已保存ROI [%1] 的Pipeline配置: brightness=%2, contrast=%3, gamma=%4")
+        spdlog::debug(QString("[RoiUI] 已保存ROI [%1] 的Pipeline配置: brightness=%2, contrast=%3, gamma=%4")
             .arg(roi->roiName)
             .arg(roi->pipelineConfig.enhance.brightness)
             .arg(roi->pipelineConfig.enhance.contrast)
             .arg(roi->pipelineConfig.enhance.gamma));
     } else {
         // ROI已不存在（切换图片/profile后），清理幽灵引用
-        Logger::instance()->debug(QString("[RoiUI] saveCurrentRoiPipelineConfig: 清理幽灵ROI引用, id=%1").arg(m_currentSelectedRoiId));
+        spdlog::debug(QString("[RoiUI] saveCurrentRoiPipelineConfig: 清理幽灵ROI引用, id=%1").arg(m_currentSelectedRoiId));
         m_currentSelectedRoiId.clear();
     }
 }
@@ -571,7 +570,7 @@ void RoiUiController::saveCurrentRoiPipelineConfig()
 void RoiUiController::loadRoiPipelineConfig(const QString& roiId)
 {
     if (roiId.isEmpty() || !m_pipelineManager) {
-        Logger::instance()->info(QString("[RoiUI] loadRoiPipelineConfig: 跳过 (roiId=%1, pipeline=%2)")
+        spdlog::info(QString("[RoiUI] loadRoiPipelineConfig: 跳过 (roiId=%1, pipeline=%2)")
             .arg(roiId).arg(m_pipelineManager ? "有效" : "nullptr"));
         return;
     }
@@ -583,7 +582,7 @@ void RoiUiController::loadRoiPipelineConfig(const QString& roiId)
         
         emit roiPipelineConfigChanged(roi->pipelineConfig);
         
-        Logger::instance()->debug(QString("[RoiUI] 已加载ROI [%1] 的Pipeline配置: brightness=%2, contrast=%3, gamma=%4, sharpen=%5, channel=%6")
+        spdlog::debug(QString("[RoiUI] 已加载ROI [%1] 的Pipeline配置: brightness=%2, contrast=%3, gamma=%4, sharpen=%5, channel=%6")
             .arg(roi->roiName)
             .arg(roi->pipelineConfig.enhance.brightness)
             .arg(roi->pipelineConfig.enhance.contrast)
@@ -591,7 +590,7 @@ void RoiUiController::loadRoiPipelineConfig(const QString& roiId)
             .arg(roi->pipelineConfig.enhance.sharpen)
             .arg(static_cast<int>(roi->pipelineConfig.colorFilter.channel)));
     } else {
-        Logger::instance()->debug(QString("[RoiUI] loadRoiPipelineConfig: ROI不存在, id=%1").arg(roiId));
+        spdlog::debug(QString("[RoiUI] loadRoiPipelineConfig: ROI不存在, id=%1").arg(roiId));
     }
 }
 
@@ -600,7 +599,7 @@ void RoiUiController::loadRoiPipelineConfig(const QString& roiId)
 void RoiUiController::syncRoiConfigsToWidget()
 {
     refreshRoiTreeView();
-    Logger::instance()->info("[RoiUiController] 已同步ROI配置到Widget");
+    spdlog::info("[RoiUiController] 已同步ROI配置到Widget");
 }
 
 // ========== 显示信号连接（从MainWindow迁移） ==========
@@ -704,3 +703,4 @@ void RoiUiController::notifyConfigChanged(const PipelineConfig& config)
     // 发出信号，通知所有实现了 IConfigurableTab 接口的Tab更新UI
     emit roiPipelineConfigChanged(config);
 }
+

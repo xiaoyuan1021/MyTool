@@ -1,4 +1,4 @@
-#include "controllers/config_controller.h"
+﻿#include "controllers/config_controller.h"
 #include "widgets/i_tab_interfaces.h"
 #include "logger.h"
 #include "utils/path_utils.h"
@@ -47,10 +47,10 @@ void ConfigController::saveConfig(QWidget* parentWidget)
     collectConfigFromUI(config);
 
     if (ConfigManager::instance().saveConfig(config, filePath)) {
-        Logger::instance()->info("配置已保存到: " + filePath);
+        spdlog::info("配置已保存到: " + filePath);
         QMessageBox::information(parentWidget, "成功", "配置已保存");
     } else {
-        Logger::instance()->error("配置保存失败");
+        spdlog::error("配置保存失败");
         QMessageBox::warning(parentWidget, "错误", "配置保存失败");
     }
 }
@@ -70,10 +70,10 @@ void ConfigController::loadConfig(QWidget* parentWidget)
     AppConfig config;
     if (ConfigManager::instance().loadConfig(config, filePath)) {
         applyConfigToUI(config);
-        Logger::instance()->info("配置已从: " + filePath + " 加载");
+        spdlog::info("配置已从: " + filePath + " 加载");
         QMessageBox::information(parentWidget, "成功", "配置已加载");
     } else {
-        Logger::instance()->error("配置加载失败");
+        spdlog::error("配置加载失败");
         QMessageBox::warning(parentWidget, "错误", "配置加载失败");
     }
 }
@@ -127,7 +127,7 @@ void ConfigController::applyConfigToUI(const AppConfig& config)
         for (const QString& filePath : config.imageFilePaths) {
             cv::Mat img = PathUtils::readImageFromFile(filePath, cv::IMREAD_COLOR);
             if (img.empty()) {
-                Logger::instance()->warning(QString("无法加载图片: %1").arg(filePath));
+                spdlog::warn(QString("无法加载图片: %1").arg(filePath));
                 continue;
             }
             QFileInfo fi(filePath);
@@ -143,14 +143,14 @@ void ConfigController::applyConfigToUI(const AppConfig& config)
             m_roiManager.switchToImage(imageIds.first());
         }
 
-        Logger::instance()->info(QString("已从配置加载 %1/%2 张图片")
+        spdlog::info(QString("已从配置加载 %1/%2 张图片")
             .arg(loadedCount).arg(config.imageFilePaths.size()));
     }
 
     // ====== 第二步：恢复单ROI配置 ======
     if (config.roiRect.isValid() && m_roiManager.imageCount() > 0) {
         m_roiManager.setRoi(config.roiRect);
-        Logger::instance()->info("已恢复 ROI 配置");
+        spdlog::info("已恢复 ROI 配置");
     }
 
     // ====== 第三步：恢复多图片ROI配置 ======
@@ -183,7 +183,7 @@ void ConfigController::applyConfigToUI(const AppConfig& config)
         exportJson["currentImageId"] = oldToNewId.value(oldId, oldId);
 
         m_roiManager.importAllConfigsFromJson(QJsonDocument(exportJson));
-        Logger::instance()->info("已恢复多图片ROI配置");
+        spdlog::info("已恢复多图片ROI配置");
     }
 
     // ====== 第四步：通过 IConfigurableTab 接口将配置应用到所有已注册 Tab ======
@@ -208,3 +208,4 @@ void ConfigController::applyConfigToUI(const AppConfig& config)
     // 发出配置已应用信号
     emit configApplied();
 }
+

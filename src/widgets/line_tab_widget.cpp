@@ -185,7 +185,7 @@ void LineDetectTabWidget::handleApply()
     if (useReferenceLineMatch) {
         // 参考线匹配模式：禁用普通直线检测
         cfg.lineDetect.enabled = false;
-        Logger::instance()->info("使用参考线匹配模式检测直线");
+        spdlog::info("使用参考线匹配模式检测直线");
     } else {
         // 普通直线检测模式
         cfg.lineDetect.enabled = true;
@@ -195,7 +195,7 @@ void LineDetectTabWidget::handleApply()
                 "状态：参考线未绘制，已切换为普通直线检测模式\n请先绘制参考线再启用参考线匹配");
             m_ui->label_referenceLineStatus->setStyleSheet("color: #F59E0B;");
         }
-        Logger::instance()->info("使用普通直线检测模式");
+        spdlog::info("使用普通直线检测模式");
     }
     m_pipeline->setConfig(cfg);
 
@@ -291,7 +291,7 @@ void LineDetectTabWidget::onDrawReferenceLineClicked()
     emit requestDrawReferenceLine();
     
     // 提示用户（不弹窗，只在日志显示）
-    Logger::instance()->info("请在图像上点击绘制参考线的起点和终点");
+    spdlog::info("请在图像上点击绘制参考线的起点和终点");
 }
 
 void LineDetectTabWidget::onClearReferenceLineClicked()
@@ -473,3 +473,4 @@ void LineDetectTabWidget::updateMatchResultStatus(int matchedCount, int totalCou
 
     m_ui->label_referenceLineStatus->setText(status);
 }
+

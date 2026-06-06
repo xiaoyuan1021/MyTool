@@ -1,11 +1,10 @@
-#ifndef IMAGE_VIEW_H
+﻿#ifndef IMAGE_VIEW_H
 #define IMAGE_VIEW_H
 
 #include <QGraphicsScene>
 #include <QGraphicsView>
 #include <QGraphicsPixmapItem>
 #include <QLabel>
-#include <QDebug>
 #include <QImage>
 #include <QPixmap>
 #include <QPainter>
@@ -167,3 +166,4 @@ private:
 };
 
 #endif // IMAGE_VIEW_H
+

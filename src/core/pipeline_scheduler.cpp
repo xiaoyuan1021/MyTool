@@ -48,7 +48,7 @@ qint64 PipelineScheduler::submit(PipelineRequest request)
     if (m_deduplicationEnabled) {
         for (const auto& existing : m_queue) {
             if (existing.id() == requestId) {
-                qDebug() << "[PipelineScheduler] 忽略重复请求:" << requestId;
+                spdlog::debug("[PipelineScheduler] 忽略重复请求: {}", requestId);
                 return requestId;
             }
         }
@@ -62,13 +62,13 @@ qint64 PipelineScheduler::submit(PipelineRequest request)
                 lowestIdx = i;
             }
         }
-        qDebug() << "[PipelineScheduler] 队列满，移除低优先级请求:" << m_queue[lowestIdx].id();
+        spdlog::debug("[PipelineScheduler] 队列满，移除低优先级请求: {}", m_queue[lowestIdx].id());
         m_queue.removeAt(lowestIdx);
     }
 
     // 添加到队列
     m_queue.enqueue(std::move(request));
-    qDebug() << "[PipelineScheduler] 请求入队:" << requestId << "队列长度:" << m_queue.size();
+    spdlog::debug("[PipelineScheduler] 请求入队: {} 队列长度: {}", requestId, m_queue.size());
 
     locker.unlock();
     emitQueueChanged();
@@ -85,7 +85,7 @@ void PipelineScheduler::cancel(qint64 requestId)
 
     for (int i = 0; i < m_queue.size(); ++i) {
         if (m_queue[i].id() == requestId) {
-            qDebug() << "[PipelineScheduler] 取消请求:" << requestId;
+            spdlog::debug("[PipelineScheduler] 取消请求: {}", requestId);
             m_queue.removeAt(i);
             locker.unlock();
             emit cancelled(requestId);
@@ -101,7 +101,7 @@ void PipelineScheduler::cancelAll()
 
     if (m_queue.isEmpty()) return;
 
-    qDebug() << "[PipelineScheduler] 取消所有请求，队列长度:" << m_queue.size();
+    spdlog::debug("[PipelineScheduler] 取消所有请求，队列长度: {}", m_queue.size());
     m_queue.clear();
     locker.unlock();
 
@@ -146,7 +146,7 @@ void PipelineScheduler::processNext()
 {
     // 如果正在执行，等待完成
     if (m_processing.loadAcquire()) {
-        Logger::instance()->info("[PipelineScheduler] 正在执行，等待完成");
+        spdlog::info("[PipelineScheduler] 正在执行，等待完成");
         return;
     }
 
@@ -180,7 +180,7 @@ void PipelineScheduler::executeRequest(const PipelineRequest& request)
     m_processing.storeRelease(1);
     emit processingChanged(true);
 
-    qDebug() << "[PipelineScheduler] 开始执行请求:" << request.id();
+    spdlog::debug("[PipelineScheduler] 开始执行请求: {}", request.id());
 
     // 捕获需要的指针和数据（按值），避免在后台线程中捕获 this
     PipelineManager* pipeline = m_pipeline;
@@ -205,17 +205,17 @@ void PipelineScheduler::executeRequest(const PipelineRequest& request)
             } catch (const cv::Exception& ex) {
                 double elapsed = timer.elapsed();
                 QString error = QString("OpenCV 错误: %1").arg(ex.what());
-                Logger::instance()->error(error);
+                spdlog::error("{}", error.toStdString());
                 return PipelineResult::failure(req, error, elapsed);
             } catch (const std::exception& ex) {
                 double elapsed = timer.elapsed();
                 QString error = QString("异常: %1").arg(ex.what());
-                Logger::instance()->error(error);
+                spdlog::error("{}", error.toStdString());
                 return PipelineResult::failure(req, error, elapsed);
             } catch (...) {
                 double elapsed = timer.elapsed();
                 QString error = "未知异常";
-                Logger::instance()->error(error);
+                spdlog::error("{}", error.toStdString());
                 return PipelineResult::failure(req, error, elapsed);
             }
         }
@@ -234,9 +234,8 @@ void PipelineScheduler::onTaskFinished()
     m_processing.storeRelease(0);
     emit processingChanged(false);
 
-    qDebug() << "[PipelineScheduler] 请求执行完成:" << result.requestId()
-             << "耗时:" << result.elapsedMs() << "ms"
-             << "成功:" << result.isSuccess();
+    spdlog::debug("[PipelineScheduler] 请求执行完成: {} 耗时: {}ms 成功: {}",
+        result.requestId(), result.elapsedMs(), result.isSuccess());
 
     emit finished(result);
 

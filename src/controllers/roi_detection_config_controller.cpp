@@ -1,4 +1,4 @@
-#include "controllers/roi_detection_config_controller.h"
+﻿#include "controllers/roi_detection_config_controller.h"
 #include "logger.h"
 
 RoiDetectionConfigController::RoiDetectionConfigController(
@@ -20,7 +20,7 @@ void RoiDetectionConfigController::updateBlobDetectionConfig(int minCount, int m
             blobConfig.minBlobCount = minCount;
             blobConfig.maxBlobCount = maxCount;
             detItem.config = blobConfig.toJson();
-            Logger::instance()->info(QString("[RoiDetectionConfig] 判定阈值已更新: min=%1, max=%2").arg(minCount).arg(maxCount));
+            spdlog::info(QString("[RoiDetectionConfig] 判定阈值已更新: min=%1, max=%2").arg(minCount).arg(maxCount));
             break;
         }
     }
@@ -37,7 +37,7 @@ void RoiDetectionConfigController::updateOcrDetectionConfig(const QString& expec
             ocrConfig.expectedText = expectedText;
             ocrConfig.matchExact = matchExact;
             detItem.config = ocrConfig.toJson();
-            Logger::instance()->info(QString("[RoiDetectionConfig] OCR判定参数已更新: expectedText='%1', matchExact=%2").arg(expectedText).arg(matchExact));
+            spdlog::info(QString("[RoiDetectionConfig] OCR判定参数已更新: expectedText='%1', matchExact=%2").arg(expectedText).arg(matchExact));
             break;
         }
     }
@@ -50,7 +50,7 @@ void RoiDetectionConfigController::updateObjectDetectionConfig(const ObjectDetec
     for (auto& detItem : roi->detectionItems) {
         if (detItem.type == DetectionType::ObjectDetection && detItem.enabled) {
             detItem.config = objConfig.toJson();
-            Logger::instance()->info(QString("[RoiDetectionConfig] 目标检测配置已更新: model=%1").arg(objConfig.modelPath));
+            spdlog::info(QString("[RoiDetectionConfig] 目标检测配置已更新: model=%1").arg(objConfig.modelPath));
             break;
         }
     }
@@ -63,7 +63,7 @@ void RoiDetectionConfigController::updateBarcodeDetectionConfig(const BarcodeCon
     for (auto& detItem : roi->detectionItems) {
         if (detItem.type == DetectionType::Barcode && detItem.enabled) {
             detItem.config = barcodeConfig.toJson();
-            Logger::instance()->info(QString("[RoiDetectionConfig] 条码检测配置已更新"));
+            spdlog::info(QString("[RoiDetectionConfig] 条码检测配置已更新"));
             break;
         }
     }
@@ -76,8 +76,9 @@ void RoiDetectionConfigController::updateLineDetectionConfig(const LineDetectCon
     for (auto& detItem : roi->detectionItems) {
         if (detItem.type == DetectionType::Line && detItem.enabled) {
             detItem.config = lineConfig.toJson();
-            Logger::instance()->info(QString("[RoiDetectionConfig] 直线检测配置已更新"));
+            spdlog::info(QString("[RoiDetectionConfig] 直线检测配置已更新"));
             break;
         }
     }
 }
+

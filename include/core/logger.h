@@ -1,61 +1,43 @@
 #ifndef LOGGER_H
 #define LOGGER_H
 
-#include <QObject>
-#include <QTextEdit>
-#include <QDateTime>
-#include <QProcess>
-#include <QDesktopServices>
-#include <QFileInfo>
-#include <QDir>
-#include <QMutex>
-#include <QMutexLocker>
+#include <QString>
+#include <format>
 
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/qt_sinks.h"
-#include "spdlog/sinks/basic_file_sink.h"
+#include "spdlog/sinks/rotating_file_sink.h"
 
-class Logger :public QObject
-{
-    Q_OBJECT
-public:
-    static Logger* instance();
-    void setTextEdit(QTextEdit* textdEdit);
-    void setLogFile(const QString & filePath);
-    void enableFileLog(bool enable);
-    bool openLogFolder(bool selectFile = true);
-    QString logFilePath() const;
-
-    void debug(const QString & message);
-    void info(const QString & message);
-    void warning(const QString & message);
-    void error(const QString & message);
-    void clear();
-    QStringList getRecentLogs(int count = 100) const;
-    void outputLogsWithColor(const QStringList& logs);
-
-    // UI日志级别控制
-    void setUILogLevel(spdlog::level::level_enum level);
-    spdlog::level::level_enum uiLogLevel() const;
-
-signals:
-    void logMessage(const QString& message);
-
-private:
-    Logger();
-    ~Logger();
-
-    QTextEdit * m_textEdit;
-
-    // spdlog logger: qt_color_sink (UI) + basic_file_sink (file)
-    std::shared_ptr<spdlog::logger> m_colorLogger;
-    std::shared_ptr<spdlog::sinks::basic_file_sink_mt> m_fileSink;
-    std::shared_ptr<spdlog::sinks::qt_color_sink_mt> m_uiSink;
-
-    QString m_logFilePath;
-
-    // 线程安全保护
-    mutable QMutex m_mutex;
+// ============================================================
+// std::formatter specialization for QString
+// Allows spdlog::info("{}", someQString) to work directly
+// ============================================================
+template <>
+struct std::formatter<QString> : std::formatter<std::string> {
+    auto format(const QString& qstr, auto& ctx) const {
+        return std::formatter<std::string>::format(qstr.toStdString(), ctx);
+    }
 };
+
+// ============================================================
+// spdlog-based logging setup (replaces old Logger singleton)
+// ============================================================
+
+// Initialize spdlog with rotating file sink + qt_color_sink (UI)
+// Call once at startup, after QApplication exists
+void setupLogging(QTextEdit* uiTextEdit, const QString& logDir);
+
+// Set UI sink log level (controls what appears in LogPage)
+void setUILogLevel(spdlog::level::level_enum level);
+spdlog::level::level_enum uiLogLevel();
+
+// Get current log file path
+QString logFilePath();
+
+// Open log folder in system explorer
+bool openLogFolder(bool selectFile = true);
+
+// Convenience: clear UI text edit
+void clearLogUi();
 
 #endif // LOGGER_H

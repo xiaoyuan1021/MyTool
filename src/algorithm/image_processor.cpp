@@ -1,7 +1,6 @@
 ﻿#include "image_processor.h"
 #include "opencv_algorithm.h"
 #include "logger.h"
-#include <QDebug>
 
 ImageProcessor::ImageProcessor() {}
 
@@ -25,11 +24,11 @@ cv::Mat ImageProcessor::convertColorSpace(const cv::Mat &src, const QString &mod
         }
         return displayMat;
     } catch (const cv::Exception& ex) {
-Logger::instance()->error(QString("颜色空间转换错误: %1").arg(ex.what()));
+        spdlog::error("颜色空间转换错误: {}", ex.what());
         return src;
     } catch (...) {
-        Logger::instance()->info("[convertColorSpace] 未知异常");
-        Logger::instance()->error("颜色空间转换未知异常");
+        spdlog::info("[convertColorSpace] 未知异常");
+        spdlog::error("颜色空间转换未知异常");
         return src;
     }
 }
@@ -51,7 +50,7 @@ cv::Mat ImageProcessor::executeAlgorithmQueue(const cv::Mat &src, const QVector<
 
     if(!hasValidStep)
     {
-        Logger::instance()->info("[executeAlgorithmQueue] 没有启用的算法步骤");
+        spdlog::info("[executeAlgorithmQueue] 没有启用的算法步骤");
         return src;  // 没有要执行的步骤，直接返回原图
     }
 
@@ -62,7 +61,7 @@ cv::Mat ImageProcessor::executeAlgorithmQueue(const cv::Mat &src, const QVector<
     } else if(src.channels() == 1) {
         gray = src.clone();  // 已经是灰度图
     } else {
-        qDebug() << "[executeAlgorithmQueue] 不支持的通道数:" << src.channels();
+        spdlog::debug("[executeAlgorithmQueue] 不支持的通道数: {}", src.channels());
         return src;
     }
 
@@ -73,12 +72,12 @@ cv::Mat ImageProcessor::executeAlgorithmQueue(const cv::Mat &src, const QVector<
         for(const auto& step : queue)
         {
             if(!step.enabled) {
-                Logger::instance()->info(QString("  跳过未启用步骤: %1").arg(step.name));
+                spdlog::info("  跳过未启用步骤: {}", step.name.toStdString());
                 continue;
             }
 
             if(step.type != "OpenCVAlgorithm") {
-                Logger::instance()->info(QString("  跳过非OpenCV步骤: %1").arg(step.name));
+                spdlog::info("  跳过非OpenCV步骤: {}", step.name.toStdString());
                 continue;
             }
 
@@ -87,21 +86,20 @@ cv::Mat ImageProcessor::executeAlgorithmQueue(const cv::Mat &src, const QVector<
             executedSteps++;
         }
 
-        Logger::instance()->info(QString("[executeAlgorithmQueue] 完成，共执行 %1 个步骤")
-                        .arg(executedSteps));
+        spdlog::info("[executeAlgorithmQueue] 完成，共执行 {} 个步骤", executedSteps);
 
         if(currentMat.empty()) {
-            Logger::instance()->info("[executeAlgorithmQueue] 警告：结果为空，返回输入灰度图");
+            spdlog::info("[executeAlgorithmQueue] 警告：结果为空，返回输入灰度图");
             return gray;
         }
 
         return currentMat;
 
     } catch (const cv::Exception& ex) {
-        qDebug() << "[executeAlgorithmQueue] OpenCV异常:" << ex.what();
+        spdlog::debug("[executeAlgorithmQueue] OpenCV异常: {}", ex.what());
         return gray;
     } catch (...) {
-        Logger::instance()->info("[executeAlgorithmQueue] 未知异常");
+        spdlog::info("[executeAlgorithmQueue] 未知异常");
         return gray;
     }
 }
@@ -128,11 +126,11 @@ cv::Mat ImageProcessor::adjustParameter(const cv::Mat &src, int brightness, doub
         }
         return dst;
     } catch (const cv::Exception& ex) {
-Logger::instance()->error(QString("图像增强参数调整错误: %1").arg(ex.what()));
+        spdlog::error("图像增强参数调整错误: {}", ex.what());
         return src;
     } catch (...) {
-        Logger::instance()->info("[adjustParameter] 未知异常");
-        Logger::instance()->error("图像增强参数调整未知异常");
+        spdlog::info("[adjustParameter] 未知异常");
+        spdlog::error("图像增强参数调整未知异常");
         return src;
     }
 }
@@ -141,7 +139,7 @@ cv::Mat ImageProcessor::filterRGB(const cv::Mat &src, int rLow, int rHigh, int g
 {
     if(src.empty())
     {
-        Logger::instance()->info("[filterRGB] 输入图像为空");
+        spdlog::info("[filterRGB] 输入图像为空");
         return cv::Mat();
     }
 
@@ -152,7 +150,7 @@ cv::Mat ImageProcessor::filterRGB(const cv::Mat &src, int rLow, int rHigh, int g
         } else if (src.channels() == 3) {
             bgr = src;
         } else {
-            qDebug() << "[filterRGB] 不支持的通道数:" << src.channels();
+            spdlog::debug("[filterRGB] 不支持的通道数: {}", src.channels());
             return cv::Mat();
         }
 
@@ -171,11 +169,11 @@ cv::Mat ImageProcessor::filterRGB(const cv::Mat &src, int rLow, int rHigh, int g
 
         return mask;
     } catch (const cv::Exception& ex) {
-Logger::instance()->error(QString("RGB过滤错误: %1").arg(ex.what()));
+        spdlog::error("RGB过滤错误: {}", ex.what());
         return cv::Mat();
     } catch (...) {
-        Logger::instance()->info("[filterRGB] 未知异常");
-        Logger::instance()->error("RGB过滤未知异常");
+        spdlog::info("[filterRGB] 未知异常");
+        spdlog::error("RGB过滤未知异常");
         return cv::Mat();
     }
 }
@@ -184,7 +182,7 @@ cv::Mat ImageProcessor::filterHSV(const cv::Mat &src, int hLow, int hHigh, int s
 {
     if(src.empty())
     {
-        Logger::instance()->info("[filterHSV] 输入图像为空");
+        spdlog::info("[filterHSV] 输入图像为空");
         return cv::Mat();
     }
 
@@ -202,7 +200,7 @@ cv::Mat ImageProcessor::filterHSV(const cv::Mat &src, int hLow, int hHigh, int s
         }
         else
         {
-            qDebug() << "[filterHSV] 不支持的通道数:" << src.channels();
+            spdlog::debug("[filterHSV] 不支持的通道数: {}", src.channels());
             return cv::Mat();
         }
 
@@ -220,11 +218,11 @@ cv::Mat ImageProcessor::filterHSV(const cv::Mat &src, int hLow, int hHigh, int s
         cv::inRange(hsv,lower,upper,mask);
         return mask;
     } catch (const cv::Exception& ex) {
-Logger::instance()->error(QString("HSV过滤错误: %1").arg(ex.what()));
+        spdlog::error("HSV过滤错误: {}", ex.what());
         return cv::Mat();
     } catch (...) {
-        Logger::instance()->info("[filterHSV] 未知异常");
-        Logger::instance()->error("HSV过滤未知异常");
+        spdlog::info("[filterHSV] 未知异常");
+        spdlog::error("HSV过滤未知异常");
         return cv::Mat();
     }
 }

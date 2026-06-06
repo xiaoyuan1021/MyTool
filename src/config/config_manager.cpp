@@ -1,4 +1,4 @@
-#include "config_manager.h"
+﻿#include "config_manager.h"
 #include <QJsonArray>
 #include <QFile>
 #include <QStandardPaths>
@@ -146,19 +146,19 @@ bool ConfigManager::saveConfig(const AppConfig& config, const QString& filePath)
         QFile file(filePath);
         if (!file.open(QIODevice::WriteOnly)) 
         {
-            Logger::instance()->error(QString("无法打开配置文件: %1").arg(filePath));
+            spdlog::error(QString("无法打开配置文件: %1").arg(filePath));
             return false;
         }
 
         file.write(doc.toJson());
         file.close();
 
-        Logger::instance()->info(QString("配置已保存: %1").arg(filePath));
+        spdlog::info(QString("配置已保存: %1").arg(filePath));
         return true;
     } 
     catch (const std::exception& e) 
     {
-        Logger::instance()->error(QString("保存配置失败: %1").arg(e.what()));
+        spdlog::error(QString("保存配置失败: %1").arg(e.what()));
         return false;
     }
 }
@@ -170,13 +170,13 @@ bool ConfigManager::loadConfig(AppConfig& config, const QString& filePath)
         QFile file(filePath);
         if (!file.exists()) 
         {
-            Logger::instance()->warning(QString("配置文件不存在: %1").arg(filePath));
+            spdlog::warn(QString("配置文件不存在: %1").arg(filePath));
             return false;
         }
 
         if (!file.open(QIODevice::ReadOnly)) 
         {
-            Logger::instance()->error(QString("无法打开配置文件: %1").arg(filePath));
+            spdlog::error(QString("无法打开配置文件: %1").arg(filePath));
             return false;
         }
 
@@ -185,17 +185,17 @@ bool ConfigManager::loadConfig(AppConfig& config, const QString& filePath)
 
         QJsonDocument doc = QJsonDocument::fromJson(data);
         if (!doc.isObject()) {
-            Logger::instance()->error("配置文件格式错误");
+            spdlog::error("配置文件格式错误");
             return false;
         }
 
         config.fromJson(doc.object());
-        Logger::instance()->info(QString("配置已加载: %1").arg(filePath));
+        spdlog::info(QString("配置已加载: %1").arg(filePath));
         return true;
     } 
     catch (const std::exception& e) 
     {
-        Logger::instance()->error(QString("加载配置失败: %1").arg(e.what()));
+        spdlog::error(QString("加载配置失败: %1").arg(e.what()));
         return false;
     }
 }
@@ -205,3 +205,4 @@ QString ConfigManager::getDefaultConfigPath() const
     // 使用 CMake 编译时定义的项目根目录
     return QString(PROJECT_ROOT_DIR) + "/app_config.json";
 }
+

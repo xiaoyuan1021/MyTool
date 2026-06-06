@@ -1,4 +1,4 @@
-#include "process_tab_widget.h"
+﻿#include "process_tab_widget.h"
 #include "ui_process_tab.h"
 #include "algorithm/opencv_algorithm.h"
 #include "logger.h"
@@ -97,7 +97,7 @@ void ProcessTabWidget::addAlgorithm()
     m_ui->algorithmListWidget->addItem(item);
     m_ui->algorithmListWidget->setCurrentRow(m_ui->algorithmListWidget->count() - 1);
 
-    Logger::instance()->info(QString("添加算法 %1").arg(step.name));
+    spdlog::info(QString("添加算法 %1").arg(step.name));
     emit algorithmChanged();
 }
 
@@ -110,7 +110,7 @@ void ProcessTabWidget::removeAlgorithm()
     m_pipeline->removeAlgorithmStep(row);
     delete m_ui->algorithmListWidget->takeItem(row);
 
-    Logger::instance()->info("移除算法");
+    spdlog::info("移除算法");
     emit algorithmChanged();
 }
 
@@ -266,3 +266,4 @@ void ProcessTabWidget::connectSignals(const SignalContext& ctx,
     connect(this, &ProcessTabWidget::algorithmChanged,
             this, [onExecutePipeline]() { onExecutePipeline(); });
 }
+

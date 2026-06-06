@@ -12,26 +12,26 @@ void Pipeline::add(std::unique_ptr<IPipelineStep> step)
     if (step) {
         steps_.push_back(std::move(step));
     } else {
-        Logger::instance()->info("[Pipeline] 警告：尝试添加空步骤");
+        spdlog::info("[Pipeline] 警告：尝试添加空步骤");
     }
 }
 
 bool Pipeline::remove(int index)
 {
     if (index < 0 || index >= static_cast<int>(steps_.size())) {
-        qDebug() << "[Pipeline] 警告：尝试移除无效索引" << index;
+        spdlog::debug("[Pipeline] 警告：尝试移除无效索引 {}", index);
         return false;
     }
     
     steps_.erase(steps_.begin() + index);
-    qDebug() << "[Pipeline] 已移除步骤" << index;
+    spdlog::debug("[Pipeline] 已移除步骤 {}", index);
     return true;
 }
 
 void Pipeline::clear()
 {
     steps_.clear();
-    Logger::instance()->info("[Pipeline] 已清空所有步骤");
+    spdlog::info("[Pipeline] 已清空所有步骤");
 }
 
 size_t Pipeline::size() const
@@ -48,12 +48,12 @@ bool Pipeline::swap(int index1, int index2)
 {
     if (index1 < 0 || index1 >= static_cast<int>(steps_.size()) ||
         index2 < 0 || index2 >= static_cast<int>(steps_.size())) {
-        qDebug() << "[Pipeline] 警告：尝试交换无效索引" << index1 << "和" << index2;
+        spdlog::debug("[Pipeline] 警告：尝试交换无效索引 {} 和 {}", index1, index2);
         return false;
     }
     
     std::swap(steps_[index1], steps_[index2]);
-    qDebug() << "[Pipeline] 已交换步骤" << index1 << "和" << index2;
+    spdlog::debug("[Pipeline] 已交换步骤 {} 和 {}", index1, index2);
     return true;
 }
 
@@ -78,7 +78,7 @@ IPipelineStep* Pipeline::getStep(int index)
 void Pipeline::run(PipelineContext& ctx)
 {
     if (steps_.empty()) {
-        Logger::instance()->info("[Pipeline] 警告：没有步骤可执行");
+        spdlog::info("[Pipeline] 警告：没有步骤可执行");
         return;
     }
 

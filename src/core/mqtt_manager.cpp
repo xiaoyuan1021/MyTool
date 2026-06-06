@@ -1,4 +1,4 @@
-#include "core/mqtt_manager.h"
+﻿#include "core/mqtt_manager.h"
 #include "logger.h"
 #include "config_manager.h"
 #include <QJsonDocument>
@@ -29,16 +29,16 @@ void MqttManager::initializeFromConfig()
 void MqttManager::setupLogging()
 {
     connect(this, &MqttManager::mqttConnected, this, []() {
-        Logger::instance()->info("[MQTT] 已连接到云端");
+        spdlog::info("[MQTT] 已连接到云端");
     });
     connect(this, &MqttManager::mqttDisconnected, this, []() {
-        Logger::instance()->info("[MQTT] 已断开连接");
+        spdlog::info("[MQTT] 已断开连接");
     });
     connect(this, &MqttManager::mqttError, this, [](const QString& msg) {
-        Logger::instance()->error(QString("[MQTT] %1").arg(msg));
+        spdlog::error(QString("[MQTT] %1").arg(msg));
     });
 
-    Logger::instance()->info("[MQTT] 日志绑定完成");
+    spdlog::info("[MQTT] 日志绑定完成");
 }
 
 void MqttManager::initialize(const MqttConfig& config)
@@ -136,14 +136,14 @@ void MqttManager::onMqttMessageReceived(const QString& topic, const QString& pay
 {
     if (!m_client) return;
 
-    Logger::instance()->info(QString("[MQTT] 收到消息 topic=%1, payload=%2")
+    spdlog::info(QString("[MQTT] 收到消息 topic=%1, payload=%2")
         .arg(topic).arg(payload));
 
     if (topic != m_client->config().subscribeTopic) return;
 
     QJsonDocument doc = QJsonDocument::fromJson(payload.toUtf8());
     if (!doc.isObject()) {
-        Logger::instance()->warning("[MQTT] 指令格式错误，不是有效的JSON对象");
+        spdlog::warn("[MQTT] 指令格式错误，不是有效的JSON对象");
         return;
     }
 
@@ -154,22 +154,23 @@ void MqttManager::parseCommand(const QJsonObject& json)
 {
     QString cmd = json["cmd"].toString();
 
-    Logger::instance()->info(QString("[MQTT] 解析到指令: %1").arg(cmd));
+    spdlog::info(QString("[MQTT] 解析到指令: %1").arg(cmd));
 
     if (cmd == "capture") {
-        Logger::instance()->info("[MQTT] 触发: 采集检测");
+        spdlog::info("[MQTT] 触发: 采集检测");
         emit captureRequested();
     } else if (cmd == "start_detection") {
-        Logger::instance()->info("[MQTT] 触发: 开始批量检测");
+        spdlog::info("[MQTT] 触发: 开始批量检测");
         emit startDetectionRequested();
     } else if (cmd == "stop_detection") {
-        Logger::instance()->info("[MQTT] 触发: 停止批量检测");
+        spdlog::info("[MQTT] 触发: 停止批量检测");
         emit stopDetectionRequested();
     } else if (cmd == "ping") {
-        Logger::instance()->info("[MQTT] 触发: 回复心跳");
+        spdlog::info("[MQTT] 触发: 回复心跳");
         emit pingRequested();
         onSendHeartbeat();
     } else {
-        Logger::instance()->warning(QString("[MQTT] 未知指令: %1").arg(cmd));
+        spdlog::warn(QString("[MQTT] 未知指令: %1").arg(cmd));
     }
 }
+

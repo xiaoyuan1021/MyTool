@@ -1,4 +1,4 @@
-#include "profile_controller.h"
+﻿#include "profile_controller.h"
 #include "core/profile_manager.h"
 #include "core/roi_manager.h"
 #include "core/pipeline_manager.h"
@@ -48,7 +48,7 @@ void ProfileController::saveToProfile()
 
     if (m_profileManager->saveCurrentAsProfile(name.trimmed())) {
         if (m_toast) m_toast->showMessage(QString("方案 '%1' 已保存").arg(name.trimmed()));
-        Logger::instance()->info(QString("[ProfileController] 方案已保存: %1").arg(name.trimmed()));
+        spdlog::info(QString("[ProfileController] 方案已保存: %1").arg(name.trimmed()));
     } else {
         QMessageBox::warning(m_parentWidget, "保存失败", "保存方案失败，请查看日志");
     }

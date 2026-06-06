@@ -1,4 +1,4 @@
-#include "video_tab_widget.h"
+﻿#include "video_tab_widget.h"
 #include "ui_video_tab.h"
 #include "logger.h"
 #include "roi_manager.h"
@@ -45,7 +45,7 @@ VideoTabWidget::~VideoTabWidget()
 
 void VideoTabWidget::on_btn_openFile_clicked()
 {
-    Logger::instance()->info(QString("========== 视频文件选择对话框 =========="));
+    spdlog::info(QString("========== 视频文件选择对话框 =========="));
     
     QString filePath = QFileDialog::getOpenFileName(
         this,
@@ -55,44 +55,44 @@ void VideoTabWidget::on_btn_openFile_clicked()
     );
 
     if (filePath.isEmpty()) {
-        Logger::instance()->info("用户取消了文件选择");
+        spdlog::info("用户取消了文件选择");
         return;
     }
 
-    Logger::instance()->info(QString("用户选择的视频文件: %1").arg(filePath));
+    spdlog::info(QString("用户选择的视频文件: %1").arg(filePath));
     
     // 获取文件信息
     QFileInfo fileInfo(filePath);
-    Logger::instance()->info(QString("文件大小: %1 字节").arg(fileInfo.size()));
+    spdlog::info(QString("文件大小: %1 字节").arg(fileInfo.size()));
     
     if (m_videoManager->openFile(filePath)) {
         m_ui->label_status->setText(QString("已加载: %1").arg(fileInfo.fileName()));
-        Logger::instance()->info(QString("视频打开成功: %1").arg(fileInfo.fileName()));
+        spdlog::info(QString("视频打开成功: %1").arg(fileInfo.fileName()));
     } else {
-        Logger::instance()->error(QString("视频打开失败: %1").arg(fileInfo.fileName()));
+        spdlog::error(QString("视频打开失败: %1").arg(fileInfo.fileName()));
     }
 }
 
 void VideoTabWidget::on_btn_openCamera_clicked()
 {
-    Logger::instance()->info(QString("[VideoTab] 打开相机按钮被点击"));
+    spdlog::info(QString("[VideoTab] 打开相机按钮被点击"));
     int currentIndex = m_ui->comboBox_camera->currentIndex();
-    Logger::instance()->info(QString("[VideoTab] ComboBox当前索引: %1, 相机列表大小: %2").arg(currentIndex).arg(m_cameraList.size()));
+    spdlog::info(QString("[VideoTab] ComboBox当前索引: %1, 相机列表大小: %2").arg(currentIndex).arg(m_cameraList.size()));
     
     if (currentIndex < 0 || currentIndex >= m_cameraList.size()) {
         QMessageBox::warning(this, "警告", "请先选择相机设备");
-        Logger::instance()->warning(QString("[VideoTab] 相机索引无效，中止"));
+        spdlog::warn(QString("[VideoTab] 相机索引无效，中止"));
         return;
     }
 
     // 从相机列表中提取相机索引
     int cameraIndex = currentIndex;
-    Logger::instance()->info(QString("[VideoTab] 准备打开相机设备索引: %1").arg(cameraIndex));
+    spdlog::info(QString("[VideoTab] 准备打开相机设备索引: %1").arg(cameraIndex));
     if (m_videoManager->openCamera(cameraIndex)) {
         m_ui->label_status->setText(QString("相机 %1 已启动").arg(cameraIndex));
-        Logger::instance()->info(QString("[VideoTab] 相机 %1 打开成功").arg(cameraIndex));
+        spdlog::info(QString("[VideoTab] 相机 %1 打开成功").arg(cameraIndex));
     } else {
-        Logger::instance()->error(QString("[VideoTab] 相机 %1 打开失败").arg(cameraIndex));
+        spdlog::error(QString("[VideoTab] 相机 %1 打开失败").arg(cameraIndex));
     }
 }
 
@@ -290,3 +290,4 @@ void VideoTabWidget::connectSignals(const SignalContext& ctx,
                 }
             });
 }
+

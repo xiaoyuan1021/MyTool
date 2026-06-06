@@ -1,5 +1,5 @@
 ﻿#include "barcode_step.h"
-#include <QDebug>
+#include "logger.h"
 #include <opencv2/imgproc.hpp>
 
 StepBarcodeRecognition::StepBarcodeRecognition()
@@ -12,7 +12,7 @@ StepBarcodeRecognition::StepBarcodeRecognition()
     reader_.setTryInvert(true);
     reader_.setTryDownscale(true);
 
-    qDebug() << "[Barcode] ZXing条码读取器初始化完成，支持格式:" << formats;
+    spdlog::info("[Barcode] ZXing条码读取器初始化完成，支持格式: {}", formats.join(", ").toStdString());
 }
 
 StepBarcodeRecognition::~StepBarcodeRecognition()
@@ -93,18 +93,18 @@ void StepBarcodeRecognition::run(PipelineContext& ctx)
             ctx.barcodeStatus = "未检测到条码";
         }
 
-        qDebug() << "[Barcode]" << ctx.barcodeStatus;
+        spdlog::info("[Barcode] {}", ctx.barcodeStatus.toStdString());
     }
     catch (const std::exception& ex)
     {
         QString error = QString("条码识别错误: %1").arg(ex.what());
         ctx.barcodeStatus = error;
-        qDebug() << "[Barcode]" << error;
+        spdlog::info("[Barcode] {}", error.toStdString());
     }
     catch (...)
     {
         QString error = "条码识别发生未知错误";
         ctx.barcodeStatus = error;
-        qDebug() << "[Barcode]" << error;
+        spdlog::info("[Barcode] {}", error.toStdString());
     }
 }

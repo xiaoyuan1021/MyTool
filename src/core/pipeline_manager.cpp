@@ -6,7 +6,6 @@
 #include "logger.h"
 #include "algorithm/display_renderer.h"
 #include "utils/benchmark.h"
-#include <QDebug>
 #include <algorithm>
 #include <map>
 
@@ -30,7 +29,7 @@ PipelineManager::~PipelineManager() = default;
 void PipelineManager::resetConfigToDefaults()
 {
     m_config.resetToDefaults();
-    Logger::instance()->info("[PipelineManager] resetConfigToDefaults");
+    spdlog::info("[PipelineManager] resetConfigToDefaults");
 }
 
 // ========== 算法队列管理 ==========
@@ -101,14 +100,14 @@ PipelineContext PipelineManager::execute(const cv::Mat& inputImage, const Pipeli
             m_pipeline.run(ctx);
         }
     } catch (const std::exception& ex) {
-Logger::instance()->error(QString("Pipeline执行异常: %1").arg(ex.what()));
+spdlog::error(QString("Pipeline执行异常: %1").arg(ex.what()));
         m_algorithmQueue = savedAlgorithmQueue;
         m_config.shapeFilter = savedShapeFilter;
         m_pipelineRunning.storeRelease(0);
         return PipelineContext();
     } catch (...) {
-        Logger::instance()->info("[PipelineManager] Pipeline执行未知异常");
-        Logger::instance()->error("Pipeline执行未知异常");
+        spdlog::info("[PipelineManager] Pipeline执行未知异常");
+        spdlog::error("Pipeline执行未知异常");
         m_algorithmQueue = savedAlgorithmQueue;
         m_config.shapeFilter = savedShapeFilter;
         m_pipelineRunning.storeRelease(0);
@@ -305,3 +304,4 @@ void PipelineManager::clearAllCachedResults()
     QMutexLocker locker(&m_roiCacheMutex);
     m_roiCache.clear();
 }
+

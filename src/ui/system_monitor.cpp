@@ -1,6 +1,5 @@
 ﻿#include "system_monitor.h"
 #include "logger.h"
-#include <QDebug>
 #include <algorithm>
 
 // ========== 平台相关头文件 ==========
@@ -39,7 +38,7 @@ SystemMonitor::SystemMonitor(QObject* parent)
     // 设置默认更新间隔（1秒）
     m_updateTimer->setInterval(1000);
 
-    Logger::instance()->info("系统监控器初始化完成");
+    spdlog::info("系统监控器初始化完成");
 }
 
 SystemMonitor::~SystemMonitor()
@@ -62,7 +61,7 @@ void SystemMonitor::setLabels(QLabel* cpuLabel, QLabel* memoryLabel)
 void SystemMonitor::setUpdateInterval(int intervalMs)
 {
     if (intervalMs < 100) {
-        Logger::instance()->info("[SystemMonitor] 更新间隔过小，调整为 100ms");
+        spdlog::info("[SystemMonitor] 更新间隔过小，调整为 100ms");
         intervalMs = 100;
     }
 
@@ -73,7 +72,7 @@ void SystemMonitor::startMonitoring()
 {
     if (!m_updateTimer->isActive()) {
         m_updateTimer->start();
-        Logger::instance()->info("系统监控已启动");
+        spdlog::info("系统监控已启动");
     }
 }
 
@@ -81,7 +80,7 @@ void SystemMonitor::stopMonitoring()
 {
     if (m_updateTimer->isActive()) {
         m_updateTimer->stop();
-        Logger::instance()->info("系统监控已停止");
+        spdlog::info("系统监控已停止");
     }
 }
 
@@ -94,14 +93,13 @@ void SystemMonitor::setupWithLogging(QLabel* cpuLabel, QLabel* memoryLabel, int 
     // 连接日志记录信号
     connect(this, &SystemMonitor::cpuUsageUpdated, [](double usage) {
         if (usage > 80.0) {
-            Logger::instance()->warning(QString("CPU 占用率过高: %1%").arg(usage, 0, 'f', 1));
+            spdlog::warn("CPU 占用率过高: {}%", usage);
         }
     });
 
     connect(this, &SystemMonitor::memoryUsageUpdated, [](double usedMB, double totalMB, double percent) {
         if (percent > 90.0) {
-            Logger::instance()->warning(QString("内存使用率过高: %1% (%2/%3 MB)")
-                .arg(percent, 0, 'f', 1).arg(usedMB, 0, 'f', 0).arg(totalMB, 0, 'f', 0));
+            spdlog::warn("内存使用率过高: {}% ({}/{} MB)", percent, usedMB, totalMB);
         }
     });
 }
@@ -109,7 +107,7 @@ void SystemMonitor::setupWithLogging(QLabel* cpuLabel, QLabel* memoryLabel, int 
 void SystemMonitor::setupWithStatusBar(QStatusBar* statusBar, int intervalMs)
 {
     if (!statusBar) {
-        Logger::instance()->error("状态栏指针为空，无法设置系统监控");
+        spdlog::error("状态栏指针为空，无法设置系统监控");
         return;
     }
 
@@ -134,7 +132,7 @@ void SystemMonitor::setupWithStatusBar(QStatusBar* statusBar, int intervalMs)
     setUpdateInterval(intervalMs);
     startMonitoring();
 
-    Logger::instance()->info("系统监控已在状态栏中启动");
+    spdlog::info("系统监控已在状态栏中启动");
 }
 
 // ========== 定时更新槽函数 ==========
@@ -178,7 +176,7 @@ void SystemMonitor::initPlatformResources()
 {
     PDH_STATUS status = PdhOpenQuery(nullptr, 0, &m_pdhQuery);
     if (status != ERROR_SUCCESS) {
-        qDebug() << "[SystemMonitor] PdhOpenQuery failed:" << status;
+        spdlog::debug("[SystemMonitor] PdhOpenQuery failed: {}", status);
         return;
     }
 
@@ -194,9 +192,9 @@ void SystemMonitor::initPlatformResources()
     if (status == ERROR_SUCCESS) {
         PdhCollectQueryData(m_pdhQuery);
         m_pdhInitialized = true;
-        Logger::instance()->info("[SystemMonitor] PDH CPU counter initialized successfully");
+        spdlog::info("[SystemMonitor] PDH CPU counter initialized successfully");
     } else {
-        qDebug() << "[SystemMonitor] PdhAddEnglishCounter failed:" << status;
+        spdlog::debug("[SystemMonitor] PdhAddEnglishCounter failed: {}", status);
     }
 }
 
@@ -218,7 +216,7 @@ double SystemMonitor::getCpuUsage()
 
     PDH_STATUS status = PdhCollectQueryData(m_pdhQuery);
     if (status != ERROR_SUCCESS) {
-        qDebug() << "[SystemMonitor] PdhCollectQueryData failed:" << status;
+        spdlog::debug("[SystemMonitor] PdhCollectQueryData failed: {}", status);
         return m_cpuUsage;
     }
 
@@ -238,7 +236,7 @@ double SystemMonitor::getMemoryUsage(double& usedMB, double& totalMB)
     memInfo.dwLength = sizeof(MEMORYSTATUSEX);
 
     if (!GlobalMemoryStatusEx(&memInfo)) {
-        Logger::instance()->info("[SystemMonitor] GlobalMemoryStatusEx 失败");
+        spdlog::info("[SystemMonitor] GlobalMemoryStatusEx 失败");
         usedMB = 0.0;
         totalMB = 0.0;
         return 0.0;
@@ -267,7 +265,7 @@ void SystemMonitor::initPlatformResources()
     m_lastTotalTime = 0;
     m_lastIdleTime = 0;
 
-    Logger::instance()->info("[SystemMonitor] Linux /proc 初始化成功");
+    spdlog::info("[SystemMonitor] Linux /proc 初始化成功");
 }
 
 void SystemMonitor::cleanupPlatformResources()
@@ -287,7 +285,7 @@ double SystemMonitor::getCpuUsage()
 
     std::ifstream file("/proc/stat");
     if (!file.is_open()) {
-        Logger::instance()->info("[SystemMonitor] 无法打开 /proc/stat");
+        spdlog::info("[SystemMonitor] 无法打开 /proc/stat");
         return 0.0;
     }
 
@@ -344,7 +342,7 @@ double SystemMonitor::getMemoryUsage(double& usedMB, double& totalMB)
 
     std::ifstream file("/proc/meminfo");
     if (!file.is_open()) {
-        Logger::instance()->info("[SystemMonitor] 无法打开 /proc/meminfo");
+        spdlog::info("[SystemMonitor] 无法打开 /proc/meminfo");
         usedMB = 0.0;
         totalMB = 0.0;
         return 0.0;
@@ -392,7 +390,7 @@ double SystemMonitor::getMemoryUsage(double& usedMB, double& totalMB)
 
 void SystemMonitor::initPlatformResources()
 {
-    Logger::instance()->info("[SystemMonitor] MacOS 平台暂未实现");
+    spdlog::info("[SystemMonitor] MacOS 平台暂未实现");
 }
 
 void SystemMonitor::cleanupPlatformResources()
