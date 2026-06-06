@@ -8,20 +8,20 @@
 #include <QUrl>
 #include <QTextCursor>
 #include <QTextCharFormat>
+#include <QTimer>
 
-#include "spdlog/sinks/qt_sinks.h"
 #include "spdlog/sinks/rotating_file_sink.h"
-#include "spdlog/common.h"
 
 // ============================================================
 // Global state (file-scope, not exported)
 // ============================================================
 static std::shared_ptr<spdlog::logger> s_logger;
-static std::shared_ptr<spdlog::sinks::qt_color_sink_mt> s_uiSink;
 static std::shared_ptr<spdlog::sinks::rotating_file_sink_mt> s_fileSink;
 static QString s_logFilePath;
-static QTextEdit* s_uiTextEdit = nullptr;  // for re-rendering on level change
-static QStringList s_sessionLogs;          // in-memory buffer of current session logs
+static QTextEdit* s_uiTextEdit = nullptr;
+static spdlog::level::level_enum s_uiLevel = spdlog::level::debug;
+static size_t s_lastRenderedIndex = 0;   // for incremental append
+static spdlog::level::level_enum s_lastRenderedLevel = spdlog::level::debug;  // to detect level change
 
 // ============================================================
 // Qt 全局消息处理：将 qDebug/qInfo/qWarning/qCritical 路由到 spdlog
@@ -72,31 +72,44 @@ void rerenderSessionLogs()
     if (!s_uiTextEdit) return;
 
     spdlog::level::level_enum minLevel = uiLogLevel();
+    bool levelChanged = (minLevel != s_lastRenderedLevel);
 
-    s_uiTextEdit->clear();
+    // Level changed → full re-render needed
+    if (levelChanged) {
+        s_uiTextEdit->clear();
+        s_lastRenderedIndex = 0;
+        s_lastRenderedLevel = minLevel;
+    }
+
+    // No new logs and no level change → nothing to do
+    if (s_lastRenderedIndex >= s_sessionBuffer.size() && !levelChanged) return;
+
     QTextCursor cursor(s_uiTextEdit->textCursor());
     cursor.movePosition(QTextCursor::End);
 
-    // Default colors matching qt_color_sink (dark_colors=false)
     auto levelColor = [](spdlog::level::level_enum lv) -> QColor {
         switch (lv) {
-        case spdlog::level::trace:    return Qt::gray;
-        case spdlog::level::debug:    return Qt::cyan;
-        case spdlog::level::info:     return Qt::green;
-        case spdlog::level::warn:     return Qt::yellow;
-        case spdlog::level::err:      return Qt::red;
+        case spdlog::level::trace:    return QColor(160, 160, 160);
+        case spdlog::level::debug:    return QColor(160, 160, 160);  // gray
+        case spdlog::level::info:     return Qt::black;               // black
+        case spdlog::level::warn:     return QColor(255, 165, 0);    // orange
+        case spdlog::level::err:      return Qt::red;                 // red
         case spdlog::level::critical: return Qt::red;
         default: return Qt::black;
         }
     };
 
-    for (const auto& entry : s_sessionBuffer) {
+    // Incremental: only render new entries
+    for (size_t i = s_lastRenderedIndex; i < s_sessionBuffer.size(); ++i) {
+        const auto& entry = s_sessionBuffer[i];
         if (entry.level < minLevel) continue;
 
         QTextCharFormat fmt;
         fmt.setForeground(levelColor(entry.level));
-        cursor.insertText(entry.formatted, fmt);
+        cursor.setCharFormat(fmt);
+        cursor.insertText(entry.formatted + "\n");
     }
+    s_lastRenderedIndex = s_sessionBuffer.size();
 }
 
 // ============================================================
@@ -118,15 +131,12 @@ void setupLogging(QTextEdit* uiTextEdit, const QString& logDir)
     s_fileSink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
         s_logFilePath.toStdString(), 5 * 1024 * 1024, 3);
 
-    // 2) Create qt_color_sink for UI (uses built-in default colors)
-    s_uiSink = std::make_shared<spdlog::sinks::qt_color_sink_mt>(uiTextEdit, 1000, false, true);
-
-    // 3) Create session buffer sink for re-rendering
+    // 2) Create session buffer sink for colored rendering
     auto sessionSink = std::make_shared<SessionBufferSink>();
     sessionSink->set_pattern("%Y-%m-%d %H:%M:%S [%l] %v");
 
-    // 4) Create multi-sink logger and set as default
-    std::vector<spdlog::sink_ptr> sinks = {s_uiSink, sessionSink, s_fileSink};
+    // 3) Create multi-sink logger (session buffer + file only, no qt_color_sink)
+    std::vector<spdlog::sink_ptr> sinks = {sessionSink, s_fileSink};
     s_logger = std::make_shared<spdlog::logger>("app", sinks.begin(), sinks.end());
     s_logger->set_pattern("%Y-%m-%d %H:%M:%S [%l] %v");
     s_logger->set_level(spdlog::level::debug);
@@ -134,23 +144,25 @@ void setupLogging(QTextEdit* uiTextEdit, const QString& logDir)
     spdlog::set_default_logger(s_logger);
     spdlog::set_level(spdlog::level::debug);
 
-    // 5) Install Qt message handler to redirect qDebug etc.
+    // 4) Install Qt message handler to redirect qDebug etc.
     qInstallMessageHandler(qtMessageHandler);
+
+    // 5) Timer to re-render logs with colors every 100ms
+    auto* timer = new QTimer(uiTextEdit);
+    QObject::connect(timer, &QTimer::timeout, uiTextEdit, []() {
+        rerenderSessionLogs();
+    });
+    timer->start(100);
 }
 
 void setUILogLevel(spdlog::level::level_enum level)
 {
-    if (s_uiSink) {
-        s_uiSink->set_level(level);
-    }
+    s_uiLevel = level;
 }
 
 spdlog::level::level_enum uiLogLevel()
 {
-    if (s_uiSink) {
-        return s_uiSink->level();
-    }
-    return spdlog::level::debug;
+    return s_uiLevel;
 }
 
 QString logFilePath()

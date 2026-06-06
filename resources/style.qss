@@ -747,7 +747,7 @@ QTextEdit {
     border: 1px solid #E2E8F0;
     border-radius: 6px;
     padding: 4px;
-    color: #2C3E50;
+    /* color 不设置，由 spdlog qt_color_sink 控制各级别颜色 */
 }
 
 /* =========================

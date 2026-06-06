@@ -90,9 +90,6 @@ void LogPage::on_combo_logLevel_currentIndexChanged(int index)
 
     // Save config
     saveLogLevelConfig(index);
-
-    // Re-render existing session logs filtered by new level
-    rerenderSessionLogs();
 }
 
 void LogPage::loadLogLevelConfig()
