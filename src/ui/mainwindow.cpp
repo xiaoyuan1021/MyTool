@@ -170,7 +170,7 @@ void MainWindow::setupConnections()
             m_pipelineManager->rebuildPipeline();
         }
         
-        // 清空画布，显示新原图
+        // 清空画布，显示新原图（不执行pipeline）
         showImage(img);
         
         // 清空所有已创建Tab页的结果显示
@@ -183,12 +183,7 @@ void MainWindow::setupConnections()
         }
         
         Logger::instance()->info("图像加载成功!");
-        
-        // 触发一次pipeline执行，更新所有Tab的显示
-        // （新图片可能还没有执行过pipeline，需要执行一次来初始化显示）
-        QTimer::singleShot(100, this, [this]() {
-            requestRefresh();
-        });
+        // [FIX] 不再自动执行pipeline，等待用户主动配置后点击"应用"
     });
     connect(m_fileManager, &FileManager::imageSaved, this, [](const QString& path) {
         Logger::instance()->info(QString("图像保存成功: %1").arg(path));
@@ -435,9 +430,14 @@ void MainWindow::setupControllerConnections()
         // 同时保存当前ROI的配置（如果有的话）
         m_roiUiController->saveCurrentRoiPipelineConfig();
     });
-    // 图片切换后：更新Tab显示
+    // 图片切换后：显示原图（不执行pipeline）
     connect(&m_roiManager, &RoiManager::currentImageChanged, this, [this](const QString&) {
         m_pipelineManager->clearLastResult();
+        // [FIX] 显示当前图片的原图，不执行pipeline
+        cv::Mat currentImage = m_roiManager.getCurrentImage();
+        if (!currentImage.empty()) {
+            showImage(currentImage);
+        }
         m_roiUiController->syncRoiConfigsToWidget();
     });
 
