@@ -31,11 +31,17 @@ void setupLogging(QTextEdit* uiTextEdit, const QString& logDir);
 void setUILogLevel(spdlog::level::level_enum level);
 spdlog::level::level_enum uiLogLevel();
 
+// Re-render session logs in QTextEdit filtered by current level
+void rerenderSessionLogs();
+
 // Get current log file path
 QString logFilePath();
 
 // Open log folder in system explorer
 bool openLogFolder(bool selectFile = true);
+
+// Flush all sinks to disk (call before re-reading log file)
+void flushLogs();
 
 // Convenience: clear UI text edit
 void clearLogUi();

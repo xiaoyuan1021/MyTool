@@ -17,11 +17,8 @@ public:
     void appendLog(const QString& message);
     void clearLog();
     
-    // 初始化日志页面，连接Logger
+    // Initialize log page, connect to spdlog
     void initialize();
-    
-    // 刷新日志显示（带颜色）
-    void refreshLogs();
 
 signals:
     // 请求返回主页信号

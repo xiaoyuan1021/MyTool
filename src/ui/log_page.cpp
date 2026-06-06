@@ -34,75 +34,6 @@ void LogPage::initialize()
     loadLogLevelConfig();
 }
 
-void LogPage::refreshLogs()
-{
-    m_ui->textEdit_log->clear();
-
-    // Read from log file directly (bypass spdlog to avoid double formatting)
-    QString filePath = logFilePath();
-    if (filePath.isEmpty()) return;
-
-    QStringList recentLogs;
-    QFile file(filePath);
-    if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        QTextStream in(&file);
-        while (!in.atEnd()) {
-            QString line = in.readLine().trimmed();
-            if (!line.isEmpty()) {
-                recentLogs.append(line);
-            }
-        }
-        file.close();
-    }
-
-    // Keep only last 1000 entries
-    if (recentLogs.size() > 1000) {
-        recentLogs = recentLogs.mid(recentLogs.size() - 1000);
-    }
-
-    spdlog::level::level_enum currentLevel = uiLogLevel();
-
-    QTextCursor cursor = m_ui->textEdit_log->textCursor();
-    cursor.movePosition(QTextCursor::End);
-
-    for (const QString& entry : recentLogs) {
-        // File log format: 2026-06-06 15:59:44 [info] message
-        int levelStart = entry.indexOf('[');
-        int levelEnd = entry.indexOf(']', levelStart);
-        if (levelStart == -1 || levelEnd == -1 || levelEnd <= levelStart) {
-            cursor.insertText(entry + "\n");
-            continue;
-        }
-
-        QString levelStr = entry.mid(levelStart + 1, levelEnd - levelStart - 1).toLower();
-
-        // Parse level — fix: spdlog outputs [warn], not [warning]
-        spdlog::level::level_enum logLevel = spdlog::level::info;
-        if (levelStr == "debug") logLevel = spdlog::level::debug;
-        else if (levelStr == "info") logLevel = spdlog::level::info;
-        else if (levelStr == "warn") logLevel = spdlog::level::warn;
-        else if (levelStr == "error") logLevel = spdlog::level::err;
-        else if (levelStr == "critical") logLevel = spdlog::level::critical;
-
-        if (logLevel < currentLevel) continue;
-
-        // Color format
-        QTextCharFormat fmt;
-        switch (logLevel) {
-        case spdlog::level::debug:    fmt.setForeground(QColor(128, 128, 128)); break;
-        case spdlog::level::info:     fmt.setForeground(Qt::black); break;
-        case spdlog::level::warn:     fmt.setForeground(QColor(255, 165, 0)); break;
-        case spdlog::level::err:      fmt.setForeground(Qt::red); break;
-        case spdlog::level::critical: fmt.setForeground(Qt::red); break;
-        default: fmt.setForeground(Qt::black); break;
-        }
-
-        cursor.insertText(entry + "\n", fmt);
-    }
-
-    m_ui->textEdit_log->setTextCursor(cursor);
-}
-
 void LogPage::appendLog(const QString& message)
 {
     m_ui->textEdit_log->append(message);
@@ -154,14 +85,14 @@ void LogPage::on_combo_logLevel_currentIndexChanged(int index)
         break;
     }
 
-    // Set UI log level
+    // Set UI log level (affects only new logs)
     setUILogLevel(level);
 
     // Save config
     saveLogLevelConfig(index);
 
-    // Refresh display
-    refreshLogs();
+    // Re-render existing session logs filtered by new level
+    rerenderSessionLogs();
 }
 
 void LogPage::loadLogLevelConfig()
