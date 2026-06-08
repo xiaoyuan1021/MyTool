@@ -331,6 +331,10 @@ void MainWindow::setupControllerConnections()
     
     // 2. 配置应用 → 执行pipeline（用户点击"应用"按钮后）
     connect(m_configController, &ConfigController::configApplied, this, [this]() { 
+        spdlog::info("[MainWindow] configApplied: 保存Pipeline配置到图片 {}", 
+                     m_roiManager.getCurrentImageId().toStdString());
+        m_roiManager.saveImagePipelineConfig(m_roiManager.getCurrentImageId(), 
+                                             m_pipelineManager->getConfigSnapshot());
         m_pipelineMode = PipelineMode::Execute;
         requestRefresh(); 
     });
@@ -444,14 +448,15 @@ void MainWindow::setupControllerConnections()
 
     // 工具栏按钮
     connect(ui->btn_addDetection, &QPushButton::clicked, this, [this]() {
+        spdlog::info("[MainWindow] 用户点击添加检测项");
         QString roiId = m_roiUiController->getCurrentSelectedRoiId();
         if (roiId.isEmpty()) {
+            spdlog::info("[MainWindow] 无选中ROI，自动创建整图ROI");
             roiId = m_roiUiController->addFullImageRoi();
         }
         if (!roiId.isEmpty()) {
             m_detectionUiController->onAddDetectionClicked(roiId);
-
-            // [FIX] 添加检测项后自动选中它，触发右侧Tab切换到对应检测项页面
+            // 添加检测项后自动切换到对应Tab
             m_roiUiController->autoSelectFirstDetectionItem();
         }
     });
@@ -460,30 +465,30 @@ void MainWindow::setupControllerConnections()
     });
 
     // roiManager → roiUiController 同步连接
-    // [FIX]：图片切换前保存旧图片的Pipeline配置（包括步骤组合）
+    // 图片切换前保存旧图片的Pipeline配置
     connect(&m_roiManager, &RoiManager::imageSwitching, this, [this](const QString& fromImageId, const QString&) {
-        // 保存当前Pipeline配置到旧图片
         if (!fromImageId.isEmpty()) {
+            spdlog::info("[MainWindow] imageSwitching: 保存图片 {} 的Pipeline配置", fromImageId.toStdString());
             m_roiManager.saveImagePipelineConfig(fromImageId, m_pipelineManager->getConfigSnapshot());
         }
-        // 同时保存当前ROI的配置（如果有的话）
         m_roiUiController->saveCurrentRoiPipelineConfig();
     });
     // 图片切换后：显示原图（不执行pipeline）
     connect(&m_roiManager, &RoiManager::currentImageChanged, this, [this](const QString& newImageId) {
+        spdlog::info("[MainWindow] currentImageChanged: 切换到图片 {}", newImageId.toStdString());
+
         m_pipelineManager->clearLastResult();
-        // [FIX] 显示当前图片的原图，不执行pipeline
         cv::Mat currentImage = m_roiManager.getCurrentImage();
         if (!currentImage.empty()) {
             showImage(currentImage);
         }
         m_roiUiController->syncRoiConfigsToWidget();
 
-        // [FIX] 加载新图片的Pipeline配置，防止上一张图片的stepEnabled污染新图片
+        // 加载新图片的Pipeline配置
         applyImagePipelineConfig(newImageId);
 
-        // 自动选中当前图片第一个有检测项的ROI，触发右侧Tab切换到对应检测项页面
-        m_roiUiController->autoSelectFirstDetectionItem();
+        // [FIX] 统一恢复Tab可见性（检测项优先，其次步骤Tab）
+        restoreTabVisibility();
     });
 
     // 删除图片/ROI后：隐藏所有检测相关Tab
@@ -566,9 +571,12 @@ void MainWindow::showImage(const cv::Mat &img)
 
 void MainWindow::on_btn_pipelineConfig_clicked()
 {
-    // [FIX] 如果没有ROI，自动创建一个"整图"ROI（silent模式，不触发pipeline）
+    spdlog::info("[MainWindow] 用户点击自定义Pipeline按钮");
+
+    // 如果没有ROI，自动创建一个"整图"ROI（silent模式，不触发pipeline）
     QString roiId = m_roiUiController->getCurrentSelectedRoiId();
     if (roiId.isEmpty()) {
+        spdlog::info("[MainWindow] 无选中ROI，自动创建整图ROI");
         roiId = m_roiUiController->addFullImageRoi(true);  // silent=true
     }
 
@@ -576,6 +584,8 @@ void MainWindow::on_btn_pipelineConfig_clicked()
     QString currentImageId = m_roiManager.getCurrentImageId();
     if (!currentImageId.isEmpty()) {
         applyImagePipelineConfig(currentImageId);
+        // [FIX] 同步更新ROI的pipelineConfig，防止与PipelineManager不一致
+        m_roiUiController->saveCurrentRoiPipelineConfig();
         // 通知所有Tab更新UI（包括StepConfigWidget）
         m_roiUiController->notifyConfigChanged(m_pipelineManager->getConfigSnapshot());
     }
@@ -822,6 +832,34 @@ void MainWindow::hideAllDetectionTabs()
     }
 
     spdlog::info("[MainWindow] 已隐藏所有Tab");
+}
+
+// ========== 统一Tab可见性恢复 ==========
+
+void MainWindow::restoreTabVisibility()
+{
+    spdlog::info("[MainWindow] restoreTabVisibility: 开始恢复Tab可见性");
+
+    // 1. 先清空所有Tab
+    hideAllDetectionTabs();
+
+    // 2. 优先恢复检测项Tab（如有）
+    if (m_roiUiController->autoSelectFirstDetectionItem()) {
+        spdlog::info("[MainWindow] restoreTabVisibility: 已恢复检测项Tab");
+        return;
+    }
+
+    // 3. 无检测项时，恢复步骤Tab（仅当图片有ROI时才恢复，避免未配置的图片显示"步骤"Tab）
+    const auto currentRois = m_roiManager.getRoiConfigs();
+    if (!currentRois.isEmpty()) {
+        if (auto* stepWidget = m_tabManager->getTabAs<StepConfigWidget>("步骤")) {
+            stepWidget->loadFromConfig(m_pipelineManager->getConfigSnapshot());
+            spdlog::info("[MainWindow] restoreTabVisibility: 已恢复步骤Tab");
+            return;
+        }
+    }
+
+    spdlog::info("[MainWindow] restoreTabVisibility: 无可恢复的Tab");
 }
 
 

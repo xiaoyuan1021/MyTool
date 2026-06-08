@@ -6,6 +6,9 @@
 #include "logger.h"
 #include "algorithm/display_renderer.h"
 #include "utils/benchmark.h"
+#include <QtConcurrent/QtConcurrent>
+#include <tesseract/baseapi.h>
+#include <QDir>
 #include <algorithm>
 #include <map>
 
@@ -16,6 +19,7 @@ PipelineManager::PipelineManager(QObject* parent)
 {
     resetConfigToDefaults();
     initPipeline();
+    warmUpOcr();
 
     // 连接调度器信号
     connect(m_scheduler.get(), &PipelineScheduler::finished,
@@ -262,6 +266,28 @@ void PipelineManager::initPipeline()
             m_pipeline.add(std::move(allSteps[idx]));
         }
     }
+}
+
+// ========== OCR预热 ==========
+
+void PipelineManager::warmUpOcr()
+{
+    // 异步预加载Tesseract语言模型，避免首次OCR调用时的延迟
+    QtConcurrent::run([]() {
+        tesseract::TessBaseAPI api;
+        QString tessdataPath = QDir::currentPath() + "/resources/tessdata";
+        QString language = "chi_sim+eng";
+
+        if (api.Init(tessdataPath.toUtf8().constData(),
+                     language.toUtf8().constData(),
+                     tesseract::OEM_DEFAULT)) {
+            spdlog::warn("[PipelineManager] OCR预热失败: 无法加载tessdata from {}", tessdataPath.toStdString());
+            return;
+        }
+
+        spdlog::info("[PipelineManager] OCR预热完成: 语言模型已加载到内存");
+        api.End();
+    });
 }
 
 // ========== per-ROI缓存 ==========

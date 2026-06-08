@@ -612,30 +612,35 @@ void RoiUiController::syncRoiConfigsToWidget()
     spdlog::info("[RoiUiController] 已同步ROI配置到Widget");
 }
 
-void RoiUiController::autoSelectFirstDetectionItem()
+bool RoiUiController::autoSelectFirstDetectionItem()
 {
     const auto rois = m_roiManager.getRoiConfigs();
-    if (rois.isEmpty()) return;
+    if (rois.isEmpty()) {
+        spdlog::debug("[RoiUI] autoSelectFirstDetectionItem: 无ROI，跳过");
+        return false;
+    }
 
     // 1. 如果当前选中的ROI已有检测项，直接触发Tab切换
     RoiConfig* currentRoi = m_roiManager.getRoiConfig(m_currentSelectedRoiId);
     if (currentRoi && !currentRoi->detectionItems.isEmpty()) {
+        spdlog::info("[RoiUI] autoSelectFirstDetectionItem: 当前ROI有检测项 → {}",
+                     currentRoi->detectionItems.first().itemName.toStdString());
         activateDetectionItem(m_currentSelectedRoiId,
                               currentRoi->detectionItems.first().itemId);
-        return;
+        return true;
     }
 
     // 2. 否则遍历ROI找到第一个有检测项的
     for (const auto& roi : rois) {
         if (roi.detectionItems.isEmpty()) continue;
 
-        // 选中该ROI
-        handleRoiSelection(roi.roiId);
+        spdlog::info("[RoiUI] autoSelectFirstDetectionItem: 切换到ROI [{}] 的检测项 → {}",
+                     roi.roiName.toStdString(),
+                     roi.detectionItems.first().itemName.toStdString());
 
-        // 显式激活第一个检测项（handleRoiSelection 已不再负责 Tab 切换）
+        handleRoiSelection(roi.roiId);
         activateDetectionItem(roi.roiId, roi.detectionItems.first().itemId);
 
-        // 同步更新树形视图的选中项
         for (int i = 0; i < m_treeView->topLevelItemCount(); ++i) {
             QTreeWidgetItem* item = m_treeView->topLevelItem(i);
             if (item && item->data(0, Qt::UserRole).toString() == roi.roiId) {
@@ -643,10 +648,12 @@ void RoiUiController::autoSelectFirstDetectionItem()
                 break;
             }
         }
-        return;
+        return true;
     }
 
-    // 3. 所有ROI都没有检测项，保持当前选中状态不变（右侧Tab不做切换）
+    // 3. 所有ROI都没有检测项
+    spdlog::debug("[RoiUI] autoSelectFirstDetectionItem: 无检测项，跳过");
+    return false;
 }
 
 // ========== 显示信号连接（从MainWindow迁移） ==========

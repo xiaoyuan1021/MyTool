@@ -44,6 +44,9 @@ public:
     void saveToConfig(PipelineConfig& config) const override;
     void loadFromConfig(const PipelineConfig& config) override;
 
+    /// 根据当前配置恢复步骤Tab的可见性（图片切换时调用）
+    void applyTabVisibility();
+
 signals:
     void tabsNeeded(const QStringList& tabNames);
 
@@ -69,7 +72,6 @@ private:
     void rebuildStepItems();
     void updatePipelinePreview();
     QStringList collectEnabledTabNames();
-    void applyTabVisibility();
     static int entryIndexForFrame(QObject* obj);
     int  dropTargetIndex(const QPoint& pos) const;
     void moveStepToSelected(QFrame* frame);
