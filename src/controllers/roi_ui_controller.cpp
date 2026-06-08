@@ -434,15 +434,18 @@ void RoiUiController::handleRoiSelection(const QString& roiId)
         // [NOTE] 纯显示切换，不触发pipeline（用缓存结果渲染）
         emit roiDisplayChanged(m_currentSelectedRoiId);
 
-        // [NOTE] 只在ROI真正切换时才自动选中第一个检测项并更新Tab
-        // 点击检测项时由onRoiTreeItemClicked负责emit detectionItemSelected
-        if (roiChanged && !roi->detectionItems.isEmpty()) {
-            const DetectionItem& firstItem = roi->detectionItems.first();
-            emit detectionItemSelected(m_currentSelectedRoiId, firstItem.itemId);
-        }
+        // [REFACTOR] handleRoiSelection 不再负责触发 Tab 切换
+        // 调用方（onRoiTreeItemClicked / autoSelectFirstDetectionItem 等）
+        // 按需调用 activateDetectionItem()
 
         spdlog::info(QString("已选中ROI: %1 (通过ID激活)").arg(roi->roiName));
     }
+}
+
+void RoiUiController::activateDetectionItem(const QString& roiId, const QString& detectionId)
+{
+    if (roiId.isEmpty() || detectionId.isEmpty()) return;
+    emit detectionItemSelected(roiId, detectionId);
 }
 
 void RoiUiController::onRoiTreeItemClicked(QTreeWidgetItem* item, int column)
@@ -463,13 +466,20 @@ void RoiUiController::onRoiTreeItemClicked(QTreeWidgetItem* item, int column)
             QString parentRoiId = parentItem->data(0, Qt::UserRole).toString();
             handleRoiSelection(parentRoiId);
 
-            // 发出检测项选中信号，用于触发Tab切换
-            emit detectionItemSelected(m_currentSelectedRoiId, itemId);
+            // 显式激活该检测项，触发右侧Tab切换
+            activateDetectionItem(m_currentSelectedRoiId, itemId);
         }
         spdlog::info(QString("选中检测项: %1").arg(item->text(0)));
     } else {
         // 点击的是ROI，统一处理选择逻辑
         handleRoiSelection(itemId);
+
+        // 选中ROI后自动激活第一个检测项（如有），触发右侧Tab切换
+        RoiConfig* roi = m_roiManager.getRoiConfig(m_currentSelectedRoiId);
+        if (roi && !roi->detectionItems.isEmpty()) {
+            activateDetectionItem(m_currentSelectedRoiId,
+                                  roi->detectionItems.first().itemId);
+        }
     }
 }
 
@@ -610,8 +620,8 @@ void RoiUiController::autoSelectFirstDetectionItem()
     // 1. 如果当前选中的ROI已有检测项，直接触发Tab切换
     RoiConfig* currentRoi = m_roiManager.getRoiConfig(m_currentSelectedRoiId);
     if (currentRoi && !currentRoi->detectionItems.isEmpty()) {
-        emit detectionItemSelected(m_currentSelectedRoiId,
-                                    currentRoi->detectionItems.first().itemId);
+        activateDetectionItem(m_currentSelectedRoiId,
+                              currentRoi->detectionItems.first().itemId);
         return;
     }
 
@@ -619,8 +629,11 @@ void RoiUiController::autoSelectFirstDetectionItem()
     for (const auto& roi : rois) {
         if (roi.detectionItems.isEmpty()) continue;
 
-        // 选中该ROI（内部会 emit detectionItemSelected）
+        // 选中该ROI
         handleRoiSelection(roi.roiId);
+
+        // 显式激活第一个检测项（handleRoiSelection 已不再负责 Tab 切换）
+        activateDetectionItem(roi.roiId, roi.detectionItems.first().itemId);
 
         // 同步更新树形视图的选中项
         for (int i = 0; i < m_treeView->topLevelItemCount(); ++i) {

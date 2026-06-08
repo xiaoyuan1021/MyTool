@@ -57,6 +57,10 @@ public:
     // 统一的ROI选择逻辑（点击ROI/检测项时调用）
     void handleRoiSelection(const QString& roiId);
 
+    /// 激活指定检测项（触发右侧Tab切换到对应检测项配置页面）
+    /// 与 handleRoiSelection 分离，可在同ROI内任意切换到不同检测项
+    void activateDetectionItem(const QString& roiId, const QString& detectionId);
+
     // ROI操作方法（供MainWindow委托调用）
     QString addRoiWithName(const QString& roiName);
     bool renameRoi(const QString& roiId, const QString& newName);
