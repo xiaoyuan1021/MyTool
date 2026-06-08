@@ -149,6 +149,7 @@ set(HEADERS
     # utils
     include/utils/path_utils.h
     include/utils/benchmark.h
+    include/utils/model_warmup.h
 )
 
 set(SOURCES
@@ -225,6 +226,8 @@ set(SOURCES
     src/controllers/profile_controller.cpp
     src/controllers/roi_ui_controller.cpp
     src/controllers/roi_detection_config_controller.cpp
+    # utils
+    src/utils/model_warmup.cpp
 )
 
 set(FORMS

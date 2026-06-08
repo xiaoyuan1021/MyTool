@@ -25,7 +25,7 @@
 const StepConfigWidget::StepEntry StepConfigWidget::kSteps[] = {
     {"颜色通道",      {"图像"},        {0},           false, "CH", "选择颜色通道：Gray/RGB/HSV", "#4FACFE"},
     {"图像增强",      {"增强"},        {1},           false, "EN", "亮度/对比度/Gamma/锐化", "#7C4DFF"},
-    {"颜色过滤",      {"颜色过滤"},    {2},           false, "FT", "灰度/RGB/HSV范围过滤", "#00BFA5"},
+    {"颜色过滤",      {"过滤"},    {2},           false, "FT", "灰度/RGB/HSV范围过滤", "#00BFA5"},
     {"算法处理",      {"处理"},        {3},           false, "AL", "形态学操作：开闭运算/膨胀腐蚀", "#FF6D00"},
     {"形状筛选",      {"提取"},        {4},           false, "SF", "面积/圆度/凸性/矩形度筛选", "#E91E63"},
     {"直线检测",      {"直线"},        {5},           false, "LD", "HoughP/LSD/EDline直线检测", "#2196F3"},

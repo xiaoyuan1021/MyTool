@@ -145,7 +145,6 @@ signals:
 
 private:
     void initPipeline();
-    void warmUpOcr();
 
 private:
     // 互斥锁：保护 m_lastContext（UI线程读取，execute写入）

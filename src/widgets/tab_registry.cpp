@@ -49,7 +49,7 @@ TabRegistry::TabRegistry()
     );
 
     registerTab(
-        {"颜色过滤",     DisplayConfig::Mode::MaskGreenWhite, false},
+        {"过滤",     DisplayConfig::Mode::MaskGreenWhite, false},
         [](PipelineManager* pm, ImageView*, RoiManager*, QStatusBar*) -> QWidget* {
             return new FilterTabWidget(pm, nullptr);
         }

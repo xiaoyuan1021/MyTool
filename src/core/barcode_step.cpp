@@ -15,9 +15,7 @@ StepBarcodeRecognition::StepBarcodeRecognition()
     spdlog::info("[Barcode] ZXing条码读取器初始化完成，支持格式: {}", formats.join(", ").toStdString());
 }
 
-StepBarcodeRecognition::~StepBarcodeRecognition()
-{
-}
+StepBarcodeRecognition::~StepBarcodeRecognition() = default;
 
 bool StepBarcodeRecognition::is2DCode(const QString& codeType) const
 {
