@@ -162,12 +162,7 @@ void MainWindow::setupConnections()
         m_pipelineManager->resetPipeline();
         
         // [FIX] 加载新图片的Pipeline配置（在resetPipeline之后）
-        QString imageId = m_roiManager.getCurrentImageId();
-        if (!imageId.isEmpty()) {
-            PipelineConfig imageConfig = m_roiManager.loadImagePipelineConfig(imageId);
-            m_pipelineManager->setConfig(imageConfig);
-            m_pipelineManager->rebuildPipeline();
-        }
+        applyImagePipelineConfig(m_roiManager.getCurrentImageId());
         
         // 清空画布，显示新原图（不执行pipeline）
         showImage(img);
@@ -455,6 +450,9 @@ void MainWindow::setupControllerConnections()
         }
         if (!roiId.isEmpty()) {
             m_detectionUiController->onAddDetectionClicked(roiId);
+
+            // [FIX] 添加检测项后自动选中它，触发右侧Tab切换到对应检测项页面
+            m_roiUiController->autoSelectFirstDetectionItem();
         }
     });
     connect(ui->btn_deleteDetection, &QPushButton::clicked, this, [this]() {
@@ -472,7 +470,7 @@ void MainWindow::setupControllerConnections()
         m_roiUiController->saveCurrentRoiPipelineConfig();
     });
     // 图片切换后：显示原图（不执行pipeline）
-    connect(&m_roiManager, &RoiManager::currentImageChanged, this, [this](const QString&) {
+    connect(&m_roiManager, &RoiManager::currentImageChanged, this, [this](const QString& newImageId) {
         m_pipelineManager->clearLastResult();
         // [FIX] 显示当前图片的原图，不执行pipeline
         cv::Mat currentImage = m_roiManager.getCurrentImage();
@@ -480,6 +478,12 @@ void MainWindow::setupControllerConnections()
             showImage(currentImage);
         }
         m_roiUiController->syncRoiConfigsToWidget();
+
+        // [FIX] 加载新图片的Pipeline配置，防止上一张图片的stepEnabled污染新图片
+        applyImagePipelineConfig(newImageId);
+
+        // 自动选中当前图片第一个有检测项的ROI，触发右侧Tab切换到对应检测项页面
+        m_roiUiController->autoSelectFirstDetectionItem();
     });
 
     // 删除图片/ROI后：隐藏所有检测相关Tab
@@ -571,11 +575,9 @@ void MainWindow::on_btn_pipelineConfig_clicked()
     // 加载当前图片的Pipeline配置（包括步骤组合）
     QString currentImageId = m_roiManager.getCurrentImageId();
     if (!currentImageId.isEmpty()) {
-        PipelineConfig imageConfig = m_roiManager.loadImagePipelineConfig(currentImageId);
-        m_pipelineManager->setConfig(imageConfig);
-        m_pipelineManager->rebuildPipeline();
+        applyImagePipelineConfig(currentImageId);
         // 通知所有Tab更新UI（包括StepConfigWidget）
-        m_roiUiController->notifyConfigChanged(imageConfig);
+        m_roiUiController->notifyConfigChanged(m_pipelineManager->getConfigSnapshot());
     }
 
     // 跳转到「步骤」Tab（Pipeline配置页面）
@@ -768,6 +770,16 @@ void MainWindow::requestRefresh()
 {
     m_needRefresh = true;
     processAndDisplay();
+}
+
+// ========== 图片Pipeline配置加载（统一入口）==========
+
+void MainWindow::applyImagePipelineConfig(const QString& imageId)
+{
+    if (imageId.isEmpty()) return;
+    PipelineConfig imageConfig = m_roiManager.loadImagePipelineConfig(imageId);
+    m_pipelineManager->setConfig(imageConfig);
+    m_pipelineManager->rebuildPipeline();
 }
 
 // ========== 方案操作 ==========

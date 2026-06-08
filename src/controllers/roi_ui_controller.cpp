@@ -602,6 +602,40 @@ void RoiUiController::syncRoiConfigsToWidget()
     spdlog::info("[RoiUiController] 已同步ROI配置到Widget");
 }
 
+void RoiUiController::autoSelectFirstDetectionItem()
+{
+    const auto rois = m_roiManager.getRoiConfigs();
+    if (rois.isEmpty()) return;
+
+    // 1. 如果当前选中的ROI已有检测项，直接触发Tab切换
+    RoiConfig* currentRoi = m_roiManager.getRoiConfig(m_currentSelectedRoiId);
+    if (currentRoi && !currentRoi->detectionItems.isEmpty()) {
+        emit detectionItemSelected(m_currentSelectedRoiId,
+                                    currentRoi->detectionItems.first().itemId);
+        return;
+    }
+
+    // 2. 否则遍历ROI找到第一个有检测项的
+    for (const auto& roi : rois) {
+        if (roi.detectionItems.isEmpty()) continue;
+
+        // 选中该ROI（内部会 emit detectionItemSelected）
+        handleRoiSelection(roi.roiId);
+
+        // 同步更新树形视图的选中项
+        for (int i = 0; i < m_treeView->topLevelItemCount(); ++i) {
+            QTreeWidgetItem* item = m_treeView->topLevelItem(i);
+            if (item && item->data(0, Qt::UserRole).toString() == roi.roiId) {
+                m_treeView->setCurrentItem(item);
+                break;
+            }
+        }
+        return;
+    }
+
+    // 3. 所有ROI都没有检测项，保持当前选中状态不变（右侧Tab不做切换）
+}
+
 // ========== 显示信号连接（从MainWindow迁移） ==========
 
 void RoiUiController::setupDisplayConnections(TabManager* tabManager)

@@ -111,6 +111,9 @@ private:
     /// 隐藏所有检测相关Tab（删除图片/ROI后调用）
     void hideAllDetectionTabs();
 
+    /// 加载指定图片的Pipeline配置到PipelineManager（复用模式：loadImagePipelineConfig + setConfig + rebuildPipeline）
+    void applyImagePipelineConfig(const QString& imageId);
+
     Ui::MainWindow *ui;
     ImageView *m_view = nullptr;
 

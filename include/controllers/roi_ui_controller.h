@@ -84,6 +84,9 @@ public:
     // 同步ROI配置到Widget（图片切换时调用）
     void syncRoiConfigsToWidget();
 
+    /// 自动选中当前图片中第一个有检测项的ROI（图片切换后调用，触发右侧Tab切换到对应检测项页面）
+    void autoSelectFirstDetectionItem();
+
     // 获取RoiManager引用
     RoiManager& getRoiManager() { return m_roiManager; }
 
