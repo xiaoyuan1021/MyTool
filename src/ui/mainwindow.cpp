@@ -110,20 +110,7 @@ void MainWindow::setupBasicInfrastructure()
     m_timingLabel->setTextFormat(Qt::RichText);
     m_timingLabel->setText("<img src=':/icons/pipeline.png' width='16' height='16' style='vertical-align: middle;'> Pipeline: -- ms");
     ui->statusbar->insertPermanentWidget(0, m_timingLabel);
-    m_benchmarkUiTimer = new QTimer(this);
-    m_benchmarkUiTimer->setInterval(500);
-    connect(m_benchmarkUiTimer, &QTimer::timeout, this, [this]() {
-        // 从调度器获取最新的执行时间
-        if (m_pipelineManager->scheduler()->isProcessing()) {
-            return;
-        }
-        // 使用 lastExecMs 获取上次执行时间
-        double ms = m_pipelineManager->lastExecMs();
-        if (ms > 0) {
-            m_timingLabel->setText(QString("Pipeline: %1 ms").arg(ms, 0, 'f', 1));
-        }
-    });
-    m_benchmarkUiTimer->start();
+    // 计时由 PipelineResultHandler::pipelineTimingUpdated 信号驱动（实时更新）
 
     // 日志初始化
     QString logDir = PROJECT_ROOT_DIR "/logs";
@@ -533,6 +520,12 @@ void MainWindow::setupResultHandler()
 
     connect(m_pipelineResultHandler, &PipelineResultHandler::statusMessage,
             ui->statusbar, &QStatusBar::showMessage);
+
+    // 连接Pipeline计时信号，实时更新状态栏
+    connect(m_pipelineResultHandler, &PipelineResultHandler::pipelineTimingUpdated,
+            this, [this](double totalMs) {
+        m_timingLabel->setText(QString("Pipeline: %1 ms").arg(totalMs, 0, 'f', 1));
+    });
 }
 
 // ========== 核心处理 ==========

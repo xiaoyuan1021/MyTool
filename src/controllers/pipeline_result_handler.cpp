@@ -61,6 +61,7 @@ void PipelineResultHandler::onPipelineResult(const PipelineResult& result)
         double totalMs = pipelineMs + detectionMs;
         QString msg = QString("处理完成 (%1 ms)").arg(totalMs, 0, 'f', 1);
         emit statusMessage(msg, 2000);
+        emit pipelineTimingUpdated(totalMs);
     } catch (const cv::Exception& ex) {
         spdlog::error("Pipeline结果处理错误: {}", ex.what());
         emit statusMessage("处理失败", 3000);

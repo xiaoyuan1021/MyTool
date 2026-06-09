@@ -170,7 +170,6 @@ private:
 
     // 基准性能显示
     QLabel* m_timingLabel = nullptr;
-    QTimer* m_benchmarkUiTimer = nullptr;
 
     // 动画相关
     QGraphicsOpacityEffect* m_pageOpacityEffect = nullptr;

@@ -23,6 +23,7 @@ public:
 
 signals:
     void statusMessage(const QString& message, int timeout = 0);
+    void pipelineTimingUpdated(double totalMs);
 
 public slots:
     /// 处理Pipeline执行结果（连接到 PipelineScheduler::finished）
