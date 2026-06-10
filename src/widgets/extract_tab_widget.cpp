@@ -137,11 +137,24 @@ void ExtractTabWidget::clearFilter()
     updateFilterListWidget();
     m_currentSelectedIndex = -1;
 
+    // 同步到Pipeline
+    if (m_pipeline) {
+        m_pipeline->updateConfig([&](PipelineConfig& cfg) {
+            cfg.shapeFilter.clear();
+            for (const FilterCondition& condition : m_filterConditions) {
+                cfg.shapeFilter.addCondition(condition);
+            }
+        });
+    }
+
     // 更新范围显示
     if (m_ui && m_ui->comboBox_select) {
         ShapeFeature feature = static_cast<ShapeFeature>(m_ui->comboBox_select->currentIndex());
         calculateAndShowRange(feature);
     }
+
+    // 触发重新检测
+    emit extractionChanged();
 
     spdlog::info("已删除选中的筛选条件");
 }
