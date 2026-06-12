@@ -229,7 +229,7 @@ ninja
 
 # 4. 运行
 cd bin
-.\VisionTool.exe
+.\EdgeVision.exe
 ```
 
 ### 云平台启动

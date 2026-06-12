@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(VisionTool VERSION 2.0.0 LANGUAGES CXX)
+project(EdgeVision VERSION 2.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 
@@ -245,7 +245,7 @@ set(RESOURCES
 # ============================================================
 # 创建可执行文件目标
 # ============================================================
-add_executable(VisionTool
+add_executable(EdgeVision
     ${HEADERS}
     ${SOURCES}
     ${FORMS}
@@ -253,13 +253,13 @@ add_executable(VisionTool
 )
 
 # 设置包含路径
-target_include_directories(VisionTool PRIVATE ${INCLUDE_DIRS})
+target_include_directories(EdgeVision PRIVATE ${INCLUDE_DIRS})
 
 # 定义项目根目录宏，供代码使用
-target_compile_definitions(VisionTool PRIVATE PROJECT_ROOT_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+target_compile_definitions(EdgeVision PRIVATE PROJECT_ROOT_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 
 # 链接 Qt 库
-target_link_libraries(VisionTool PRIVATE
+target_link_libraries(EdgeVision PRIVATE
     Qt6::Core
     Qt6::Gui
     Qt6::Widgets
@@ -267,7 +267,7 @@ target_link_libraries(VisionTool PRIVATE
 
 # Windows 系统库 (PDH 性能监控)
 if(WIN32)
-    target_link_libraries(VisionTool PRIVATE pdh)
+    target_link_libraries(EdgeVision PRIVATE pdh)
 endif()
 
 # ============================================================
@@ -279,7 +279,7 @@ set(OPENCV_RELEASE_LIB_DIR "${OPENCV_ROOT}/release/lib")
 set(OPENCV_RELEASE_BIN_DIR "${OPENCV_ROOT}/release/bin")
 
 # OpenCV 包含路径
-target_include_directories(VisionTool PRIVATE
+target_include_directories(EdgeVision PRIVATE
     "${OPENCV_ROOT}/include/opencv4"
     "${OPENCV_ROOT}/include/opencv4/opencv2/ximgproc"
 )
@@ -292,7 +292,7 @@ set(OPENCV_MODULES
 
 # Debug 链 opencv_xxx4d.lib，Release 链 opencv_xxx4.lib
 foreach(MODULE ${OPENCV_MODULES})
-    target_link_libraries(VisionTool PRIVATE
+    target_link_libraries(EdgeVision PRIVATE
         debug "${OPENCV_DEBUG_LIB_DIR}/opencv_${MODULE}4d.lib"
         optimized "${OPENCV_RELEASE_LIB_DIR}/opencv_${MODULE}4.lib"
     )
@@ -305,16 +305,16 @@ foreach(MODULE ${OPENCV_MODULES})
 endforeach()
 
 # 拷贝 Release DLL 到输出目录
-add_custom_command(TARGET VisionTool POST_BUILD
+add_custom_command(TARGET EdgeVision POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${OPENCV_RELEASE_DLLS}
-        $<TARGET_FILE_DIR:VisionTool>
+        $<TARGET_FILE_DIR:EdgeVision>
     COMMENT "Copying OpenCV Release DLLs..."
 )
 
 # OpenCV 传递依赖 DLL (仅 Release 拷贝，Debug 从 PATH 加载)
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    add_custom_command(TARGET VisionTool POST_BUILD
+    add_custom_command(TARGET EdgeVision POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${OPENCV_RELEASE_BIN_DIR}/zlib1.dll"
             "${OPENCV_RELEASE_BIN_DIR}/jpeg62.dll"
@@ -331,7 +331,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
             "${OPENCV_RELEASE_BIN_DIR}/lz4.dll"
             "${OPENCV_RELEASE_BIN_DIR}/zstd.dll"
             "${OPENCV_RELEASE_BIN_DIR}/bz2.dll"
-            $<TARGET_FILE_DIR:VisionTool>
+            $<TARGET_FILE_DIR:EdgeVision>
         COMMENT "Copying OpenCV vcpkg dependency DLLs..."
     )
 endif()
@@ -342,36 +342,36 @@ endif()
 # ============================================================
 set(ONNXRT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/onnxruntime")
 
-target_include_directories(VisionTool PRIVATE
+target_include_directories(EdgeVision PRIVATE
     "${ONNXRT_ROOT}/include"
 )
 
-target_link_libraries(VisionTool PRIVATE
+target_link_libraries(EdgeVision PRIVATE
     debug "${ONNXRT_ROOT}/lib/onnxruntime.lib"
     optimized "${ONNXRT_ROOT}/lib/onnxruntime.lib"
 )
 
 # 拷贝 ONNX Runtime DLL 到输出目录
-add_custom_command(TARGET VisionTool POST_BUILD
+add_custom_command(TARGET EdgeVision POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${ONNXRT_ROOT}/lib/onnxruntime.dll"
-        $<TARGET_FILE_DIR:VisionTool>
+        $<TARGET_FILE_DIR:EdgeVision>
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${ONNXRT_ROOT}/lib/onnxruntime_providers_cuda.dll"
-        $<TARGET_FILE_DIR:VisionTool>
+        $<TARGET_FILE_DIR:EdgeVision>
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${ONNXRT_ROOT}/lib/onnxruntime_providers_shared.dll"
-        $<TARGET_FILE_DIR:VisionTool>
+        $<TARGET_FILE_DIR:EdgeVision>
     COMMENT "Copying ONNX Runtime DLLs..."
 )
 
 # ============================================================
 # 第三方库配置 (spdlog, header-only)
 # ============================================================
-target_include_directories(VisionTool PRIVATE
+target_include_directories(EdgeVision PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/spdlog/include"
 )
-target_compile_definitions(VisionTool PRIVATE SPDLOG_USE_STD_FORMAT)
+target_compile_definitions(EdgeVision PRIVATE SPDLOG_USE_STD_FORMAT)
 
 # =========================
 # ZXing
@@ -379,11 +379,11 @@ target_compile_definitions(VisionTool PRIVATE SPDLOG_USE_STD_FORMAT)
 
 set(ZXING_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/zxing")
 
-target_include_directories(VisionTool PRIVATE
+target_include_directories(EdgeVision PRIVATE
     "${ZXING_ROOT}/include"
 )
 
-target_link_libraries(VisionTool PRIVATE
+target_link_libraries(EdgeVision PRIVATE
     debug "${ZXING_ROOT}/lib/ZXingd.lib"
     optimized "${ZXING_ROOT}/release/lib/ZXing.lib"
 )
@@ -394,7 +394,7 @@ target_link_libraries(VisionTool PRIVATE
 # ============================================================
 set(RAPIDOCR_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/rapidocr")
 
-target_include_directories(VisionTool PRIVATE
+target_include_directories(EdgeVision PRIVATE
     "${RAPIDOCR_ROOT}/include"
 )
 
@@ -408,12 +408,12 @@ set(RAPIDOCR_SOURCES
     ${RAPIDOCR_ROOT}/src/clipper.cpp
 )
 
-target_sources(VisionTool PRIVATE ${RAPIDOCR_SOURCES})
+target_sources(EdgeVision PRIVATE ${RAPIDOCR_SOURCES})
 
-# 第三方代码禁用警告（含系统头文件中的警告）
+# 第三方代码禁用特定警告（含系统头文件中的警告）
 if(MSVC)
     set_source_files_properties(${RAPIDOCR_SOURCES}
-        PROPERTIES COMPILE_FLAGS "/W0 /wd4244 /wd4267 /wd4305 /wd4996"
+        PROPERTIES COMPILE_FLAGS "/wd4244 /wd4267 /wd4305 /wd4477 /wd4996"
     )
 endif()
 
@@ -423,18 +423,18 @@ endif()
 # ============================================================
 set(PAHO_MQTT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/paho-mqtt")
 
-target_include_directories(VisionTool PRIVATE
+target_include_directories(EdgeVision PRIVATE
     "${PAHO_MQTT_ROOT}/include"
 )
 
 # 必须定义导入宏，否则 MSVC 无法解析 DLL 中的数据符号（如 mqtt::message::EMPTY_STR）
-target_compile_definitions(VisionTool PRIVATE
+target_compile_definitions(EdgeVision PRIVATE
     PAHO_MQTTPP_IMPORTS
     PAHO_MQTT_IMPORTS
 )
 
 # Paho MQTT C++ wrapper + C core
-target_link_libraries(VisionTool PRIVATE
+target_link_libraries(EdgeVision PRIVATE
     debug "${PAHO_MQTT_ROOT}/lib/paho-mqttpp3d.lib"
     optimized "${PAHO_MQTT_ROOT}/release/lib/paho-mqttpp3.lib"
     debug "${PAHO_MQTT_ROOT}/lib/paho-mqtt3asd.lib"
@@ -443,19 +443,19 @@ target_link_libraries(VisionTool PRIVATE
 
 # 拷贝 Paho MQTT + OpenSSL DLL (仅 Release，Debug 通过 PATH 加载)
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    add_custom_command(TARGET VisionTool POST_BUILD
+    add_custom_command(TARGET EdgeVision POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${PAHO_MQTT_ROOT}/release/bin/paho-mqttpp3.dll"
-            $<TARGET_FILE_DIR:VisionTool>
+            $<TARGET_FILE_DIR:EdgeVision>
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${PAHO_MQTT_ROOT}/release/bin/paho-mqtt3as.dll"
-            $<TARGET_FILE_DIR:VisionTool>
+            $<TARGET_FILE_DIR:EdgeVision>
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${PAHO_MQTT_ROOT}/release/bin/libssl-3-x64.dll"
-            $<TARGET_FILE_DIR:VisionTool>
+            $<TARGET_FILE_DIR:EdgeVision>
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${PAHO_MQTT_ROOT}/release/bin/libcrypto-3-x64.dll"
-            $<TARGET_FILE_DIR:VisionTool>
+            $<TARGET_FILE_DIR:EdgeVision>
         COMMENT "Copying Paho MQTT + OpenSSL DLLs..."
     )
 endif()
@@ -465,7 +465,7 @@ endif()
 # ============================================================
 if(MSVC)
     # 添加 MSVC 编译选项
-    target_compile_options(VisionTool PRIVATE
+    target_compile_options(EdgeVision PRIVATE
         /W3   # 警告级别 3
         /EHsc # 启用 C++ 异常处理
         /Zi   # 调试信息格式（Debug/RelWithDebInfo 下有用）
@@ -474,7 +474,7 @@ if(MSVC)
         $<$<CONFIG:RelWithDebInfo>:/MD> # RelWithDebInfo: 多线程 DLL 运行时
     )
     # 添加链接器选项（仅 Debug 生成完整调试信息）
-    target_link_options(VisionTool PRIVATE
+    target_link_options(EdgeVision PRIVATE
         $<$<CONFIG:Debug>:/DEBUG>
     )
 endif()
@@ -483,7 +483,7 @@ endif()
 # ============================================================
 # 编译输出配置
 # ============================================================
-set_target_properties(VisionTool PROPERTIES
+set_target_properties(EdgeVision PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
     ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
