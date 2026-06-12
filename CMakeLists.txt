@@ -390,26 +390,32 @@ target_link_libraries(VisionTool PRIVATE
 
 
 # ============================================================
-# 第三方库配置 (Tesseract OCR)
+# 第三方库配置 (RapidOCR - PP-OCRv4 ONNX)
 # ============================================================
-set(TESSERACT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/tesseract")
+set(RAPIDOCR_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/rapidocr")
 
 target_include_directories(VisionTool PRIVATE
-    "${TESSERACT_ROOT}/include"
+    "${RAPIDOCR_ROOT}/include"
 )
 
-target_link_libraries(VisionTool PRIVATE
-    debug "${TESSERACT_ROOT}/lib/tesseract55d.lib"
-    optimized "${TESSERACT_ROOT}/lib/tesseract55.lib"
+set(RAPIDOCR_SOURCES
+    ${RAPIDOCR_ROOT}/src/OcrLite.cpp
+    ${RAPIDOCR_ROOT}/src/OcrLiteImpl.cpp
+    ${RAPIDOCR_ROOT}/src/DbNet.cpp
+    ${RAPIDOCR_ROOT}/src/AngleNet.cpp
+    ${RAPIDOCR_ROOT}/src/CrnnNet.cpp
+    ${RAPIDOCR_ROOT}/src/OcrUtils.cpp
+    ${RAPIDOCR_ROOT}/src/clipper.cpp
 )
 
-# 拷贝 Tesseract DLL 到输出目录
-add_custom_command(TARGET VisionTool POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${TESSERACT_ROOT}/bin/tesseract55d.dll"
-        $<TARGET_FILE_DIR:VisionTool>
-    COMMENT "Copying Tesseract DLL..."
-)
+target_sources(VisionTool PRIVATE ${RAPIDOCR_SOURCES})
+
+# 第三方代码禁用警告（含系统头文件中的警告）
+if(MSVC)
+    set_source_files_properties(${RAPIDOCR_SOURCES}
+        PROPERTIES COMPILE_FLAGS "/W0 /wd4244 /wd4267 /wd4305 /wd4996"
+    )
+endif()
 
 
 # ============================================================

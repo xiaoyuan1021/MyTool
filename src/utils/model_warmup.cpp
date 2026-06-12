@@ -1,7 +1,8 @@
 #include "model_warmup.h"
 #include "logger.h"
+#include "OcrLite.h"
 #include <QtConcurrent/QtConcurrent>
-#include <tesseract/baseapi.h>
+#include <QCoreApplication>
 #include <QDir>
 
 // ZXing headers
@@ -11,7 +12,7 @@ void ModelWarmUp::warmUpAll()
 {
     spdlog::info("[ModelWarmUp] 开始预热所有模型...");
 
-    QtConcurrent::run([]() {
+    QFuture<void> future = QtConcurrent::run([]() {
         // 1. 预热 OCR
         warmUpOcr();
 
@@ -28,18 +29,35 @@ void ModelWarmUp::warmUpAll()
 
 void ModelWarmUp::warmUpOcr(const QString& language)
 {
-    tesseract::TessBaseAPI api;
-    QString tessdataPath = QDir::currentPath() + "/resources/tessdata";
+    Q_UNUSED(language);
 
-    if (api.Init(tessdataPath.toUtf8().constData(),
-                 language.toUtf8().constData(),
-                 tesseract::OEM_DEFAULT)) {
-        spdlog::warn("[ModelWarmUp] OCR预热失败: 无法加载tessdata from {}", tessdataPath.toStdString());
+    QString appDir = QCoreApplication::applicationDirPath();
+    QString modelsDir = appDir + "/resources/ocr_models";
+
+    if (!QDir(modelsDir).exists()) {
+        modelsDir = QDir::currentPath() + "/resources/ocr_models";
+    }
+
+    if (!QDir(modelsDir).exists()) {
+        spdlog::warn("[ModelWarmUp] OCR预热失败: ocr_models 目录不存在");
         return;
     }
 
-    spdlog::info("[ModelWarmUp] OCR预热完成: 语言模型已加载 ({})", language.toStdString());
-    api.End();
+    std::string detPath  = (modelsDir + "/ch_PP-OCRv4_det_mobile.onnx").toStdString();
+    std::string clsPath  = (modelsDir + "/ch_ppocr_mobile_v2.0_cls_mobile.onnx").toStdString();
+    std::string recPath  = (modelsDir + "/ch_PP-OCRv4_rec_mobile.onnx").toStdString();
+    std::string keysPath = (modelsDir + "/ppocr_keys_v1.txt").toStdString();
+
+    OcrLite ocr;
+    ocr.setNumThread(2);
+    bool ok = ocr.initModels(detPath, clsPath, recPath, keysPath);
+
+    if (!ok) {
+        spdlog::warn("[ModelWarmUp] OCR预热失败: 模型加载失败 from {}", modelsDir.toStdString());
+        return;
+    }
+
+    spdlog::info("[ModelWarmUp] OCR预热完成: RapidOCR PP-OCRv4 模型已加载");
 }
 
 void ModelWarmUp::warmUpBarcode()

@@ -1,64 +1,50 @@
 #include "ocr_step.h"
 #include "config/pipeline_config.h"
+#include "OcrLite.h"
 #include <opencv2/imgproc.hpp>
-#include <tesseract/baseapi.h>
 #include <QDir>
-#include <QString>
-#include <QVector>
-#include <memory>
-#include <algorithm>
+#include <QCoreApplication>
+#include <spdlog/spdlog.h>
 
 StepOcrRecognition::StepOcrRecognition() = default;
 StepOcrRecognition::~StepOcrRecognition() = default;
 
-cv::Mat StepOcrRecognition::deskew(const cv::Mat& gray, cv::Mat& rotMatrixOut)
+void StepOcrRecognition::initRapidOcr()
 {
-    cv::Mat binary;
-    cv::threshold(gray, binary, 0, 255, cv::THRESH_BINARY_INV | cv::THRESH_OTSU);
+    if (m_initialized) return;
 
-    std::vector<cv::Point> points;
-    cv::findNonZero(binary, points);
+    m_ocr = std::make_unique<OcrLite>();
+    m_ocr->setNumThread(4);
 
-    if (points.size() < 100) {
-        rotMatrixOut = cv::Mat();
-        return gray;
+    // 模型路径：相对于可执行文件
+    QString appDir = QCoreApplication::applicationDirPath();
+    QString modelsDir = appDir + "/resources/ocr_models";
+
+    // 如果 appDir 下没有，尝试从项目根目录找
+    if (!QDir(modelsDir).exists()) {
+        modelsDir = QDir::currentPath() + "/resources/ocr_models";
     }
 
-    cv::RotatedRect rect = cv::minAreaRect(points);
-    float angle = rect.angle;
-    if (rect.size.width < rect.size.height) {
-        angle = 90 + angle;
+    std::string detPath  = (modelsDir + "/ch_PP-OCRv4_det_mobile.onnx").toStdString();
+    std::string clsPath  = (modelsDir + "/ch_ppocr_mobile_v2.0_cls_mobile.onnx").toStdString();
+    std::string recPath  = (modelsDir + "/ch_PP-OCRv4_rec_mobile.onnx").toStdString();
+    std::string keysPath = (modelsDir + "/ppocr_keys_v1.txt").toStdString();
+
+    spdlog::info("[OCR] Loading RapidOCR models from: {}", modelsDir.toStdString());
+    spdlog::info("[OCR]   det:  {}", detPath);
+    spdlog::info("[OCR]   cls:  {}", clsPath);
+    spdlog::info("[OCR]   rec:  {}", recPath);
+    spdlog::info("[OCR]   keys: {}", keysPath);
+
+    bool ok = m_ocr->initModels(detPath, clsPath, recPath, keysPath);
+    if (!ok) {
+        spdlog::error("[OCR] Failed to init RapidOCR models!");
+        m_ocr.reset();
+        return;
     }
 
-    if (std::abs(angle) < 0.5 || std::abs(angle) > 30) {
-        rotMatrixOut = cv::Mat();
-        return gray;
-    }
-
-    cv::Point2f center(gray.cols / 2.0f, gray.rows / 2.0f);
-    rotMatrixOut = cv::getRotationMatrix2D(center, angle, 1.0);
-    cv::Mat rotated;
-    cv::warpAffine(gray, rotated, rotMatrixOut, gray.size(),
-                   cv::INTER_CUBIC, cv::BORDER_REPLICATE);
-    return rotated;
-}
-
-void StepOcrRecognition::initTesseract(const QString& language)
-{
-    if (m_api && m_cachedLanguage == language) return;
-
-    m_api = std::make_unique<tesseract::TessBaseAPI>();
-
-    QString tessdataPath = QDir::currentPath() + "/resources/tessdata";
-    if (m_api->Init(tessdataPath.toUtf8().constData(),
-                    language.toUtf8().constData(),
-                    tesseract::OEM_DEFAULT)) {
-        if (m_api->Init(nullptr, language.toUtf8().constData(), tesseract::OEM_DEFAULT)) {
-            m_api.reset();
-            return;
-        }
-    }
-    m_cachedLanguage = language;
+    m_initialized = true;
+    spdlog::info("[OCR] RapidOCR initialized successfully");
 }
 
 void StepOcrRecognition::run(PipelineContext& ctx)
@@ -78,157 +64,71 @@ void StepOcrRecognition::run(PipelineContext& ctx)
     }
     if (src.empty()) return;
 
-    cv::Mat gray;
-    if (src.channels() == 3) {
-        cv::cvtColor(src, gray, cv::COLOR_BGR2GRAY);
-    } else {
-        gray = src;
-    }
-
-    // 1. 自动纠偏
-    cv::Mat rotMatrix;
-    gray = deskew(gray, rotMatrix);
-
-    if (!gray.isContinuous()) {
-        gray = gray.clone();
-    }
-
-    // 2. 复用Tesseract实例
-    initTesseract(cfg.language);
-    if (!m_api) {
-        ctx.reason = "OCR初始化失败: 请检查tessdata目录";
+    // 初始化 RapidOCR
+    initRapidOcr();
+    if (!m_ocr) {
+        ctx.reason = "OCR初始化失败: 请检查ocr_models目录";
         return;
     }
 
-    int psmMode;
-    switch (cfg.pageMode) {
-    case 1:  psmMode = tesseract::PSM_SINGLE_LINE;  break;
-    case 2:  psmMode = tesseract::PSM_SINGLE_BLOCK;  break;
-    default: psmMode = tesseract::PSM_AUTO;           break;
-    }
-    m_api->SetPageSegMode(static_cast<tesseract::PageSegMode>(psmMode));
+    try {
+        // RapidOCR 接受 BGR 图像，直接传入
+        // 参数: padding, maxSideLen, boxScoreThresh, boxThresh, unClipRatio, doAngle, mostAngle
+        OcrResult result = m_ocr->detect(
+            src,
+            50,                              // padding
+            960,                             // maxSideLen
+            0.5f,                            // boxScoreThresh
+            cfg.confidenceThreshold,         // boxThresh (复用置信度阈值)
+            1.6f,                            // unClipRatio
+            true,                            // doAngle (启用方向检测)
+            true                             // mostAngle
+        );
 
-    if (cfg.dpi > 0) {
-        m_api->SetSourceResolution(static_cast<int>(cfg.dpi));
-    }
-
-    if (!cfg.whitelist.isEmpty()) {
-        m_api->SetVariable("tessedit_char_whitelist", cfg.whitelist.toUtf8().constData());
-    }
-
-    m_api->SetVariable("language_model_penalty_non_dict_word", "0.1");
-    m_api->SetVariable("language_model_penalty_non_freq_dict_word", "0.1");
-    m_api->SetVariable("textord_heavy_nr", "1");
-    m_api->SetVariable("tessedit_unrej_trust_wd", "1");
-
-    // SetVariable 必须在 SetImage 之前调用，否则部分变量（textord/tessedit 类）不生效
-    m_api->SetImage(gray.data, static_cast<int>(gray.cols), static_cast<int>(gray.rows),
-                    gray.channels(), static_cast<int>(gray.step));
-
-    char* text = m_api->GetUTF8Text();
-    if (text) {
-        QString result = QString::fromUtf8(text).trimmed();
-        if (!result.isEmpty()) {
-            ctx.ocrText = result;
-
-            std::unique_ptr<tesseract::ResultIterator> ri(m_api->GetIterator());
-            if (ri) {
-                QVector<OcrRegion> wordRegions;
-                do {
-                    const char* wordText = ri->GetUTF8Text(tesseract::RIL_WORD);
-                    if (!wordText) continue;
-                    QString wordStr = QString::fromUtf8(wordText).trimmed();
-                    delete[] wordText;
-                    if (wordStr.isEmpty()) continue;
-
-                    int conf = ri->Confidence(tesseract::RIL_WORD);
-                    double confidence = conf / 100.0;
-                    if (confidence < cfg.confidenceThreshold) continue;
-
-                    int left, top, right, bottom;
-                    ri->BoundingBox(tesseract::RIL_WORD, &left, &top, &right, &bottom);
-
-                    // 如果有纠偏，将坐标映射回原图（变换4个角点取包围盒）
-                    if (!rotMatrix.empty()) {
-                        cv::Mat invRot;
-                        cv::invertAffineTransform(rotMatrix, invRot);
-                        std::vector<cv::Point2f> corners = {
-                            cv::Point2f(static_cast<float>(left),  static_cast<float>(top)),
-                            cv::Point2f(static_cast<float>(right), static_cast<float>(top)),
-                            cv::Point2f(static_cast<float>(right), static_cast<float>(bottom)),
-                            cv::Point2f(static_cast<float>(left),  static_cast<float>(bottom))
-                        };
-                        cv::transform(corners, corners, invRot);
-                        float minX = corners[0].x, maxX = corners[0].x;
-                        float minY = corners[0].y, maxY = corners[0].y;
-                        for (int k = 1; k < 4; ++k) {
-                            if (corners[k].x < minX) minX = corners[k].x;
-                            if (corners[k].x > maxX) maxX = corners[k].x;
-                            if (corners[k].y < minY) minY = corners[k].y;
-                            if (corners[k].y > maxY) maxY = corners[k].y;
-                        }
-                        left   = static_cast<int>(minX);
-                        top    = static_cast<int>(minY);
-                        right  = static_cast<int>(maxX);
-                        bottom = static_cast<int>(maxY);
-                    }
-
-                    OcrRegion region;
-                    region.x = left;
-                    region.y = top;
-                    region.width = right - left;
-                    region.height = bottom - top;
-                    region.text = wordStr;
-                    region.confidence = confidence;
-                    wordRegions.append(region);
-                } while (ri->Next(tesseract::RIL_WORD));
-
-                if (!wordRegions.isEmpty()) {
-                    std::sort(wordRegions.begin(), wordRegions.end(),
-                              [](const OcrRegion& a, const OcrRegion& b) {
-                                  if (std::abs(a.y - b.y) <= std::max(a.height, b.height) / 2)
-                                      return a.x < b.x;
-                                  return a.y < b.y;
-                              });
-
-                    auto isCjk = [](const QString& text) -> bool {
-                        for (const QChar& c : text) {
-                            if (c.unicode() >= 0x4E00 && c.unicode() <= 0x9FFF) {
-                                return true;
-                            }
-                        }
-                        return false;
-                    };
-
-                    QVector<OcrRegion> merged;
-                    OcrRegion current = wordRegions.first();
-                    for (int i = 1; i < wordRegions.size(); ++i) {
-                        const auto& w = wordRegions[i];
-                        bool sameLine = std::abs(w.y - current.y) <= std::max(current.height, w.height) / 2;
-                        int gap = std::max(current.height, w.height);
-                        bool adjacent = w.x <= current.x + current.width + gap;
-                        if (sameLine && adjacent) {
-                            int endX = current.x + current.width;
-                            int endW = w.x + w.width;
-                            current.width = std::max(endX, endW) - current.x;
-                            current.height = std::max(current.y + current.height, w.y + w.height) - current.y;
-                            if (!isCjk(current.text) || !isCjk(w.text)) {
-                                current.text += " ";
-                            }
-                            current.text += w.text;
-                            current.confidence = std::min(current.confidence, w.confidence);
-                        } else {
-                            merged.append(current);
-                            current = w;
-                        }
-                    }
-                    merged.append(current);
-                    ctx.ocrRegions = merged;
-                }
-            }
+        if (result.strRes.empty()) {
+            ctx.ocrText = "";
+            ctx.ocrRegions.clear();
+            ctx.reason = "OCR: 未识别到文字";
+            return;
         }
-        delete[] text;
-    }
 
-    m_api->Clear();
+        // 设置识别文本
+        ctx.ocrText = QString::fromStdString(result.strRes).trimmed();
+
+        // 设置识别区域
+        ctx.ocrRegions.clear();
+        for (const auto& block : result.textBlocks) {
+            OcrRegion region;
+
+            // 从 boxPoint 计算包围盒
+            if (!block.boxPoint.empty()) {
+                int minX = block.boxPoint[0].x, maxX = block.boxPoint[0].x;
+                int minY = block.boxPoint[0].y, maxY = block.boxPoint[0].y;
+                for (size_t i = 1; i < block.boxPoint.size(); ++i) {
+                    if (block.boxPoint[i].x < minX) minX = block.boxPoint[i].x;
+                    if (block.boxPoint[i].x > maxX) maxX = block.boxPoint[i].x;
+                    if (block.boxPoint[i].y < minY) minY = block.boxPoint[i].y;
+                    if (block.boxPoint[i].y > maxY) maxY = block.boxPoint[i].y;
+                }
+                region.x = minX;
+                region.y = minY;
+                region.width = maxX - minX;
+                region.height = maxY - minY;
+            }
+
+            region.text = QString::fromStdString(block.text);
+            region.confidence = block.boxScore;
+            ctx.ocrRegions.append(region);
+        }
+
+        ctx.reason = QString("OCR (RapidOCR): 识别 %1 个区域, 共 %2 字符")
+                         .arg(ctx.ocrRegions.size())
+                         .arg(ctx.ocrText.length());
+
+        spdlog::info("[OCR] {}", ctx.reason.toStdString());
+    }
+    catch (const std::exception& ex) {
+        ctx.reason = QString("OCR 异常: %1").arg(ex.what());
+        spdlog::error("[OCR] {}", ctx.reason.toStdString());
+    }
 }

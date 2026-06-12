@@ -157,9 +157,7 @@ void OcrTabWidget::syncConfigToPipeline()
 {
     if (!m_pipeline) return;
 
-    m_pipeline->updateConfig([&](PipelineConfig& cfg) {
-        cfg.ocr.pageMode = m_pageModeCombo->currentData().toInt();
-    });
+    // RapidOCR 配置已简化，无需同步 pageMode
 }
 
 void OcrTabWidget::clearResults()
@@ -174,17 +172,15 @@ void OcrTabWidget::clearResults()
 
 void OcrTabWidget::saveToConfig(PipelineConfig& config) const
 {
-    config.ocr.pageMode = m_pageModeCombo->currentData().toInt();
+    // RapidOCR 配置已简化，无需保存 pageMode
+    Q_UNUSED(config);
 }
 
 void OcrTabWidget::loadFromConfig(const PipelineConfig& config)
 {
     const auto& cfg = config.ocr;
-
-    int pageModeIndex = m_pageModeCombo->findData(cfg.pageMode);
-    if (pageModeIndex >= 0) {
-        m_pageModeCombo->setCurrentIndex(pageModeIndex);
-    }
+    Q_UNUSED(cfg);
+    // RapidOCR 配置已简化，无需加载 pageMode
 }
 
 void OcrTabWidget::connectSignals(const SignalContext& ctx,

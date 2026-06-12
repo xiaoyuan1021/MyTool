@@ -6,9 +6,7 @@
 #include <QVector>
 #include <memory>
 
-namespace tesseract {
-class TessBaseAPI;
-}
+class OcrLite;
 
 class StepOcrRecognition : public IPipelineStep
 {
@@ -19,9 +17,8 @@ public:
     StepType stepType() const override { return StepType::OcrRecognition; }
 
 private:
-    static cv::Mat deskew(const cv::Mat& gray, cv::Mat& rotMatrixOut);
-    void initTesseract(const QString& language);
+    void initRapidOcr();
 
-    std::unique_ptr<tesseract::TessBaseAPI> m_api;
-    QString m_cachedLanguage;
+    std::unique_ptr<OcrLite> m_ocr;
+    bool m_initialized = false;
 };

@@ -32,7 +32,7 @@ const StepConfigWidget::StepEntry StepConfigWidget::kSteps[] = {
     {"模板匹配",      {"补正"},        {-1},          false, "TM", "模板匹配定位与对齐", "#9C27B0"},
     {"条码识别",      {"条码"},        {6},           false, "BC", "QR Code/条形码识别", "#4CAF50"},
     {"滤波去噪",      {"滤波去噪"},    {7},           false, "FN", "高斯/中值/双边滤波去噪", "#00BCD4"},
-    {"文字识别",      {"文字识别"},    {8},           false, "OC", "Tesseract OCR文字识别", "#FF5722"},
+    {"文字识别",      {"文字识别"},    {8},           false, "OC", "RapidOCR PP-OCRv4文字识别", "#FF5722"},
     {"目标检测",      {"目标检测"},    {-1},          false, "DL", "YOLO深度学习目标检测", "#607D8B"},
     {"步骤管理",      {"步骤"},        {-1},          true,  "PM", "管理Pipeline步骤顺序", "#795548"},
 };

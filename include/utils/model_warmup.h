@@ -11,7 +11,7 @@ class ModelWarmUp
 public:
     /**
      * 预热所有模型（异步执行，不阻塞UI）
-     * - OCR: Tesseract 语言模型
+     * - OCR: RapidOCR PP-OCRv4 语言模型
      * - 条码: ZXing 读取器配置
      *
      * 注意: 目标检测模型不在此处预热，由 ObjectDetectionTabWidget 按需加载
