@@ -43,36 +43,39 @@ void ObjectDetectionTabWidget::setupConnections()
         m_ui->label_nmsValue->setText(QString::number(threshold, 'f', 2));
     });
 
-    // 模型加载完成信号
+    // 模型加载完成信号（仅更新状态，不自动触发检测）
     connect(this, &ObjectDetectionTabWidget::modelLoadFinished, this,
         [this](bool success, const QString& message) {
             m_ui->label_status->setText(message);
             if (success) {
-                spdlog::info("[ObjectDetection] model loaded, emitting detectionConfigChanged");
-                emit detectionConfigChanged();
+                spdlog::info("[ObjectDetection] model loaded successfully");
             }
         });
 }
 
 void ObjectDetectionTabWidget::onBrowseModel()
 {
-    QString filePath = QFileDialog::getOpenFileName(this, 
-        "选择模型文件", "",
+    QString defaultDir = QString(PROJECT_ROOT_DIR) + "/resources/models";
+    QString filePath = QFileDialog::getOpenFileName(this,
+        "选择模型文件", defaultDir,
         "模型文件 (*.onnx *.prototxt *.pb *.cfg *.weights);;ONNX模型 (*.onnx);;所有文件 (*)");
-    
+
     if (!filePath.isEmpty()) {
         m_ui->lineEdit_modelPath->setText(filePath);
+        loadModelAsync();  // 路径变更后自动加载
     }
 }
 
 void ObjectDetectionTabWidget::onBrowseConfig()
 {
-    QString filePath = QFileDialog::getOpenFileName(this, 
-        "选择配置文件", "",
+    QString defaultDir = QString(PROJECT_ROOT_DIR) + "/resources/models";
+    QString filePath = QFileDialog::getOpenFileName(this,
+        "选择配置文件", defaultDir,
         "配置文件 (*.prototxt *.pbtxt *.cfg);;所有文件 (*)");
-    
+
     if (!filePath.isEmpty()) {
         m_ui->lineEdit_configPath->setText(filePath);
+        loadModelAsync();  // 配置变更后自动加载
     }
 }
 
@@ -80,34 +83,30 @@ void ObjectDetectionTabWidget::autoLoadDefaultModel()
 {
     // 默认模型路径：项目根目录/resources/models/model_pin/ort/pin.onnx
     QString defaultModelPath = QString(PROJECT_ROOT_DIR) + "/resources/models/model_pin/ort/pin.onnx";
-    
+
     if (QFile::exists(defaultModelPath)) {
         m_ui->lineEdit_modelPath->setText(defaultModelPath);
         spdlog::debug("[ObjectDetection] auto-loading default model: {}", defaultModelPath.toStdString());
-        
+
         // 延迟加载模型，等待UI完全初始化
-        QTimer::singleShot(100, this, &ObjectDetectionTabWidget::onApplyClicked);
+        QTimer::singleShot(100, this, &ObjectDetectionTabWidget::loadModelAsync);
     } else {
         spdlog::debug("[ObjectDetection] default model not found: {}", defaultModelPath.toStdString());
     }
 }
 
-void ObjectDetectionTabWidget::onApplyClicked()
+void ObjectDetectionTabWidget::loadModelAsync()
 {
-    spdlog::info("[ObjectDetection] apply button clicked");
-
     QString modelPath = m_ui->lineEdit_modelPath->text().trimmed();
-    if (modelPath.isEmpty()) {
-        m_ui->label_status->setText("状态：请选择模型文件");
-        return;
-    }
+    if (modelPath.isEmpty()) return;
 
-    // 如果模型已加载且路径相同，无需重新加载
-    if (m_dnnInference.isLoaded() && m_currentModelPath == modelPath) {
+    QString configPath = m_ui->lineEdit_configPath->text().trimmed();
+
+    // 如果模型和配置都已加载且路径相同，无需重新加载
+    if (m_dnnInference.isLoaded() && m_currentModelPath == modelPath && m_currentConfigPath == configPath) {
         spdlog::info("[ObjectDetection] model already loaded, skip reloading");
         m_ui->label_status->setText("状态：模型已就绪");
         m_pipeline->updateConfig([this](PipelineConfig& cfg) {
-            cfg.enableObjectDetection = true;
             cfg.objectDetection.expectedCount = m_ui->spinBox_expectedCount->value();
         });
         emit detectionConfigChanged();
@@ -117,19 +116,21 @@ void ObjectDetectionTabWidget::onApplyClicked()
     m_ui->label_status->setText("状态：正在加载模型...");
     m_ui->btn_apply->setEnabled(false);
 
-    QString configPath = m_ui->lineEdit_configPath->text().trimmed();
-
     QFuture<QString> future = QtConcurrent::run(
         [this, modelPath, configPath]() -> QString {
-            // Step 1: 加载 OpenCV DNN（标签页静图检测，必须成功）
-            bool dnnOk = m_dnnInference.loadModel(modelPath, configPath);
-
-            // Step 2: 加载 ONNX Runtime（视频推理加速，可选）
+            // Step 1: 加载 ONNX Runtime GPU（优先，推理更快）
             bool ortOk = m_ortInference.loadModel(modelPath, true);
 
-            if (dnnOk && ortOk) {
-                spdlog::info("[ObjectDetection] OpenCV DNN + ONNX Runtime loaded");
+            // Step 2: 加载 OpenCV DNN（回退，标签页静图检测）
+            bool dnnOk = m_dnnInference.loadModel(modelPath, configPath);
+
+            if (ortOk && dnnOk) {
+                spdlog::info("[ObjectDetection] ONNX Runtime GPU + OpenCV DNN loaded");
                 return "both";
+            }
+            if (ortOk) {
+                spdlog::info("[ObjectDetection] ONNX Runtime GPU loaded, OpenCV DNN unavailable");
+                return "ort";
             }
             if (dnnOk) {
                 spdlog::warn("[ObjectDetection] OpenCV DNN loaded, ONNX Runtime unavailable");
@@ -142,21 +143,30 @@ void ObjectDetectionTabWidget::onApplyClicked()
 
     // 使用 QFutureWatcher 监听完成信号
     QFutureWatcher<QString>* watcher = new QFutureWatcher<QString>(this);
-    connect(watcher, &QFutureWatcher<QString>::finished, this, [this, watcher, modelPath]() {
+    connect(watcher, &QFutureWatcher<QString>::finished, this, [this, watcher, modelPath, configPath]() {
         QString result = watcher->result();
         watcher->deleteLater();
         m_ui->btn_apply->setEnabled(true);
 
-        if (result == "both" || result == "dnn") {
+        if (result == "both" || result == "ort" || result == "dnn") {
             m_currentModelPath = modelPath;
-            m_pipeline->updateConfig([this](PipelineConfig& cfg) {
-                cfg.enableObjectDetection = true;
-                cfg.objectDetection.expectedCount = m_ui->spinBox_expectedCount->value();
-            });
+            m_currentConfigPath = configPath;
 
-            QString msg = (result == "both")
-                ? "状态：模型加载成功 (OpenCV DNN + ORT)"
-                : "状态：模型加载成功 (OpenCV DNN)";
+            // 预热：消除首次推理延迟（优先预热ONNX Runtime GPU）
+            cv::Mat warmup(640, 640, CV_8UC3, cv::Scalar(114, 114, 114));
+            if (m_ortInference.isLoaded()) {
+                m_ortInference.detect(warmup, 0.5f, 0.4f, 640, 640);
+                spdlog::info("[ObjectDetection] ONNX Runtime GPU warmup completed");
+            } else if (m_dnnInference.isLoaded()) {
+                m_dnnInference.detect(warmup, 0.5f, 0.4f, 640, 640);
+                spdlog::info("[ObjectDetection] OpenCV DNN warmup completed");
+            }
+
+            QString msg;
+            if (result == "both") msg = "状态：模型加载成功 (ORT GPU + DNN)";
+            else if (result == "ort") msg = "状态：模型加载成功 (ORT GPU)";
+            else msg = "状态：模型加载成功 (DNN)";
+            
             emit modelLoadFinished(true, msg);
             spdlog::debug("[ObjectDetection] {}", msg.toStdString());
         } else {
@@ -167,11 +177,39 @@ void ObjectDetectionTabWidget::onApplyClicked()
     watcher->setFuture(future);
 }
 
+void ObjectDetectionTabWidget::onApplyClicked()
+{
+    // 检查模型是否已加载
+    if (!isModelLoaded()) {
+        m_ui->label_status->setText("状态：请先加载模型");
+        spdlog::warn("[ObjectDetection] apply clicked but model not loaded");
+        return;
+    }
+
+    // 同步配置到pipeline并启用检测
+    m_pipeline->updateConfig([this](PipelineConfig& cfg) {
+        cfg.enableObjectDetection = true;
+        cfg.objectDetection.expectedCount = m_ui->spinBox_expectedCount->value();
+    });
+
+    // 触发pipeline执行
+    spdlog::info("[ObjectDetection] apply clicked, enabling detection and triggering pipeline");
+    emit detectionConfigChanged();
+}
+
 std::vector<DetectionResult> ObjectDetectionTabWidget::runDetection(const cv::Mat& image)
 {
     if (image.empty()) return {};
 
-    // 使用 OpenCV DNN（目标检测标签页静图检测）
+    // 优先使用 ONNX Runtime GPU（推理更快）
+    if (m_ortInference.isLoaded()) {
+        return m_ortInference.detect(image,
+            getConfidenceThreshold(),
+            getNmsThreshold(),
+            640, 640);
+    }
+
+    // 回退到 OpenCV DNN
     if (m_dnnInference.isLoaded()) {
         cv::Size inputSize = m_dnnInference.getModelInputSize();
         return m_dnnInference.detect(image,
@@ -305,8 +343,8 @@ void ObjectDetectionTabWidget::connectSignals(const SignalContext& ctx,
         }
     };
 
-    connect(m_ui->lineEdit_modelPath, &QLineEdit::editingFinished, this, syncToDetectionItem);
-    connect(m_ui->lineEdit_configPath, &QLineEdit::editingFinished, this, syncToDetectionItem);
+    connect(m_ui->lineEdit_modelPath, &QLineEdit::textChanged, this, syncToDetectionItem);
+    connect(m_ui->lineEdit_configPath, &QLineEdit::textChanged, this, syncToDetectionItem);
     connect(m_ui->slider_confidenceThreshold, &QSlider::valueChanged, this, [this, syncToDetectionItem](int) { syncToDetectionItem(); });
     connect(m_ui->slider_nmsThreshold, &QSlider::valueChanged, this, [this, syncToDetectionItem](int) { syncToDetectionItem(); });
     connect(m_ui->spinBox_expectedCount, QOverload<int>::of(&QSpinBox::valueChanged), this, [this, syncToDetectionItem](int) { syncToDetectionItem(); });

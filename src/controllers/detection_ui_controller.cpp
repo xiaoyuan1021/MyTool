@@ -68,13 +68,13 @@ void DetectionUiController::onAddDetectionClicked(const QString& roiId)
     
     // 创建ComboBox
     QComboBox* comboBox = new QComboBox(&dialog);
+    comboBox->addItem("自定义Pipeline", static_cast<int>(DetectionType::Custom));
     comboBox->addItem("Blob分析", static_cast<int>(DetectionType::Blob));
-    comboBox->addItem("直线检测", static_cast<int>(DetectionType::Line));
     comboBox->addItem("条码识别", static_cast<int>(DetectionType::Barcode));
+    comboBox->addItem("直线检测", static_cast<int>(DetectionType::Line));
+    comboBox->addItem("OCR识别", static_cast<int>(DetectionType::Ocr));
     comboBox->addItem("目标检测", static_cast<int>(DetectionType::ObjectDetection));
     comboBox->addItem("视频检测", static_cast<int>(DetectionType::VideoDetection));
-    comboBox->addItem("自定义Pipeline", static_cast<int>(DetectionType::Custom));
-    comboBox->addItem("OCR识别", static_cast<int>(DetectionType::Ocr));
     comboBox->setMinimumWidth(150);
     layout->addWidget(comboBox);
     

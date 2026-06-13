@@ -76,14 +76,15 @@ private slots:
     void onBrowseModel();
     void onBrowseConfig();
     void autoLoadDefaultModel();
+    void loadModelAsync();
 
 private:
     void setupConnections();
-    void updateConfig();
 
     Ui::ObjectDetectionTabForm* m_ui;
     IPipelineAccess* m_pipeline;
     DnnInference m_dnnInference;   // OpenCV DNN（目标检测标签页使用）
     OrtInference m_ortInference;   // ONNX Runtime（视频推理使用）
     QString m_currentModelPath;    // 当前已加载的模型路径，用于避免重复加载
+    QString m_currentConfigPath;   // 当前已加载的配置路径，用于避免重复加载
 };

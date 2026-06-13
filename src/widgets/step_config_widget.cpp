@@ -862,11 +862,18 @@ void StepConfigWidget::rebuildStepItems()
         if (kSteps[entryIdx].alwaysOn) continue;
         auto* cb = frame->findChild<QCheckBox*>();
         if (cb) {
-            connect(cb, &QCheckBox::toggled, this, [this, frame](bool checked) {
+            connect(cb, &QCheckBox::toggled, this, [this, frame, entryIdx](bool checked) {
                 if (checked && m_availableFrames.contains(frame)) {
                     moveStepToSelected(frame);
                 } else if (!checked && m_selectedFrames.contains(frame)) {
                     moveStepToAvailable(frame);
+                }
+
+                // 目标检测：切换时直接更新标志位
+                if (strcmp(kSteps[entryIdx].displayName, "目标检测") == 0) {
+                    m_pipelineManager->updateConfig([checked](PipelineConfig& cfg) {
+                        cfg.enableObjectDetection = checked;
+                    });
                 }
             });
         }
@@ -960,14 +967,6 @@ void StepConfigWidget::onApplyClicked()
                 if (cfg.colorFilter.mode == ImageFilterMode::None) {
                     cfg.colorFilter.mode = ImageFilterMode::Gray;
                 }
-            });
-        }
-
-        if (kSteps[entryIdx].backendIndices.size() == 1
-            && kSteps[entryIdx].backendIndices[0] < 0
-            && strcmp(kSteps[entryIdx].displayName, "目标检测") == 0) {
-            m_pipelineManager->updateConfig([checked](PipelineConfig& cfg) {
-                cfg.enableObjectDetection = checked;
             });
         }
     }
