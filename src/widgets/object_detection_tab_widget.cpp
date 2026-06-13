@@ -188,7 +188,7 @@ void ObjectDetectionTabWidget::onApplyClicked()
 
     // 同步配置到pipeline并启用检测
     m_pipeline->updateConfig([this](PipelineConfig& cfg) {
-        cfg.enableObjectDetection = true;
+        cfg.objectDetectionApplyEnabled = true;
         cfg.objectDetection.expectedCount = m_ui->spinBox_expectedCount->value();
     });
 

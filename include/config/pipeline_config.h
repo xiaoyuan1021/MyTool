@@ -104,7 +104,8 @@ struct PipelineConfig
     std::array<int, STEP_COUNT> stepOrder = {0, 1, 2, 3, 4, 5, 6, 7, 8};
 
     // ========== 扩展功能开关（不在 StepType 枚举中） ==========
-    bool enableObjectDetection = true;  ///< 在 Pipeline 末尾启用 YOLO 目标检测
+    bool enableObjectDetection = false;  ///< Pipeline步骤：目标检测步骤是否启用（StepConfigWidget控制）
+    bool objectDetectionApplyEnabled = false;  ///< Apply按钮：用户是否点击应用启用检测（ObjectDetectionTab控制）
 
     // ========== 算法队列（每个ROI独立保存） ==========
     QVector<AlgorithmStep> algorithmQueue;  ///< 形态学等算法步骤队列

@@ -486,13 +486,11 @@ void MainWindow::setupControllerConnections()
 
 void MainWindow::setupTabRegistration()
 {
-    // 预创建目标检测Tab，提前加载模型（避免首次点击时才加载），创建后隐藏并移到最后
+    // 预创建目标检测Tab，提前加载模型（避免首次点击时才加载），创建后隐藏
     m_tabManager->ensureTab("目标检测");
     for (int i = 0; i < ui->tabWidget->count(); ++i) {
         if (ui->tabWidget->tabText(i) == "目标检测") {
             ui->tabWidget->setTabVisible(i, false);
-            // 移到最后位置
-            ui->tabWidget->tabBar()->moveTab(i, ui->tabWidget->count() - 1);
             break;
         }
     }

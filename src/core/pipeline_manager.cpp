@@ -209,6 +209,7 @@ void PipelineManager::resetPipeline()
     m_config.stepEnabled = {false, false, false, false, false, false, false, false, false};
     m_config.stepOrder = {0, 1, 2, 3, 4, 5, 6, 7, 8};
     m_config.enableObjectDetection = false;
+    m_config.objectDetectionApplyEnabled = false;
     m_displayMode = DisplayConfig::Mode::MaskGreenWhite;
     m_overlayAlpha = AppConstants::DEFAULT_OVERLAY_ALPHA;
     initPipeline();

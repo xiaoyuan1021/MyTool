@@ -98,7 +98,8 @@ void PipelineResultHandler::handleObjectDetection(cv::Mat& displayImage, const c
 {
     if (!m_tabManager || !m_roiManager || !m_pipelineManager) return;
 
-    if (!m_pipelineManager->getConfigSnapshot().enableObjectDetection) return;
+    // 检查Apply按钮是否已启用检测
+    if (!m_pipelineManager->getConfigSnapshot().objectDetectionApplyEnabled) return;
 
     if (auto* objTab = m_tabManager->getTabAs<ObjectDetectionTabWidget>("目标检测"); objTab && objTab->isModelLoaded()) {
         // [NOTE] 使用 Pipeline 实际处理的源图像进行检测，而不是 m_roiManager->getCurrentImage()

@@ -263,6 +263,19 @@ void DetectionUiController::switchToTabConfig(const TabConfig& config)
         m_tabWidget->setTabVisible(i, shouldShow);
     }
 
+    // 按 config.tabNames 的顺序重排可见的Tab
+    auto* tabBar = m_tabWidget->tabBar();
+    for (int desired = 0; desired < config.tabNames.size(); ++desired) {
+        for (int cur = desired; cur < tabBar->count(); ++cur) {
+            if (tabBar->tabText(cur) == config.tabNames[desired]) {
+                if (cur != desired) {
+                    tabBar->moveTab(cur, desired);
+                }
+                break;
+            }
+        }
+    }
+
     // 切换到第一个可见的Tab
     for (int i = 0; i < m_tabWidget->count(); ++i) {
         if (m_tabWidget->isTabVisible(i)) {

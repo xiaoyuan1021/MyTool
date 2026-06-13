@@ -62,6 +62,7 @@ QJsonObject PipelineConfig::toJson() const {
     obj["stepEnabled"] = enabledArr;
     obj["stepOrder"] = orderArr;
     obj["enableObjectDetection"] = enableObjectDetection;
+    obj["objectDetectionApplyEnabled"] = objectDetectionApplyEnabled;
 
     // 形状筛选参数
     obj["shapeFilter"] = shapeFilter.toJson();
@@ -166,6 +167,7 @@ void PipelineConfig::fromJson(const QJsonObject& obj) {
     }
 
     enableObjectDetection = obj["enableObjectDetection"].toBool(false);
+    objectDetectionApplyEnabled = obj["objectDetectionApplyEnabled"].toBool(false);
 
     // 形状筛选参数
     if (obj.contains("shapeFilter")) {
