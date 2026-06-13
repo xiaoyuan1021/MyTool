@@ -27,7 +27,7 @@ LogPage::~LogPage()
 void LogPage::initialize()
 {
     // Initialize spdlog with rotating file sink + UI sink
-    QString logDir = QCoreApplication::applicationDirPath() + "/logs";
+    QString logDir = PROJECT_ROOT_DIR  "/logs";
     setupLogging(m_ui->textEdit_log, logDir);
 
     // Startup log (must be first after logging init)
